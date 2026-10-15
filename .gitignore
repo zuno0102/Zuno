@@ -1,0 +1,38 @@
+# ---- .NET / Backend ----
+backend/**/bin/
+backend/**/obj/
+.vs/
+*.user
+*.suo
+backend/**/appsettings.*.local.json
+backend/src/Zuno.Api/wwwroot/uploads/
+
+# ---- Desktop launcher ----
+launcher/**/bin/
+launcher/**/obj/
+launcher/dist/
+launcher/Zuno.Launcher/launcher.settings.json
+
+# ---- Flutter / Mobile ----
+mobile/**/.dart_tool/
+mobile/**/.flutter-plugin-dependencies
+mobile/**/build/
+mobile/**/.packages
+mobile/**/.pub-cache/
+mobile/**/.pub/
+mobile/**/ios/Pods/
+mobile/**/ios/.symlinks/
+mobile/**/android/.gradle/
+mobile/**/android/local.properties
+mobile/**/*.iml
+mobile/**/.idea/
+
+# ---- Secrets / Env ----
+.env
+.env.*
+!.env.example
+
+# ---- OS / Editor ----
+.DS_Store
+Thumbs.db
+*.log

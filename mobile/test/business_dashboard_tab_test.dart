@@ -1,0 +1,162 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:zuno/features/business_owner/domain/entities/business_dashboard.dart';
+import 'package:zuno/features/business_owner/presentation/providers/business_dashboard_notifier.dart';
+import 'package:zuno/features/business_owner/presentation/screens/business_dashboard_tab.dart';
+import 'package:zuno/shared/domain/business_trust.dart';
+
+/// The business home screen must render every section on a phone-sized screen.
+///
+/// Worth a test of its own because the five stat tiles are laid out in wrapped rows inside a
+/// ListView, where the height is unbounded: a row that tries to stretch into that fails the
+/// whole viewport's layout, and takes the headline card and the trend chart down with it — the
+/// screen goes blank rather than showing one broken tile.
+void main() {
+  final dashboard = BusinessDashboard(
+    eventsCompleted: 5,
+    upcomingEvents: 1,
+    cancelledEvents: 1,
+    crewEventsCompleted: 6,
+    activeWorkers: 4,
+    totalRevenue: 13400,
+    byCategory: const [
+      CategoryBreakdown(
+        serviceCategoryId: 'c-1',
+        categoryName: 'Painting',
+        count: 2,
+        revenue: 8400,
+        subCategories: [
+          SubCategoryBreakdown(name: 'Acrylic painting', count: 2, revenue: 8400),
+        ],
+      ),
+    ],
+    trend: const [
+      MonthlyActivity(label: 'Jul', year: 2026, month: 7, completed: 2, revenue: 4900),
+      MonthlyActivity(label: 'Aug', year: 2026, month: 8, completed: 2, revenue: 6000),
+      MonthlyActivity(label: 'Sep', year: 2026, month: 9, completed: 1, revenue: 2500),
+    ],
+    completed: [
+      DashboardEvent(
+        id: 'b-1',
+        serviceName: 'Paintings',
+        categoryName: 'Painting',
+        subCategoryName: 'Acrylic painting',
+        customerName: 'Test Customer',
+        scheduledDate: DateTime(2026, 9, 1),
+        completedAt: DateTime(2026, 9, 2),
+        price: 4200,
+        status: 'Completed',
+      ),
+    ],
+    workers: [
+      DashboardWorker(
+        workerProfileId: 'w-1',
+        workerName: '',
+        availabilityStatus: 'Active',
+        jobsCompleted: 3,
+        sinceDate: DateTime(2026, 6, 1),
+      ),
+      DashboardWorker(
+        workerProfileId: 'w-2',
+        workerName: 'Binu K',
+        availabilityStatus: 'Booked',
+        workerPhone: '9876543210',
+        sinceDate: DateTime(2026, 7, 14),
+        busyOn: DateTime(2026, 9, 23, 9),
+      ),
+    ],
+    trust: const BusinessTrust(),
+  );
+
+  Future<void> pump(WidgetTester tester, BusinessDashboard data) async {
+    // A narrow phone, where five tiles across would never have fitted.
+    tester.view.physicalSize = const Size(720, 1600);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          businessDashboardProvider.overrideWith((ref) async => data),
+        ],
+        child: const MaterialApp(
+          home: Scaffold(body: BusinessDashboardTab()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('renders every section without a layout failure', (tester) async {
+    await pump(tester, dashboard);
+
+    // The single most important assertion: nothing threw. A stretch into an unbounded height
+    // shows up here and nowhere else.
+    expect(tester.takeException(), isNull);
+
+    // The headline and the chart sit either side of the tiles, so if the viewport had failed
+    // these would be the casualties.
+    expect(find.text('ORDERS FINISHED'), findsOneWidget);
+    expect(find.text('Customer activity'), findsOneWidget);
+  });
+
+  testWidgets('shows all five stat tiles', (tester) async {
+    await pump(tester, dashboard);
+
+    for (final label in [
+      'Upcoming',
+      'Finished',
+      'Cancelled',
+      'Crew events',
+      'Active workers',
+    ]) {
+      expect(find.text(label), findsOneWidget, reason: '$label tile is missing');
+    }
+  });
+
+  testWidgets('tiles show the counts they were given', (tester) async {
+    await pump(tester, dashboard);
+
+    expect(find.text('4'), findsOneWidget); // active workers
+    expect(find.text('6'), findsOneWidget); // crew events
+  });
+
+  testWidgets('an empty dashboard still lays out', (tester) async {
+    await pump(tester, const BusinessDashboard());
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Active workers'), findsOneWidget);
+  });
+
+  group('the profile card', () {
+    testWidgets('is on the home tab, since it is no longer a bottom tab', (
+      tester,
+    ) async {
+      await pump(tester, dashboard);
+
+      expect(find.text('YOUR BUSINESS'), findsOneWidget);
+    });
+
+    testWidgets('opens the profile page when tapped', (tester) async {
+      await pump(tester, dashboard);
+
+      await tester.tap(find.text('YOUR BUSINESS'));
+      // Pumped by hand rather than settled: the page lands on its loading spinner, which never
+      // stops animating here, so pumpAndSettle would wait for it forever.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.text('Business profile'), findsOneWidget);
+    });
+
+    testWidgets('draws before the profile has loaded', (tester) async {
+      // It watches its own provider, which is not overridden here and so never resolves. The
+      // card must still render rather than blanking the home screen behind it.
+      await pump(tester, dashboard);
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Tap to add your details'), findsOneWidget);
+    });
+  });
+}

@@ -1,0 +1,63 @@
+# Render blueprint for the Zuno API.
+#
+# The database is NOT declared here. Render's own free Postgres expires after 30 days and is then
+# deleted; the data tier is Neon instead, whose free project has no expiry, and its connection
+# string is supplied as an environment variable.
+#
+# Values marked sync:false are deliberately not in this file: they are secrets, and this file is in
+# git. Render prompts for each one when the blueprint is first applied, and they can be changed
+# later in the dashboard without a redeploy of the blueprint.
+services:
+  - type: web
+    name: zuno-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/v1/service-categories
+    autoDeploy: true
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+
+      # Neon, from the Neon dashboard. Must be in Npgsql's format, not the libpq URI Neon shows by
+      # default, and must keep SSL on — Neon refuses an unencrypted connection:
+      #   Host=<endpoint>.neon.tech;Database=zuno;Username=<user>;Password=<pw>;SSL Mode=Require;Trust Server Certificate=true
+      - key: ConnectionStrings__ZunoDatabase
+        sync: false
+
+      # Tokens. The signing key must be at least 32 characters or the app refuses to start, which
+      # is deliberate: a short key is a forgeable one. Let Render generate it — nobody needs to
+      # know this value, including you.
+      - key: JwtSettings__Issuer
+        value: Zuno.Api
+      - key: JwtSettings__Audience
+        value: Zuno.Client
+      - key: JwtSettings__SigningKey
+        generateValue: true
+      - key: JwtSettings__AccessTokenExpiryMinutes
+        value: "15"
+      - key: JwtSettings__RefreshTokenExpiryDays
+        value: "14"
+
+      # The browser app's origin, e.g. https://zuno.vercel.app — no trailing slash. Without it the
+      # web front end is refused by CORS on every request, because outside Development only the
+      # origins named here are allowed.
+      - key: Cors__AllowedOrigins__0
+        sync: false
+
+      # Razorpay. Validated at start-up, so the service will not boot without them. Simulated
+      # collection is refused outside Development by the app itself — it would mean reporting wages
+      # as sent when no money moved — so these have to be real keys, test or live.
+      - key: Razorpay__KeyId
+        sync: false
+      - key: Razorpay__KeySecret
+        sync: false
+
+      # Where uploaded pictures are written. On the free plan this is a container filesystem with
+      # no disk attached, so everything written here is lost on every deploy and on every wake from
+      # sleep. See DEPLOYMENT.md — this is the one part of the app that does not survive free-tier
+      # hosting, and it needs an object store before anyone relies on it.
+      - key: FileStorage__RootPath
+        value: wwwroot/uploads

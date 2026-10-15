@@ -1,0 +1,25 @@
+using MediatR;
+using Microsoft.Extensions.Logging;
+
+namespace Zuno.Application.Common.Behaviors;
+
+public class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior<TRequest, TResponse>> logger)
+    : IPipelineBehavior<TRequest, TResponse>
+    where TRequest : IRequest<TResponse>
+{
+    public async Task<TResponse> Handle(
+        TRequest request,
+        RequestHandlerDelegate<TResponse> next,
+        CancellationToken cancellationToken)
+    {
+        var requestName = typeof(TRequest).Name;
+
+        logger.LogInformation("Handling {RequestName}", requestName);
+
+        var response = await next(cancellationToken);
+
+        logger.LogInformation("Handled {RequestName}", requestName);
+
+        return response;
+    }
+}

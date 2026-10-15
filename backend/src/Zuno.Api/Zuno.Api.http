@@ -1,0 +1,63 @@
+@Zuno.Api_HostAddress = http://localhost:5056
+@accessToken = REPLACE_AFTER_LOGIN
+@refreshToken = REPLACE_AFTER_LOGIN
+
+### Register a Customer
+POST {{Zuno.Api_HostAddress}}/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "email": "customer1@example.com",
+  "phoneNumber": "9876543210",
+  "password": "P@ssw0rd!23",
+  "firstName": "Asha",
+  "lastName": "Rao",
+  "role": "Customer"
+}
+
+### Login
+POST {{Zuno.Api_HostAddress}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "emailOrPhone": "customer1@example.com",
+  "password": "P@ssw0rd!23"
+}
+
+### Get current user (paste accessToken above after login)
+GET {{Zuno.Api_HostAddress}}/api/v1/auth/me
+Authorization: Bearer {{accessToken}}
+
+### Refresh token (paste refreshToken above after login)
+POST {{Zuno.Api_HostAddress}}/api/v1/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### Revoke token (logout)
+POST {{Zuno.Api_HostAddress}}/api/v1/auth/revoke-token
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### Forgot password
+POST {{Zuno.Api_HostAddress}}/api/v1/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "customer1@example.com"
+}
+
+### Login as seeded Super Admin
+POST {{Zuno.Api_HostAddress}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "emailOrPhone": "admin@zuno.app",
+  "password": "REPLACE_WITH_SEEDED_ADMIN_PASSWORD"
+}

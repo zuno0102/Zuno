@@ -1,0 +1,10 @@
+{
+  "WindowTitle": "Zuno",
+  "BackendExeRelativePath": "backend/Zuno.Api.exe",
+  "WebRootRelativePath": "web",
+  "BackendPort": 5056,
+  "StaticPort": 8090,
+  "BackendHealthCheckPath": "/api/v1/states",
+  "ConnectionString": "Host=127.0.0.1;Port=5432;Database=zuno;Username=postgres;Password=CHANGE_ME",
+  "JwtSigningKey": "CHANGE_ME_GENERATE_A_STRONG_RANDOM_KEY"
+}

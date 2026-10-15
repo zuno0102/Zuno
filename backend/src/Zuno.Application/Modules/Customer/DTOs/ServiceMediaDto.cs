@@ -1,0 +1,12 @@
+namespace Zuno.Application.Modules.Customer.DTOs;
+
+public class ServiceMediaDto
+{
+    public Guid Id { get; set; }
+
+    public string MediaType { get; set; } = string.Empty;
+
+    public string Url { get; set; } = string.Empty;
+
+    public short SortOrder { get; set; }
+}

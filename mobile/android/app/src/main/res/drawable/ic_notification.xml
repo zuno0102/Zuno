@@ -1,0 +1,25 @@
+<!--
+  The small icon Android draws in the status bar and beside the notification: Zuno's Z.
+
+  A flat white silhouette on transparency, and it has to be. Android throws away every colour in
+  this icon and redraws it as one solid shape, tinted with whatever `color` the notification
+  carries — so full-colour artwork arrives as a featureless white blob. That is what happened when
+  the launcher icon was used here.
+
+  Drawn rather than traced from the app icon, because there is no Zuno artwork in this project: the
+  launcher icon is still Flutter's own blue logo. Replace this with the real mark when there is
+  one, keeping it a single white path on transparency.
+
+  Geometry: thick bars top and bottom with a diagonal between, on the 24dp grid Android expects.
+  Heavy on purpose — at status-bar size a thin letterform closes up into a smudge.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFFFF">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M5,4 H19 V7 L10.5,17 H19 V20 H5 V17 L13.5,7 H5 Z" />
+</vector>
