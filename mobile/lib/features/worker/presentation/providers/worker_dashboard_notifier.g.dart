@@ -49,7 +49,7 @@ final class WorkerDashboardNotifierProvider
 }
 
 String _$workerDashboardNotifierHash() =>
-    r'0cabc088b75065793991863aded67eda73c46650';
+    r'cc35c14f33d94bd4fd93df4207d99a27e148247b';
 
 /// The worker's home screen, and the one place their own details are changed.
 ///

@@ -47,6 +47,9 @@ class Booking {
     this.myWageAmount,
     this.notes,
     this.addressLine1,
+    this.addressLine2,
+    this.latitude,
+    this.longitude,
     this.city,
     this.state,
     this.postalCode,
@@ -137,6 +140,11 @@ class Booking {
   final List<BookingTermsProposal> proposals;
 
   final String? addressLine1;
+  final String? addressLine2;
+
+  /// The pinned job location. Null on bookings made before pinning existed.
+  final double? latitude;
+  final double? longitude;
   final String? city;
   final String? state;
   final String? postalCode;

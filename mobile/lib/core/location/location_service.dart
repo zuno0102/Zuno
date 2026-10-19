@@ -9,7 +9,10 @@ part 'location_service.g.dart';
 /// run in a widget test — without this seam the whole nearby-jobs UI would be untestable.
 abstract class LocationService {
   /// The phone's position, or a reason it is unavailable. Never throws.
-  Future<LocationResult> current();
+  ///
+  /// [precise] asks for a GPS-quality fix, for pinning the house a job is at. The default coarse fix
+  /// is enough for "jobs within a few kilometres" and comes back faster.
+  Future<LocationResult> current({bool precise = false});
 
   /// Opens the system settings page, for a worker who denied the permission permanently.
   Future<void> openSettings();
@@ -66,7 +69,7 @@ class LocationResult {
 
 class GeolocatorLocationService implements LocationService {
   @override
-  Future<LocationResult> current() async {
+  Future<LocationResult> current({bool precise = false}) async {
     try {
       if (!await Geolocator.isLocationServiceEnabled()) {
         return const LocationResult.unavailable(LocationProblem.serviceDisabled);
@@ -90,10 +93,13 @@ class GeolocatorLocationService implements LocationService {
         // Low accuracy on purpose. The tightest radius offered is a kilometre, so a coarse fix is
         // ample, and asking for less precision is faster, kinder to the battery, and satisfied by
         // the "Approximate" choice Android 12 and later offer.
+        //
+        // A pinned job location is the exception: there the whole point is the right house, so it
+        // asks for high accuracy and allows the GPS a little longer to settle.
         final position = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.low,
-            timeLimit: Duration(seconds: 10),
+          locationSettings: LocationSettings(
+            accuracy: precise ? LocationAccuracy.high : LocationAccuracy.low,
+            timeLimit: Duration(seconds: precise ? 15 : 10),
           ),
         );
         return LocationResult.found(position.latitude, position.longitude);

@@ -38,6 +38,8 @@ class _FakeBookingRepository implements BookingRepository {
     required String state,
     required String postalCode,
     String? country,
+    required double latitude,
+    required double longitude,
     Map<String, String> answers = const {},
   }) async {
     createCalls++;
@@ -79,6 +81,8 @@ void main() {
     city: 'Thiruvananthapuram',
     state: 'Kerala',
     postalCode: '695001',
+    latitude: 8.5241,
+    longitude: 76.9366,
   );
 
   test('placing an order refreshes the list while the screen is still there', () async {
@@ -155,6 +159,8 @@ class _RefusingRepository extends _FakeBookingRepository {
     required String state,
     required String postalCode,
     String? country,
+    required double latitude,
+    required double longitude,
     Map<String, String> answers = const {},
   }) async => throw Exception('That date is already taken.');
 }

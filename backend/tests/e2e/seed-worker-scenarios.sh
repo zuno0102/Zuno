@@ -67,7 +67,7 @@ ok "Cleared their existing future assignments" "starting from a known state"
 day()  { date -u -d "+$1 days $2" +%Y-%m-%dT%H:%M:%SZ; }
 book() {  # book <iso-date> -> booking id, confirmed
   local id
-  id=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$1\",\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"country\":\"India\"}" | j id)
+  id=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$1\",\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"latitude\":10.5276,\"longitude\":76.2144,\"country\":\"India\"}" | j id)
   post_ /business/bookings/$id/confirm "$BT" >/dev/null
   echo "$id"
 }

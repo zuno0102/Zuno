@@ -29,9 +29,14 @@ public interface IPlaceSearchService
     /// rather than "your current location". A position nobody can read is a position nobody can
     /// check, and a GPS fix that landed in the wrong district should be obvious at a glance.
     /// </remarks>
+    /// <param name="precise">
+    /// Street level rather than suburb level. Used when somebody pins the exact house for a job, so
+    /// the address fields can be filled from the pin; a worker naming their area keeps the default.
+    /// </param>
     Task<PlaceResult?> ReverseAsync(
         double latitude,
         double longitude,
+        bool precise = false,
         CancellationToken cancellationToken = default);
 }
 
@@ -40,8 +45,18 @@ public interface IPlaceSearchService
 /// <param name="FullName">The whole address as the provider returned it, for telling two alike apart.</param>
 /// <param name="Latitude">Degrees north.</param>
 /// <param name="Longitude">Degrees east.</param>
+/// <param name="Street">Road name, when the provider knows it.</param>
+/// <param name="Locality">Suburb, neighbourhood or village inside the city.</param>
+/// <param name="City">City, town or village.</param>
+/// <param name="State">State, e.g. "Tamil Nadu".</param>
+/// <param name="PostalCode">PIN code.</param>
 public record PlaceResult(
     string Name,
     string FullName,
     double Latitude,
-    double Longitude);
+    double Longitude,
+    string? Street = null,
+    string? Locality = null,
+    string? City = null,
+    string? State = null,
+    string? PostalCode = null);

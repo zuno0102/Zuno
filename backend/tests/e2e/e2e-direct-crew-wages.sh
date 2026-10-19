@@ -73,7 +73,7 @@ ok "Two workers joined the business" "Ravi, Anita"
 
 SVC=$(post_ /business/services "$BT" "{\"serviceCategoryId\":\"$CAT\",\"name\":\"Deep clean $S\",\"priceType\":\"Fixed\",\"price\":5000,\"requiredWorkerCount\":2,\"districtIds\":[\"$DIST\"]}" | j id)
 SOON=$(date -u -d '+3 days 10:00' +%Y-%m-%dT%H:%M:%SZ)
-BID=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$SOON\",\"addressLine1\":\"1 Road\",\"city\":\"Kochi\",\"state\":\"Kerala\",\"postalCode\":\"682001\"}" | j id)
+BID=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$SOON\",\"addressLine1\":\"1 Road\",\"city\":\"Kochi\",\"state\":\"Kerala\",\"postalCode\":\"682001\",\"latitude\":9.9312,\"longitude\":76.2673}" | j id)
 want_ok "Order confirmed" "$(post_ "/business/bookings/$BID/confirm" "$BT")" ""
 
 echo
@@ -131,7 +131,7 @@ if zero "$(owed)"; then ok "Nothing outstanding" "$(owed)"; else bad "Nothing ou
 
 echo
 echo "==== 6. A JOB WHERE NOBODY IS PAID THROUGH ZUNO ===="
-BID2=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$SOON\",\"addressLine1\":\"1 Road\",\"city\":\"Kochi\",\"state\":\"Kerala\",\"postalCode\":\"682001\"}" | j id)
+BID2=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$SOON\",\"addressLine1\":\"1 Road\",\"city\":\"Kochi\",\"state\":\"Kerala\",\"postalCode\":\"682001\",\"latitude\":9.9312,\"longitude\":76.2673}" | j id)
 post_ "/business/bookings/$BID2/confirm" "$BT" >/dev/null
 post_ "/business/bookings/$BID2/assign-worker" "$BT" "{\"workerProfileId\":\"$WP2\"}" >/dev/null
 eq "No payees at all" \

@@ -18,6 +18,11 @@ class SearchedPlace {
     required this.fullName,
     required this.latitude,
     required this.longitude,
+    this.street,
+    this.locality,
+    this.city,
+    this.state,
+    this.postalCode,
   });
 
   factory SearchedPlace.fromJson(Map<String, dynamic> json) => SearchedPlace(
@@ -25,6 +30,11 @@ class SearchedPlace {
     fullName: json['fullName'] as String? ?? '',
     latitude: (json['latitude'] as num).toDouble(),
     longitude: (json['longitude'] as num).toDouble(),
+    street: json['street'] as String?,
+    locality: json['locality'] as String?,
+    city: json['city'] as String?,
+    state: json['state'] as String?,
+    postalCode: json['postalCode'] as String?,
   );
 
   final String name;
@@ -33,6 +43,14 @@ class SearchedPlace {
   final String fullName;
   final double latitude;
   final double longitude;
+
+  /// The address split into the fields a form has, when the provider knows them. Used to fill an
+  /// address in from a pin rather than making somebody type what the map already says.
+  final String? street;
+  final String? locality;
+  final String? city;
+  final String? state;
+  final String? postalCode;
 }
 
 /// Looks a place up through our own server.
@@ -64,14 +82,21 @@ class PlaceSearchClient {
   ///
   /// Never throws for the caller to handle: a position that cannot be named is still a usable
   /// position, so failure here degrades to showing the coordinates' generic label.
+  ///
+  /// [precise] asks for the street rather than the suburb — for pinning the exact house of a job.
   Future<SearchedPlace?> reverse({
     required double latitude,
     required double longitude,
+    bool precise = false,
   }) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         ApiConstants.placeReversePath,
-        queryParameters: {'latitude': latitude, 'longitude': longitude},
+        queryParameters: {
+          'latitude': latitude,
+          'longitude': longitude,
+          if (precise) 'precise': true,
+        },
       );
       final data = response.data;
       return data == null ? null : SearchedPlace.fromJson(data);

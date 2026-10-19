@@ -70,7 +70,7 @@ eq "Both workers on the team" "$(sql "select count(*) from business_workers wher
 
 # Two orders, so "a lead on one job is not a lead on another" can be proved rather than assumed.
 mk_booking() {
-  post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$1\",\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"country\":\"India\"}" | j id
+  post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$1\",\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"latitude\":10.5276,\"longitude\":76.2144,\"country\":\"India\"}" | j id
 }
 SAT=$(date -u -d '+2 days 10:00' +%Y-%m-%dT%H:%M:%SZ)
 SUN=$(date -u -d '+9 days 10:00' +%Y-%m-%dT%H:%M:%SZ)

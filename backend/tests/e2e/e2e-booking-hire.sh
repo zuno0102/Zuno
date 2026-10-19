@@ -53,7 +53,7 @@ eq "Service created" "$([ -n "$SVC" ] && echo yes)" "yes"
 
 # Booking, placed by the customer against that service.
 WHEN=$(date -u -d '+10 days 10:00' +%Y-%m-%dT%H:%M:%SZ)
-BK=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$WHEN\",\"requiredWorkerCount\":5,\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"country\":\"India\"}" | j id)
+BK=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$WHEN\",\"requiredWorkerCount\":5,\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"latitude\":10.5276,\"longitude\":76.2144,\"country\":\"India\"}" | j id)
 eq "Customer booking created" "$([ -n "$BK" ] && echo yes)" "yes"
 want_ok "Business confirms the booking" "$(post_ /business/bookings/$BK/confirm "$BT")" ""
 
@@ -117,7 +117,7 @@ eq "Worker 3 is hired on the post" "$(sql "select application_status from hiring
 
 echo
 echo "==== 6. CANCELLING THE BOOKING CLOSES THE OPEN POST ===="
-BK2=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$(date -u -d '+20 days 10:00' +%Y-%m-%dT%H:%M:%SZ)\",\"requiredWorkerCount\":2,\"addressLine1\":\"9 Market Rd\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"country\":\"India\"}" | j id)
+BK2=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$(date -u -d '+20 days 10:00' +%Y-%m-%dT%H:%M:%SZ)\",\"requiredWorkerCount\":2,\"addressLine1\":\"9 Market Rd\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"latitude\":10.5276,\"longitude\":76.2144,\"country\":\"India\"}" | j id)
 post_ /business/bookings/$BK2/confirm "$BT" >/dev/null
 P2=$(post_ /business/hiring-posts "$BT" "{\"bookingId\":\"$BK2\",\"title\":\"Catering\",\"eventDate\":\"$(date -u -d '+20 days 10:00' +%Y-%m-%dT%H:%M:%SZ)\",\"durationMinutes\":180,\"workersNeeded\":2,\"salaryAmount\":600,\"salaryUnit\":\"PerEvent\",\"serviceSubCategoryId\":\"a2222222-0000-0000-0003-000000000002\"}" | j id)
 eq "Second post is Open (1)" "$(sql "select hiring_post_status from hiring_posts where id='$P2'")" "1"
@@ -141,7 +141,7 @@ eq "Order now InProgress (3)" "$(sql "select booking_status from bookings where 
 eq "...with a real start time recorded" "$(sql "select (work_started_at is not null) from bookings where id='$BK'")" "t"
 want_no "Refused: cannot start twice" "$(post_ /business/bookings/$BK/start "$BT")"
 
-BK3=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$(date -u -d '+25 days 10:00' +%Y-%m-%dT%H:%M:%SZ)\",\"addressLine1\":\"2 Temple St\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"country\":\"India\"}" | j id)
+BK3=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$(date -u -d '+25 days 10:00' +%Y-%m-%dT%H:%M:%SZ)\",\"addressLine1\":\"2 Temple St\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"latitude\":10.5276,\"longitude\":76.2144,\"country\":\"India\"}" | j id)
 want_no "Refused: cannot start an unconfirmed order" "$(post_ /business/bookings/$BK3/start "$BT")"
 post_ /business/bookings/$BK3/confirm "$BT" >/dev/null
 want_no "Refused: cannot start with nobody hired" "$(post_ /business/bookings/$BK3/start "$BT")"
@@ -149,7 +149,7 @@ want_no "Refused: cannot start with nobody hired" "$(post_ /business/bookings/$B
 echo
 echo "==== 5d. ALL THREE HIRING CHANNELS FEED ONE COUNT ===="
 # A fresh order needing 3: one from a post application, one from an invite, one added by hand.
-BKC=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$(date -u -d '+40 days 09:00' +%Y-%m-%dT%H:%M:%SZ)\",\"addressLine1\":\"7 Mill Rd\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"country\":\"India\"}" | j id)
+BKC=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$(date -u -d '+40 days 09:00' +%Y-%m-%dT%H:%M:%SZ)\",\"addressLine1\":\"7 Mill Rd\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"latitude\":10.5276,\"longitude\":76.2144,\"country\":\"India\"}" | j id)
 post_ /business/bookings/$BKC/confirm "$BT" >/dev/null
 sql "update bookings set required_worker_count=3 where id='$BKC'" >/dev/null
 EVC=$(date -u -d '+40 days 09:00' +%Y-%m-%dT%H:%M:%SZ)
@@ -195,10 +195,10 @@ if echo "$BIZVIEW" | grep -q 'workerPhone'; then ok "Business still receives the
 
 echo
 echo "==== 6c. A BUSINESS DECLINES BEFORE ACCEPTING, NEVER AFTER ===="
-BKD=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$(date -u -d '+50 days 09:00' +%Y-%m-%dT%H:%M:%SZ)\",\"addressLine1\":\"1 High St\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"country\":\"India\"}" | j id)
+BKD=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$(date -u -d '+50 days 09:00' +%Y-%m-%dT%H:%M:%SZ)\",\"addressLine1\":\"1 High St\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"latitude\":10.5276,\"longitude\":76.2144,\"country\":\"India\"}" | j id)
 want_ok "Business declines a pending order" "$(post_ /business/bookings/$BKD/cancel "$BT" '{"reason":"Fully booked that day"}')" ""
 
-BKE=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$(date -u -d '+55 days 09:00' +%Y-%m-%dT%H:%M:%SZ)\",\"addressLine1\":\"3 High St\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"country\":\"India\"}" | j id)
+BKE=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$(date -u -d '+55 days 09:00' +%Y-%m-%dT%H:%M:%SZ)\",\"addressLine1\":\"3 High St\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"latitude\":10.5276,\"longitude\":76.2144,\"country\":\"India\"}" | j id)
 post_ /business/bookings/$BKE/confirm "$BT" >/dev/null
 want_no "Refused: business cannot back out once accepted" "$(post_ /business/bookings/$BKE/cancel "$BT" '{"reason":"changed my mind"}')"
 eq "...and the order is untouched, still Confirmed (6)" "$(sql "select booking_status from bookings where id='$BKE'")" "6"
@@ -219,7 +219,7 @@ sql "insert into business_service_media (id, business_service_id, business_servi
             (gen_random_uuid(), '$SVC', null, 1, '/uploads/test/service.jpg', 0, now(), false, 1)" >/dev/null
 eq "Package has its own photo" "$(sql "select url from business_service_media where business_service_variant_id='$VAR'")" "/uploads/test/variant.jpg"
 
-BKI=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"businessServiceVariantId\":\"$VAR\",\"scheduledDate\":\"$(date -u -d '+60 days 09:00' +%Y-%m-%dT%H:%M:%SZ)\",\"addressLine1\":\"5 Park Rd\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"country\":\"India\"}" | j id)
+BKI=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"businessServiceVariantId\":\"$VAR\",\"scheduledDate\":\"$(date -u -d '+60 days 09:00' +%Y-%m-%dT%H:%M:%SZ)\",\"addressLine1\":\"5 Park Rd\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"latitude\":10.5276,\"longitude\":76.2144,\"country\":\"India\"}" | j id)
 post_ /business/bookings/$BKI/confirm "$BT" >/dev/null
 eq "Order reports its kind of work" "$(get_ /business/bookings "$BT" | tr '{' '\n' | grep "\"id\":\"$BKI\"" | grep -o '"serviceSubCategoryName":"[^"]*"' | cut -d'"' -f4)" "Kitchen cleaning"
 

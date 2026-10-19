@@ -49,6 +49,9 @@ class BookingModel {
     this.myWageAmount,
     this.notes,
     this.addressLine1,
+    this.addressLine2,
+    this.latitude,
+    this.longitude,
     this.city,
     this.state,
     this.postalCode,
@@ -114,6 +117,11 @@ class BookingModel {
   final String agreementStatus;
   final List<BookingTermsProposalModel> proposals;
   final String? addressLine1;
+  final String? addressLine2;
+
+  /// The pinned job location. Null on bookings made before pinning existed.
+  final double? latitude;
+  final double? longitude;
   final String? city;
   final String? state;
   final String? postalCode;
@@ -162,6 +170,9 @@ class BookingModel {
     agreementStatus: agreementStatus,
     proposals: proposals.map((p) => p.toEntity()).toList(),
     addressLine1: addressLine1,
+    addressLine2: addressLine2,
+    latitude: latitude,
+    longitude: longitude,
     city: city,
     state: state,
     postalCode: postalCode,

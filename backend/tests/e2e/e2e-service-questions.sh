@@ -85,7 +85,7 @@ QO=$(sql "select id from business_service_questions where business_service_id='$
 echo
 echo "==== 3. ANSWERING ===="
 SOON=$(date -u -d '+6 days 10:00' +%Y-%m-%dT%H:%M:%SZ)
-ADDR="\"addressLine1\":\"1 Road\",\"city\":\"Kochi\",\"state\":\"Kerala\",\"postalCode\":\"682001\""
+ADDR="\"addressLine1\":\"1 Road\",\"city\":\"Kochi\",\"state\":\"Kerala\",\"postalCode\":\"682001\",\"latitude\":9.9312,\"longitude\":76.2673"
 
 want_fail "A required question cannot be skipped" \
   "$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$SOON\",$ADDR,\"answers\":[{\"questionId\":\"$Q1\",\"answerText\":\"12\"}]}")"

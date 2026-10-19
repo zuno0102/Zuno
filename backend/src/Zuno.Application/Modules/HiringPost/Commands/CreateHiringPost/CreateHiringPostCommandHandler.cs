@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Zuno.Application.Common.Interfaces;
+using Zuno.Application.Modules.HiringPost.Common;
 using Zuno.Application.Modules.HiringPost.DTOs;
 using Zuno.Domain.Entities;
 using Zuno.Domain.Enums;
@@ -25,10 +26,12 @@ public class CreateHiringPostCommandHandler(
         // so a post can never point at someone else's booking, or at one that is already over.
         string? inheritedImageUrl = null;
         Guid? inheritedSubCategoryId = null;
+        Address? orderAddress = null;
 
         if (request.BookingId is { } bookingId)
         {
             var booking = await dbContext.Bookings
+                .Include(b => b.Address)
                 .Include(b => b.BusinessService).ThenInclude(s => s.Media)
                 .Include(b => b.BusinessServiceVariant).ThenInclude(v => v!.Media)
                 .Include(b => b.BusinessServiceVariant).ThenInclude(v => v!.ServiceSubCategory)
@@ -60,6 +63,8 @@ public class CreateHiringPostCommandHandler(
             // The kind of work is the order's, not something to ask the business again. Taken
             // from the package the customer actually chose.
             inheritedSubCategoryId = booking.BusinessServiceVariant?.ServiceSubCategoryId;
+
+            orderAddress = booking.Address;
         }
 
         // The order's kind of work wins over anything the client sent: it is the customer's
@@ -83,7 +88,9 @@ public class CreateHiringPostCommandHandler(
             ImageUrl = inheritedImageUrl,
             EventDate = request.EventDate,
             DurationMinutes = request.DurationMinutes,
-            Location = request.Location,
+            Location = string.IsNullOrWhiteSpace(request.Location)
+                ? DescribeAddress(orderAddress)
+                : request.Location,
             ServiceSubCategoryId = subCategory?.Id,
             ServiceSubCategory = subCategory,
             WorkersNeeded = request.WorkersNeeded,
@@ -91,10 +98,38 @@ public class CreateHiringPostCommandHandler(
             SalaryUnit = request.SalaryUnit,
         };
 
+        // Where the work is. The order's pinned address wins: the crew goes to the customer's door,
+        // and that point was picked on a map by the customer themselves. Otherwise whatever the
+        // business picked on this form. Neither leaves the post unplaced, as before.
+        if (orderAddress is { Latitude: { } orderLat, Longitude: { } orderLon })
+        {
+            await HiringPostLocation.PlaceAsync(
+                post, orderLat, orderLon, HiringPostLocationPrecision.Pinned, dbContext, cancellationToken);
+        }
+        else if (request is { Latitude: { } lat, Longitude: { } lon })
+        {
+            await HiringPostLocation.PlaceAsync(
+                post, lat, lon, HiringPostLocation.ParsePrecision(request.LocationPrecision), dbContext, cancellationToken);
+        }
+
         dbContext.HiringPosts.Add(post);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return post.ToDto();
+    }
+
+    /// <summary>The order's address as one line, for the post's free-text location.</summary>
+    private static string? DescribeAddress(Address? address)
+    {
+        if (address is null)
+        {
+            return null;
+        }
+
+        var parts = new[] { address.Line1, address.Line2, address.City, address.State }
+            .Where(p => !string.IsNullOrWhiteSpace(p));
+        var text = string.Join(", ", parts);
+        return text.Length > 300 ? text[..300] : text;
     }
 
     private static string? FirstImage(ICollection<BusinessServiceMedia>? media) => media

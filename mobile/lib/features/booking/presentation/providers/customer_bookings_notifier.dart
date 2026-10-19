@@ -36,6 +36,8 @@ class CustomerBookingsNotifier extends _$CustomerBookingsNotifier {
     required String city,
     required String state,
     required String postalCode,
+    required double latitude,
+    required double longitude,
     Map<String, String> answers = const {},
   }) async {
     final repository = ref.read(bookingRepositoryProvider);
@@ -50,6 +52,8 @@ class CustomerBookingsNotifier extends _$CustomerBookingsNotifier {
           city: city,
           state: state,
           postalCode: postalCode,
+          latitude: latitude,
+          longitude: longitude,
           answers: answers,
         );
     await _refresh(repository);

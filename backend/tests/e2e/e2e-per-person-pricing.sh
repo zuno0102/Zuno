@@ -92,7 +92,7 @@ R=$(svc Daily 3 2000 "Daily crew $S");   has_id "Daily, 3 workers"  "$R" "unchan
 echo
 echo "==== 4. THE ORDER REMEMBERS WHAT THE PRICE MEANT ===="
 SOON=$(date -u -d '+5 days 10:00' +%Y-%m-%dT%H:%M:%SZ)
-BK=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$SOON\",\"addressLine1\":\"1 Road\",\"city\":\"Kochi\",\"state\":\"Kerala\",\"postalCode\":\"682001\"}")
+BK=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$SOON\",\"addressLine1\":\"1 Road\",\"city\":\"Kochi\",\"state\":\"Kerala\",\"postalCode\":\"682001\",\"latitude\":9.9312,\"longitude\":76.2673}")
 has_id "Customer books the per-person service" "$BK" ""
 BID=$(echo "$BK" | j id)
 eq "The order carries the rate"        "$(sql "select price_quoted from bookings where id='$BID'")" "500.00"
@@ -101,7 +101,7 @@ eq "...and a crew size of 0, still to be agreed" "$(sql "select required_worker_
 eq "The customer is told the price type" "$(get_ /customer/bookings "$CT" | tr '{' '\n' | grep -o '"priceType":"[^"]*"' | head -1 | cut -d'"' -f4)" "PerPerson"
 
 # The reason it is snapshotted rather than read live off the service.
-BK2=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$FIXED\",\"scheduledDate\":\"$SOON\",\"addressLine1\":\"1 Road\",\"city\":\"Kochi\",\"state\":\"Kerala\",\"postalCode\":\"682001\"}")
+BK2=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$FIXED\",\"scheduledDate\":\"$SOON\",\"addressLine1\":\"1 Road\",\"city\":\"Kochi\",\"state\":\"Kerala\",\"postalCode\":\"682001\",\"latitude\":9.9312,\"longitude\":76.2673}")
 BID2=$(echo "$BK2" | j id)
 eq "A fixed-price order records Fixed (1)" "$(sql "select price_type from bookings where id='$BID2'")" "1"
 want_ok_r=$(put_ "/business/services/$FIXED" "$BT" "{\"id\":\"$FIXED\",\"serviceCategoryId\":\"$CAT\",\"name\":\"Deep clean $S\",\"priceType\":\"Hourly\",\"price\":250,\"requiredWorkerCount\":1,\"districtIds\":[\"$DIST\"]}")

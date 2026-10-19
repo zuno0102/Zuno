@@ -111,7 +111,7 @@ QID=$(sql "select id from business_service_questions where business_service_id='
 # answers is a LIST of {questionId, answerText}, not a map keyed by question id. Sending a map
 # fails model binding outright — the whole body is rejected with "the command field is required",
 # which looks like an auth or routing problem rather than a payload one.
-BK=$(P /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$WHEN\",\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"country\":\"India\",\"answers\":[{\"questionId\":\"$QID\",\"answerText\":\"300\"}]}" | j id)
+BK=$(P /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$WHEN\",\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"latitude\":10.5276,\"longitude\":76.2144,\"country\":\"India\",\"answers\":[{\"questionId\":\"$QID\",\"answerText\":\"300\"}]}" | j id)
 eq  "Order placed" "$([ -n "$BK" ] && echo yes)" "yes"
 eq  "...and starts Pending"  "$(sql "select booking_status from bookings where id='$BK'")" "1"
 eq  "...with the answer recorded" "$(sql "select answer_text from booking_service_answers where booking_id='$BK'")" "300"

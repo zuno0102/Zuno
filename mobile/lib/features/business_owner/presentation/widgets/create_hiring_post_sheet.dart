@@ -16,6 +16,8 @@ import 'package:zuno/features/business_owner/presentation/providers/business_ser
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/business_hiring_posts_notifier.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
+import 'package:zuno/shared/widgets/job_location_card.dart';
+import 'package:zuno/shared/widgets/location_pin_picker.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
 
 /// Opens the hiring-post form.
@@ -74,6 +76,19 @@ class _CreateHiringPostSheetState
 
   bool _isLoadingBookings = false;
 
+  /// The point the business pinned for a post that is not using an order's own pin. Sent only when
+  /// it was set or changed here, so editing a post's wording never moves it on the map.
+  double? _pinLatitude;
+  double? _pinLongitude;
+  bool _pinChanged = false;
+
+  /// The linked order already carries the customer's exact pin, which the server copies onto the
+  /// post. Nothing to ask the business for.
+  bool get _usesOrderPin =>
+      !_isEditing && _linkedBooking?.latitude != null && _linkedBooking?.longitude != null;
+
+  bool get _hasOwnPin => _pinLatitude != null && _pinLongitude != null;
+
   /// The kind of work this post is for — "Interior wall painting" rather than just "Painting".
   /// The single most useful thing on a post for a worker deciding whether to apply.
   String? _subCategoryId;
@@ -130,7 +145,39 @@ class _CreateHiringPostSheetState
     _salaryUnit = post?.salaryUnit ?? 'PerEvent';
     _eventDate = post?.eventDate.toLocal() ?? booking?.scheduledDate.toLocal();
     _linkedBooking = booking;
+    if (post != null && post.hasPosition) {
+      _pinLatitude = post.latitude;
+      _pinLongitude = post.longitude;
+    }
   }
+
+  /// Pins the job on a map — from search, or the phone's current location — and fills the
+  /// location text from it when the business has not written their own directions there.
+  Future<void> _pickLocation({required bool fromCurrentLocation}) async {
+    FocusScope.of(context).unfocus();
+    final picked = await showLocationPinPicker(
+      context,
+      title: 'Where is the job?',
+      // Starting without a point makes the picker go to the phone's position first.
+      initialLatitude: fromCurrentLocation ? null : _pinLatitude,
+      initialLongitude: fromCurrentLocation ? null : _pinLongitude,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _pinLatitude = picked.latitude;
+      _pinLongitude = picked.longitude;
+      _pinChanged = true;
+      if (_locationController.text.trim().isEmpty) {
+        _locationController.text = picked.summary;
+      }
+    });
+  }
+
+  void _clearPin() => setState(() {
+    _pinLatitude = null;
+    _pinLongitude = null;
+    _pinChanged = false;
+  });
 
   /// Chooses which customer order this crew is for, and fills in everything the order knows.
   Future<void> _pickBooking() async {
@@ -178,6 +225,10 @@ class _CreateHiringPostSheetState
 
     setState(() {
       _linkedBooking = chosen;
+      // A pin belongs to the job it was placed for; switching orders starts over.
+      _pinLatitude = null;
+      _pinLongitude = null;
+      _pinChanged = false;
 
       if (chosen == null) {
         // Unlinking drops the kind of work with it — it was the order's, not the post's.
@@ -314,6 +365,8 @@ class _CreateHiringPostSheetState
     final durationMinutes = int.parse(_durationController.text.trim());
     final salaryAmount = double.parse(_salaryController.text.trim());
     final notifier = ref.read(businessHiringPostsProvider.notifier);
+    // The order's own pin is copied by the server; only a point placed on this form is sent.
+    final sendPin = !_usesOrderPin && _hasOwnPin && _pinChanged;
 
     try {
       final postId = _isEditing
@@ -323,6 +376,9 @@ class _CreateHiringPostSheetState
               description: description.isEmpty ? null : description,
               eventDate: _eventDate!,
               location: location.isEmpty ? null : location,
+              latitude: sendPin ? _pinLatitude : null,
+              longitude: sendPin ? _pinLongitude : null,
+              locationPrecision: sendPin ? 'Pinned' : null,
               serviceSubCategoryId: _subCategoryId,
               workersNeeded: workersNeeded,
               durationMinutes: durationMinutes,
@@ -335,6 +391,9 @@ class _CreateHiringPostSheetState
               description: description.isEmpty ? null : description,
               eventDate: _eventDate!,
               location: location.isEmpty ? null : location,
+              latitude: sendPin ? _pinLatitude : null,
+              longitude: sendPin ? _pinLongitude : null,
+              locationPrecision: sendPin ? 'Pinned' : null,
               serviceSubCategoryId: _subCategoryId,
               workersNeeded: workersNeeded,
               durationMinutes: durationMinutes,
@@ -574,14 +633,79 @@ class _CreateHiringPostSheetState
                 ),
               ),
               const SizedBox(height: 14),
+              if (_usesOrderPin) ...[
+                // The customer pinned this order's door; the crew goes there. Shown, not asked.
+                JobLocationCard(
+                  key: const Key('hirePostOrderPin'),
+                  latitude: _linkedBooking!.latitude,
+                  longitude: _linkedBooking!.longitude,
+                  caption: 'From the order · exact pin (set automatically)',
+                  addressLines: [
+                    _linkedBooking!.addressLine1,
+                    _linkedBooking!.addressLine2,
+                    _linkedBooking!.city,
+                    _linkedBooking!.state,
+                    _linkedBooking!.postalCode,
+                  ],
+                  showActions: false,
+                ),
+                const SizedBox(height: 10),
+              ],
               TextFormField(
                 controller: _locationController,
                 maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Location details',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: _usesOrderPin
+                      ? 'Directions for the crew (optional)'
+                      : 'Location details',
+                  hintText: 'e.g. Hall behind the church, gate 2',
+                  border: const OutlineInputBorder(),
                 ),
               ),
+              if (!_usesOrderPin) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    ActionChip(
+                      key: const Key('hirePostSearchLocation'),
+                      avatar: const Icon(Icons.search, size: 18),
+                      label: const Text('Search location'),
+                      onPressed: () => _pickLocation(fromCurrentLocation: false),
+                    ),
+                    ActionChip(
+                      key: const Key('hirePostCurrentLocation'),
+                      avatar: const Icon(Icons.my_location, size: 18),
+                      label: const Text('Current location'),
+                      onPressed: () => _pickLocation(fromCurrentLocation: true),
+                    ),
+                    if (_hasOwnPin)
+                      InputChip(
+                        key: const Key('hirePostPinSet'),
+                        avatar: Icon(
+                          Icons.check_circle,
+                          size: 18,
+                          color: theme.colorScheme.primary,
+                        ),
+                        label: const Text('Exact pin set'),
+                        onPressed: () => _pickLocation(fromCurrentLocation: false),
+                        onDeleted: _clearPin,
+                      ),
+                  ],
+                ),
+                if (!_hasOwnPin)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Pin it so nearby workers see the job and how far it is.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+              ],
               const SizedBox(height: 14),
               TextFormField(
                 controller: _durationController,

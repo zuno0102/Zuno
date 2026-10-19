@@ -59,7 +59,7 @@ DIST=$(sql "select id from districts where is_deleted=false limit 1")
 # Priced per head, which is exactly the case where the crew size must be agreed.
 SVC=$(post_ /business/services "$BT" "{\"serviceCategoryId\":\"$CAT\",\"name\":\"Wedding catering $S\",\"priceType\":\"PerPerson\",\"price\":500,\"requiredWorkerCount\":0,\"districtIds\":[\"$DIST\"]}" | j id)
 SOON=$(date -u -d '+7 days 10:00' +%Y-%m-%dT%H:%M:%SZ)
-BK=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$SOON\",\"addressLine1\":\"1 Road\",\"city\":\"Kochi\",\"state\":\"Kerala\",\"postalCode\":\"682001\"}")
+BK=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$SOON\",\"addressLine1\":\"1 Road\",\"city\":\"Kochi\",\"state\":\"Kerala\",\"postalCode\":\"682001\",\"latitude\":9.9312,\"longitude\":76.2673}")
 BID=$(echo "$BK" | j id)
 ok "A per-person order at 500 a head" "crew not yet agreed"
 eq "It starts needing no agreement" "$(agreement)" "NotRequired"
@@ -136,7 +136,7 @@ eq "The agreed number did not move" "$(sql "select required_worker_count from bo
 echo
 echo "==== 7. AN ORDER NOBODY NEGOTIATED IS UNCHANGED ===="
 PLAIN=$(post_ /business/services "$BT" "{\"serviceCategoryId\":\"$CAT\",\"name\":\"Plain clean $S\",\"priceType\":\"Fixed\",\"price\":800,\"requiredWorkerCount\":2,\"districtIds\":[\"$DIST\"]}" | j id)
-B2=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$PLAIN\",\"scheduledDate\":\"$SOON\",\"addressLine1\":\"1 Road\",\"city\":\"Kochi\",\"state\":\"Kerala\",\"postalCode\":\"682001\"}")
+B2=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$PLAIN\",\"scheduledDate\":\"$SOON\",\"addressLine1\":\"1 Road\",\"city\":\"Kochi\",\"state\":\"Kerala\",\"postalCode\":\"682001\",\"latitude\":9.9312,\"longitude\":76.2673}")
 B2ID=$(echo "$B2" | j id)
 want_ok "Plain Confirm still works with no offer" "$(post_ "/business/bookings/$B2ID/confirm" "$BT")" "as before"
 eq "Confirmed (6)"                 "$(sql "select booking_status from bookings where id='$B2ID'")" "6"

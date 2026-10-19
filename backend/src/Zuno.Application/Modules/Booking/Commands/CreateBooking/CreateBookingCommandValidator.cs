@@ -70,5 +70,15 @@ public class CreateBookingCommandValidator : AbstractValidator<CreateBookingComm
         RuleFor(x => x.City).NotEmpty().MaximumLength(100);
         RuleFor(x => x.State).NotEmpty().MaximumLength(100);
         RuleFor(x => x.PostalCode).NotEmpty().MaximumLength(10);
+        RuleFor(x => x.AddressLine2).MaximumLength(200);
+
+        // The exact spot, pinned on a map. A typed address alone is how workers ended up at the
+        // wrong house: it carries the typos and the "near the temple" no worker can navigate to.
+        RuleFor(x => x.Latitude)
+            .NotNull().WithMessage("Pin the job location on the map.")
+            .InclusiveBetween(-90m, 90m).WithMessage("The pinned location is not valid. Pin it again.");
+        RuleFor(x => x.Longitude)
+            .NotNull().WithMessage("Pin the job location on the map.")
+            .InclusiveBetween(-180m, 180m).WithMessage("The pinned location is not valid. Pin it again.");
     }
 }

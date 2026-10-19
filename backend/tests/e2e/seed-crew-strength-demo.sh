@@ -66,7 +66,7 @@ book() { # scheduledOffsetDays dishes items serving
   q1=$(sql "select id from business_service_questions where business_service_id='$SVC' and sort_order=0 and is_deleted=false")
   q2=$(sql "select id from business_service_questions where business_service_id='$SVC' and sort_order=1 and is_deleted=false")
   q3=$(sql "select id from business_service_questions where business_service_id='$SVC' and sort_order=2 and is_deleted=false")
-  post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$when\",\"addressLine1\":\"$5\",\"city\":\"Kochi\",\"state\":\"Kerala\",\"postalCode\":\"682001\",\"answers\":[
+  post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$when\",\"addressLine1\":\"$5\",\"city\":\"Kochi\",\"state\":\"Kerala\",\"postalCode\":\"682001\",\"latitude\":9.9312,\"longitude\":76.2673,\"answers\":[
     {\"questionId\":\"$q1\",\"answerText\":\"$2\"},
     {\"questionId\":\"$q2\",\"answerText\":\"$3\"},
     {\"questionId\":\"$q3\",\"answerText\":\"$4\"}]}" | j id

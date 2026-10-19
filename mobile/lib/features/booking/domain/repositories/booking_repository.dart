@@ -13,6 +13,8 @@ abstract interface class BookingRepository {
     required String state,
     required String postalCode,
     String? country,
+    required double latitude,
+    required double longitude,
     Map<String, String> answers = const {},
   });
 

@@ -7,6 +7,7 @@ import 'package:zuno/features/booking/presentation/providers/worker_jobs_notifie
 import 'package:zuno/features/booking/presentation/widgets/booking_status_chip.dart';
 import 'package:zuno/shared/widgets/call_icon_button.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
+import 'package:zuno/shared/widgets/job_location_card.dart';
 
 class WorkerBookingDetailScreen extends ConsumerStatefulWidget {
   const WorkerBookingDetailScreen({required this.booking, super.key});
@@ -131,16 +132,23 @@ class _WorkerBookingDetailScreenState
 
           if (booking.notes != null && booking.notes!.isNotEmpty)
             _DetailRow(label: 'Notes', value: booking.notes!),
-          if (booking.addressLine1 != null)
-            _DetailRow(
-              label: 'Address',
-              value: [
+          // Where to go. The pin the customer placed, with Directions straight to it — the worker
+          // is the one person who actually has to find the house.
+          if (booking.addressLine1 != null) ...[
+            const SizedBox(height: 8),
+            JobLocationCard(
+              latitude: booking.latitude,
+              longitude: booking.longitude,
+              caption: 'Exact job location from the customer',
+              addressLines: [
                 booking.addressLine1,
+                booking.addressLine2,
                 booking.city,
                 booking.state,
                 booking.postalCode,
-              ].where((p) => p != null && p.isNotEmpty).join(', '),
+              ],
             ),
+          ],
           const SizedBox(height: 28),
           if (_isProcessing)
             const Center(child: CircularProgressIndicator())

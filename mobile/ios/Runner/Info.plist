@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Zuno uses your location to show hiring jobs near you.</string>
+	<string>Zuno uses your location to pin the exact place of a job and to show jobs near you.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Zuno uses the camera to scan a job QR code and to add photos to a listing.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

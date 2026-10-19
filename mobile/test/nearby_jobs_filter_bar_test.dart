@@ -21,7 +21,7 @@ class _FakeLocationService implements LocationService {
   int openSettingsCalls = 0;
 
   @override
-  Future<LocationResult> current() async => _result;
+  Future<LocationResult> current({bool precise = false}) async => _result;
 
   @override
   Future<void> openSettings() async => openSettingsCalls++;

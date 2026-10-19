@@ -11,6 +11,11 @@ public class CreateHiringPostCommandValidator : AbstractValidator<CreateHiringPo
         RuleFor(x => x.Title).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Description).MaximumLength(1000);
         RuleFor(x => x.Location).MaximumLength(300);
+        RuleFor(x => x.Latitude).InclusiveBetween(-90m, 90m);
+        RuleFor(x => x.Longitude).InclusiveBetween(-180m, 180m);
+        RuleFor(x => x)
+            .Must(x => x.Latitude.HasValue == x.Longitude.HasValue)
+            .WithMessage("Send both latitude and longitude, or neither.");
         RuleFor(x => x.EventDate).NotEmpty();
         RuleFor(x => x.DurationMinutes)
             .InclusiveBetween(15, 1440)

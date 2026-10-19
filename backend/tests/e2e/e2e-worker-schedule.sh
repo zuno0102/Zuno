@@ -76,7 +76,7 @@ want_ok "Worker invited to the roster" "$(post_ /business/workers/invite "$BT" "
 INV=$(get_ /worker/invitations "$W1" | j id)
 want_ok "Worker accepts the invitation" "$(post_ /worker/invitations/$INV/respond "$W1" '{"accept":true}')" ""
 
-mk() { post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$1\",\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"country\":\"India\"}" | j id; }
+mk() { post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$1\",\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"latitude\":10.5276,\"longitude\":76.2144,\"country\":\"India\"}" | j id; }
 assign() { sql "insert into booking_worker_assignments (id, booking_id, worker_profile_id, assignment_status, responded_at, created_date, is_deleted, status) values (gen_random_uuid(),'$1','$WP',2,now(),now(),false,1) returning 1" | head -1; }
 
 echo

@@ -22,6 +22,17 @@ public class UpdateHiringPostCommand : IRequest<HiringPostDto>
 
     public string? Location { get; set; }
 
+    /// <summary>
+    /// The job's exact point, picked on a map or from the device's location. Both or neither.
+    /// Ignored on a post raised from an order that has its own pinned address — the order wins.
+    /// </summary>
+    public decimal? Latitude { get; set; }
+
+    public decimal? Longitude { get; set; }
+
+    /// <summary>"Pinned" (picked on a map or GPS) or "Geocoded" (a searched place). Defaults to pinned.</summary>
+    public string? LocationPrecision { get; set; }
+
     /// <summary>The kind of work inside the category — what a worker actually judges the job by.</summary>
     public Guid? ServiceSubCategoryId { get; set; }
 

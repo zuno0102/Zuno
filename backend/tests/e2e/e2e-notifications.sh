@@ -134,7 +134,7 @@ post_ /worker/invitations/$INV/respond "$W1" '{"accept":true}' >/dev/null
 echo
 echo "==== 2. A new order reaches the business ===="
 FUTURE=$(date -u -d '+3 days 10:00' +%Y-%m-%dT%H:%M:%SZ)
-BK=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$FUTURE\",\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"country\":\"India\"}" | j id)
+BK=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$FUTURE\",\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"latitude\":10.5276,\"longitude\":76.2144,\"country\":\"India\"}" | j id)
 eq "Order placed" "$([ -n "$BK" ] && echo yes)" "yes"
 load "$BT"
 eq  "Business was told once" "$(k BookingRequested)" "1"
@@ -162,7 +162,7 @@ post_ /business/bookings/$BK/terms/$PROP/accept "$BT" >/dev/null
 
 echo
 echo "==== 4. A confirmation reaches the customer ===="
-BK2=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$FUTURE\",\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"country\":\"India\"}" | j id)
+BK2=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$FUTURE\",\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"latitude\":10.5276,\"longitude\":76.2144,\"country\":\"India\"}" | j id)
 want_ok "Business confirms it outright" "$(post_ /business/bookings/$BK2/confirm "$BT")" ""
 load "$CT"
 eq  "Customer was told once" "$(k BookingConfirmed)" "1"
@@ -276,7 +276,7 @@ eq  "Sent to Find work, not the post they lost" "$(g ApplicationRejected)" "Find
 echo
 echo "==== 13. A cancellation reaches the other side and the crew ===="
 LATER=$(date -u -d '+9 days 10:00' +%Y-%m-%dT%H:%M:%SZ)
-BK3=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$LATER\",\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"country\":\"India\"}" | j id)
+BK3=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$LATER\",\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"latitude\":10.5276,\"longitude\":76.2144,\"country\":\"India\"}" | j id)
 post_ /business/bookings/$BK3/confirm "$BT" >/dev/null
 post_ /business/bookings/$BK3/assign-worker "$BT" "{\"workerProfileId\":\"$WP1\"}" >/dev/null
 
@@ -295,7 +295,7 @@ echo
 echo "==== 13b. The other cancel direction: the business declining ===="
 # A business may only turn an order down while it is still pending — after confirming, cancelling
 # is the customer's to do. So this one is left unconfirmed on purpose.
-BK4=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$LATER\",\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"country\":\"India\"}" | j id)
+BK4=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$LATER\",\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"latitude\":10.5276,\"longitude\":76.2144,\"country\":\"India\"}" | j id)
 want_ok "Business declines the order" "$(post_ /business/bookings/$BK4/cancel "$BT" '{"reason":"Fully booked"}')" ""
 load "$CT"
 eq  "Customer was told once" "$(k BookingCancelledByBusiness)" "1"

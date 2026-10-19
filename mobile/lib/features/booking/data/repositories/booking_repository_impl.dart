@@ -21,6 +21,8 @@ class BookingRepositoryImpl implements BookingRepository {
     required String state,
     required String postalCode,
     String? country,
+    required double latitude,
+    required double longitude,
     Map<String, String> answers = const {},
   }) async {
     final model = await _remoteDataSource.createBooking({
@@ -34,6 +36,8 @@ class BookingRepositoryImpl implements BookingRepository {
       'state': state,
       'postalCode': postalCode,
       'country': country,
+      'latitude': latitude,
+      'longitude': longitude,
       // questionId -> what the customer typed. Empty for a service with no questions.
       'answers': [
         for (final entry in answers.entries)

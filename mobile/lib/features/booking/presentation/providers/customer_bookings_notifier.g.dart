@@ -79,7 +79,7 @@ final class CustomerBookingsNotifierProvider
 }
 
 String _$customerBookingsNotifierHash() =>
-    r'695bd4085b4cd1b57faf6cc9c61eb2b0e8a0e685';
+    r'b466812e877dd8e77ee27c0181649139ea78b274';
 
 /// The customer's own orders, and every action that changes them.
 ///

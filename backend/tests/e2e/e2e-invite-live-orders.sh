@@ -64,7 +64,7 @@ WHEN=$(date -u -d '+10 days 10:00' +%Y-%m-%dT%H:%M:%SZ)
 
 # Three orders, so each end-state can be checked without disturbing the others.
 mk_booking() {
-  post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$WHEN\",\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"country\":\"India\"}" | j id
+  post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$WHEN\",\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"latitude\":10.5276,\"longitude\":76.2144,\"country\":\"India\"}" | j id
 }
 mk_post() {
   post_ /business/hiring-posts "$BT" "{\"bookingId\":\"$1\",\"title\":\"$2\",\"eventDate\":\"$WHEN\",\"durationMinutes\":240,\"workersNeeded\":3,\"salaryAmount\":700,\"salaryUnit\":\"PerEvent\",\"location\":\"14 Nila Nagar\"}" | j id

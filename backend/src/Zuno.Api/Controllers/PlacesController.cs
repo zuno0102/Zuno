@@ -48,9 +48,10 @@ public class PlacesController(
     public async Task<IActionResult> Reverse(
         [FromQuery] double latitude,
         [FromQuery] double longitude,
+        [FromQuery] bool precise,
         CancellationToken cancellationToken)
     {
-        var place = await placeSearch.ReverseAsync(latitude, longitude, cancellationToken);
+        var place = await placeSearch.ReverseAsync(latitude, longitude, precise, cancellationToken);
         return place is null ? NoContent() : Ok(place);
     }
 

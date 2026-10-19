@@ -63,7 +63,7 @@ eq "Service created" "$([ -n "$SVC" ] && echo yes)" "yes"
 eq "Nothing counted yet" "$(counted)" "0"
 
 FUTURE=$(date -u -d '+20 days 10:00' +%Y-%m-%dT%H:%M:%SZ)
-BK=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$FUTURE\",\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"country\":\"India\"}" | j id)
+BK=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$FUTURE\",\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"latitude\":10.5276,\"longitude\":76.2144,\"country\":\"India\"}" | j id)
 eq "Customer placed the order" "$([ -n "$BK" ] && echo yes)" "yes"
 
 echo
@@ -107,7 +107,7 @@ echo "==== 4b. A WORKER MID-JOB TAKES NOTHING ELSE ===="
 # For the worker's sake. Work that has started has no reliable end — a two-hour job can run
 # five — so the clock cannot say they are free. Somebody has to say the job is done.
 FAR=$(date -u -d '+40 days 10:00' +%Y-%m-%dT%H:%M:%SZ)
-BKX=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$FAR\",\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"country\":\"India\"}" | j id)
+BKX=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$FAR\",\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"latitude\":10.5276,\"longitude\":76.2144,\"country\":\"India\"}" | j id)
 post_ /business/bookings/$BKX/confirm "$BT" >/dev/null
 # 40 days away, so no overlap and no travel-buffer problem — only the unfinished job stands in
 # the way. Without the new rule this would be allowed.
@@ -134,7 +134,7 @@ echo "==== 7. A SECOND ORDER, HIRED THROUGH ZUNO ===="
 W2=$(reg Anita "ol_w2$S@zuno.local" Worker | j accessToken)
 WP2=$(sql "select w.id from worker_profiles w join users u on u.id=w.user_id where u.email='ol_w2$S@zuno.local'")
 SOON=$(date -u -d '+2 hours' +%Y-%m-%dT%H:%M:%SZ)
-BK2=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$SOON\",\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"country\":\"India\"}" | j id)
+BK2=$(post_ /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC\",\"scheduledDate\":\"$SOON\",\"addressLine1\":\"14 Nila Nagar\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"latitude\":10.5276,\"longitude\":76.2144,\"country\":\"India\"}" | j id)
 post_ /business/bookings/$BK2/confirm "$BT" >/dev/null
 
 P=$(post_ /business/hiring-posts "$BT" "{\"bookingId\":\"$BK2\",\"title\":\"Crew for the order\",\"eventDate\":\"$SOON\",\"durationMinutes\":120,\"workersNeeded\":1,\"salaryAmount\":900,\"salaryUnit\":\"PerEvent\",\"location\":\"14 Nila Nagar\"}" | j id)

@@ -7,6 +7,8 @@ import 'package:zuno/features/customer/domain/entities/service_variant.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
+import 'package:zuno/shared/widgets/job_location_card.dart';
+import 'package:zuno/shared/widgets/location_pin_picker.dart';
 
 class CreateBookingScreen extends ConsumerStatefulWidget {
   const CreateBookingScreen({
@@ -38,6 +40,16 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
   final _postalCodeController = TextEditingController();
 
   DateTime? _scheduledDate;
+
+  /// The exact spot of the job, pinned on a map. Required: a typed address alone is how workers
+  /// ended up at the wrong house.
+  PickedLocation? _pin;
+
+  /// Set when somebody tried to book without a pin, so the pin tile can say so in red.
+  bool _pinMissing = false;
+
+  static const _pinMissingMessage = 'Pin the job location on the map before booking.';
+
   bool _isSubmitting = false;
   String? _errorMessage;
 
@@ -95,9 +107,43 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
     );
   }
 
+  /// Opens the map, then fills City, State and Pincode from the pin. They stay editable — the map
+  /// is usually right, and the customer knows best when it is not. The house/street line is only
+  /// filled when empty, so a typed house number is never overwritten.
+  Future<void> _pickLocation() async {
+    FocusScope.of(context).unfocus();
+    final picked = await showLocationPinPicker(
+      context,
+      initialLatitude: _pin?.latitude,
+      initialLongitude: _pin?.longitude,
+    );
+    if (picked == null || !mounted) return;
+
+    setState(() {
+      _pin = picked;
+      _pinMissing = false;
+      if (_errorMessage == _pinMissingMessage) _errorMessage = null;
+      if (picked.city case final city?) _cityController.text = city;
+      if (picked.state case final state?) _stateController.text = state;
+      if (picked.postalCode case final code?) _postalCodeController.text = code;
+      if (_addressLine1Controller.text.trim().isEmpty) {
+        final street = [?picked.street, ?picked.locality].join(', ');
+        if (street.isNotEmpty) _addressLine1Controller.text = street;
+      }
+    });
+  }
+
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
-    if (!_formKey.currentState!.validate()) {
+    final formOk = _formKey.currentState!.validate();
+    if (_pin == null) {
+      setState(() {
+        _pinMissing = true;
+        _errorMessage = _pinMissingMessage;
+      });
+      return;
+    }
+    if (!formOk) {
       return;
     }
     if (_scheduledDate == null) {
@@ -127,6 +173,8 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
             city: _cityController.text.trim(),
             state: _stateController.text.trim(),
             postalCode: _postalCodeController.text.trim(),
+            latitude: _pin!.latitude,
+            longitude: _pin!.longitude,
             // Blank optional answers are left out rather than sent empty — an unanswered
             // question should leave no row at all, not a row saying nothing.
             answers: {
@@ -269,10 +317,16 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 12),
+              _JobLocationField(
+                pin: _pin,
+                isMissing: _pinMissing,
+                onPick: _pickLocation,
+              ),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _addressLine1Controller,
                 decoration: const InputDecoration(
-                  labelText: 'Address line 1',
+                  labelText: 'House / flat no., street',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) =>
@@ -282,7 +336,8 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
               TextFormField(
                 controller: _addressLine2Controller,
                 decoration: const InputDecoration(
-                  labelText: 'Address line 2',
+                  labelText: 'Landmark (optional)',
+                  hintText: 'e.g. Opposite the church',
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -322,12 +377,20 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
               TextFormField(
                 controller: _postalCodeController,
                 keyboardType: TextInputType.number,
+                maxLength: 6,
                 decoration: const InputDecoration(
-                  labelText: 'Postal code',
+                  labelText: 'Pincode',
                   border: OutlineInputBorder(),
+                  counterText: '',
                 ),
-                validator: (value) =>
-                    (value == null || value.trim().isEmpty) ? 'Required' : null,
+                validator: (value) {
+                  final text = (value ?? '').trim();
+                  if (text.isEmpty) return 'Required';
+                  if (!RegExp(r'^\d{6}$').hasMatch(text)) {
+                    return 'Enter the 6-digit pincode';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 28),
               PrimaryButton(
@@ -337,6 +400,98 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The required "where exactly" step of the address.
+///
+/// Before a pin: a prominent button, outlined in red once somebody tried to book without it. After:
+/// the map preview with a Change button, so the customer can see the pin is on the right house.
+class _JobLocationField extends StatelessWidget {
+  const _JobLocationField({
+    required this.pin,
+    required this.isMissing,
+    required this.onPick,
+  });
+
+  final PickedLocation? pin;
+  final bool isMissing;
+  final VoidCallback onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final pin = this.pin;
+
+    if (pin != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          JobLocationCard(
+            key: const Key('bookingPinPreview'),
+            latitude: pin.latitude,
+            longitude: pin.longitude,
+            addressLines: [pin.fullAddress ?? pin.summary],
+            caption: 'Job location pinned',
+            showActions: false,
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              key: const Key('bookingChangePin'),
+              onPressed: onPick,
+              icon: const Icon(Icons.edit_location_alt_outlined, size: 18),
+              label: const Text('Change pin'),
+            ),
+          ),
+        ],
+      );
+    }
+
+    final colour = isMissing ? theme.colorScheme.error : theme.colorScheme.primary;
+
+    return InkWell(
+      key: const Key('bookingPickPin'),
+      onTap: onPick,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: colour.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: colour, width: isMissing ? 2 : 1.2),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: colour,
+              child: Icon(Icons.location_on, color: theme.colorScheme.onPrimary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Pin the job location on the map',
+                    style: theme.textTheme.titleSmall?.copyWith(color: colour),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    isMissing
+                        ? 'Required — the worker uses this pin to find the place.'
+                        : 'Use your current location or search, then drag to the exact house.',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: colour),
+          ],
         ),
       ),
     );

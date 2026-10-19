@@ -110,7 +110,7 @@ WP=$(sql "select w.id from worker_profiles w join users u on u.id=w.user_id wher
 SVC_A=$(body POST /business/services "$AT" "{\"serviceCategoryId\":\"a1111111-0000-0000-0000-000000000003\",\"name\":\"A Catering\",\"priceType\":\"Fixed\",\"price\":5000,\"requiredWorkerCount\":1,\"estimatedDurationMinutes\":120,\"districtIds\":[\"$DIST\"]}" | j id)
 VAR_A=$(body POST /business/services/$SVC_A/variants "$AT" "{\"name\":\"A Deluxe\",\"priceType\":\"Fixed\",\"price\":9000}" | j id)
 SOON=$(date -u -d '+3 days 10:00' +%Y-%m-%dT%H:%M:%SZ)
-BK_A=$(body POST /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC_A\",\"scheduledDate\":\"$SOON\",\"addressLine1\":\"1 Road\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"country\":\"India\"}" | j id)
+BK_A=$(body POST /customer/bookings "$CT" "{\"businessServiceId\":\"$SVC_A\",\"scheduledDate\":\"$SOON\",\"addressLine1\":\"1 Road\",\"city\":\"Thrissur\",\"state\":\"Kerala\",\"postalCode\":\"680001\",\"latitude\":10.5276,\"longitude\":76.2144,\"country\":\"India\"}" | j id)
 body POST /business/bookings/$BK_A/confirm "$AT" >/dev/null
 body POST /business/workers/invite "$AT" "{\"workerIdentifier\":\"sec_w$S@zuno.local\"}" >/dev/null
 INV=$(curl -s $API/worker/invitations -H "Authorization: Bearer $WT" | j id)

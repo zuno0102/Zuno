@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Zuno.Application.Common.Interfaces;
+using Zuno.Application.Modules.HiringPost.Common;
 using Zuno.Application.Modules.HiringPost.DTOs;
 using Zuno.Domain.Entities;
 using Zuno.Domain.Enums;
@@ -77,6 +78,15 @@ public class UpdateHiringPostCommandHandler(
         post.EventDate = request.EventDate;
         post.DurationMinutes = request.DurationMinutes;
         post.Location = request.Location;
+
+        // Only moved when the form sent a point. An edit that leaves the location alone keeps the
+        // pin it had — including one copied from the order it was raised for.
+        if (request is { Latitude: { } lat, Longitude: { } lon })
+        {
+            await HiringPostLocation.PlaceAsync(
+                post, lat, lon, HiringPostLocation.ParsePrecision(request.LocationPrecision), dbContext, cancellationToken);
+        }
+
         post.ServiceSubCategoryId = request.ServiceSubCategoryId;
         post.WorkersNeeded = request.WorkersNeeded;
         post.SalaryAmount = request.SalaryAmount;

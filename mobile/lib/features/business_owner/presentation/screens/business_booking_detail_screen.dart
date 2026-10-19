@@ -14,6 +14,7 @@ import 'package:zuno/features/booking/domain/entities/booking.dart';
 import 'package:zuno/features/booking/presentation/providers/business_bookings_notifier.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/assign_worker_dialog.dart';
 import 'package:zuno/shared/widgets/call_icon_button.dart';
+import 'package:zuno/shared/widgets/job_location_card.dart';
 
 class BusinessBookingDetailScreen extends ConsumerStatefulWidget {
   const BusinessBookingDetailScreen({required this.booking, super.key});
@@ -263,16 +264,24 @@ class _BusinessBookingDetailScreenState
 
           if (booking.notes != null && booking.notes!.isNotEmpty)
             _DetailRow(label: 'Notes', value: booking.notes!),
-          if (booking.addressLine1 != null)
-            _DetailRow(
-              label: 'Address',
-              value: [
+          // The customer's pinned location, with Directions — so the business (and anyone it
+          // forwards the address to) goes to the right door, not wherever the typed text points.
+          if (booking.addressLine1 != null) ...[
+            const SizedBox(height: 8),
+            JobLocationCard(
+              latitude: booking.latitude,
+              longitude: booking.longitude,
+              caption: 'Exact location from the customer',
+              addressLines: [
                 booking.addressLine1,
+                booking.addressLine2,
                 booking.city,
                 booking.state,
                 booking.postalCode,
-              ].where((p) => p != null && p.isNotEmpty).join(', '),
+              ],
             ),
+            const SizedBox(height: 12),
+          ],
           // Who is actually on this job, and what each of them is owed.
           //
           // The rule below is about the CUSTOMER's view of the crew — this screen is the

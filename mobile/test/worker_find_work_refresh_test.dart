@@ -14,7 +14,7 @@ import 'package:zuno/features/worker/presentation/screens/worker_hiring_posts_ta
 /// end up back at the prompt with nothing remembered, not on an empty list that looks like a failure.
 class _FakeLocationService implements LocationService {
   @override
-  Future<LocationResult> current() async =>
+  Future<LocationResult> current({bool precise = false}) async =>
       const LocationResult.unavailable(LocationProblem.denied);
 
   @override
