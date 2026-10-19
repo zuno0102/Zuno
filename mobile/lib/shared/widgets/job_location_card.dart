@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/shared/widgets/map_layers.dart';
 
 /// Where a job is: a small map with its pin, the address, and a way to get there.
 ///
@@ -87,14 +88,15 @@ class JobLocationCard extends StatelessWidget {
                   FlutterMap(
                     options: MapOptions(
                       initialCenter: LatLng(latitude!, longitude!),
-                      initialZoom: 16,
+                      // Close enough to recognise the house in the photograph.
+                      initialZoom: 18,
+                      maxZoom: kMapMaxZoom,
                       interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
                     ),
                     children: [
-                      TileLayer(
-                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        userAgentPackageName: 'com.zuno.zuno',
-                      ),
+                      // The photograph rather than the street map: it is what lets somebody
+                      // recognise the house on arrival, and many villages have no streets drawn.
+                      ...baseMapLayers(MapStyle.satellite),
                       MarkerLayer(
                         markers: [
                           Marker(
@@ -116,9 +118,13 @@ class JobLocationCard extends StatelessWidget {
                   Positioned(
                     right: 6,
                     bottom: 4,
-                    child: Text(
-                      '© OpenStreetMap',
-                      style: theme.textTheme.labelSmall?.copyWith(fontSize: 9),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      color: theme.colorScheme.surface.withValues(alpha: 0.7),
+                      child: Text(
+                        mapCreditText(MapStyle.satellite),
+                        style: theme.textTheme.labelSmall?.copyWith(fontSize: 9),
+                      ),
                     ),
                   ),
                 ],

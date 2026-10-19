@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +8,88 @@ import 'package:latlong2/latlong.dart';
 import 'package:zuno/core/location/location_service.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/features/worker/presentation/widgets/place_search_sheet.dart';
+import 'package:zuno/shared/widgets/map_layers.dart';
+
+/// What to tell somebody whose location could not be read, and what — if anything — a button can
+/// do about it.
+class LocationHelp {
+  const LocationHelp({
+    required this.title,
+    required this.message,
+    this.steps = const [],
+    this.action,
+  });
+
+  final String title;
+  final String message;
+
+  /// Step-by-step instructions, shown in a dialog rather than a one-line message.
+  final List<String> steps;
+
+  /// A button that actually fixes it. Null where no button can — in a browser there is no app
+  /// settings page to open, so offering one only produced a button that did nothing.
+  final LocationHelpAction? action;
+
+  bool get isDialog => steps.isNotEmpty;
+}
+
+enum LocationHelpAction { openAppSettings, openLocationSettings }
+
+/// The help for [problem], worded for where the app is running.
+///
+/// Pure, so it can be tested without a browser or a phone. [isWeb] decides it: the installed app can
+/// open the phone's settings, a web page cannot — there the permission lives behind the padlock next
+/// to the address.
+LocationHelp locationHelp(LocationProblem? problem, {required bool isWeb}) {
+  switch (problem) {
+    case LocationProblem.denied:
+    case LocationProblem.deniedForever:
+      if (isWeb) {
+        return const LocationHelp(
+          title: 'Allow location for this site',
+          message: 'Your browser is blocking location for Zuno. To use where you are now:',
+          steps: [
+            'Tap the padlock (or ⓘ) to the left of the web address at the top.',
+            'Open Permissions, then Location, and choose Allow.',
+            'Come back here and tap the ◎ button again.',
+          ],
+        );
+      }
+      return problem == LocationProblem.denied
+          ? const LocationHelp(
+              title: 'Location not allowed',
+              message: 'Location permission was not given. Search for the place instead.',
+            )
+          : const LocationHelp(
+              title: 'Location is off for Zuno',
+              message: 'Location permission is off for Zuno. Allow it in settings, or search for the place.',
+              action: LocationHelpAction.openAppSettings,
+            );
+    case LocationProblem.serviceDisabled:
+      return isWeb
+          ? const LocationHelp(
+              title: 'Location is off',
+              message:
+                  'Location is turned off on this phone. Turn it on from the quick settings, then tap ◎ again.',
+            )
+          : const LocationHelp(
+              title: 'Location is off',
+              message: 'Location is turned off on this phone. Turn it on, or search for the place.',
+              action: LocationHelpAction.openLocationSettings,
+            );
+    case LocationProblem.timedOut:
+      return const LocationHelp(
+        title: 'No GPS fix',
+        message: 'Could not get a GPS fix here. Search for the place, then drag the map to it.',
+      );
+    case LocationProblem.failed:
+    case null:
+      return const LocationHelp(
+        title: 'Location unavailable',
+        message: 'Could not read your location. Search for the place instead.',
+      );
+  }
+}
 
 /// A spot somebody pinned on the map, with the address the map gives for it.
 class PickedLocation {
@@ -87,8 +170,12 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
   /// the first thing on screen is a recognisable map rather than the sea off Africa.
   static const _fallbackCentre = LatLng(10.0, 77.5);
 
-  /// Close enough to see individual buildings, which is the point of pinning.
-  static const _pinZoom = 17.0;
+  /// Rooftop level, which is the point of pinning.
+  static const _pinZoom = 18.0;
+
+  /// Satellite first: in many villages the street map has nothing drawn, while the photograph
+  /// shows the actual house.
+  MapStyle _style = MapStyle.satellite;
 
   final _mapController = MapController();
   final _searchController = TextEditingController();
@@ -169,6 +256,8 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
     setState(() => _isLocating = false);
 
     if (result.hasPosition) {
+      // Whatever went wrong before has been put right; a warning left on screen now is wrong.
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       _hasMoved = true;
       _moveTo(LatLng(result.latitude!, result.longitude!));
       if (result.isApproximate) {
@@ -179,41 +268,87 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
 
     // Opening on the phone's position is a convenience; failing it quietly leaves search and
     // dragging, which work without any permission.
-    if (quiet && result.problem == LocationProblem.denied) return;
+    // In a browser a blocked permission is the browser's setting, so opening the map should not
+    // greet anyone with instructions they did not ask for; they appear when ◎ is tapped.
+    if (quiet &&
+        (result.problem == LocationProblem.denied ||
+            (kIsWeb && result.problem == LocationProblem.deniedForever))) {
+      return;
+    }
     _explain(result.problem);
   }
 
   void _explain(LocationProblem? problem) {
+    final help = locationHelp(problem, isWeb: kIsWeb);
+
+    if (help.isDialog) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          icon: const Icon(Icons.location_off_outlined),
+          title: Text(help.title),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(help.message),
+              const SizedBox(height: 12),
+              for (final (i, step) in help.steps.indexed)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${i + 1}.  '),
+                      Expanded(child: Text(step)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                _searchFocus.requestFocus();
+              },
+              child: const Text('Search instead'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     final service = ref.read(locationServiceProvider);
-    switch (problem) {
-      case LocationProblem.deniedForever:
-        _say(
-          'Location permission is off for Zuno. Search for the place instead, or allow it in settings.',
-          actionLabel: 'Settings',
-          action: service.openSettings,
-        );
-      case LocationProblem.serviceDisabled:
-        _say(
-          'Location is turned off on this phone. Turn it on, or search for the place.',
-          actionLabel: 'Turn on',
-          action: service.openLocationSettings,
-        );
-      case LocationProblem.timedOut:
-        _say('Could not get a GPS fix here. Search for the place, then drag the map to it.');
-      case LocationProblem.denied:
-        _say('Location permission was not given. Search for the place instead.');
-      case LocationProblem.failed:
+    switch (help.action) {
+      case LocationHelpAction.openAppSettings:
+        _say(help.message, actionLabel: 'Settings', action: service.openSettings);
+      case LocationHelpAction.openLocationSettings:
+        _say(help.message, actionLabel: 'Turn on', action: service.openLocationSettings);
       case null:
-        _say('Could not read your location. Search for the place instead.');
+        _say(help.message);
     }
   }
 
+  /// A short message that goes away on its own, and can be closed by hand.
+  ///
+  /// Not persistent even with a button: a SnackBar with an action otherwise stays until tapped, which
+  /// left "location is off" on screen long after location had been turned on.
   void _say(String message, {String? actionLabel, VoidCallback? action}) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           content: Text(message),
+          duration: const Duration(seconds: 6),
+          persist: false,
+          showCloseIcon: true,
           action: actionLabel == null ? null : SnackBarAction(label: actionLabel, onPressed: action!),
         ),
       );
@@ -254,6 +389,7 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
   }
 
   void _pickResult(SearchedPlace place) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     _searchFocus.unfocus();
     setState(() => _results = null);
     _hasMoved = true;
@@ -309,6 +445,7 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
                   options: MapOptions(
                     initialCenter: _centre,
                     initialZoom: widget.initial != null ? _pinZoom : 6,
+                    maxZoom: kMapMaxZoom,
                     onPositionChanged: _onMapMoved,
                     interactionOptions: const InteractionOptions(
                       flags: InteractiveFlag.pinchZoom |
@@ -318,13 +455,8 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
                     ),
                   ),
                   children: [
-                    TileLayer(
-                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.zuno.zuno',
-                    ),
-                    const RichAttributionWidget(
-                      attributions: [TextSourceAttribution('OpenStreetMap contributors')],
-                    ),
+                    ...baseMapLayers(_style),
+                    mapAttribution(_style),
                   ],
                 ),
 
@@ -423,10 +555,40 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
                   ),
                 ),
 
-                // Current location.
+                // Satellite or street map.
+                Positioned(
+                  left: 12,
+                  bottom: 16,
+                  child: Material(
+                    elevation: 3,
+                    borderRadius: BorderRadius.circular(20),
+                    color: theme.colorScheme.surface,
+                    child: SegmentedButton<MapStyle>(
+                      key: const Key('pinPickerMapStyle'),
+                      showSelectedIcon: false,
+                      style: const ButtonStyle(visualDensity: VisualDensity.compact),
+                      segments: const [
+                        ButtonSegment(
+                          value: MapStyle.satellite,
+                          icon: Icon(Icons.satellite_alt_outlined, size: 18),
+                          label: Text('Satellite'),
+                        ),
+                        ButtonSegment(
+                          value: MapStyle.street,
+                          icon: Icon(Icons.map_outlined, size: 18),
+                          label: Text('Map'),
+                        ),
+                      ],
+                      selected: {_style},
+                      onSelectionChanged: (s) => setState(() => _style = s.first),
+                    ),
+                  ),
+                ),
+
+                // Current location. Raised clear of the map-credit button in the corner.
                 Positioned(
                   right: 12,
-                  bottom: 16,
+                  bottom: 64,
                   child: FloatingActionButton.small(
                     heroTag: 'pinPickerMyLocation',
                     tooltip: 'Use my current location',
@@ -462,7 +624,7 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
                             ? Text(
                                 _isLocating
                                     ? 'Finding your location…'
-                                    : 'Search, use your location, or drag the map to the job.',
+                                    : 'Search the place, or tap ◎ to jump to where you are.',
                                 style: theme.textTheme.bodyMedium,
                               )
                             : _isNaming && _place == null
@@ -491,7 +653,7 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Drag the map so the pin sits on the exact house or gate.',
+                    'Zoom in and drag the map so the pin sits on the house roof or gate.',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
