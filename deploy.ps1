@@ -29,7 +29,9 @@ param(
     [switch]$SkipMigrations
 )
 
-$ErrorActionPreference = 'Stop'
+# Not 'Stop': Windows PowerShell turns any stderr line from git/flutter/vercel - including harmless
+# warnings - into a terminating error when output is redirected. Exit codes are checked by Run.
+$ErrorActionPreference = 'Continue'
 $Root = $PSScriptRoot
 $RepoUrl = 'https://github.com/zuno0102/Zuno.git'
 $DevBranch = 'Zuno_Dev'
@@ -65,7 +67,8 @@ if (git status --porcelain) {
     Step "Committing to $DevBranch"
     git add -A; Run 'git add'
     $msgFile = New-TemporaryFile
-    Set-Content -Path $msgFile -Value $Message -Encoding utf8
+    # Without a BOM: Windows PowerShell's "utf8" adds one, and git keeps it in the message.
+    [IO.File]::WriteAllText($msgFile, $Message, (New-Object Text.UTF8Encoding $false))
     git commit --quiet -F $msgFile; Run 'git commit'
     Remove-Item $msgFile
 }
@@ -111,7 +114,8 @@ git push --quiet origin "${DevBranch}:${MainBranch}"; Run "git push $MainBranch 
 if ($backendChanged) {
     Step 'Render: deploying the API'
     if ($Settings.RENDER_DEPLOY_HOOK_URL) {
-        Invoke-RestMethod -Method Post -Uri $Settings.RENDER_DEPLOY_HOOK_URL | Out-Null
+        try { Invoke-RestMethod -Method Post -Uri $Settings.RENDER_DEPLOY_HOOK_URL -ErrorAction Stop | Out-Null }
+        catch { Fail "Render deploy hook failed: $($_.Exception.Message)" }
         Write-Host 'Deploy triggered. It takes a few minutes; watch it in the Render dashboard.'
     } else {
         Write-Host "No RENDER_DEPLOY_HOOK_URL in .env.deploy - relying on Render's auto-deploy of '$MainBranch'." -ForegroundColor Yellow
