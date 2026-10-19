@@ -28,6 +28,16 @@ class _FakeConversation extends BookingConversation {
   }
 }
 
+/// The chat list without its 15-second poll, which would stop `pumpAndSettle` from ever settling.
+class _FakeThreads extends BookingThreads {
+  _FakeThreads(this._threads);
+
+  final List<BookingThread> _threads;
+
+  @override
+  Future<List<BookingThread>> build() async => _threads;
+}
+
 void main() {
   final sent = DateTime(2026, 10, 6, 14, 30);
 
@@ -99,8 +109,30 @@ void main() {
       // Three jobs from one business would otherwise read as one conversation.
       await pumpThread(tester, [message(body: 'Hello', isMine: false)]);
 
-      expect(find.text('Kerala Painters'), findsOneWidget);
+      expect(
+        find.descendant(of: find.byType(AppBar), matching: find.text('Kerala Painters')),
+        findsOneWidget,
+      );
       expect(find.text('Interior wall painting'), findsOneWidget);
+    });
+
+    testWidgets('the other side is on the left, named once per run of their messages', (
+      tester,
+    ) async {
+      await pumpThread(tester, [
+        message(body: 'Hai', isMine: false),
+        message(body: 'Are you free?', isMine: false, minutesAfter: 1),
+        message(body: 'Hello', isMine: true, minutesAfter: 2),
+      ]);
+
+      final theirs = tester.getCenter(find.text('Hai')).dx;
+      final mine = tester.getCenter(find.text('Hello')).dx;
+      expect(theirs, lessThan(mine), reason: 'their message on the left, mine on the right');
+
+      // Header + one label over the first of their two messages — not one per line.
+      expect(find.text('Kerala Painters'), findsNWidgets(2));
+      // Never a name over your own messages.
+      expect(find.text('Zuno Customer'), findsNothing);
     });
 
     testWidgets('shows both sides of the conversation', (tester) async {
@@ -232,7 +264,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            bookingThreadsProvider.overrideWith((ref) async => threads),
+            bookingThreadsProvider.overrideWith(() => _FakeThreads(threads)),
             // The thread this list opens. Faked as well, because the real conversation provider
             // polls every six seconds and a repeating timer stops `pumpAndSettle` ever settling.
             bookingConversationProvider('b-1').overrideWith(
@@ -290,6 +322,22 @@ void main() {
       await pumpList(tester, [thread()]);
 
       expect(find.text('0'), findsNothing);
+    });
+
+    test('the Chat tab counts unread messages across every conversation', () async {
+      final container = ProviderContainer(
+        overrides: [
+          bookingThreadsProvider.overrideWith(
+            () => _FakeThreads([thread(unreadCount: 2), thread(unreadCount: 0), thread(unreadCount: 3)]),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      container.listen(unreadChatCountProvider, (_, _) {});
+      await container.read(bookingThreadsProvider.future);
+
+      expect(container.read(unreadChatCountProvider), 5);
     });
 
     testWidgets('opens the conversation when tapped', (tester) async {

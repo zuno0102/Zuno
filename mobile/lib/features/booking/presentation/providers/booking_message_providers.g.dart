@@ -60,30 +60,33 @@ String _$bookingMessageDataSourceHash() =>
     r'772be0e7781058742bd3e4b0a871e4657fa504c4';
 
 /// Every booking the signed-in user has a conversation on — what the Chat tab lists.
+///
+/// Kept alive and re-asked every few seconds while somebody is signed in, so a new message shows up
+/// as a count on the Chat tab and in the list without anyone pulling to refresh — the way WhatsApp
+/// shows "2" before you open anything. Signed out, it asks nothing.
 
-@ProviderFor(bookingThreads)
+@ProviderFor(BookingThreads)
 final bookingThreadsProvider = BookingThreadsProvider._();
 
 /// Every booking the signed-in user has a conversation on — what the Chat tab lists.
-
+///
+/// Kept alive and re-asked every few seconds while somebody is signed in, so a new message shows up
+/// as a count on the Chat tab and in the list without anyone pulling to refresh — the way WhatsApp
+/// shows "2" before you open anything. Signed out, it asks nothing.
 final class BookingThreadsProvider
-    extends
-        $FunctionalProvider<
-          AsyncValue<List<BookingThread>>,
-          List<BookingThread>,
-          FutureOr<List<BookingThread>>
-        >
-    with
-        $FutureModifier<List<BookingThread>>,
-        $FutureProvider<List<BookingThread>> {
+    extends $AsyncNotifierProvider<BookingThreads, List<BookingThread>> {
   /// Every booking the signed-in user has a conversation on — what the Chat tab lists.
+  ///
+  /// Kept alive and re-asked every few seconds while somebody is signed in, so a new message shows up
+  /// as a count on the Chat tab and in the list without anyone pulling to refresh — the way WhatsApp
+  /// shows "2" before you open anything. Signed out, it asks nothing.
   BookingThreadsProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
         name: r'bookingThreadsProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -93,17 +96,80 @@ final class BookingThreadsProvider
 
   @$internal
   @override
-  $FutureProviderElement<List<BookingThread>> $createElement(
-    $ProviderPointer pointer,
-  ) => $FutureProviderElement(pointer);
+  BookingThreads create() => BookingThreads();
+}
 
+String _$bookingThreadsHash() => r'da6a27f97fb4c70bf248ff88d7e32878be83751d';
+
+/// Every booking the signed-in user has a conversation on — what the Chat tab lists.
+///
+/// Kept alive and re-asked every few seconds while somebody is signed in, so a new message shows up
+/// as a count on the Chat tab and in the list without anyone pulling to refresh — the way WhatsApp
+/// shows "2" before you open anything. Signed out, it asks nothing.
+
+abstract class _$BookingThreads extends $AsyncNotifier<List<BookingThread>> {
+  FutureOr<List<BookingThread>> build();
+  @$mustCallSuper
   @override
-  FutureOr<List<BookingThread>> create(Ref ref) {
-    return bookingThreads(ref);
+  WhenComplete runBuild() {
+    final ref =
+        this.ref as $Ref<AsyncValue<List<BookingThread>>, List<BookingThread>>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<List<BookingThread>>, List<BookingThread>>,
+              AsyncValue<List<BookingThread>>,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
   }
 }
 
-String _$bookingThreadsHash() => r'0000407a91eb73fea6d02af059e1b96542e3556e';
+/// Unread messages across every conversation — the number on the Chat tab.
+
+@ProviderFor(unreadChatCount)
+final unreadChatCountProvider = UnreadChatCountProvider._();
+
+/// Unread messages across every conversation — the number on the Chat tab.
+
+final class UnreadChatCountProvider extends $FunctionalProvider<int, int, int>
+    with $Provider<int> {
+  /// Unread messages across every conversation — the number on the Chat tab.
+  UnreadChatCountProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'unreadChatCountProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$unreadChatCountHash();
+
+  @$internal
+  @override
+  $ProviderElement<int> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  int create(Ref ref) {
+    return unreadChatCount(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(int value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<int>(value),
+    );
+  }
+}
+
+String _$unreadChatCountHash() => r'c3539910e04340461483439f56465716aa6a6546';
 
 /// One booking's conversation, kept fresh while the thread is open.
 ///

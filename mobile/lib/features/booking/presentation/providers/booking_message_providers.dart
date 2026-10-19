@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_providers.dart';
+import 'package:zuno/features/auth/presentation/providers/auth_state.dart';
 import 'package:zuno/features/booking/data/datasources/booking_message_remote_datasource.dart';
 import 'package:zuno/features/booking/domain/entities/booking_message.dart';
 
@@ -12,11 +14,53 @@ BookingMessageRemoteDataSource bookingMessageDataSource(Ref ref) =>
     BookingMessageRemoteDataSource(ref.watch(dioClientProvider));
 
 /// Every booking the signed-in user has a conversation on — what the Chat tab lists.
-@riverpod
-Future<List<BookingThread>> bookingThreads(Ref ref) async {
-  final models = await ref.watch(bookingMessageDataSourceProvider).getThreads();
-  return models.map((m) => m.toEntity()).toList();
+///
+/// Kept alive and re-asked every few seconds while somebody is signed in, so a new message shows up
+/// as a count on the Chat tab and in the list without anyone pulling to refresh — the way WhatsApp
+/// shows "2" before you open anything. Signed out, it asks nothing.
+@Riverpod(keepAlive: true)
+class BookingThreads extends _$BookingThreads {
+  Timer? _poll;
+
+  /// Quick enough that a reply is noticed while the app is open, slow enough to cost nothing much.
+  static const _pollEvery = Duration(seconds: 15);
+
+  @override
+  Future<List<BookingThread>> build() async {
+    ref.onDispose(() {
+      _poll?.cancel();
+      _poll = null;
+    });
+
+    final auth = ref.watch(authProvider).value;
+    if (auth is! AuthAuthenticated) {
+      _poll?.cancel();
+      _poll = null;
+      return const [];
+    }
+
+    _poll ??= Timer.periodic(_pollEvery, (_) => _refresh());
+    return _fetch();
+  }
+
+  Future<List<BookingThread>> _fetch() async {
+    final models = await ref.read(bookingMessageDataSourceProvider).getThreads();
+    return models.map((m) => m.toEntity()).toList();
+  }
+
+  /// Reloads without a spinner; a failed poll keeps what is on screen.
+  Future<void> _refresh() async {
+    if (!ref.mounted) return;
+    final next = await AsyncValue.guard(_fetch);
+    if (!ref.mounted || next.hasError) return;
+    state = next;
+  }
 }
+
+/// Unread messages across every conversation — the number on the Chat tab.
+@riverpod
+int unreadChatCount(Ref ref) =>
+    ref.watch(bookingThreadsProvider).value?.fold<int>(0, (sum, t) => sum + t.unreadCount) ?? 0;
 
 /// One booking's conversation, kept fresh while the thread is open.
 ///

@@ -125,6 +125,11 @@ class _BookingChatScreenState extends ConsumerState<BookingChatScreen> {
                   itemCount: messages.length,
                   itemBuilder: (context, index) => _Bubble(
                     message: messages[index],
+                    // The other person's name over the first of their messages in a run, so it is
+                    // plain who wrote what without reading every line.
+                    showName:
+                        !messages[index].isMine &&
+                        (index == 0 || messages[index - 1].isMine),
                     // The time is repeated only when the conversation moves on, rather than under
                     // every line of a rapid exchange.
                     showTime:
@@ -147,10 +152,15 @@ class _BookingChatScreenState extends ConsumerState<BookingChatScreen> {
 }
 
 class _Bubble extends StatelessWidget {
-  const _Bubble({required this.message, required this.showTime});
+  const _Bubble({
+    required this.message,
+    required this.showTime,
+    this.showName = false,
+  });
 
   final BookingMessage message;
   final bool showTime;
+  final bool showName;
 
   @override
   Widget build(BuildContext context) {
@@ -180,6 +190,16 @@ class _Bubble extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (showName && message.senderName.isNotEmpty) ...[
+              Text(
+                message.senderName,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 2),
+            ],
             Text(
               message.body,
               style: theme.textTheme.bodyMedium?.copyWith(
