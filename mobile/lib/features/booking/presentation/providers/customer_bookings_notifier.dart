@@ -20,6 +20,21 @@ part 'customer_bookings_notifier.g.dart';
 ///   * check `ref.mounted` before writing state afterwards. Skipping the refresh is correct rather
 ///     than a loss: a disposed provider holds no state worth refreshing, and the next screen to watch
 ///     it builds a new one that fetches.
+/// Orders waiting on the customer — the number on the Bookings tab.
+///
+/// Things only the customer can move forward: the business sent a price or crew offer that needs an
+/// answer, or a finished job is waiting for its rating.
+@riverpod
+int customerBookingsNeedingMeCount(Ref ref) =>
+    (ref.watch(customerBookingsProvider).value ?? const <Booking>[])
+        .where(bookingNeedsCustomer)
+        .length;
+
+/// Whether one order is waiting on the customer. Separate so it can be tested on its own.
+bool bookingNeedsCustomer(Booking booking) =>
+    !booking.isCancelled &&
+    (booking.needsMyReply(viewerIsBusiness: false) || booking.canBeRated);
+
 @riverpod
 class CustomerBookingsNotifier extends _$CustomerBookingsNotifier {
   @override
@@ -101,6 +116,15 @@ class CustomerBookingsNotifier extends _$CustomerBookingsNotifier {
   ///
   /// Takes the repository as an argument rather than reading it: by the time this runs, `ref` may be
   /// disposed, and reading through it is what threw the error this guard exists for.
+  /// Re-reads the orders without a spinner, for the periodic check behind the Bookings tab count.
+  /// A failed check keeps what is on screen.
+  Future<void> refreshQuietly() async {
+    final repository = ref.read(bookingRepositoryProvider);
+    final result = await AsyncValue.guard<List<Booking>>(repository.getMyBookingsAsCustomer);
+    if (!ref.mounted || result.hasError) return;
+    state = result;
+  }
+
   Future<void> _refresh(BookingRepository repository) async {
     // Nothing is lost by stopping here. State on a disposed provider is unreachable, and the next
     // widget to watch this builds a fresh instance that fetches.

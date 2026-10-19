@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/features/booking/domain/entities/booking.dart';
 import 'package:zuno/features/booking/presentation/providers/booking_providers.dart';
+import 'package:zuno/features/booking/presentation/providers/customer_bookings_notifier.dart';
+import 'package:zuno/features/booking/presentation/providers/booking_message_providers.dart';
 import 'package:zuno/features/booking/presentation/screens/booking_chat_screen.dart';
 import 'package:zuno/features/customer/presentation/screens/customer_booking_detail_screen.dart';
 import 'package:zuno/features/customer/presentation/screens/customer_bookings_tab.dart';
@@ -31,6 +35,26 @@ class CustomerDashboardShell extends ConsumerStatefulWidget {
 class _CustomerDashboardShellState
     extends ConsumerState<CustomerDashboardShell> {
   int _index = 0;
+
+  /// Re-checks the orders every so often, so the Bookings count changes when the business answers —
+  /// not only when the customer happens to open the tab. Runs only while this screen is up.
+  Timer? _bookingsCheck;
+  static const _bookingsCheckEvery = Duration(seconds: 30);
+
+  @override
+  void initState() {
+    super.initState();
+    _bookingsCheck = Timer.periodic(
+      _bookingsCheckEvery,
+      (_) => ref.read(customerBookingsProvider.notifier).refreshQuietly(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _bookingsCheck?.cancel();
+    super.dispose();
+  }
 
   static const _homeTab = 0;
   static const _bookingsTab = 1;
@@ -115,6 +139,9 @@ class _CustomerDashboardShellState
 
   @override
   Widget build(BuildContext context) {
+    final unreadChats = ref.watch(unreadChatCountProvider);
+    final bookingsNeedingMe = ref.watch(customerBookingsNeedingMeCountProvider);
+
     final tabs = <Widget>[
       CustomerSearchTab(
         notificationBell: NotificationBell(onOpen: _openNotification),
@@ -134,23 +161,38 @@ class _CustomerDashboardShellState
           bottomNavigationBar: NavigationBar(
             selectedIndex: _index,
             onDestinationSelected: (i) => setState(() => _index = i),
-            destinations: const [
-              NavigationDestination(
+            destinations: [
+              const NavigationDestination(
                 icon: Icon(Icons.home_outlined),
                 selectedIcon: Icon(Icons.home),
                 label: 'Home',
               ),
+              // Orders waiting on the customer: an offer to answer, a job to rate.
               NavigationDestination(
-                icon: Icon(Icons.event_note_outlined),
-                selectedIcon: Icon(Icons.event_note),
+                icon: _UnreadBadge(
+                  count: bookingsNeedingMe,
+                  child: const Icon(Icons.event_note_outlined),
+                ),
+                selectedIcon: _UnreadBadge(
+                  count: bookingsNeedingMe,
+                  child: const Icon(Icons.event_note),
+                ),
                 label: 'Bookings',
               ),
+              // The number of unread messages, like WhatsApp: visible from any tab, so a reply is
+              // noticed without opening the chat list first.
               NavigationDestination(
-                icon: Icon(Icons.chat_bubble_outline),
-                selectedIcon: Icon(Icons.chat_bubble),
+                icon: _UnreadBadge(
+                  count: unreadChats,
+                  child: const Icon(Icons.chat_bubble_outline),
+                ),
+                selectedIcon: _UnreadBadge(
+                  count: unreadChats,
+                  child: const Icon(Icons.chat_bubble),
+                ),
                 label: 'Chat',
               ),
-              NavigationDestination(
+              const NavigationDestination(
                 icon: Icon(Icons.person_outline),
                 selectedIcon: Icon(Icons.person),
                 label: 'Profile',
@@ -161,4 +203,19 @@ class _CustomerDashboardShellState
       ),
     );
   }
+}
+
+/// A tab icon with a count on it (unread messages, orders waiting on you); just the icon at zero.
+class _UnreadBadge extends StatelessWidget {
+  const _UnreadBadge({required this.count, required this.child});
+
+  final int count;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Badge(
+    isLabelVisible: count > 0,
+    label: Text(count > 99 ? '99+' : '$count'),
+    child: child,
+  );
 }
