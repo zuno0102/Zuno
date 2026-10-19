@@ -46,6 +46,26 @@ class AppColors {
   static Color fieldFill(Brightness brightness) =>
       brightness == Brightness.dark ? fieldFillDark : fieldFillLight;
 
+  /// The card the sign-in and sign-up forms sit on.
+  ///
+  /// Brightness-aware for a reason worth remembering: this card used to be painted white
+  /// whatever the theme, while everything inside it — field fills, hint text, the button —
+  /// came from the theme. In dark mode that put near-black fields and pale text on a white
+  /// card, and the labels could not be read at all.
+  static Color authSurface(Brightness brightness) =>
+      brightness == Brightness.dark ? surfaceDark : surfaceLight;
+
+  /// The page behind that card.
+  static Color authBackdrop(Brightness brightness) =>
+      brightness == Brightness.dark ? backgroundDark : backgroundLight;
+
+  /// The pale decorative circle on that page. The light one glares against a dark page, so
+  /// dark mode gets its own barely-there tint instead.
+  static const Color circleFaintDark = Color(0xFF262633);
+
+  static Color circleFaint(Brightness brightness) =>
+      brightness == Brightness.dark ? circleFaintDark : circleLight;
+
   // ---- Marks on top of other things ----------------------------------------------------
 
   /// A rating star.

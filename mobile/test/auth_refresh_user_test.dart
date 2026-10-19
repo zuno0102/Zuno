@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zuno/features/auth/domain/entities/auth_tokens.dart';
@@ -86,10 +88,7 @@ class _FakeAuthRepository implements AuthRepository {
   }) => throw UnimplementedError();
 
   @override
-  Future<User> updateMyPhoto({
-    required String filePath,
-    required String contentType,
-  }) => throw UnimplementedError();
+  Future<User> updateMyPhoto({required Uint8List bytes}) => throw UnimplementedError();
 }
 
 ProviderContainer _container(_FakeAuthRepository repository) {

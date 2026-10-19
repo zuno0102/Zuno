@@ -56,6 +56,9 @@ public static class DependencyInjection
         services.AddOptions<FileStorageSettings>()
             .Bind(configuration.GetSection(FileStorageSettings.SectionName));
 
+        services.AddOptions<VerificationSettings>()
+            .Bind(configuration.GetSection(VerificationSettings.SectionName));
+
         // Razorpay moves the money. Its credentials are validated on start-up, so a deployment
         // missing them fails at boot with a clear message rather than at the moment someone
         // tries to pay their crew.

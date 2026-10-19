@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:zuno/core/constants/app_constants.dart';
@@ -11,6 +10,7 @@ import 'package:zuno/features/business_owner/presentation/providers/business_pro
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
 import 'package:zuno/shared/widgets/app_permissions_link.dart';
+import 'package:zuno/shared/widgets/avatar_crop_screen.dart';
 
 /// The profile as a page of its own, opened from the business home.
 ///
@@ -348,27 +348,19 @@ class _ProfileAvatar extends ConsumerStatefulWidget {
 class _ProfileAvatarState extends ConsumerState<_ProfileAvatar> {
   bool _isBusy = false;
 
-  /// Picks a photo, re-encodes it, and sends it up.
+  /// Picks a photo, lets the owner frame it, re-encodes it, and sends it up.
   Future<void> _pick(ImageSource source) async {
     final picked = await ImagePicker().pickImage(source: source);
     if (picked == null) return;
 
+    final rawBytes = await picked.readAsBytes();
+    if (!mounted) return;
+
+    final compressed = await AvatarCropScreen.frame(context, rawBytes);
+    if (compressed == null || !mounted) return;
+
     setState(() => _isBusy = true);
     try {
-      final rawBytes = await picked.readAsBytes();
-
-      // The same re-encode the service images do, and for the same reason: phone cameras
-      // commonly hand back HEIC, which Flutter cannot decode and the server will not accept.
-      // Going through the platform's own decoder guarantees what we upload is what we can
-      // later draw. 512px square is plenty for an avatar and keeps it well under the 5MB cap.
-      final compressed = await FlutterImageCompress.compressWithList(
-        rawBytes,
-        format: CompressFormat.jpeg,
-        quality: 85,
-        minWidth: 512,
-        minHeight: 512,
-      );
-
       final previousUrl = widget.profile.logoUrl;
       await ref
           .read(businessProfileProvider.notifier)

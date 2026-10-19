@@ -55,6 +55,20 @@ services:
       - key: Razorpay__KeySecret
         sync: false
 
+      # The first Super Admin, created at start-up if none exists yet. Sign-up cannot create one,
+      # so without these nobody can verify a business. Sign in with them on the normal login
+      # screen. Once the account exists these are ignored, and can be removed.
+      - key: AdminSeed__Email
+        sync: false
+      - key: AdminSeed__Password
+        sync: false
+
+      # TEMPORARY, for real-world testing: every business is Verified on sign-up (and a Pending one
+      # on its next sign-in), so its services show to customers without an admin approving it.
+      # Set to "false" once the Super Admin verification screen is in use.
+      - key: Verification__AutoVerifyBusinesses
+        value: "true"
+
       # Where uploaded pictures are written. On the free plan this is a container filesystem with
       # no disk attached, so everything written here is lost on every deploy and on every wake from
       # sleep. See DEPLOYMENT.md — this is the one part of the app that does not survive free-tier

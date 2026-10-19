@@ -44,6 +44,7 @@ public class LoginCommandHandlerTests
             _jwtTokenServiceMock.Object,
             _dateTimeProviderMock.Object,
             jwtSettings,
+            Options.Create(new VerificationSettings()),
             refreshTokenFactory);
     }
 

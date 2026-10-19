@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:zuno/core/error/app_exceptions.dart';
-import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/utils/validators.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_providers.dart';
 import 'package:zuno/features/auth/presentation/widgets/auth_text_field.dart';
@@ -72,7 +71,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                           Icon(
                             Icons.mark_email_read_outlined,
                             size: 52,
-                            color: AppColors.primary,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                           const SizedBox(height: 16),
                           Text(
@@ -100,7 +99,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                                   'RESET PASSWORD',
                                   style: theme.textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.bold,
-                                    color: AppColors.primary,
+                                    color: Theme.of(context).colorScheme.primary,
                                     letterSpacing: 0.5,
                                   ),
                                 ),

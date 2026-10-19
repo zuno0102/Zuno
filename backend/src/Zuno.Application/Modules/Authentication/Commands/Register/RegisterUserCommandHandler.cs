@@ -7,6 +7,7 @@ using Zuno.Application.Modules.Authentication.Common;
 using Zuno.Application.Modules.Authentication.DTOs;
 using Zuno.Application.Modules.Authentication.Events;
 using Zuno.Domain.Entities;
+using Zuno.Domain.Enums;
 using Zuno.Domain.Exceptions;
 
 namespace Zuno.Application.Modules.Authentication.Commands.Register;
@@ -19,6 +20,7 @@ public class RegisterUserCommandHandler(
     IJwtTokenService jwtTokenService,
     IDateTimeProvider dateTimeProvider,
     IOptions<JwtSettings> jwtSettings,
+    IOptions<VerificationSettings> verificationSettings,
     RefreshTokenFactory refreshTokenFactory,
     IPublisher publisher) : IRequestHandler<RegisterUserCommand, AuthResponseDto>
 {
@@ -53,7 +55,7 @@ public class RegisterUserCommandHandler(
         return BuildAuthResponse(user, rawRefreshToken);
     }
 
-    private static void CreateRoleProfile(User user, string roleName)
+    private void CreateRoleProfile(User user, string roleName)
     {
         if (roleName == nameof(Domain.Enums.UserRoleType.Customer))
         {
@@ -62,6 +64,12 @@ public class RegisterUserCommandHandler(
         else if (roleName == nameof(Domain.Enums.UserRoleType.BusinessOwner))
         {
             user.BusinessOwnerProfile = new BusinessOwnerProfile { UserId = user.Id, BusinessName = $"{user.FirstName} {user.LastName}" };
+
+            if (verificationSettings.Value.AutoVerifyBusinesses)
+            {
+                user.BusinessOwnerProfile.VerificationStatus = VerificationStatus.Verified;
+                user.BusinessOwnerProfile.VerifiedAt = dateTimeProvider.UtcNow;
+            }
         }
         else if (roleName == nameof(Domain.Enums.UserRoleType.Worker))
         {

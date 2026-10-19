@@ -12,6 +12,7 @@ import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/app_permissions_link.dart';
+import 'package:zuno/shared/widgets/avatar_crop_screen.dart';
 
 /// The worker's own details, as a page of its own.
 ///
@@ -342,16 +343,18 @@ class _ProfilePhotoState extends ConsumerState<_ProfilePhoto> {
   bool _isUploading = false;
 
   Future<void> _pick() async {
-    final picked = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      // Resized before it leaves the phone: a modern camera file is several megabytes, the server
-      // caps the upload, and nothing here is shown larger than a thumbnail.
-      maxWidth: 800,
-      maxHeight: 800,
-      imageQuality: 85,
-    );
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
 
-    if (picked == null || !mounted) return;
+    if (picked == null) return;
+
+    // Bytes rather than a path, because on the web `picked.path` is a blob URL and every
+    // path-based API fails there. Framing it first means the circle shows the worker's face
+    // rather than whatever happened to sit in the middle of the photo.
+    final rawBytes = await picked.readAsBytes();
+    if (!mounted) return;
+
+    final compressed = await AvatarCropScreen.frame(context, rawBytes);
+    if (compressed == null || !mounted) return;
 
     setState(() => _isUploading = true);
 
@@ -359,12 +362,7 @@ class _ProfilePhotoState extends ConsumerState<_ProfilePhoto> {
     final notifier = ref.read(workerDashboardProvider.notifier);
 
     try {
-      await notifier.setPhoto(
-        filePath: picked.path,
-        // Stated from the file, because the server validates the content type and refuses
-        // anything it does not recognise.
-        contentType: _contentTypeFor(picked.path),
-      );
+      await notifier.setPhoto(bytes: compressed);
       messenger.showSuccess('Photo updated.');
     } catch (e) {
       if (!mounted) return;
@@ -374,12 +372,6 @@ class _ProfilePhotoState extends ConsumerState<_ProfilePhoto> {
     }
   }
 
-  static String _contentTypeFor(String path) {
-    final lower = path.toLowerCase();
-    if (lower.endsWith('.png')) return 'image/png';
-    if (lower.endsWith('.webp')) return 'image/webp';
-    return 'image/jpeg';
-  }
 
   @override
   Widget build(BuildContext context) {

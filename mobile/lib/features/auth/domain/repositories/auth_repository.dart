@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:zuno/features/auth/domain/entities/auth_tokens.dart';
 import 'package:zuno/features/auth/domain/entities/user.dart';
 
@@ -31,10 +33,9 @@ abstract interface class AuthRepository {
   });
 
   /// Uploads or replaces the signed-in account's own picture.
-  Future<User> updateMyPhoto({
-    required String filePath,
-    required String contentType,
-  });
+  ///
+  /// Bytes rather than a path: a path only exists on a device, and the web build has none.
+  Future<User> updateMyPhoto({required Uint8List bytes});
 
   /// Corrects the signed-in account's own name and phone number.
   Future<User> updateMyAccount({

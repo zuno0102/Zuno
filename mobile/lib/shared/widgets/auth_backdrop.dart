@@ -10,8 +10,12 @@ class AuthBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+
     return Container(
-      color: AppColors.backgroundLight,
+      // Follows the theme, as does the pale circle below. The navy one is left alone: it reads
+      // against both a light and a dark page, which is what made it the brand mark here.
+      color: AppColors.authBackdrop(brightness),
       child: Stack(
         children: [
           Positioned(
@@ -19,7 +23,7 @@ class AuthBackdrop extends StatelessWidget {
             right: -70,
             child: _Circle(
               diameter: 260,
-              color: AppColors.circleLight.withValues(alpha: 0.7),
+              color: AppColors.circleFaint(brightness).withValues(alpha: 0.7),
             ),
           ),
           Positioned(
@@ -37,7 +41,7 @@ class AuthBackdrop extends StatelessWidget {
             left: -60,
             child: _Circle(
               diameter: 260,
-              color: AppColors.circleLight.withValues(alpha: 0.7),
+              color: AppColors.circleFaint(brightness).withValues(alpha: 0.7),
             ),
           ),
           SafeArea(child: child),

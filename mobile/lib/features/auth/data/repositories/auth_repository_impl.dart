@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:zuno/core/error/app_exceptions.dart';
 import 'package:zuno/core/storage/secure_storage_service.dart';
 import 'package:zuno/features/auth/data/datasources/auth_remote_datasource.dart';
@@ -88,14 +90,8 @@ class AuthRepositoryImpl implements AuthRepository {
   );
 
   @override
-  Future<User> updateMyPhoto({
-    required String filePath,
-    required String contentType,
-  }) async {
-    final model = await _remoteDataSource.updateMyPhoto(
-      filePath: filePath,
-      contentType: contentType,
-    );
+  Future<User> updateMyPhoto({required Uint8List bytes}) async {
+    final model = await _remoteDataSource.updateMyPhoto(bytes: bytes);
     return model.toEntity();
   }
 

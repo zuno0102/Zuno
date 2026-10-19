@@ -13,6 +13,7 @@ import 'package:zuno/shared/widgets/change_password_sheet.dart';
 import 'package:zuno/shared/widgets/profile_avatar.dart';
 import 'package:zuno/shared/widgets/section_header.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
+import 'package:zuno/shared/widgets/avatar_crop_screen.dart';
 
 /// The customer's account page.
 ///
@@ -482,16 +483,19 @@ class _ProfilePhotoState extends ConsumerState<_ProfilePhoto> {
   bool _isUploading = false;
 
   Future<void> _pick() async {
-    final picked = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      // Resized before it leaves the phone: a modern camera file is several megabytes, the server
-      // caps the upload, and nothing here is shown larger than a thumbnail.
-      maxWidth: 800,
-      maxHeight: 800,
-      imageQuality: 85,
-    );
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
 
-    if (picked == null || !mounted) return;
+    if (picked == null) return;
+
+    // Bytes in, bytes out, exactly as the business logo does it. Reading the picked file is the
+    // only approach that works everywhere: on the web `picked.path` is a blob URL rather than a
+    // file, so anything path-based fails there. The framing step also does the re-encode that
+    // keeps the upload under the server's 5MB cap and converts HEIC.
+    final rawBytes = await picked.readAsBytes();
+    if (!mounted) return;
+
+    final compressed = await AvatarCropScreen.frame(context, rawBytes);
+    if (compressed == null || !mounted) return;
 
     setState(() => _isUploading = true);
     final messenger = AppMessenger.of(context);
@@ -500,14 +504,7 @@ class _ProfilePhotoState extends ConsumerState<_ProfilePhoto> {
       final before = ref.read(authProvider).value;
       final previous = before is AuthAuthenticated ? before.user : null;
 
-      await ref
-          .read(authProvider.notifier)
-          .updateMyPhoto(
-            filePath: picked.path,
-            // Stated from the file, because the server validates the content type and refuses
-            // anything it does not recognise.
-            contentType: _contentTypeFor(picked.path),
-          );
+      await ref.read(authProvider.notifier).updateMyPhoto(bytes: compressed);
 
       // The new picture has its own address, so the avatar is already showing it by now. This only
       // releases the bytes of the one it replaced, which nothing will ask for again.
@@ -522,12 +519,6 @@ class _ProfilePhotoState extends ConsumerState<_ProfilePhoto> {
     }
   }
 
-  static String _contentTypeFor(String path) {
-    final lower = path.toLowerCase();
-    if (lower.endsWith('.png')) return 'image/png';
-    if (lower.endsWith('.webp')) return 'image/webp';
-    return 'image/jpeg';
-  }
 
   @override
   Widget build(BuildContext context) {

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'dart:async';
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -73,13 +75,10 @@ class AuthNotifier extends _$AuthNotifier {
   }
 
   /// Saves a new profile picture and puts it straight into state.
-  Future<void> updateMyPhoto({
-    required String filePath,
-    required String contentType,
-  }) async {
+  Future<void> updateMyPhoto({required Uint8List bytes}) async {
     final updated = await ref
         .read(authRepositoryProvider)
-        .updateMyPhoto(filePath: filePath, contentType: contentType);
+        .updateMyPhoto(bytes: bytes);
 
     if (state.value is AuthAuthenticated) {
       state = AsyncData(AuthState.authenticated(updated));

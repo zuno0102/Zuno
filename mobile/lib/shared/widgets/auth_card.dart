@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 
-/// White rounded card the auth forms sit inside, floating over [AuthBackdrop]'s circles.
+/// Rounded card the auth forms sit inside, floating over [AuthBackdrop]'s circles.
 class AuthCard extends StatelessWidget {
   const AuthCard({required this.child, super.key});
 
@@ -9,10 +9,13 @@ class AuthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 28),
       decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
+        // Follows the theme. Pinned to white, it fought everything inside it in dark mode.
+        color: AppColors.authSurface(brightness),
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(

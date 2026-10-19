@@ -63,6 +63,31 @@ class AppTheme {
         ),
       ),
 
+      // Chosen segment in the brand colour, the same one the buttons use.
+      //
+      // Material's default dresses a selected segment in secondaryContainer, which on the sign-up
+      // screen put a muted plum behind "Customer" directly above a primary-coloured button and a
+      // primary-coloured heading — three different colours all meaning "this is the important
+      // one". Picking a role and submitting the form are the same decision, so they match.
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? scheme.primary
+                : Colors.transparent,
+          ),
+          foregroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? scheme.onPrimary
+                : scheme.onSurfaceVariant,
+          ),
+          side: WidgetStatePropertyAll(BorderSide(color: scheme.outlineVariant)),
+          textStyle: const WidgetStatePropertyAll(
+            TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+        ),
+      ),
+
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.fieldFill(brightness),

@@ -1,5 +1,4 @@
-import 'dart:io';
-
+import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart' as ph;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -123,6 +122,14 @@ class PermissionHandlerService implements PermissionService {
 
   @override
   Future<PermissionOutcome> requestEssentials() async {
+    // A browser does not work this way. It asks for the camera itself, at the moment a page
+    // actually uses it, and choosing a picture there is an ordinary file input that needs no
+    // permission at all — so there is nothing to ask for ahead of time, and asking would mean
+    // prompting for something this app cannot grant.
+    if (kIsWeb) {
+      return const PermissionOutcome(cameraGranted: true, photosGranted: true);
+    }
+
     try {
       final camera = await ph.Permission.camera.request();
 
@@ -130,7 +137,11 @@ class PermissionHandlerService implements PermissionService {
       // resolve against READ_MEDIA_IMAGES, which this app does not declare and does not need —
       // and an undeclared permission comes back permanently denied, which would put a dialog on
       // screen telling somebody to fix something that was never broken.
-      final photos = Platform.isIOS
+      //
+      // Read from defaultTargetPlatform rather than dart:io's Platform, which throws on the web
+      // with an UnsupportedError — an Error, not an Exception, so the catch below would not have
+      // held it and the whole call failed.
+      final photos = defaultTargetPlatform == TargetPlatform.iOS
           ? await ph.Permission.photos.request()
           : ph.PermissionStatus.granted;
 

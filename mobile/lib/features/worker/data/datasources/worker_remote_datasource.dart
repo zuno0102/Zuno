@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:zuno/core/constants/api_constants.dart';
@@ -103,15 +105,16 @@ class WorkerRemoteDataSource {
   /// Sent as multipart because it is a file. The content type is stated explicitly rather than left
   /// to be guessed from the name, since the server validates on it and rejects anything it does not
   /// recognise.
-  Future<WorkerProfileModel> setPhoto({
-    required String filePath,
-    required String contentType,
-  }) async {
+  ///
+  /// Takes bytes, not a path. `MultipartFile.fromFile` reads through `dart:io`, which the web build
+  /// does not have, so a path-based upload threw there the moment anybody changed their photo.
+  Future<WorkerProfileModel> setPhoto({required Uint8List bytes}) async {
     try {
       final form = FormData.fromMap({
-        'file': await MultipartFile.fromFile(
-          filePath,
-          contentType: MediaType.parse(contentType),
+        'file': MultipartFile.fromBytes(
+          bytes,
+          filename: 'photo.jpg',
+          contentType: MediaType('image', 'jpeg'),
         ),
       });
 

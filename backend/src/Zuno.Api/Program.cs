@@ -247,18 +247,19 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-if (app.Environment.IsDevelopment())
+// Every environment, not just Development: self-registration can never create a Super Admin, so
+// without this a hosted deployment has no way to get its first one — and with no Super Admin,
+// nobody can verify a business and no customer ever sees a service. It is a no-op once a Super
+// Admin exists, and also when AdminSeed:Email/AdminSeed:Password are not set.
+try
 {
-    try
-    {
-        await Zuno.Infrastructure.Persistence.Seed.AdminUserSeeder.SeedAsync(app.Services);
-    }
-    catch (Exception ex)
-    {
-        // Dev-only convenience seeding must never crash the app — e.g. the database may not
-        // be up yet. Auth endpoints will surface a clear per-request error until it is.
-        app.Logger.LogWarning(ex, "Skipping Super Admin seed: database was not reachable at startup.");
-    }
+    await Zuno.Infrastructure.Persistence.Seed.AdminUserSeeder.SeedAsync(app.Services);
+}
+catch (Exception ex)
+{
+    // Seeding must never crash the app — e.g. the database may not be up yet. Auth endpoints
+    // will surface a clear per-request error until it is.
+    app.Logger.LogWarning(ex, "Skipping Super Admin seed: database was not reachable at startup.");
 }
 
 app.Run();

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:zuno/core/constants/api_constants.dart';
@@ -93,15 +95,22 @@ class AuthRemoteDataSource {
   }
 
   /// Uploads or replaces the signed-in account's own picture.
-  Future<UserModel> updateMyPhoto({
-    required String filePath,
-    required String contentType,
-  }) async {
+  ///
+  /// Takes the bytes rather than a path, like every other upload in this app. On the web
+  /// `image_picker` returns a blob URL instead of a filesystem path, and `MultipartFile.fromFile`
+  /// reads through `dart:io`, which a browser does not have — it threw "MultipartFile is only
+  /// supported where dart:io is available" the moment anybody changed their photo there.
+  ///
+  /// The part is named `file` and the type stated outright because the server looks for that name
+  /// and refuses anything that is not a JPEG, PNG or WebP; bytes with no stated type arrive as
+  /// `application/octet-stream` and are turned away.
+  Future<UserModel> updateMyPhoto({required Uint8List bytes}) async {
     try {
       final form = FormData.fromMap({
-        'file': await MultipartFile.fromFile(
-          filePath,
-          contentType: MediaType.parse(contentType),
+        'file': MultipartFile.fromBytes(
+          bytes,
+          filename: 'photo.jpg',
+          contentType: MediaType('image', 'jpeg'),
         ),
       });
 

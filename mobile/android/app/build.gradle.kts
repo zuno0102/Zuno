@@ -1,8 +1,24 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// The release signing key, kept out of the repository.
+//
+// android/key.properties and the .jks it points at are both gitignored, because whoever holds
+// them can publish an update that Android will install over this app without question. When the
+// file is absent — a fresh clone, or CI without the secret — the release build falls back to the
+// debug key below, so `flutter run --release` still works for whoever is just trying the app.
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("key.properties")
+    if (file.exists()) {
+        file.inputStream().use { load(it) }
+    }
+}
+val hasReleaseKeystore = keystoreProperties.containsKey("storeFile")
 
 android {
     namespace = "com.zuno.zuno"
@@ -32,11 +48,27 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Signed with the real key when one is configured. An APK signed with the debug key
+            // cannot be published, and worse, cannot later be replaced by a properly signed one:
+            // Android refuses an update whose signature differs from what is installed.
+            signingConfig = if (hasReleaseKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
 
             // Named even though shrinking is off today, so that switching it on later cannot
             // quietly strip Razorpay and break paying a crew in release builds only.

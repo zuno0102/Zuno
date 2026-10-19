@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/utils/validators.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:zuno/features/auth/presentation/widgets/auth_text_field.dart';
@@ -66,7 +65,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         'SIGN IN',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+                          color: Theme.of(context).colorScheme.primary,
                           letterSpacing: 0.5,
                         ),
                       ),
@@ -121,11 +120,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                             GestureDetector(
                               onTap: () => context.push('/register'),
-                              child: const Text(
+                              child: Text(
                                 'SIGN UP',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: AppColors.primary,
+                                  color: Theme.of(context).colorScheme.primary,
                                 ),
                               ),
                             ),

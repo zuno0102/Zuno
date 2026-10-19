@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:zuno/features/worker/domain/entities/worker_dashboard.dart';
 import 'package:zuno/features/worker/presentation/providers/worker_providers.dart';
@@ -51,13 +53,8 @@ class WorkerDashboardNotifier extends _$WorkerDashboardNotifier {
 
 
   /// Uploads a new profile picture and reloads the screen.
-  Future<void> setPhoto({
-    required String filePath,
-    required String contentType,
-  }) async {
-    await ref
-        .read(workerRemoteDataSourceProvider)
-        .setPhoto(filePath: filePath, contentType: contentType);
+  Future<void> setPhoto({required Uint8List bytes}) async {
+    await ref.read(workerRemoteDataSourceProvider).setPhoto(bytes: bytes);
 
     await _refresh();
   }
