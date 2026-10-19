@@ -4,8 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' as gm;
 import 'package:latlong2/latlong.dart';
 import 'package:zuno/core/location/location_service.dart';
+import 'package:zuno/core/maps/google_maps_config.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/features/worker/presentation/widgets/place_search_sheet.dart';
 import 'package:zuno/shared/widgets/map_layers.dart';
@@ -173,11 +175,18 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
   /// Rooftop level, which is the point of pinning.
   static const _pinZoom = 18.0;
 
-  /// Satellite first: in many villages the street map has nothing drawn, while the photograph
-  /// shows the actual house.
-  MapStyle _style = MapStyle.satellite;
+  /// Google's own map has the lanes and buildings, so it opens on that. Without Google the free
+  /// street map has nothing drawn in many villages, so it opens on the satellite photo instead.
+  MapStyle _style = useGoogleMaps ? MapStyle.street : MapStyle.satellite;
+
+  /// Drawn by Google when a key is built in, otherwise the free tiles. Decided once per screen.
+  final bool _google = useGoogleMaps;
 
   final _mapController = MapController();
+  gm.GoogleMapController? _googleController;
+
+  /// Set while the app itself is moving the Google map, so that move is not taken for a drag.
+  bool _movingProgrammatically = false;
   final _searchController = TextEditingController();
   final _searchFocus = FocusNode();
 
@@ -214,7 +223,40 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
     _searchController.dispose();
     _searchFocus.dispose();
     _mapController.dispose();
+    _googleController?.dispose();
     super.dispose();
+  }
+
+  // ---- Google map events --------------------------------------------------------------------------
+
+  void _onGoogleMapCreated(gm.GoogleMapController controller) {
+    _googleController = controller;
+    // A location found before the map existed (GPS answering fast) is applied now.
+    if (_hasMoved) {
+      _movingProgrammatically = true;
+      controller.moveCamera(
+        gm.CameraUpdate.newLatLngZoom(gm.LatLng(_centre.latitude, _centre.longitude), _pinZoom),
+      );
+    }
+  }
+
+  void _onGoogleMoveStarted() {
+    if (_movingProgrammatically) return;
+    _hasMoved = true;
+    if (_results != null) setState(() => _results = null);
+    _searchFocus.unfocus();
+  }
+
+  void _onGoogleMove(gm.CameraPosition position) {
+    _centre = LatLng(position.target.latitude, position.target.longitude);
+    if (_place != null) setState(() => _place = null);
+  }
+
+  void _onGoogleIdle() {
+    _movingProgrammatically = false;
+    if (!_hasMoved) return;
+    _nameDebounce?.cancel();
+    _nameDebounce = Timer(const Duration(milliseconds: 300), _nameCentre);
   }
 
   // ---- Naming the spot under the pin --------------------------------------------------------------
@@ -356,7 +398,14 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
 
   void _moveTo(LatLng point) {
     _centre = point;
-    _mapController.move(point, _pinZoom);
+    if (_google) {
+      _movingProgrammatically = true;
+      _googleController?.animateCamera(
+        gm.CameraUpdate.newLatLngZoom(gm.LatLng(point.latitude, point.longitude), _pinZoom),
+      );
+    } else {
+      _mapController.move(point, _pinZoom);
+    }
     _nameDebounce?.cancel();
     _nameCentre();
   }
@@ -440,25 +489,46 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
           Expanded(
             child: Stack(
               children: [
-                FlutterMap(
-                  mapController: _mapController,
-                  options: MapOptions(
-                    initialCenter: _centre,
-                    initialZoom: widget.initial != null ? _pinZoom : 6,
-                    maxZoom: kMapMaxZoom,
-                    onPositionChanged: _onMapMoved,
-                    interactionOptions: const InteractionOptions(
-                      flags: InteractiveFlag.pinchZoom |
-                          InteractiveFlag.drag |
-                          InteractiveFlag.doubleTapZoom |
-                          InteractiveFlag.scrollWheelZoom,
+                if (_google)
+                  gm.GoogleMap(
+                    key: const Key('pinPickerGoogleMap'),
+                    initialCameraPosition: gm.CameraPosition(
+                      target: gm.LatLng(_centre.latitude, _centre.longitude),
+                      zoom: widget.initial != null ? _pinZoom : 5,
                     ),
+                    // Hybrid: the photograph with Google's road and place names on it.
+                    mapType: _style == MapStyle.satellite ? gm.MapType.hybrid : gm.MapType.normal,
+                    onMapCreated: _onGoogleMapCreated,
+                    onCameraMoveStarted: _onGoogleMoveStarted,
+                    onCameraMove: _onGoogleMove,
+                    onCameraIdle: _onGoogleIdle,
+                    myLocationButtonEnabled: false,
+                    zoomControlsEnabled: false,
+                    mapToolbarEnabled: false,
+                    compassEnabled: false,
+                    rotateGesturesEnabled: false,
+                    tiltGesturesEnabled: false,
+                  )
+                else
+                  FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
+                      initialCenter: _centre,
+                      initialZoom: widget.initial != null ? _pinZoom : 6,
+                      maxZoom: kMapMaxZoom,
+                      onPositionChanged: _onMapMoved,
+                      interactionOptions: const InteractionOptions(
+                        flags: InteractiveFlag.pinchZoom |
+                            InteractiveFlag.drag |
+                            InteractiveFlag.doubleTapZoom |
+                            InteractiveFlag.scrollWheelZoom,
+                      ),
+                    ),
+                    children: [
+                      ...baseMapLayers(_style),
+                      mapAttribution(_style),
+                    ],
                   ),
-                  children: [
-                    ...baseMapLayers(_style),
-                    mapAttribution(_style),
-                  ],
-                ),
 
                 // The pin itself, fixed in the middle; its point is the map's centre.
                 IgnorePointer(

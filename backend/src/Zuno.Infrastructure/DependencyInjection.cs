@@ -102,13 +102,31 @@ public static class DependencyInjection
         // without one. This is also why place search is proxied through us rather than called from
         // the app: one identifiable caller, one cache, and a key can be added here later.
         services.AddMemoryCache();
-        services.AddHttpClient<IPlaceSearchService, NominatimPlaceSearchService>(client =>
-            {
-                client.BaseAddress = new Uri("https://nominatim.openstreetmap.org");
-                client.DefaultRequestHeaders.UserAgent.ParseAdd("Zuno/1.0 (hiring app; contact: support@zuno.local)");
-                client.Timeout = TimeSpan.FromSeconds(10);
-            })
-            .AddPolicyHandler(PollyPolicies.GetRetryPolicy());
+
+        // Google when a key is configured (GoogleMaps__ApiKey): it knows the shops, halls and small
+        // lanes OpenStreetMap is missing in villages. Otherwise the free OpenStreetMap search, so a
+        // deployment without a Google account still works.
+        var googleMapsKey = configuration["GoogleMaps:ApiKey"];
+        if (!string.IsNullOrWhiteSpace(googleMapsKey))
+        {
+            services.AddHttpClient(nameof(GooglePlaceSearchService), client => client.Timeout = TimeSpan.FromSeconds(10))
+                .AddPolicyHandler(PollyPolicies.GetRetryPolicy());
+            services.AddScoped<IPlaceSearchService>(provider => new GooglePlaceSearchService(
+                provider.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(GooglePlaceSearchService)),
+                provider.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>(),
+                googleMapsKey,
+                provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<GooglePlaceSearchService>>()));
+        }
+        else
+        {
+            services.AddHttpClient<IPlaceSearchService, NominatimPlaceSearchService>(client =>
+                {
+                    client.BaseAddress = new Uri("https://nominatim.openstreetmap.org");
+                    client.DefaultRequestHeaders.UserAgent.ParseAdd("Zuno/1.0 (hiring app; contact: support@zuno.local)");
+                    client.Timeout = TimeSpan.FromSeconds(10);
+                })
+                .AddPolicyHandler(PollyPolicies.GetRetryPolicy());
+        }
         // Routing, on the same free OpenStreetMap footing as the place search. The public demo host
         // is for development only; swapping it for a self-hosted OSRM is a change to this URL alone.
         services.AddHttpClient<IRouteService, OsrmRouteService>(client =>

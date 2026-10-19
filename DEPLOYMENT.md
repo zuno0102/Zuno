@@ -68,6 +68,29 @@ Vercel regardless.
 `Razorpay__KeyId`, `Razorpay__KeySecret`, `AdminSeed__Email`, `AdminSeed__Password`, and — while
 testing, until the admin verification screen exists — `Verification__AutoVerifyBusinesses=true`.
 
+### Google Maps (optional, recommended)
+
+Without Google the app uses free OpenStreetMap/Esri maps and OpenStreetMap search. In villages such as
+Verkilambi OpenStreetMap has only the main roads, so customers cannot see their own lane. With Google
+keys set, the pin picker, order cards and worker maps show Google's map (lanes, buildings, shops) and
+the search finds local landmarks. Every part falls back to the free version when its key is missing.
+
+One-time setup in the Google Cloud console (https://console.cloud.google.com), project "Zuno":
+
+1. **Billing** → link a billing account (Google gives a monthly free allowance; set a budget alert).
+2. **APIs & Services → Library** → enable: *Maps JavaScript API*, *Maps SDK for Android*,
+   *Places API (New)*, *Geocoding API*.
+3. **APIs & Services → Credentials → Create credentials → API key**, three times:
+
+| Key | Application restriction | API restriction | Goes into |
+|---|---|---|---|
+| Browser | Websites: `https://web-three-zeta-59.vercel.app/*` | Maps JavaScript API | `.env.deploy` → `GOOGLE_MAPS_WEB_KEY` |
+| Android | Android apps: package `com.zuno.zuno` + release SHA-1 | Maps SDK for Android | build flag `--dart-define=GOOGLE_MAPS_KEY=...` for the APK |
+| Server | None (Render's IP changes) | Places API (New), Geocoding API | Render → `GoogleMaps__ApiKey` |
+
+Then `.\deploy.ps1 -Force` rebuilds the web app with the browser key; Render picks up the server key
+on its next deploy.
+
 ---
 
 ## Read this first: what the free tiers cannot do

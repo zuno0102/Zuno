@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' as gm;
 import 'package:latlong2/latlong.dart';
+import 'package:zuno/core/maps/google_maps_config.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
 import 'package:zuno/core/theme/app_colors.dart';
@@ -62,6 +64,58 @@ class _NearbyJobsMapState extends State<NearbyJobsMap> {
     _ => 7,
   };
 
+  /// The same jobs on Google's map: the worker in blue, jobs in red (orange when selected, faded
+  /// when the position is only approximate), and the radius as a ring.
+  Widget _buildGoogleMap(ThemeData theme) {
+    gm.LatLng g(LatLng p) => gm.LatLng(p.latitude, p.longitude);
+
+    return gm.GoogleMap(
+      initialCameraPosition: gm.CameraPosition(
+        target: g(widget.centre),
+        zoom: _initialZoom,
+      ),
+      onTap: (_) => setState(() => _selected = null),
+      markers: {
+        gm.Marker(
+          markerId: const gm.MarkerId('you'),
+          position: g(widget.centre),
+          icon: gm.BitmapDescriptor.defaultMarkerWithHue(
+            gm.BitmapDescriptor.hueAzure,
+          ),
+          infoWindow: const gm.InfoWindow(title: 'You'),
+        ),
+        for (final job in widget.jobs)
+          gm.Marker(
+            markerId: gm.MarkerId(job.id),
+            position: gm.LatLng(job.latitude!, job.longitude!),
+            alpha: job.isLocationApproximate ? 0.55 : 1,
+            icon: gm.BitmapDescriptor.defaultMarkerWithHue(
+              _selected?.id == job.id
+                  ? gm.BitmapDescriptor.hueOrange
+                  : gm.BitmapDescriptor.hueRed,
+            ),
+            onTap: () => setState(() => _selected = job),
+          ),
+      },
+      circles: {
+        if (widget.radiusKm case final km?)
+          gm.Circle(
+            circleId: const gm.CircleId('radius'),
+            center: g(widget.centre),
+            radius: km * 1000.0,
+            fillColor: theme.colorScheme.primary.withValues(alpha: 0.08),
+            strokeColor: theme.colorScheme.primary.withValues(alpha: 0.45),
+            strokeWidth: 2,
+          ),
+      },
+      rotateGesturesEnabled: false,
+      tiltGesturesEnabled: false,
+      zoomControlsEnabled: false,
+      mapToolbarEnabled: false,
+      myLocationButtonEnabled: false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -74,74 +128,83 @@ class _NearbyJobsMapState extends State<NearbyJobsMap> {
         height: widget.fillAvailableHeight ? null : 320,
         child: Stack(
           children: [
-            FlutterMap(
-              options: MapOptions(
-                initialCenter: widget.centre,
-                initialZoom: _initialZoom,
-                // No rotation: a tilted map helps nobody find a job and makes the labels unreadable.
-                interactionOptions: const InteractionOptions(
-                  flags: InteractiveFlag.pinchZoom |
-                      InteractiveFlag.drag |
-                      InteractiveFlag.doubleTapZoom,
+            if (useGoogleMaps)
+              _buildGoogleMap(theme)
+            else
+              FlutterMap(
+                options: MapOptions(
+                  initialCenter: widget.centre,
+                  initialZoom: _initialZoom,
+                  // No rotation: a tilted map helps nobody find a job and makes the labels unreadable.
+                  interactionOptions: const InteractionOptions(
+                    flags:
+                        InteractiveFlag.pinchZoom |
+                        InteractiveFlag.drag |
+                        InteractiveFlag.doubleTapZoom,
+                  ),
+                  onTap: (_, _) => setState(() => _selected = null),
                 ),
-                onTap: (_, _) => setState(() => _selected = null),
-              ),
-              children: [
-                TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  // OSM asks that clients identify themselves.
-                  userAgentPackageName: 'com.zuno.zuno',
-                ),
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    // OSM asks that clients identify themselves.
+                    userAgentPackageName: 'com.zuno.zuno',
+                  ),
 
-                // The radius as a ring. Far clearer than a number alone — it shows that "50 km"
-                // reaches the next district but not the one after.
-                if (widget.radiusKm case final km?)
-                  CircleLayer(
-                    circles: [
-                      CircleMarker(
+                  // The radius as a ring. Far clearer than a number alone — it shows that "50 km"
+                  // reaches the next district but not the one after.
+                  if (widget.radiusKm case final km?)
+                    CircleLayer(
+                      circles: [
+                        CircleMarker(
+                          point: widget.centre,
+                          radius: km * 1000,
+                          useRadiusInMeter: true,
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: 0.08,
+                          ),
+                          borderColor: theme.colorScheme.primary.withValues(
+                            alpha: 0.45,
+                          ),
+                          borderStrokeWidth: 1.5,
+                        ),
+                      ],
+                    ),
+
+                  MarkerLayer(
+                    markers: [
+                      // The worker, drawn differently from the jobs so it is never mistaken for one.
+                      Marker(
                         point: widget.centre,
-                        radius: km * 1000,
-                        useRadiusInMeter: true,
-                        color: theme.colorScheme.primary.withValues(alpha: 0.08),
-                        borderColor: theme.colorScheme.primary.withValues(alpha: 0.45),
-                        borderStrokeWidth: 1.5,
+                        width: 26,
+                        height: 26,
+                        child: _YouAreHere(colour: theme.colorScheme.primary),
                       ),
+                      for (final job in widget.jobs)
+                        Marker(
+                          point: LatLng(job.latitude!, job.longitude!),
+                          width: 34,
+                          height: 34,
+                          child: GestureDetector(
+                            onTap: () => setState(() => _selected = job),
+                            child: _JobPin(
+                              isSelected: _selected?.id == job.id,
+                              isApproximate: job.isLocationApproximate,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
 
-                MarkerLayer(
-                  markers: [
-                    // The worker, drawn differently from the jobs so it is never mistaken for one.
-                    Marker(
-                      point: widget.centre,
-                      width: 26,
-                      height: 26,
-                      child: _YouAreHere(colour: theme.colorScheme.primary),
-                    ),
-                    for (final job in widget.jobs)
-                      Marker(
-                        point: LatLng(job.latitude!, job.longitude!),
-                        width: 34,
-                        height: 34,
-                        child: GestureDetector(
-                          onTap: () => setState(() => _selected = job),
-                          child: _JobPin(
-                            isSelected: _selected?.id == job.id,
-                            isApproximate: job.isLocationApproximate,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-
-                // Required by the tile licence, and kept small.
-                const RichAttributionWidget(
-                  attributions: [
-                    TextSourceAttribution('OpenStreetMap contributors'),
-                  ],
-                ),
-              ],
-            ),
+                  // Required by the tile licence, and kept small.
+                  const RichAttributionWidget(
+                    attributions: [
+                      TextSourceAttribution('OpenStreetMap contributors'),
+                    ],
+                  ),
+                ],
+              ),
 
             if (_selected case final job?)
               Positioned(

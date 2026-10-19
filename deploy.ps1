@@ -127,7 +127,12 @@ if ($webChanged) {
     Step "Vercel: building the web app against $($Settings.API_BASE_URL)"
     Push-Location (Join-Path $Root 'mobile')
     try {
-        flutter build web --release "--dart-define=API_BASE_URL=$($Settings.API_BASE_URL)"; Run 'flutter build web'
+        # The Google Maps browser key turns Google maps on in the web app; without it the app uses
+        # the free maps. It is not a secret in the usual sense (every browser that opens the site sees
+        # it) — protect it by restricting it to the site's address in the Google Cloud console.
+        $defines = @("--dart-define=API_BASE_URL=$($Settings.API_BASE_URL)")
+        if ($Settings.GOOGLE_MAPS_WEB_KEY) { $defines += "--dart-define=GOOGLE_MAPS_KEY=$($Settings.GOOGLE_MAPS_WEB_KEY)" }
+        flutter build web --release @defines; Run 'flutter build web'
         Set-Location 'build/web'
         vercel deploy --prod --yes; Run 'vercel deploy'
     } finally {

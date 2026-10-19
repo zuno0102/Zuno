@@ -69,6 +69,11 @@ services:
       - key: Verification__AutoVerifyBusinesses
         value: "true"
 
+      # Google place search and address lookup (Places API (New) + Geocoding API). Server key, never
+      # shipped in the app. Leave unset to use the free OpenStreetMap search instead.
+      - key: GoogleMaps__ApiKey
+        sync: false
+
       # Where uploaded pictures are written. On the free plan this is a container filesystem with
       # no disk attached, so everything written here is lost on every deploy and on every wake from
       # sleep. See DEPLOYMENT.md — this is the one part of the app that does not survive free-tier
