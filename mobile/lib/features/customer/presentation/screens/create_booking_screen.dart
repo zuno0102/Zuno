@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/booking/presentation/providers/customer_bookings_notifier.dart';
 import 'package:zuno/features/customer/domain/entities/customer_service.dart';
+import 'package:zuno/features/customer/domain/entities/service_coverage.dart';
+import 'package:zuno/features/customer/presentation/providers/customer_providers.dart';
 import 'package:zuno/features/customer/domain/entities/service_variant.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
@@ -49,6 +51,17 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
   bool _pinMissing = false;
 
   static const _pinMissingMessage = 'Pin the job location on the map before booking.';
+
+  /// Whether the service is offered at [_pin], asked as soon as it is pinned. Null until the
+  /// answer arrives, or when the check could not be made — the server still refuses the booking
+  /// then, so a failed check never blocks the customer here.
+  ServiceCoverage? _coverage;
+
+  /// The check in flight, so a quick Confirm waits for it rather than racing past it.
+  Future<void>? _coverageCheck;
+
+  /// Bumped on every new pin, so an answer for a pin the customer has since moved is ignored.
+  int _coverageRequest = 0;
 
   bool _isSubmitting = false;
   String? _errorMessage;
@@ -130,8 +143,32 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
         final street = [?picked.street, ?picked.locality].join(', ');
         if (street.isNotEmpty) _addressLine1Controller.text = street;
       }
+      _coverage = null;
+      if (_errorMessage == _notAvailableMessage) _errorMessage = null;
     });
+    _coverageCheck = _checkCoverage(picked);
   }
+
+  static const _notAvailableMessage = 'Service not available for your location.';
+
+  Future<void> _checkCoverage(PickedLocation pin) async {
+    final request = ++_coverageRequest;
+    try {
+      final coverage = await ref
+          .read(customerRepositoryProvider)
+          .checkServiceCoverage(
+            widget.service.id,
+            latitude: pin.latitude,
+            longitude: pin.longitude,
+          );
+      if (!mounted || request != _coverageRequest) return;
+      setState(() => _coverage = coverage);
+    } catch (_) {
+      // Left unknown on purpose: the booking itself is checked by the server.
+    }
+  }
+
+  bool get _isUnavailable => _coverage?.isAvailable == false;
 
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
@@ -141,6 +178,12 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
         _pinMissing = true;
         _errorMessage = _pinMissingMessage;
       });
+      return;
+    }
+    await _coverageCheck;
+    if (!mounted) return;
+    if (_isUnavailable) {
+      setState(() => _errorMessage = _notAvailableMessage);
       return;
     }
     if (!formOk) {
@@ -321,6 +364,7 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
                 pin: _pin,
                 isMissing: _pinMissing,
                 onPick: _pickLocation,
+                unavailable: _isUnavailable ? _coverage : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -415,11 +459,15 @@ class _JobLocationField extends StatelessWidget {
     required this.pin,
     required this.isMissing,
     required this.onPick,
+    this.unavailable,
   });
 
   final PickedLocation? pin;
   final bool isMissing;
   final VoidCallback onPick;
+
+  /// Set when the service is not offered at the pin, to say so right under it.
+  final ServiceCoverage? unavailable;
 
   @override
   Widget build(BuildContext context) {
@@ -438,6 +486,48 @@ class _JobLocationField extends StatelessWidget {
             caption: 'Job location pinned',
             showActions: false,
           ),
+          if (unavailable case final coverage?) ...[
+            const SizedBox(height: 10),
+            Container(
+              key: const Key('bookingServiceUnavailable'),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: theme.colorScheme.error),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.location_off_outlined, color: theme.colorScheme.error),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Service not available for your location',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            color: theme.colorScheme.onErrorContainer,
+                          ),
+                        ),
+                        if (coverage.servedDistricts.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            'This service is offered only in '
+                            '${coverage.servedDistricts.join(', ')}.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onErrorContainer,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           Align(
             alignment: Alignment.centerRight,
             child: TextButton.icon(

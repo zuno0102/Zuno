@@ -1,6 +1,7 @@
 import 'package:zuno/features/customer/data/datasources/customer_remote_datasource.dart';
 import 'package:zuno/features/customer/domain/entities/business_detail.dart';
 import 'package:zuno/features/customer/domain/entities/home_sections.dart';
+import 'package:zuno/features/customer/domain/entities/service_coverage.dart';
 import 'package:zuno/features/customer/domain/entities/service_detail.dart';
 import 'package:zuno/features/customer/domain/entities/service_listing.dart';
 import 'package:zuno/features/customer/domain/repositories/customer_repository.dart';
@@ -33,6 +34,17 @@ class CustomerRepositoryImpl implements CustomerRepository {
   @override
   Future<ServiceDetail> getServiceDetail(String id) async =>
       (await _remoteDataSource.getServiceDetail(id)).toEntity();
+
+  @override
+  Future<ServiceCoverage> checkServiceCoverage(
+    String serviceId, {
+    required double latitude,
+    required double longitude,
+  }) => _remoteDataSource.checkServiceCoverage(
+    serviceId,
+    latitude: latitude,
+    longitude: longitude,
+  );
 
   @override
   Future<BusinessDetail> getBusinessDetail(String id) async =>

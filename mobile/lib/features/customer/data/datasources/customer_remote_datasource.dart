@@ -5,6 +5,7 @@ import 'package:zuno/features/customer/data/models/business_detail_model.dart';
 import 'package:zuno/features/customer/data/models/home_sections_model.dart';
 import 'package:zuno/features/customer/data/models/service_detail_model.dart';
 import 'package:zuno/features/customer/data/models/service_listing_model.dart';
+import 'package:zuno/features/customer/domain/entities/service_coverage.dart';
 
 class CustomerRemoteDataSource {
   CustomerRemoteDataSource(this._dio);
@@ -75,6 +76,23 @@ class CustomerRemoteDataSource {
         ApiConstants.customerServiceDetailPath(id),
       );
       return ServiceDetailModel.fromJson(response.data!);
+    } on DioException catch (e) {
+      throw mapDioExceptionToAppException(e);
+    }
+  }
+
+  /// Whether the service is offered at the pinned location — asked as soon as the customer pins it.
+  Future<ServiceCoverage> checkServiceCoverage(
+    String serviceId, {
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        ApiConstants.customerServiceCoveragePath(serviceId),
+        queryParameters: {'latitude': latitude, 'longitude': longitude},
+      );
+      return ServiceCoverage.fromJson(response.data!);
     } on DioException catch (e) {
       throw mapDioExceptionToAppException(e);
     }

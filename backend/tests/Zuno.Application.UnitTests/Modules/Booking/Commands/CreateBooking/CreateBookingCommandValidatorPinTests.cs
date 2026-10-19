@@ -18,6 +18,8 @@ public class CreateBookingCommandValidatorPinTests
         dbContext.Setup(d => d.BusinessServices).Returns(TestDbSet.From<BusinessService>());
         dbContext.Setup(d => d.BusinessServiceVariants).Returns(TestDbSet.From<BusinessServiceVariant>());
         dbContext.Setup(d => d.BusinessServiceQuestions).Returns(TestDbSet.From<BusinessServiceQuestion>());
+        dbContext.Setup(d => d.BusinessServiceDistricts).Returns(TestDbSet.From<BusinessServiceDistrict>());
+        dbContext.Setup(d => d.Districts).Returns(TestDbSet.From<District>());
 
         var clock = new Mock<IDateTimeProvider>();
         clock.Setup(c => c.UtcNow).Returns(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));

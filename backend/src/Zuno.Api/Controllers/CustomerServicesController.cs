@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Zuno.Api.Authorization;
+using Zuno.Application.Modules.Customer.Queries.CheckServiceCoverage;
 using Zuno.Application.Modules.Customer.Queries.GetDailyBanners;
 using Zuno.Application.Modules.Customer.Queries.GetHomeSections;
 using Zuno.Application.Modules.Customer.Queries.GetServiceDetail;
@@ -65,6 +66,20 @@ public class CustomerServicesController(ISender mediator) : ControllerBase
     public async Task<IActionResult> GetDetail(Guid id, CancellationToken cancellationToken)
     {
         var result = await mediator.Send(new GetServiceDetailQuery(id), cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>Whether this service is offered at the pinned location, checked as soon as it is pinned.</summary>
+    [HttpGet("{id:guid}/coverage")]
+    public async Task<IActionResult> CheckCoverage(
+        Guid id,
+        [FromQuery] decimal latitude,
+        [FromQuery] decimal longitude,
+        CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(
+            new CheckServiceCoverageQuery(id, latitude, longitude),
+            cancellationToken);
         return Ok(result);
     }
 }

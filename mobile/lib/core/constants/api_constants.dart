@@ -103,6 +103,10 @@ class ApiConstants {
   static String customerServiceDetailPath(String id) =>
       '$customerServicesPath/$id';
 
+  /// Whether a service is offered at a pinned location.
+  static String customerServiceCoveragePath(String id) =>
+      '$customerServicesPath/$id/coverage';
+
   /// Today's seven banner services, rotated daily by the server.
   static const String customerBannersPath = '$customerServicesPath/banners';
 

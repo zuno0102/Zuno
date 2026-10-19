@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Zuno.Application.Common.Interfaces;
+using Zuno.Application.Modules.Booking.Common;
 using Zuno.Domain.Enums;
 
 namespace Zuno.Application.Modules.Booking.Commands.CreateBooking;
@@ -80,5 +81,27 @@ public class CreateBookingCommandValidator : AbstractValidator<CreateBookingComm
         RuleFor(x => x.Longitude)
             .NotNull().WithMessage("Pin the job location on the map.")
             .InclusiveBetween(-180m, 180m).WithMessage("The pinned location is not valid. Pin it again.");
+
+        // The business chose where it works. An order pinned outside those districts is refused
+        // here rather than left for the business to discover and cancel.
+        RuleFor(x => x.Latitude)
+            .CustomAsync(async (_, context, cancellationToken) =>
+            {
+                var command = context.InstanceToValidate;
+                var check = await ServiceAreaCheck.CheckAsync(
+                    command.BusinessServiceId,
+                    command.Latitude!.Value,
+                    command.Longitude!.Value,
+                    dbContext,
+                    cancellationToken);
+
+                if (!check.IsServed)
+                {
+                    context.AddFailure(
+                        "Service not available for your location. This service is offered only in "
+                        + string.Join(", ", check.ServedDistrictNames) + ".");
+                }
+            })
+            .When(x => x.Latitude is >= -90m and <= 90m && x.Longitude is >= -180m and <= 180m);
     }
 }

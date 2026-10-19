@@ -1,5 +1,6 @@
 import 'package:zuno/features/customer/domain/entities/business_detail.dart';
 import 'package:zuno/features/customer/domain/entities/home_sections.dart';
+import 'package:zuno/features/customer/domain/entities/service_coverage.dart';
 import 'package:zuno/features/customer/domain/entities/service_detail.dart';
 import 'package:zuno/features/customer/domain/entities/service_listing.dart';
 
@@ -19,6 +20,13 @@ abstract interface class CustomerRepository {
 
   /// One service on its own, with every package it is sold in.
   Future<ServiceDetail> getServiceDetail(String id);
+
+  /// Whether the service is offered at the pinned location.
+  Future<ServiceCoverage> checkServiceCoverage(
+    String serviceId, {
+    required double latitude,
+    required double longitude,
+  });
 
   Future<BusinessDetail> getBusinessDetail(String id);
 }
