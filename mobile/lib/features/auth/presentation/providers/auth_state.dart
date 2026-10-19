@@ -8,7 +8,8 @@ part 'auth_state.freezed.dart';
 /// `AsyncValue.loading()`/`AsyncValue.error()` rather than duplicated here.
 @freezed
 sealed class AuthState with _$AuthState {
-  const factory AuthState.unauthenticated() = AuthUnauthenticated;
+  /// [notice] explains a sign-out the person did not ask for, shown on the login screen.
+  const factory AuthState.unauthenticated({String? notice}) = AuthUnauthenticated;
 
   const factory AuthState.authenticated(User user) = AuthAuthenticated;
 }

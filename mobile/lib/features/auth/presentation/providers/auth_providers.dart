@@ -62,6 +62,8 @@ AuthInterceptor authInterceptor(Ref ref) {
     },
     onSessionExpired: () =>
         ref.read(authProvider.notifier).handleSessionExpired(),
+    onAccountSwitched: () =>
+        ref.read(authProvider.notifier).handleAccountSwitchedElsewhere(),
   );
 }
 

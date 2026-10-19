@@ -119,10 +119,10 @@ return authenticated(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  unauthenticated,TResult Function( User user)?  authenticated,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String? notice)?  unauthenticated,TResult Function( User user)?  authenticated,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case AuthUnauthenticated() when unauthenticated != null:
-return unauthenticated();case AuthAuthenticated() when authenticated != null:
+return unauthenticated(_that.notice);case AuthAuthenticated() when authenticated != null:
 return authenticated(_that.user);case _:
   return orElse();
 
@@ -141,10 +141,10 @@ return authenticated(_that.user);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  unauthenticated,required TResult Function( User user)  authenticated,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String? notice)  unauthenticated,required TResult Function( User user)  authenticated,}) {final _that = this;
 switch (_that) {
 case AuthUnauthenticated():
-return unauthenticated();case AuthAuthenticated():
+return unauthenticated(_that.notice);case AuthAuthenticated():
 return authenticated(_that.user);}
 }
 /// A variant of `when` that fallback to returning `null`
@@ -159,10 +159,10 @@ return authenticated(_that.user);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  unauthenticated,TResult? Function( User user)?  authenticated,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String? notice)?  unauthenticated,TResult? Function( User user)?  authenticated,}) {final _that = this;
 switch (_that) {
 case AuthUnauthenticated() when unauthenticated != null:
-return unauthenticated();case AuthAuthenticated() when authenticated != null:
+return unauthenticated(_that.notice);case AuthAuthenticated() when authenticated != null:
 return authenticated(_that.user);case _:
   return null;
 
@@ -175,33 +175,67 @@ return authenticated(_that.user);case _:
 
 
 class AuthUnauthenticated implements AuthState {
-  const AuthUnauthenticated();
+  const AuthUnauthenticated({this.notice});
   
 
+ final  String? notice;
 
-
+/// Create a copy of AuthState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$AuthUnauthenticatedCopyWith<AuthUnauthenticated> get copyWith => _$AuthUnauthenticatedCopyWithImpl<AuthUnauthenticated>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthUnauthenticated);
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthUnauthenticated&&(identical(other.notice, notice) || other.notice == notice));
 }
 
 
 @override
-int get hashCode => runtimeType.hashCode;
+int get hashCode => Object.hash(runtimeType,notice);
 
 @override
 String toString() {
-  return 'AuthState.unauthenticated()';
+  return 'AuthState.unauthenticated(notice: $notice)';
 }
 
 
 }
 
+/// @nodoc
+abstract mixin class $AuthUnauthenticatedCopyWith<$Res> implements $AuthStateCopyWith<$Res> {
+  factory $AuthUnauthenticatedCopyWith(AuthUnauthenticated value, $Res Function(AuthUnauthenticated) _then) = _$AuthUnauthenticatedCopyWithImpl;
+@useResult
+$Res call({
+ String? notice
+});
 
 
+
+
+}
+/// @nodoc
+class _$AuthUnauthenticatedCopyWithImpl<$Res>
+    implements $AuthUnauthenticatedCopyWith<$Res> {
+  _$AuthUnauthenticatedCopyWithImpl(this._self, this._then);
+
+  final AuthUnauthenticated _self;
+  final $Res Function(AuthUnauthenticated) _then;
+
+/// Create a copy of AuthState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? notice = freezed,}) {
+  return _then(AuthUnauthenticated(
+notice: freezed == notice ? _self.notice : notice // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
 
 /// @nodoc
 

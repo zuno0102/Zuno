@@ -132,6 +132,21 @@ class AuthNotifier extends _$AuthNotifier {
     state = const AsyncData(AuthState.unauthenticated());
   }
 
+  /// Another tab of the web app signed in as a different account, replacing this tab's login.
+  ///
+  /// This tab is signed out on screen — without touching the saved login, which now belongs to the
+  /// other tab and is perfectly valid there — and the login screen says why. Carrying on would have
+  /// shown and sent things as the wrong person.
+  void handleAccountSwitchedElsewhere() {
+    if (state.value is! AuthAuthenticated) return;
+    unawaited(_clearTheShade());
+    state = const AsyncData(
+      AuthState.unauthenticated(
+        notice: 'You signed in as another account in another tab. Sign in again here.',
+      ),
+    );
+  }
+
   /// Never allowed to fail the sign-out it is part of.
   Future<void> _clearTheShade() async {
     try {

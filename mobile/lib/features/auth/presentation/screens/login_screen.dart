@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:zuno/core/utils/validators.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
+import 'package:zuno/features/auth/presentation/providers/auth_state.dart';
 import 'package:zuno/features/auth/presentation/widgets/auth_text_field.dart';
 import 'package:zuno/shared/widgets/auth_backdrop.dart';
 import 'package:zuno/shared/widgets/auth_card.dart';
@@ -45,7 +46,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final isLoading = authState.isLoading;
-    final errorMessage = authState.hasError ? authState.error.toString() : null;
+    final errorMessage = authState.hasError
+        ? authState.error.toString()
+        // Why they are here without having signed out, e.g. another tab took over the login.
+        : switch (authState.value) {
+            AuthUnauthenticated(:final notice?) => notice,
+            _ => null,
+          };
 
     return Scaffold(
       body: AuthBackdrop(

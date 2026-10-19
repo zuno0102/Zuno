@@ -153,7 +153,7 @@ final class AuthInterceptorProvider
   }
 }
 
-String _$authInterceptorHash() => r'ab28b68560aa18abe482378b40eefe954d989f39';
+String _$authInterceptorHash() => r'd76d007c6548f393a0a0ef885e3dc2211ac320ff';
 
 @ProviderFor(dioClient)
 final dioClientProvider = DioClientProvider._();
