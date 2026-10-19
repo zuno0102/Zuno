@@ -4,6 +4,7 @@ import 'package:zuno/features/customer/domain/entities/customer_service.dart';
 import 'package:zuno/features/customer/domain/entities/service_variant.dart';
 import 'package:zuno/features/customer/presentation/screens/create_booking_screen.dart';
 import 'package:zuno/features/customer/presentation/widgets/service_gallery_app_bar.dart';
+import 'package:zuno/features/customer/presentation/widgets/share_service.dart';
 
 /// One of the services listed inside another, opened on its own.
 ///
@@ -39,7 +40,15 @@ class ServiceVariantDetailScreen extends StatelessWidget {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          ServiceGalleryAppBar(images: images, title: variant.name),
+          ServiceGalleryAppBar(
+            images: images,
+            title: variant.name,
+            onShare: () => shareService(
+              context,
+              name: variant.name,
+              price: priceLabel(variant.price, variant.priceType),
+            ),
+          ),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),

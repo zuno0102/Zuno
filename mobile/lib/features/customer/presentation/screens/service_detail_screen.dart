@@ -11,6 +11,7 @@ import 'package:zuno/features/customer/presentation/providers/customer_providers
 import 'package:zuno/features/customer/presentation/screens/create_booking_screen.dart';
 import 'package:zuno/features/customer/presentation/screens/service_variant_detail_screen.dart';
 import 'package:zuno/features/customer/presentation/widgets/service_gallery_app_bar.dart';
+import 'package:zuno/features/customer/presentation/widgets/share_service.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/section_header.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
@@ -85,7 +86,15 @@ class _ServiceDetailBody extends StatelessWidget {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          ServiceGalleryAppBar(images: detail.images, title: service.name),
+          ServiceGalleryAppBar(
+            images: detail.images,
+            title: service.name,
+            onShare: () => shareService(
+              context,
+              name: service.name,
+              price: detail.priceLabel,
+            ),
+          ),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -459,7 +468,7 @@ class _VariantCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Details',
+                      'View details',
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: theme.colorScheme.primary,
                         fontWeight: FontWeight.w600,

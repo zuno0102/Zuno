@@ -79,7 +79,9 @@ void main() {
     ServiceDetail data, {
     bool showRelatedServices = true,
   }) async {
-    tester.view.physicalSize = const Size(900, 2000);
+    // Taller than a real phone on purpose: the gallery is sized from the viewport now, so a short
+    // surface pushes the related services under the pinned bar and nothing below it can be tapped.
+    tester.view.physicalSize = const Size(900, 2800);
     tester.view.devicePixelRatio = 2;
     addTearDown(tester.view.reset);
 
@@ -131,7 +133,7 @@ void main() {
 
       expect(find.text('Book'), findsOneWidget);
       expect(
-        find.text('Details'),
+        find.text('View details'),
         findsOneWidget,
         reason: 'Book alone gave a customer nothing to read before committing',
       );
@@ -185,7 +187,7 @@ void main() {
       );
 
       expect(find.text('Related services'), findsOneWidget);
-      expect(find.text('Details'), findsNWidgets(2));
+      expect(find.text('View details'), findsNWidgets(2));
 
       await tester.tap(find.text('Exterior painting').first);
       await tester.pumpAndSettle();

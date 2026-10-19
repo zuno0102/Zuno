@@ -4,22 +4,33 @@ import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:zuno/core/constants/api_constants.dart';
-import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/features/customer/domain/entities/service_media.dart';
 
-/// The picture gallery at the top of a service page, collapsing into a plain bar as it scrolls.
+/// The bar and the picture gallery at the top of a service page.
 ///
 /// Shared by the service page and by each service inside it, so a customer who opens one of the
 /// smaller services gets the same page they came from rather than a stripped-down version of it.
+///
+/// The bar is its own white strip above the picture rather than floating on top of it. Drawn over
+/// the photograph it needed a dark wash behind the back arrow to stay legible, the service name
+/// sat across whatever happened to be in the middle of the image, and that name was already the
+/// heading an inch below. On its own strip none of that is needed: the picture is shown clean, and
+/// the bar says what the page is.
 class ServiceGalleryAppBar extends StatefulWidget {
   const ServiceGalleryAppBar({
     required this.images,
     required this.title,
+    this.onShare,
     super.key,
   });
 
   final List<ServiceMedia> images;
+
+  /// Read by screen readers, so the page is still named for anyone not looking at it.
   final String title;
+
+  /// Shown as an action only when a screen provides one.
+  final VoidCallback? onShare;
 
   @override
   State<ServiceGalleryAppBar> createState() => _ServiceGalleryAppBarState();
@@ -32,7 +43,6 @@ class _ServiceGalleryAppBarState extends State<ServiceGalleryAppBar> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final screen = MediaQuery.sizeOf(context);
-    final topInset = MediaQuery.paddingOf(context).top;
 
     // Sized from the screen rather than fixed at 260.
     //
@@ -42,49 +52,78 @@ class _ServiceGalleryAppBarState extends State<ServiceGalleryAppBar> {
     // frame, which suits the way people photograph a room or a finished job; the half-screen cap
     // keeps the price and the Book button in view on a short phone, which matters more than the
     // picture does.
-    final expandedHeight = math.min(screen.width * 0.9, screen.height * 0.5);
+    final galleryHeight = math.min(screen.width * 0.9, screen.height * 0.5);
 
-    return SliverAppBar(
-      expandedHeight: expandedHeight,
-      pinned: true,
-      flexibleSpace: LayoutBuilder(
-        builder: (context, constraints) {
-          // Within a few pixels of collapsed, allowing for the rounding that comes out of a
-          // scroll in progress.
-          final isCollapsed =
-              constraints.maxHeight <= kToolbarHeight + topInset + 8;
-
-          return FlexibleSpaceBar(
-            // Named only once the picture has gone.
-            //
-            // The title used to be set on the app bar itself, which draws it over the photograph
-            // the whole time it is expanded: dark text on whatever happened to be in the middle
-            // of the image, beside the back arrow, and repeating the heading the page already
-            // shows an inch below it. Here it appears as the bar closes, where it is the only
-            // thing naming what you are looking at.
-            title: isCollapsed
-                ? Text(
-                    widget.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  )
-                : null,
-            titlePadding: const EdgeInsetsDirectional.only(
-              start: 56,
-              end: 16,
-              bottom: 14,
+    return SliverMainAxisGroup(
+      slivers: [
+        SliverAppBar(
+          pinned: true,
+          centerTitle: true,
+          backgroundColor: theme.colorScheme.surface,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          leading: _RoundAction(
+            icon: Icons.arrow_back_ios_new_rounded,
+            label: 'Back',
+            onPressed: () => Navigator.of(context).maybePop(),
+          ),
+          title: Text(
+            'Details',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
             ),
-            background: _Gallery(
+          ),
+          actions: [
+            if (widget.onShare != null)
+              _RoundAction(
+                icon: Icons.ios_share_rounded,
+                label: 'Share ${widget.title}',
+                onPressed: widget.onShare!,
+              ),
+          ],
+        ),
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: galleryHeight,
+            child: _Gallery(
               images: widget.images,
               page: _page,
               onPageChanged: (i) => setState(() => _page = i),
             ),
-          );
-        },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A bar button on a soft disc, so it reads as a control rather than a loose glyph.
+class _RoundAction extends StatelessWidget {
+  const _RoundAction({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Center(
+      child: IconButton(
+        onPressed: onPressed,
+        tooltip: label,
+        icon: Icon(icon, size: 18),
+        style: IconButton.styleFrom(
+          minimumSize: const Size(38, 38),
+          backgroundColor: theme.colorScheme.surfaceContainerHighest,
+          foregroundColor: theme.colorScheme.onSurface,
+        ),
       ),
     );
   }
@@ -125,25 +164,6 @@ class _Gallery extends StatelessWidget {
           itemBuilder: (context, index) =>
               _Photograph(url: '${ApiConstants.baseUrl}${images[index].url}'),
         ),
-
-        // A wash under the back arrow, which otherwise sits on bare photograph and disappears
-        // against anything pale.
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          height: kToolbarHeight + MediaQuery.paddingOf(context).top,
-          child: const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [AppColors.scrim, Colors.transparent],
-              ),
-            ),
-          ),
-        ),
-
         if (images.length > 1)
           Positioned(
             bottom: 12,
