@@ -1,11 +1,7 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart' as gm;
 import 'package:latlong2/latlong.dart';
-import 'package:zuno/core/maps/google_maps_config.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
 import 'package:zuno/features/worker/presentation/providers/worker_job_filter_provider.dart';
@@ -82,7 +78,6 @@ class _SingleJobMapScreenState extends ConsumerState<SingleJobMapScreen> {
   @override
   void dispose() {
     _mapController.dispose();
-    _googleController?.dispose();
     super.dispose();
   }
 
@@ -148,80 +143,11 @@ class _SingleJobMapScreenState extends ConsumerState<SingleJobMapScreen> {
       ...route.points.map((p) => LatLng(p.$1, p.$2)),
     ];
 
-    if (useGoogleMaps) {
-      final lats = points.map((p) => p.latitude);
-      final lngs = points.map((p) => p.longitude);
-      _googleController?.animateCamera(
-        gm.CameraUpdate.newLatLngBounds(
-          gm.LatLngBounds(
-            southwest: gm.LatLng(lats.reduce(math.min), lngs.reduce(math.min)),
-            northeast: gm.LatLng(lats.reduce(math.max), lngs.reduce(math.max)),
-          ),
-          36,
-        ),
-      );
-      return;
-    }
-
     _mapController.fitCamera(
       CameraFit.coordinates(
         coordinates: points,
         padding: const EdgeInsets.all(36),
       ),
-    );
-  }
-
-  gm.GoogleMapController? _googleController;
-
-  /// The same journey on Google's map: venue, starting point, and the road route (or the straight
-  /// line when there is none yet).
-  Widget _buildGoogleMap(ThemeData theme) {
-    final origin = _origin;
-    gm.LatLng g(LatLng p) => gm.LatLng(p.latitude, p.longitude);
-
-    return gm.GoogleMap(
-      initialCameraPosition: gm.CameraPosition(target: g(_target), zoom: 14),
-      onMapCreated: (controller) {
-        _googleController = controller;
-        if (_route case final route?) _frameRoute(route);
-      },
-      markers: {
-        gm.Marker(
-          markerId: const gm.MarkerId('job'),
-          position: g(_target),
-          infoWindow: gm.InfoWindow(title: widget.job.title),
-        ),
-        if (origin != null)
-          gm.Marker(
-            markerId: const gm.MarkerId('from'),
-            position: g(origin),
-            icon: gm.BitmapDescriptor.defaultMarkerWithHue(
-              gm.BitmapDescriptor.hueAzure,
-            ),
-            infoWindow: const gm.InfoWindow(title: 'You'),
-          ),
-      },
-      polylines: {
-        if (origin != null)
-          if (_route case final route?)
-            gm.Polyline(
-              polylineId: const gm.PolylineId('route'),
-              points: route.points.map((p) => gm.LatLng(p.$1, p.$2)).toList(),
-              width: 5,
-              color: theme.colorScheme.primary,
-            )
-          else
-            gm.Polyline(
-              polylineId: const gm.PolylineId('straight'),
-              points: [g(origin), g(_target)],
-              width: 2,
-              color: theme.colorScheme.primary.withValues(alpha: 0.5),
-              patterns: [gm.PatternItem.dash(12), gm.PatternItem.gap(8)],
-            ),
-      },
-      zoomControlsEnabled: false,
-      mapToolbarEnabled: false,
-      myLocationButtonEnabled: false,
     );
   }
 
@@ -268,100 +194,92 @@ class _SingleJobMapScreenState extends ConsumerState<SingleJobMapScreen> {
           Expanded(
             child: Stack(
               children: [
-                if (useGoogleMaps)
-                  _buildGoogleMap(theme)
-                else
-                  FlutterMap(
-                    mapController: _mapController,
-                    options: MapOptions(
-                      initialCenter: _target,
-                      initialZoom: 14,
-                      interactionOptions: const InteractionOptions(
-                        flags:
-                            InteractiveFlag.pinchZoom |
-                            InteractiveFlag.drag |
-                            InteractiveFlag.doubleTapZoom,
-                      ),
+                FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    initialCenter: _target,
+                    initialZoom: 14,
+                    interactionOptions: const InteractionOptions(
+                      flags: InteractiveFlag.pinchZoom |
+                          InteractiveFlag.drag |
+                          InteractiveFlag.doubleTapZoom,
                     ),
-                    children: [
-                      TileLayer(
-                        urlTemplate:
-                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        userAgentPackageName: 'com.zuno.zuno',
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.zuno.zuno',
+                    ),
+
+                    if (_origin case final origin?)
+                      PolylineLayer(
+                        polylines: [
+                          if (_route case final route?) ...[
+                            // Drawn twice: a wide pale line underneath and the solid one on top, so
+                            // the route stays legible over dark map features and dense towns.
+                            Polyline(
+                              points: route.points
+                                  .map((p) => LatLng(p.$1, p.$2))
+                                  .toList(),
+                              strokeWidth: 9,
+                              color: Colors.white.withValues(alpha: 0.75),
+                            ),
+                            Polyline(
+                              points: route.points
+                                  .map((p) => LatLng(p.$1, p.$2))
+                                  .toList(),
+                              strokeWidth: 5,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ] else
+                            // No road route, or still fetching: the straight line is honest about
+                            // being a direction rather than a way to travel.
+                            Polyline(
+                              points: [origin, _target],
+                              strokeWidth: 2,
+                              color: theme.colorScheme.primary.withValues(
+                                alpha: 0.5,
+                              ),
+                              pattern: StrokePattern.dotted(),
+                            ),
+                        ],
                       ),
 
-                      if (_origin case final origin?)
-                        PolylineLayer(
-                          polylines: [
-                            if (_route case final route?) ...[
-                              // Drawn twice: a wide pale line underneath and the solid one on top, so
-                              // the route stays legible over dark map features and dense towns.
-                              Polyline(
-                                points: route.points
-                                    .map((p) => LatLng(p.$1, p.$2))
-                                    .toList(),
-                                strokeWidth: 9,
-                                color: Colors.white.withValues(alpha: 0.75),
-                              ),
-                              Polyline(
-                                points: route.points
-                                    .map((p) => LatLng(p.$1, p.$2))
-                                    .toList(),
-                                strokeWidth: 5,
-                                color: theme.colorScheme.primary,
-                              ),
-                            ] else
-                              // No road route, or still fetching: the straight line is honest about
-                              // being a direction rather than a way to travel.
-                              Polyline(
-                                points: [origin, _target],
-                                strokeWidth: 2,
-                                color: theme.colorScheme.primary.withValues(
-                                  alpha: 0.5,
-                                ),
-                                pattern: StrokePattern.dotted(),
-                              ),
-                          ],
-                        ),
-
-                      MarkerLayer(
-                        markers: [
-                          if (_origin case final origin?)
-                            Marker(
-                              point: origin,
-                              width: 26,
-                              height: 26,
-                              child: _EndPoint(
-                                colour: theme.colorScheme.primary,
-                                label: 'A',
-                              ),
-                            ),
+                    MarkerLayer(
+                      markers: [
+                        if (_origin case final origin?)
                           Marker(
-                            point: _target,
-                            width: 40,
-                            height: 40,
-                            child: Icon(
-                              Icons.location_on,
-                              size: 40,
-                              color: theme.colorScheme.tertiary,
-                              shadows: const [
-                                Shadow(
-                                  blurRadius: 4,
-                                  color: AppColors.shadowStrong,
-                                ),
-                              ],
+                            point: origin,
+                            width: 26,
+                            height: 26,
+                            child: _EndPoint(
+                              colour: theme.colorScheme.primary,
+                              label: 'A',
                             ),
                           ),
-                        ],
-                      ),
+                        Marker(
+                          point: _target,
+                          width: 40,
+                          height: 40,
+                          child: Icon(
+                            Icons.location_on,
+                            size: 40,
+                            color: theme.colorScheme.tertiary,
+                            shadows: const [
+                              Shadow(blurRadius: 4, color: AppColors.shadowStrong),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
 
-                      const RichAttributionWidget(
-                        attributions: [
-                          TextSourceAttribution('OpenStreetMap contributors'),
-                        ],
-                      ),
-                    ],
-                  ),
+                    const RichAttributionWidget(
+                      attributions: [
+                        TextSourceAttribution('OpenStreetMap contributors'),
+                      ],
+                    ),
+                  ],
+                ),
 
                 if (_isLoadingRoute)
                   Positioned(
@@ -378,10 +296,7 @@ class _SingleJobMapScreenState extends ConsumerState<SingleJobMapScreen> {
                           color: theme.colorScheme.surface,
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: const [
-                            BoxShadow(
-                              blurRadius: 4,
-                              color: AppColors.shadowSoft,
-                            ),
+                            BoxShadow(blurRadius: 4, color: AppColors.shadowSoft),
                           ],
                         ),
                         child: Text(

@@ -1,9 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart' as gm;
-import 'package:zuno/core/maps/google_maps_config.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:zuno/core/theme/app_colors.dart';
@@ -81,35 +78,7 @@ class JobLocationCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_hasPin && useGoogleMaps)
-            SizedBox(
-              height: 160,
-              // Google's map with the lanes and buildings, as a still picture: gestures off so the
-              // page scrolls past it. Lite mode on Android draws it as a static image, cheaply.
-              child: IgnorePointer(
-                child: gm.GoogleMap(
-                  initialCameraPosition: gm.CameraPosition(
-                    target: gm.LatLng(latitude!, longitude!),
-                    zoom: 17,
-                  ),
-                  liteModeEnabled: !kIsWeb && defaultTargetPlatform == TargetPlatform.android,
-                  markers: {
-                    gm.Marker(
-                      markerId: const gm.MarkerId('job'),
-                      position: gm.LatLng(latitude!, longitude!),
-                    ),
-                  },
-                  zoomControlsEnabled: false,
-                  mapToolbarEnabled: false,
-                  myLocationButtonEnabled: false,
-                  scrollGesturesEnabled: false,
-                  zoomGesturesEnabled: false,
-                  rotateGesturesEnabled: false,
-                  tiltGesturesEnabled: false,
-                ),
-              ),
-            )
-          else if (_hasPin)
+          if (_hasPin)
             SizedBox(
               height: 140,
               child: Stack(

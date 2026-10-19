@@ -1,4 +1,3 @@
-import java.util.Base64
 import java.util.Properties
 
 plugins {
@@ -20,17 +19,6 @@ val keystoreProperties = Properties().apply {
     }
 }
 val hasReleaseKeystore = keystoreProperties.containsKey("storeFile")
-
-// The --dart-define values, which Flutter hands Gradle base64-encoded and comma-separated.
-val dartDefines: Map<String, String> =
-    (project.findProperty("dart-defines") as String?)
-        ?.split(",")
-        ?.filter { it.isNotBlank() }
-        ?.associate {
-            val pair = String(Base64.getDecoder().decode(it))
-            pair.substringBefore("=") to pair.substringAfter("=", "")
-        }
-        ?: emptyMap()
 
 android {
     namespace = "com.zuno.zuno"
@@ -58,11 +46,6 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-
-        // The Google Maps key, taken from the same `--dart-define=GOOGLE_MAPS_KEY=...` the Dart
-        // side reads, so one build flag switches both on. Empty when not given: the app then draws
-        // its free maps and never creates a Google map that would need the key.
-        manifestPlaceholders["googleMapsKey"] = dartDefines["GOOGLE_MAPS_KEY"] ?: ""
     }
 
     signingConfigs {

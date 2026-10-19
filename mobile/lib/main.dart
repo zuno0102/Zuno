@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:zuno/core/maps/google_maps_loader.dart';
 import 'package:zuno/core/notifications/system_notifications.dart';
 import 'package:zuno/core/router/app_router.dart';
 import 'package:zuno/core/theme/app_colors.dart';
@@ -21,10 +20,6 @@ Future<void> main() async {
   } catch (error, stack) {
     debugPrint('[Notifications] Could not set up the shade: $error\n$stack');
   }
-
-  // Google's map script, on the web only and only when a key was built in. Awaited (with its own
-  // time limit) so the first map drawn is a Google one rather than a fallback.
-  await loadGoogleMapsScript();
 
   runApp(const ProviderScope(child: ZunoApp()));
 }
