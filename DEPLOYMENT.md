@@ -15,6 +15,61 @@ The Android app is unaffected by all of this — it keeps talking to whatever
 
 ---
 
+## How Zuno ships — read this before every deploy
+
+**The only repository is https://github.com/zuno0102/Zuno.** Not `Riva0904/Zuno`, not
+`zuno0102/ZunoProject`. `git remote -v` must show exactly:
+
+```
+origin  https://github.com/zuno0102/Zuno.git
+```
+
+| Thing | Value |
+|---|---|
+| Work branch | `Zuno_Dev` — every change is committed here first |
+| Release branch | `main` — always a fast-forward of `Zuno_Dev`, never committed to directly |
+| API (Render) | service `zuno-api` → https://zuno-api-qon8.onrender.com, deploys branch **`main`** |
+| Web (Vercel) | project `web` (linked from `mobile/build/web`) → https://web-three-zeta-59.vercel.app |
+| Database (Neon) | PostgreSQL; schema changes go out with `dotnet ef database update` |
+
+### Deploy with one command
+
+From the repository root, in PowerShell:
+
+```powershell
+.\deploy.ps1 -Message "What changed and why"
+```
+
+It does, in this order, and only the parts that are needed:
+
+1. commits uncommitted changes to `Zuno_Dev`;
+2. compares against `origin/main` (what is live) to see what changed;
+3. **Neon** — if `Persistence/Migrations/` changed, runs `dotnet ef database update` against Neon
+   *before* the new API goes out;
+4. pushes `Zuno_Dev`, then fast-forwards `main` to it;
+5. **Render** — if `backend/` or `render.yaml` changed, calls the deploy hook;
+6. **Vercel** — if the Flutter app changed, rebuilds the web app against the live API and deploys it.
+
+With nothing to commit it just deploys whatever `main` is missing; `-Force` redeploys Render and
+Vercel regardless.
+
+### One-time setup for the script
+
+1. Copy `deploy.env.example` to `.env.deploy` (gitignored) and fill in:
+   - `RENDER_DEPLOY_HOOK_URL` — Render → `zuno-api` → **Settings → Deploy Hook**;
+   - `NEON_CONNECTION_STRING` — Neon dashboard → **Connect**, in the Npgsql form shown below.
+2. Render → `zuno-api` → **Settings**: repository `zuno0102/Zuno`, branch **`main`**, auto-deploy on.
+3. `vercel login` once (the CLI must be signed in to the account that owns the `web` project).
+4. Git signed in to GitHub as `zuno0102` (Windows Credential Manager → `git:https://github.com`).
+
+### Render environment variables that must be set
+
+`ConnectionStrings__ZunoDatabase`, `Cors__AllowedOrigins__0` (= `https://web-three-zeta-59.vercel.app`),
+`Razorpay__KeyId`, `Razorpay__KeySecret`, `AdminSeed__Email`, `AdminSeed__Password`, and — while
+testing, until the admin verification screen exists — `Verification__AutoVerifyBusinesses=true`.
+
+---
+
 ## Read this first: what the free tiers cannot do
 
 Three limits change how the app behaves. None are bugs, and none can be fixed by configuration.
@@ -105,12 +160,13 @@ whenever that address changes.
 
 ```bash
 cd mobile
-flutter build web --release --dart-define=API_BASE_URL=https://zuno-api.onrender.com
+flutter build web --release --dart-define=API_BASE_URL=https://zuno-api-qon8.onrender.com
+cd build/web
 vercel deploy --prod
 ```
 
-`mobile/vercel.json` tells Vercel not to build, to publish `build/web`, and to leave the entry
-points uncached so a new deploy is actually picked up.
+`mobile/web/vercel.json` is copied into `build/web` by the build. It sends every path to
+`index.html` and leaves the entry points uncached so a new deploy is actually picked up.
 
 Then go back and set `Cors__AllowedOrigins__0` in Render to the URL Vercel gives you. Until you do,
 every request from the site is refused by the browser, and the app will look broken while the API
@@ -123,10 +179,14 @@ so there is no way to create one through the app. Without an admin **no business
 approved, and an unapproved business is invisible to customers** — the marketplace has nothing in
 it, and nothing in the UI explains why.
 
-Register an ordinary account through the deployed API, then promote it:
+**The easy way:** set `AdminSeed__Email` and `AdminSeed__Password` in Render. On start-up the API
+creates that Super Admin if none exists yet (and does nothing once one does). Sign in with it on the
+normal login screen — the app opens the admin panel for that role.
+
+The manual way, if you cannot use the seeder — register an ordinary account, then promote it:
 
 ```bash
-curl -X POST https://zuno-api.onrender.com/api/v1/auth/register \
+curl -X POST https://zuno-api-qon8.onrender.com/api/v1/auth/register \
   -H 'Content-Type: application/json' \
   -d '{"email":"admin@yourdomain.com","password":"<a real password>","firstName":"Zuno","lastName":"Admin","role":"Customer"}'
 ```
@@ -156,10 +216,11 @@ no hand-written hash to get wrong.
 
 ## Redeploying
 
-- **API** — `autoDeploy: true`, so pushing to the default branch is enough.
-- **Web** — rebuild and redeploy, because the API address is baked in:
-  `flutter build web --release --dart-define=API_BASE_URL=... && vercel deploy --prod`
-- **Schema change** — run `dotnet ef database update` against Neon *before* the API deploy that
+Use `.\deploy.ps1` (see the top of this file). What it automates:
+
+- **API** — pushed to `main`, then the Render deploy hook (or Render's auto-deploy of `main`).
+- **Web** — rebuilt and redeployed, because the API address is baked in.
+- **Schema change** — `dotnet ef database update` against Neon *before* the API deploy that
   needs it. Nothing migrates on start-up, deliberately: a failed migration during a cold start
   would take the API down with no clear reason why.
 
