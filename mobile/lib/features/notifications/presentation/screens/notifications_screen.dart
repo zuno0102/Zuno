@@ -16,7 +16,7 @@ import 'package:zuno/features/notifications/presentation/widgets/notification_ic
 /// different screen to a customer and to a worker, and the role's own shell is the only place that
 /// knows its screens — so this screen takes the destination as a callback and keeps no role
 /// knowledge at all.
-class NotificationsScreen extends ConsumerWidget {
+class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({required this.onOpen, super.key});
 
   /// Given a notification that can be opened, takes the person to it.
@@ -26,23 +26,36 @@ class NotificationsScreen extends ConsumerWidget {
   final void Function(AppNotification notification) onOpen;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NotificationsScreen> createState() =>
+      _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
+  /// Opening the list is what clears the badge.
+  ///
+  /// It used to take a deliberate act — tapping each row, or the Mark all read button — so somebody
+  /// who heard their booking was confirmed, went to Bookings and saw it there was still carrying a
+  /// badge for something they had already dealt with. A badge that outlives the thing it is about
+  /// stops meaning anything.
+  ///
+  /// Done here rather than in the bell that pushes this screen, so it holds however the screen is
+  /// reached.
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(notificationListProvider.notifier).markAllReadOnOpen();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final notifications = ref.watch(notificationListProvider);
-    final hasUnread =
-        notifications.value?.any((n) => n.isUnread) ?? false;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Notifications'),
-        actions: [
-          if (hasUnread)
-            TextButton(
-              onPressed: () =>
-                  ref.read(notificationListProvider.notifier).markAllRead(),
-              child: const Text('Mark all read'),
-            ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Notifications')),
       body: RefreshIndicator(
         onRefresh: () =>
             ref.read(notificationListProvider.notifier).refresh(),
@@ -90,7 +103,7 @@ class NotificationsScreen extends ConsumerWidget {
     if (!notification.canOpen) return;
 
     Navigator.of(context).pop();
-    onOpen(notification);
+    widget.onOpen(notification);
   }
 }
 

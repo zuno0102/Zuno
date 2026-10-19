@@ -85,10 +85,11 @@ class NotificationList extends _$NotificationList {
     final current = state.value;
     if (current == null) return;
 
-    final target = current.firstWhere(
-      (n) => n.id == id,
-      orElse: () => current.first,
-    );
+    // Nothing to do for a notification this page does not hold. The fallback here used to hand
+    // back an unrelated row — the first one — and if that happened to be unread the badge was
+    // decremented for a notification nobody had read, while the rewrite below changed nothing.
+    final target = current.where((n) => n.id == id).firstOrNull;
+    if (target == null) return;
 
     // Already read: nothing to say to the server, and nothing to take off the badge.
     if (!target.isUnread) return;
@@ -105,6 +106,32 @@ class NotificationList extends _$NotificationList {
       // Left as read on screen. The row has been opened — insisting it is unread again because
       // one request failed would be the app arguing with what the person just did. The next
       // refresh takes the server's answer.
+    }
+  }
+
+  /// Clears the badge because the list has been opened, without unbolding what is on screen.
+  ///
+  /// Opening the list is what the badge is counting down to: it means "there is something here you
+  /// have not looked at", and once somebody is looking at it, it has done its job. Reading the
+  /// booking itself does not count — marking notifications read because a person walked past the
+  /// right tab would quietly dismiss ones about something they never opened.
+  ///
+  /// The rows are deliberately left alone. [markAllRead] flips every one to read at once, which
+  /// here would wipe the highlighting out from under the person the instant they arrived: they
+  /// open the list to see what is new and find nothing marked. The server is told, the badge goes
+  /// to zero, and this visit keeps its bold rows; the next load reads them back as read.
+  Future<void> markAllReadOnOpen() async {
+    final current = state.value;
+    if (current == null || current.every((n) => !n.isUnread)) return;
+
+    ref.read(unreadNotificationCountProvider.notifier).clear();
+
+    try {
+      await ref.read(notificationDataSourceProvider).markAllRead();
+    } catch (_) {
+      // Left cleared on screen. The person is looking at the list; insisting the badge is still
+      // owed because one request failed would be the app arguing with what they just did. The
+      // next refresh takes the server's answer.
     }
   }
 

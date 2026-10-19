@@ -53,6 +53,16 @@ class _NotificationBellState extends ConsumerState<NotificationBell>
       final pending = SystemNotifications.instance.takePendingTap();
       if (pending != null) _openFromShade(pending);
 
+      // The number, as well as the banners.
+      //
+      // Resume was the only thing that refreshed it, and for a customer the bell is mounted
+      // inside the Home tab rather than above all of them — so selecting any other tab unmounts
+      // this widget and the observer that listens for resume, and the badge could sit stale for
+      // as long as somebody stayed off Home. Refreshing as the bell mounts covers every return
+      // to it; on the worker and business shells, where the bell sits above the tabs, this is
+      // simply one more correct moment to ask.
+      ref.read(unreadNotificationCountProvider.notifier).refresh();
+
       // Catches up on anything that arrived before this screen existed, and on a first install
       // records what is already there without drawing a wall of banners.
       ref.read(notificationSurfacerProvider.notifier).syncNow();

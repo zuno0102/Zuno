@@ -169,7 +169,7 @@ final class NotificationListProvider
   NotificationList create() => NotificationList();
 }
 
-String _$notificationListHash() => r'8b9fb84269a3d763ffa99433e70a687e975687ec';
+String _$notificationListHash() => r'8eaa4596f5b76330690f1250e039e69981cb47a7';
 
 /// The list itself, newest first.
 ///

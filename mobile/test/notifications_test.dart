@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:zuno/features/notifications/data/datasources/notification_remote_datasource.dart';
+import 'package:zuno/features/notifications/data/models/notification_model.dart';
 import 'package:zuno/features/notifications/domain/entities/app_notification.dart';
 import 'package:zuno/features/notifications/presentation/providers/notification_providers.dart';
 import 'package:zuno/features/notifications/presentation/screens/notifications_screen.dart';
@@ -13,11 +15,22 @@ import 'package:zuno/features/notifications/presentation/widgets/notification_be
 /// badge agrees with the list, and which screen a target opens. The last of those is the half that
 /// makes a notification useful rather than an interruption.
 class _FakeList extends NotificationList {
-  _FakeList(this._notifications, {this.onMarkRead, this.onMarkAllRead});
+  _FakeList(
+    this._notifications, {
+    this.onMarkRead,
+    this.onMarkAllRead,
+    this.onMarkAllReadOnOpen,
+  });
 
   final List<AppNotification> _notifications;
   final void Function(String id)? onMarkRead;
   final VoidCallback? onMarkAllRead;
+  final VoidCallback? onMarkAllReadOnOpen;
+
+  /// Mirrors the real one: the server is told and the badge cleared, but the rows on screen keep
+  /// the highlighting they were opened with.
+  @override
+  Future<void> markAllReadOnOpen() async => onMarkAllReadOnOpen?.call();
 
   @override
   Future<List<AppNotification>> build() async => _notifications;
@@ -52,6 +65,29 @@ class _FakeCount extends UnreadNotificationCount {
   Future<int> build() async => _count;
 }
 
+/// A datasource that answers from memory, for driving the real [NotificationList].
+class _FakeSource implements NotificationRemoteDataSource {
+  _FakeSource(this._rows);
+
+  final List<NotificationModel> _rows;
+  int markReadCalls = 0;
+
+  @override
+  Future<List<NotificationModel>> getMine({int take = 50}) async => _rows;
+
+  @override
+  Future<int> getUnreadCount() async => _rows.where((r) => r.isUnread).length;
+
+  @override
+  Future<void> markRead(String id) async => markReadCalls++;
+
+  @override
+  Future<void> markAllRead() async {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 void main() {
   final createdAt = DateTime.now().subtract(const Duration(minutes: 20));
 
@@ -80,6 +116,7 @@ void main() {
     void Function(AppNotification)? onOpen,
     void Function(String id)? onMarkRead,
     VoidCallback? onMarkAllRead,
+    VoidCallback? onMarkAllReadOnOpen,
   }) async {
     tester.view.physicalSize = const Size(900, 1800);
     tester.view.devicePixelRatio = 2;
@@ -93,6 +130,7 @@ void main() {
               notifications,
               onMarkRead: onMarkRead,
               onMarkAllRead: onMarkAllRead,
+              onMarkAllReadOnOpen: onMarkAllReadOnOpen,
             ),
           ),
         ],
@@ -139,34 +177,62 @@ void main() {
       expect(find.text('Nothing yet'), findsOneWidget);
     });
 
-    testWidgets('offers "mark all read" while something is unread', (
-      tester,
-    ) async {
-      await pumpList(tester, [notification()]);
-
-      expect(find.text('Mark all read'), findsOneWidget);
-    });
-
-    testWidgets('and does not offer it once everything has been seen', (
-      tester,
-    ) async {
-      await pumpList(tester, [notification(isUnread: false)]);
-
-      expect(find.text('Mark all read'), findsNothing);
-    });
-
-    testWidgets('marking all read clears the offer', (tester) async {
+    // Opening the list is what clears the badge. It used to take a deliberate act — a tap on each
+    // row, or a Mark all read button — so somebody told their booking was confirmed, who then went
+    // to Bookings and saw it there, was still carrying a badge for something they had dealt with.
+    testWidgets('clears the badge as soon as it is opened', (tester) async {
       var cleared = false;
 
       await pumpList(
         tester,
         [notification(), notification(id: 'n-2')],
-        onMarkAllRead: () => cleared = true,
+        onMarkAllReadOnOpen: () => cleared = true,
       );
 
-      await tester.tap(find.text('Mark all read'));
-      await tester.pumpAndSettle();
+      expect(cleared, isTrue);
+    });
 
+    testWidgets('and says so only once, however long it is looked at', (
+      tester,
+    ) async {
+      var times = 0;
+
+      await pumpList(
+        tester,
+        [notification()],
+        onMarkAllReadOnOpen: () => times++,
+      );
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(times, 1);
+    });
+
+    // The point of leaving the rows alone. Flipping them to read on arrival would wipe the
+    // highlighting out from under the person: they open the list to see what is new and find
+    // nothing marked.
+    testWidgets('but what was new still reads as new while they look at it', (
+      tester,
+    ) async {
+      await pumpList(tester, [notification(title: 'Booking confirmed')]);
+
+      final title = tester.widget<Text>(find.text('Booking confirmed'));
+      expect(title.style?.fontWeight, FontWeight.w700);
+    });
+
+    testWidgets('and nothing is claimed when there is nothing unread', (
+      tester,
+    ) async {
+      var cleared = false;
+
+      await pumpList(
+        tester,
+        [notification(isUnread: false)],
+        onMarkAllReadOnOpen: () => cleared = true,
+      );
+
+      // The fake forwards every call; the real one returns early with nothing unread, which is
+      // what keeps an idle visit from writing to the server.
       expect(cleared, isTrue);
       expect(find.text('Mark all read'), findsNothing);
     });
@@ -338,6 +404,73 @@ void main() {
       expect(NotificationTarget.invitations.needsId, isFalse);
       expect(NotificationTarget.payments.needsId, isFalse);
       expect(NotificationTarget.profile.needsId, isFalse);
+    });
+  });
+
+  group('marking one read', () {
+    NotificationModel row(String id, {bool isUnread = true}) =>
+        NotificationModel(
+          id: id,
+          kind: 'BookingConfirmed',
+          title: 'Boss T confirmed your booking',
+          body: 'Wedding catering on Saturday.',
+          target: 'Booking',
+          targetId: 'b-1',
+          isUnread: isUnread,
+          createdAt: createdAt,
+        );
+
+    /// The badge used to drop for a notification nobody had read.
+    ///
+    /// A shade tap carries an id, and the list only holds a page. When the id was not on that page
+    /// the lookup fell back to the *first* row instead of giving up, and if that row happened to
+    /// be unread the badge was decremented while the rewrite below it changed nothing at all.
+    test('an id this page does not hold leaves the badge alone', () async {
+      final source = _FakeSource([row('n-1'), row('n-2')]);
+      final container = ProviderContainer(
+        overrides: [
+          notificationDataSourceProvider.overrideWithValue(source),
+          // The real one answers 0 for a signed-out container, which would make every
+          // assertion below pass without proving anything.
+          unreadNotificationCountProvider.overrideWith(() => _FakeCount(2)),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(notificationListProvider.future);
+      final before = await container.read(
+        unreadNotificationCountProvider.future,
+      );
+
+      await container
+          .read(notificationListProvider.notifier)
+          .markRead('not-on-this-page');
+
+      expect(container.read(unreadNotificationCountProvider).value, before);
+      expect(source.markReadCalls, 0);
+    });
+
+    test('and one it does hold takes exactly one off', () async {
+      final source = _FakeSource([row('n-1'), row('n-2')]);
+      final container = ProviderContainer(
+        overrides: [
+          notificationDataSourceProvider.overrideWithValue(source),
+          // The real one answers 0 for a signed-out container, which would make every
+          // assertion below pass without proving anything.
+          unreadNotificationCountProvider.overrideWith(() => _FakeCount(2)),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(notificationListProvider.future);
+      final before = await container.read(
+        unreadNotificationCountProvider.future,
+      );
+
+      await container.read(notificationListProvider.notifier).markRead('n-1');
+
+      expect(container.read(unreadNotificationCountProvider).value, before - 1);
+      expect(source.markReadCalls, 1);
     });
   });
 }
