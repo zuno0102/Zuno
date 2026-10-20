@@ -21,4 +21,15 @@ public record GetMyNotificationsQuery : IRequest<List<NotificationDto>>
     /// an inbox — a notification read on one device must still be findable on another.
     /// </summary>
     public bool UnreadOnly { get; init; }
+
+    /// <summary>
+    /// Include chat messages, which the bell leaves out.
+    /// </summary>
+    /// <remarks>
+    /// Off by default, so the bell gets the bell's list. On for the one caller that is not the
+    /// bell: the half that draws banners in the phone's own notification tray, which should
+    /// announce a new message like anything else — it is the badge that double-counted them, not
+    /// the banner.
+    /// </remarks>
+    public bool IncludeChat { get; init; }
 }

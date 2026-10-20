@@ -3,6 +3,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:zuno/features/notifications/presentation/providers/notification_providers.dart';
 import 'package:zuno/core/constants/api_constants.dart';
 import 'package:zuno/features/booking/domain/entities/booking.dart';
 import 'package:zuno/features/booking/presentation/providers/customer_bookings_notifier.dart';
@@ -47,13 +48,21 @@ class _CustomerBookingDetailScreenState
   void initState() {
     super.initState();
 
-    // After the first frame, so the sheet has a laid-out screen to sit on rather than appearing
-    // over a half-built page.
-    if (widget.openRating && _booking.canBeRated) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _rate();
-      });
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      // Reading the order is as good as reading the notification about it — better, since they
+      // are looking at the thing itself. Without this the bell kept counting a confirmation the
+      // customer had already seen, and the Bookings tab kept its mark, because read state only
+      // ever changed by tapping the notification. Clears both numbers at once, whichever way
+      // this screen was reached.
+      ref
+          .read(unreadNotificationTargetsProvider.notifier)
+          .markBookingSeen(_booking.id);
+
+      // The sheet waits for a laid-out screen rather than appearing over a half-built page.
+      if (widget.openRating && _booking.canBeRated) _rate();
+    });
   }
 
   /// Counters the business's offer with the customer's own number.
@@ -340,16 +349,13 @@ class _CustomerBookingDetailScreenState
             label: 'Scheduled for',
             value: booking.scheduledDate.toLocal().toString().substring(0, 16),
           ),
-          _DetailRow(
-            label: 'Price',
-            value: booking.priceDisplay(),
-          ),
+          _DetailRow(label: 'Price', value: booking.priceDisplay()),
+
           // No crew here. How many people a business puts on a job, and who they are, is the
           // business's arrangement — a customer booked a service, not a headcount.
           // What the customer told the business about the job, each line carrying the question as it
 
           // was worded when they answered it.
-
           for (final answer in booking.serviceAnswers)
             _DetailRow(label: answer.questionPrompt, value: answer.answerText),
 

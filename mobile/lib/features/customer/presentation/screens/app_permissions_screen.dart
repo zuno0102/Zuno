@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/location/location_service.dart';
@@ -121,7 +122,12 @@ class _AppPermissionsScreenState extends ConsumerState<AppPermissionsScreen> {
                 'Finding work near you, if you also work through Zuno',
               ],
               actionLabel: 'Open app settings',
-              onAction: service.openSettings,
+              // No button in a browser: there is no app settings page to open, so pressing it did
+              // nothing at all. The card says where the setting really lives instead.
+              onAction: kIsWeb ? null : service.openSettings,
+              webHint:
+                  'Change this behind the padlock (or ⓘ) to the left of the web address, '
+                  'under Permissions, then Location.',
               onRecheck: _check,
             ),
 
@@ -140,7 +146,12 @@ class _AppPermissionsScreenState extends ConsumerState<AppPermissionsScreen> {
                 'Scanning a booking QR code on the day',
               ],
               actionLabel: 'Open app settings',
-              onAction: ref.read(permissionServiceProvider).openAppSettings,
+              onAction: kIsWeb
+                  ? null
+                  : ref.read(permissionServiceProvider).openAppSettings,
+              webHint:
+                  'The browser asks for the camera itself, the moment a page uses it. '
+                  'Choosing a picture needs no permission at all.',
               onRecheck: _check,
             ),
 
@@ -171,6 +182,7 @@ class _PermissionCard extends StatelessWidget {
     required this.usedFor,
     this.actionLabel,
     this.onAction,
+    this.webHint,
     this.onRecheck,
   });
 
@@ -185,6 +197,13 @@ class _PermissionCard extends StatelessWidget {
   final List<String> usedFor;
   final String? actionLabel;
   final Future<void> Function()? onAction;
+
+  /// Where the setting actually lives in a browser, shown in place of the button.
+  ///
+  /// A web page cannot open any settings screen, so the button was simply dead there. Saying where
+  /// to go is the only honest version of that offer.
+  final String? webHint;
+
   final VoidCallback? onRecheck;
 
   @override
@@ -259,6 +278,17 @@ class _PermissionCard extends StatelessWidget {
                     ],
                   ),
                 ),
+            ],
+
+            if (webHint case final hint? when onAction == null) ...[
+              const SizedBox(height: 8),
+              Text(
+                hint,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  height: 1.4,
+                ),
+              ),
             ],
 
             if (onAction != null || onRecheck != null) ...[

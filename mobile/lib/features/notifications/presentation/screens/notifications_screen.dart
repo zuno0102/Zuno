@@ -31,34 +31,34 @@ class NotificationsScreen extends ConsumerStatefulWidget {
 }
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
-  /// Opening the list is what clears the badge.
+  /// Opening the list deliberately does **not** clear the badge.
   ///
-  /// It used to take a deliberate act — tapping each row, or the Mark all read button — so somebody
-  /// who heard their booking was confirmed, went to Bookings and saw it there was still carrying a
-  /// badge for something they had already dealt with. A badge that outlives the thing it is about
-  /// stops meaning anything.
+  /// It did for a while, and it cost too much. Both badges count the same unread notifications, so
+  /// clearing everything the instant this screen appeared took the number off the Bookings tab as
+  /// well — for orders the person had not opened and still had to answer. Three offers waiting
+  /// became none because they glanced at a list.
   ///
-  /// Done here rather than in the bell that pushes this screen, so it holds however the screen is
-  /// reached.
-  @override
-  void initState() {
-    super.initState();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      ref.read(notificationListProvider.notifier).markAllReadOnOpen();
-    });
-  }
-
+  /// Each one now clears when its own thing is opened, from either side: tapping a row here, or
+  /// opening the order on the Bookings tab. Both move both numbers by one, which is what makes the
+  /// two agree without either lying. [_markAllRead] is for the person who wants the lot gone.
   @override
   Widget build(BuildContext context) {
     final notifications = ref.watch(notificationListProvider);
+    final anyUnread = notifications.value?.any((n) => n.isUnread) ?? false;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Notifications')),
+      appBar: AppBar(
+        title: const Text('Notifications'),
+        actions: [
+          if (anyUnread)
+            TextButton(
+              onPressed: _markAllRead,
+              child: const Text('Mark all read'),
+            ),
+        ],
+      ),
       body: RefreshIndicator(
-        onRefresh: () =>
-            ref.read(notificationListProvider.notifier).refresh(),
+        onRefresh: () => ref.read(notificationListProvider.notifier).refresh(),
         child: switch (notifications) {
           AsyncData(:final value) when value.isEmpty => const _Empty(),
           AsyncData(:final value) => ListView.separated(
@@ -105,6 +105,14 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     Navigator.of(context).pop();
     widget.onOpen(notification);
   }
+
+  /// Clears the lot, because the person asked for it.
+  ///
+  /// The deliberate act the badge needs. Opening the list cannot do this on the person's behalf —
+  /// the Bookings tab counts the same notifications, and a glance at this screen would wipe the
+  /// offers still waiting on them there.
+  void _markAllRead() =>
+      ref.read(notificationListProvider.notifier).markAllRead();
 }
 
 class _NotificationRow extends StatelessWidget {
@@ -145,10 +153,7 @@ class _NotificationRow extends StatelessWidget {
           if (notification.body.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 2),
-              child: Text(
-                notification.body,
-                style: theme.textTheme.bodySmall,
-              ),
+              child: Text(notification.body, style: theme.textTheme.bodySmall),
             ),
           Padding(
             padding: const EdgeInsets.only(top: 4),
@@ -164,10 +169,7 @@ class _NotificationRow extends StatelessWidget {
       // Only on rows that lead somewhere, so the chevron never promises a screen that is not
       // coming.
       trailing: notification.canOpen
-          ? Icon(
-              Icons.chevron_right,
-              color: colors.onSurfaceVariant,
-            )
+          ? Icon(Icons.chevron_right, color: colors.onSurfaceVariant)
           : null,
       isThreeLine: notification.body.isNotEmpty,
     );
@@ -191,9 +193,7 @@ class _Empty extends StatelessWidget {
           color: theme.colorScheme.onSurfaceVariant,
         ),
         const SizedBox(height: 12),
-        Center(
-          child: Text('Nothing yet', style: theme.textTheme.titleMedium),
-        ),
+        Center(child: Text('Nothing yet', style: theme.textTheme.titleMedium)),
         const SizedBox(height: 4),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 48),

@@ -3,6 +3,7 @@ using Moq;
 using Zuno.Application.Common.Interfaces;
 using Zuno.Application.Modules.Notifications.Commands.MarkAllNotificationsRead;
 using Zuno.Application.Modules.Notifications.Commands.MarkNotificationRead;
+using Zuno.Application.Modules.Notifications.Commands.MarkTargetNotificationsRead;
 using Zuno.Application.Modules.Notifications.Queries.GetMyNotifications;
 using Zuno.Application.Modules.Notifications.Queries.GetUnreadNotificationCount;
 using Zuno.Domain.Entities;
@@ -40,11 +41,12 @@ public class NotificationQueryTests
         int minutesAgo = 0,
         DateTimeOffset? readAt = null,
         NotificationTarget target = NotificationTarget.Booking,
-        Guid? targetId = null) => new()
+        Guid? targetId = null,
+        NotificationKind kind = NotificationKind.BookingConfirmed) => new()
         {
             Id = Guid.NewGuid(),
             UserId = _me,
-            Kind = NotificationKind.BookingConfirmed,
+            Kind = kind,
             Title = "Boss T confirmed your booking",
             Body = "Wedding catering on Saturday.",
             Target = target,
@@ -116,6 +118,28 @@ public class NotificationQueryTests
     }
 
     /// <remarks>
+    /// The bell does not carry messages at all — not the number on it, and not the list behind it.
+    /// A message belongs to the chat it was sent in, and listing it here would mean opening the
+    /// bell marks it read, taking the number off the Chat tab for something nobody has read.
+    /// </remarks>
+    [Fact]
+    public async Task The_list_leaves_chat_to_the_chat_tab()
+    {
+        Given(
+            Mine(minutesAgo: 2),
+            Mine(
+                minutesAgo: 1,
+                kind: NotificationKind.ChatMessage,
+                target: NotificationTarget.BookingChat));
+
+        var result = await new GetMyNotificationsQueryHandler(_currentUser.Object, _db.Object)
+            .Handle(new GetMyNotificationsQuery(), default);
+
+        result.Should().HaveCount(1);
+        result.Single().Kind.Should().Be("BookingConfirmed");
+    }
+
+    /// <remarks>
     /// Guid.Empty is how "this target needs no id" is stored. The app should get nothing rather
     /// than a row of zeroes it has to know to test against.
     /// </remarks>
@@ -159,6 +183,118 @@ public class NotificationQueryTests
 
         result.UnreadCount.Should().Be(2);
     }
+
+    /// <remarks>
+    /// A message already puts a number on the Chat tab. Counting it on the bell as well reports one
+    /// message twice, in two places, and clearing it in one leaves the other lit.
+    /// </remarks>
+    [Fact]
+    public async Task The_badge_leaves_chat_to_the_chat_tab()
+    {
+        Given(
+            Mine(),
+            Mine(kind: NotificationKind.ChatMessage, target: NotificationTarget.BookingChat),
+            Mine(kind: NotificationKind.ChatMessage, target: NotificationTarget.BookingChat));
+
+        var result = await new GetUnreadNotificationCountQueryHandler(_currentUser.Object, _db.Object)
+            .Handle(new GetUnreadNotificationCountQuery(), default);
+
+        result.UnreadCount.Should().Be(1);
+    }
+
+    // ---- marking read by what it is about ----------------------------------------------------
+
+    /// <remarks>
+    /// The case the bell could not answer: somebody opens the booking itself, having never looked
+    /// at the notification about it, and the badge should stop counting a message about something
+    /// they have just read.
+    /// </remarks>
+    [Fact]
+    public async Task Opening_the_booking_marks_what_I_was_told_about_that_booking()
+    {
+        var booking = Guid.NewGuid();
+        var aboutThisBooking = Mine(targetId: booking);
+        var aboutAnotherBooking = Mine(targetId: Guid.NewGuid());
+
+        Given(aboutThisBooking, aboutAnotherBooking);
+
+        await MarkTargetRead(NotificationTarget.Booking, booking);
+
+        aboutThisBooking.ReadAt.Should().Be(Now);
+        aboutAnotherBooking.ReadAt.Should().BeNull(
+            "a booking they have not opened is still news to them");
+    }
+
+    [Fact]
+    public async Task The_same_booking_on_a_different_screen_is_left_alone()
+    {
+        var booking = Guid.NewGuid();
+        var theChat = Mine(target: NotificationTarget.BookingChat, targetId: booking);
+
+        Given(theChat);
+
+        await MarkTargetRead(NotificationTarget.Booking, booking);
+
+        theChat.ReadAt.Should().BeNull(
+            "reading the booking is not reading the messages on it");
+    }
+
+    [Fact]
+    public async Task Somebody_elses_notification_about_my_booking_is_not_mine_to_clear()
+    {
+        var booking = Guid.NewGuid();
+        var theirs = new Notification
+        {
+            UserId = _someoneElse,
+            Title = "Asha booked you",
+            Body = string.Empty,
+            Target = NotificationTarget.Booking,
+            TargetId = booking,
+        };
+
+        Given(theirs);
+
+        await MarkTargetRead(NotificationTarget.Booking, booking);
+
+        theirs.ReadAt.Should().BeNull();
+    }
+
+    /// <remarks>
+    /// A target with no id names a whole screen rather than one thing. Clearing on that would
+    /// dismiss everything of that kind because somebody opened a tab.
+    /// </remarks>
+    [Fact]
+    public async Task A_target_without_an_id_clears_nothing()
+    {
+        var everything = Mine(target: NotificationTarget.Payments, targetId: Guid.Empty);
+
+        Given(everything);
+
+        await MarkTargetRead(NotificationTarget.Payments, Guid.Empty);
+
+        everything.ReadAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Opening_the_same_booking_twice_keeps_the_first_time()
+    {
+        var booking = Guid.NewGuid();
+        var earlier = Now.AddMinutes(-30);
+        var alreadyRead = Mine(readAt: earlier, targetId: booking);
+
+        Given(alreadyRead);
+
+        await MarkTargetRead(NotificationTarget.Booking, booking);
+
+        alreadyRead.ReadAt.Should().Be(earlier);
+    }
+
+    private Task MarkTargetRead(NotificationTarget target, Guid targetId) =>
+        new MarkTargetNotificationsReadCommandHandler(
+                _currentUser.Object, _clock.Object, _db.Object)
+            .Handle(
+                new MarkTargetNotificationsReadCommand { Target = target, TargetId = targetId },
+                default);
 
     // ---- marking one read --------------------------------------------------------------------
 
@@ -237,6 +373,25 @@ public class NotificationQueryTests
         one.ReadAt.Should().Be(Now);
         two.ReadAt.Should().Be(Now);
         old.ReadAt.Should().Be(alreadyRead);
+    }
+
+    /// <remarks>
+    /// This runs because somebody opened the bell list, and messages are not in it. Reading them
+    /// here would clear the Chat tab for messages they have never opened — each side reads its own.
+    /// </remarks>
+    [Fact]
+    public async Task Clearing_the_badge_leaves_the_chat_unread()
+    {
+        var message = Mine(
+            kind: NotificationKind.ChatMessage,
+            target: NotificationTarget.BookingChat);
+        Given(Mine(), message);
+
+        await new MarkAllNotificationsReadCommandHandler(
+                _currentUser.Object, _clock.Object, _db.Object)
+            .Handle(new MarkAllNotificationsReadCommand(), default);
+
+        message.ReadAt.Should().BeNull();
     }
 
     [Fact]

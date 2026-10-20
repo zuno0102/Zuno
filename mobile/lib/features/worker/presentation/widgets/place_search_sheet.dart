@@ -23,6 +23,7 @@ class SearchedPlace {
     this.city,
     this.state,
     this.postalCode,
+    this.matchedText,
   });
 
   factory SearchedPlace.fromJson(Map<String, dynamic> json) => SearchedPlace(
@@ -35,6 +36,7 @@ class SearchedPlace {
     city: json['city'] as String?,
     state: json['state'] as String?,
     postalCode: json['postalCode'] as String?,
+    matchedText: json['matchedText'] as String?,
   );
 
   final String name;
@@ -51,6 +53,10 @@ class SearchedPlace {
   final String? city;
   final String? state;
   final String? postalCode;
+
+  /// Set when nothing matched everything typed and this matched only part of it — e.g.
+  /// "manalikarai" out of "auttukonam, manalikarai", where the hamlet is not on the free map.
+  final String? matchedText;
 }
 
 /// Looks a place up through our own server.
@@ -140,22 +146,33 @@ class PlaceSearchClient {
 class PlaceChoice {
   const PlaceChoice.searched(SearchedPlace this.place)
     : useCurrentLocation = false,
-      clearLocation = false;
+      clearLocation = false,
+      pickOnMap = false;
 
   const PlaceChoice.currentLocation()
     : place = null,
       useCurrentLocation = true,
-      clearLocation = false;
+      clearLocation = false,
+      pickOnMap = false;
 
   /// Forget the location entirely and go back to the prompt.
   const PlaceChoice.cleared()
     : place = null,
       useCurrentLocation = false,
-      clearLocation = true;
+      clearLocation = true,
+      pickOnMap = false;
 
+  /// Point at the spot on a map — for a hamlet no search knows by name.
+  const PlaceChoice.pickOnMap({this.place})
+    : useCurrentLocation = false,
+      clearLocation = false,
+      pickOnMap = true;
+
+  /// For [pickOnMap], where the map should open (a partly matched village), if anywhere.
   final SearchedPlace? place;
   final bool useCurrentLocation;
   final bool clearLocation;
+  final bool pickOnMap;
 }
 
 /// Lets somebody type where they are, instead of relying on GPS.
@@ -325,6 +342,25 @@ class _PlaceSearchSheetState extends ConsumerState<_PlaceSearchSheet> {
     }
   }
 
+  /// What to say when the places shown matched only part of what was typed, or null when they
+  /// matched all of it.
+  String? _partialNote(List<SearchedPlace> found) {
+    final matched = found
+        .map((p) => p.matchedText)
+        .firstWhere((m) => m != null && m.isNotEmpty, orElse: () => null);
+    if (matched == null) return null;
+
+    final typed = _controller.text.trim();
+    final missing = typed
+        .split(RegExp(r'[,\s]+'))
+        .where((w) => w.isNotEmpty && w.toLowerCase() != matched.toLowerCase())
+        .join(' ');
+    return missing.isEmpty
+        ? 'Showing places for "$matched".'
+        : '"$missing" is not on the free map. Showing "$matched" — '
+              'pick it, or point at your exact spot on the map.';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -385,6 +421,15 @@ class _PlaceSearchSheetState extends ConsumerState<_PlaceSearchSheet> {
                     onTap: () => Navigator.of(context)
                         .pop(const PlaceChoice.currentLocation()),
                   ),
+                  // For a hamlet no search knows: point at it on the satellite map instead.
+                  ListTile(
+                    key: const Key('placeSheetPickOnMap'),
+                    leading: const Icon(Icons.add_location_alt_outlined),
+                    title: const Text('Pick on the map'),
+                    subtitle: const Text('For a small place search cannot find'),
+                    onTap: () => Navigator.of(context)
+                        .pop(const PlaceChoice.pickOnMap()),
+                  ),
                   const Divider(height: 1),
                   const SizedBox(height: 10),
                   TextField(
@@ -435,21 +480,68 @@ class _PlaceSearchSheetState extends ConsumerState<_PlaceSearchSheet> {
                 final found when found.isEmpty => Center(
                   child: Padding(
                     padding: const EdgeInsets.all(28),
-                    child: Text(
-                      'Nothing found for that. Try a nearby town instead of a building name.',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '"${_controller.text.trim()}" is not on the free map yet. '
+                          'Try the nearest village or town, or point at it on the map.',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          key: const Key('placeSheetEmptyPickOnMap'),
+                          onPressed: () => Navigator.of(context)
+                              .pop(const PlaceChoice.pickOnMap()),
+                          icon: const Icon(Icons.add_location_alt_outlined),
+                          label: const Text('Pick on the map'),
+                        ),
+                      ],
                     ),
                   ),
                 ),
                 final found => ListView.separated(
                   controller: scrollController,
-                  itemCount: found.length,
+                  // One extra row on top when only part of the search was found, to say so.
+                  itemCount: found.length + (_partialNote(found) == null ? 0 : 1),
                   separatorBuilder: (_, _) => const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    final place = found[index];
+                  itemBuilder: (context, row) {
+                    final note = _partialNote(found);
+                    if (note != null && row == 0) {
+                      return Container(
+                        key: const Key('placeSheetPartialNote'),
+                        color: theme.colorScheme.secondaryContainer,
+                        padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              size: 18,
+                              color: theme.colorScheme.onSecondaryContainer,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                note,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSecondaryContainer,
+                                ),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(
+                                PlaceChoice.pickOnMap(place: found.first),
+                              ),
+                              child: const Text('Pick on map'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    final place = found[note == null ? row : row - 1];
                     return ListTile(
                       leading: const Icon(Icons.place_outlined),
                       title: Text(

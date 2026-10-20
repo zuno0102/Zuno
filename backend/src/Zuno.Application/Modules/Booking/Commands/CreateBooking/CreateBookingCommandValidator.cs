@@ -97,9 +97,13 @@ public class CreateBookingCommandValidator : AbstractValidator<CreateBookingComm
 
                 if (!check.IsServed)
                 {
+                    var names = check.ServedDistrictNames;
+                    var where = names.Count <= 1
+                        ? string.Join("", names)
+                        : string.Join(", ", names.Take(names.Count - 1)) + " and " + names[^1];
                     context.AddFailure(
-                        "Service not available for your location. This service is offered only in "
-                        + string.Join(", ", check.ServedDistrictNames) + ".");
+                        "Sorry, this service isn't available at your location yet."
+                        + (where.Length > 0 ? $" It's offered in {where}." : ""));
                 }
             })
             .When(x => x.Latitude is >= -90m and <= 90m && x.Longitude is >= -180m and <= 180m);

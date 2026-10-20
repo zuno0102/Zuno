@@ -15,22 +15,11 @@ import 'package:zuno/features/notifications/presentation/widgets/notification_be
 /// badge agrees with the list, and which screen a target opens. The last of those is the half that
 /// makes a notification useful rather than an interruption.
 class _FakeList extends NotificationList {
-  _FakeList(
-    this._notifications, {
-    this.onMarkRead,
-    this.onMarkAllRead,
-    this.onMarkAllReadOnOpen,
-  });
+  _FakeList(this._notifications, {this.onMarkRead, this.onMarkAllRead});
 
   final List<AppNotification> _notifications;
   final void Function(String id)? onMarkRead;
   final VoidCallback? onMarkAllRead;
-  final VoidCallback? onMarkAllReadOnOpen;
-
-  /// Mirrors the real one: the server is told and the badge cleared, but the rows on screen keep
-  /// the highlighting they were opened with.
-  @override
-  Future<void> markAllReadOnOpen() async => onMarkAllReadOnOpen?.call();
 
   @override
   Future<List<AppNotification>> build() async => _notifications;
@@ -50,9 +39,7 @@ class _FakeList extends NotificationList {
     onMarkAllRead?.call();
 
     final current = state.value ?? const [];
-    state = AsyncData([
-      for (final n in current) n.copyWith(isUnread: false),
-    ]);
+    state = AsyncData([for (final n in current) n.copyWith(isUnread: false)]);
   }
 }
 
@@ -72,8 +59,17 @@ class _FakeSource implements NotificationRemoteDataSource {
   final List<NotificationModel> _rows;
   int markReadCalls = 0;
 
+  /// What the last caller asked about chat, so the bell can be held to leaving it out.
+  bool? lastIncludeChat;
+
   @override
-  Future<List<NotificationModel>> getMine({int take = 50}) async => _rows;
+  Future<List<NotificationModel>> getMine({
+    int take = 50,
+    bool includeChat = false,
+  }) async {
+    lastIncludeChat = includeChat;
+    return _rows;
+  }
 
   @override
   Future<int> getUnreadCount() async => _rows.where((r) => r.isUnread).length;
@@ -116,7 +112,6 @@ void main() {
     void Function(AppNotification)? onOpen,
     void Function(String id)? onMarkRead,
     VoidCallback? onMarkAllRead,
-    VoidCallback? onMarkAllReadOnOpen,
   }) async {
     tester.view.physicalSize = const Size(900, 1800);
     tester.view.devicePixelRatio = 2;
@@ -130,13 +125,10 @@ void main() {
               notifications,
               onMarkRead: onMarkRead,
               onMarkAllRead: onMarkAllRead,
-              onMarkAllReadOnOpen: onMarkAllReadOnOpen,
             ),
           ),
         ],
-        child: MaterialApp(
-          home: NotificationsScreen(onOpen: onOpen ?? (_) {}),
-        ),
+        child: MaterialApp(home: NotificationsScreen(onOpen: onOpen ?? (_) {})),
       ),
     );
     await tester.pumpAndSettle();
@@ -177,63 +169,46 @@ void main() {
       expect(find.text('Nothing yet'), findsOneWidget);
     });
 
-    // Opening the list is what clears the badge. It used to take a deliberate act — a tap on each
-    // row, or a Mark all read button — so somebody told their booking was confirmed, who then went
-    // to Bookings and saw it there, was still carrying a badge for something they had dealt with.
-    testWidgets('clears the badge as soon as it is opened', (tester) async {
+    // Opening the list clears nothing by itself. It did for a while, and the Bookings tab counts
+    // these same notifications — so a glance at this screen took the number off the offers still
+    // waiting for an answer there. Each one clears when its own thing is opened.
+    testWidgets('clears nothing merely by being opened', (tester) async {
       var cleared = false;
 
-      await pumpList(
-        tester,
-        [notification(), notification(id: 'n-2')],
-        onMarkAllReadOnOpen: () => cleared = true,
-      );
+      await pumpList(tester, [
+        notification(),
+        notification(id: 'n-2'),
+      ], onMarkAllRead: () => cleared = true);
 
-      expect(cleared, isTrue);
+      expect(cleared, isFalse);
     });
 
-    testWidgets('and says so only once, however long it is looked at', (
-      tester,
-    ) async {
-      var times = 0;
-
-      await pumpList(
-        tester,
-        [notification()],
-        onMarkAllReadOnOpen: () => times++,
-      );
-      await tester.pumpAndSettle();
-      await tester.pump(const Duration(seconds: 1));
-
-      expect(times, 1);
-    });
-
-    // The point of leaving the rows alone. Flipping them to read on arrival would wipe the
-    // highlighting out from under the person: they open the list to see what is new and find
-    // nothing marked.
-    testWidgets('but what was new still reads as new while they look at it', (
-      tester,
-    ) async {
+    testWidgets('and what is new still reads as new', (tester) async {
       await pumpList(tester, [notification(title: 'Booking confirmed')]);
 
       final title = tester.widget<Text>(find.text('Booking confirmed'));
       expect(title.style?.fontWeight, FontWeight.w700);
     });
 
-    testWidgets('and nothing is claimed when there is nothing unread', (
-      tester,
-    ) async {
+    // The deliberate act. Clearing the lot is something the person asks for, which is also what
+    // makes it safe to take the Bookings tab's marks with it.
+    testWidgets('and clears the lot when asked to', (tester) async {
       var cleared = false;
 
-      await pumpList(
-        tester,
-        [notification(isUnread: false)],
-        onMarkAllReadOnOpen: () => cleared = true,
-      );
+      await pumpList(tester, [
+        notification(),
+      ], onMarkAllRead: () => cleared = true);
+      await tester.tap(find.text('Mark all read'));
+      await tester.pump();
 
-      // The fake forwards every call; the real one returns early with nothing unread, which is
-      // what keeps an idle visit from writing to the server.
       expect(cleared, isTrue);
+    });
+
+    testWidgets('and offers nothing to clear when nothing is unread', (
+      tester,
+    ) async {
+      await pumpList(tester, [notification(isUnread: false)]);
+
       expect(find.text('Mark all read'), findsNothing);
     });
   });
@@ -287,11 +262,9 @@ void main() {
     ) async {
       var opened = false;
 
-      await pumpList(
-        tester,
-        [notification(target: NotificationTarget.booking, targetId: null)],
-        onOpen: (_) => opened = true,
-      );
+      await pumpList(tester, [
+        notification(target: NotificationTarget.booking, targetId: null),
+      ], onOpen: (_) => opened = true);
 
       await tester.tap(find.text('Boss T confirmed your booking'));
       await tester.pumpAndSettle();
@@ -302,18 +275,14 @@ void main() {
     testWidgets('a tab target needs no id and still opens', (tester) async {
       AppNotification? opened;
 
-      await pumpList(
-        tester,
-        [
-          notification(
-            kind: 'TeamInvitation',
-            title: 'Boss T wants you on their team',
-            target: NotificationTarget.invitations,
-            targetId: null,
-          ),
-        ],
-        onOpen: (n) => opened = n,
-      );
+      await pumpList(tester, [
+        notification(
+          kind: 'TeamInvitation',
+          title: 'Boss T wants you on their team',
+          target: NotificationTarget.invitations,
+          targetId: null,
+        ),
+      ], onOpen: (n) => opened = n);
 
       await tester.tap(find.text('Boss T wants you on their team'));
       await tester.pumpAndSettle();
@@ -333,9 +302,7 @@ void main() {
           ],
           child: MaterialApp(
             home: Scaffold(
-              appBar: AppBar(
-                actions: [NotificationBell(onOpen: (_) {})],
-              ),
+              appBar: AppBar(actions: [NotificationBell(onOpen: (_) {})]),
             ),
           ),
         ),
@@ -385,7 +352,10 @@ void main() {
         NotificationTarget.fromName('HiringPostApplicants'),
         NotificationTarget.hiringPostApplicants,
       );
-      expect(NotificationTarget.fromName('Payouts'), NotificationTarget.payouts);
+      expect(
+        NotificationTarget.fromName('Payouts'),
+        NotificationTarget.payouts,
+      );
     });
 
     test('and anything newer than this build becomes unknown', () {
@@ -447,7 +417,11 @@ void main() {
           .markRead('not-on-this-page');
 
       expect(container.read(unreadNotificationCountProvider).value, before);
-      expect(source.markReadCalls, 0);
+
+      // Told to the server all the same. A message tapped in the phone's tray lands here and is
+      // deliberately kept out of this list, so giving up outright would leave it unread for ever —
+      // but the badge never counted it, so there is nothing to take off.
+      expect(source.markReadCalls, 1);
     });
 
     test('and one it does hold takes exactly one off', () async {
@@ -471,6 +445,21 @@ void main() {
 
       expect(container.read(unreadNotificationCountProvider).value, before - 1);
       expect(source.markReadCalls, 1);
+    });
+
+    /// The bell carries no messages: a new one already puts a number on the Chat tab, and listing
+    /// it here would mark it read the moment somebody opened the bell. The banners in the phone's
+    /// own tray are the one caller that does ask for them.
+    test('the list asks the server to leave chat out', () async {
+      final source = _FakeSource([row('n-1')]);
+      final container = ProviderContainer(
+        overrides: [notificationDataSourceProvider.overrideWithValue(source)],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(notificationListProvider.future);
+
+      expect(source.lastIncludeChat, isFalse);
     });
   });
 }

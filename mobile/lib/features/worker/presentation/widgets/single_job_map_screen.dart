@@ -99,9 +99,9 @@ class _SingleJobMapScreenState extends ConsumerState<SingleJobMapScreen> {
       _isLoadingRoute = false;
     });
 
-    if (found != null) {
-      _frameRoute(found);
-    }
+    // Framed even when no road route came back: the straight line between the two ends is still a
+    // journey the worker needs to see both halves of.
+    _frameJourney();
   }
 
   /// Asks where the worker is, then draws the way there.
@@ -132,23 +132,51 @@ class _SingleJobMapScreenState extends ConsumerState<SingleJobMapScreen> {
     }
   }
 
+  /// Every point the map has to hold: both ends and the road between them.
+  ///
+  /// The two ends are in here as well as the road, because a route can start or finish a little way
+  /// off the nearest road — the walk from the door to the lane is not part of the driving line, and
+  /// framing the line alone leaves the pin itself outside the picture.
+  List<LatLng> get _journey => [
+    ?_origin,
+    _target,
+    if (_route case final route?)
+      ...route.points.map((p) => LatLng(p.$1, p.$2)),
+  ];
+
   /// Zooms out to hold the whole journey.
   ///
   /// Without this the map opens tight on the venue and the route runs off every edge, which shows a
   /// worker the one part of the journey they already knew about.
-  void _frameRoute(TravelRoute route) {
-    final points = [
-      _origin!,
-      _target,
-      ...route.points.map((p) => LatLng(p.$1, p.$2)),
-    ];
+  ///
+  /// The padding is not a margin for looks. [CameraFit] frames the *coordinates*, and a marker is
+  /// drawn around its coordinate rather than on it: the venue pin is 40 logical pixels of icon
+  /// standing above its point, and the attribution sits over the bottom corner. Padding smaller
+  /// than those left the fit technically correct and the pin's head cut off by the top edge, which
+  /// is exactly the part that says which building it is.
+  void _frameJourney() {
+    final points = _journey;
+    if (points.length < 2) return;
 
     _mapController.fitCamera(
       CameraFit.coordinates(
         coordinates: points,
-        padding: const EdgeInsets.all(36),
+        // Taller at the top for the pin standing above its point, and at the bottom for the
+        // attribution strip the map draws over itself.
+        padding: const EdgeInsets.fromLTRB(44, 64, 44, 56),
       ),
     );
+  }
+
+  /// Re-frames once the map knows how big it is.
+  ///
+  /// A route that arrives before the first layout is framed against a camera with no real size, and
+  /// the result is a journey sitting in the middle of a map far more zoomed out than it needs to
+  /// be — most of the screen empty, the route a short stroke across the centre. The same happens
+  /// when the size changes afterwards: a phone turned on its side, or a browser window resized,
+  /// which is the one place this app is a web page as much as an app.
+  void _onMapEvent(MapEvent event) {
+    if (event is MapEventNonRotatedSizeChange) _frameJourney();
   }
 
   @override
@@ -199,15 +227,21 @@ class _SingleJobMapScreenState extends ConsumerState<SingleJobMapScreen> {
                   options: MapOptions(
                     initialCenter: _target,
                     initialZoom: 14,
+                    // The first honest size the map has. A fit done before this one ran against a
+                    // camera that did not yet know the screen.
+                    onMapReady: _frameJourney,
+                    onMapEvent: _onMapEvent,
                     interactionOptions: const InteractionOptions(
-                      flags: InteractiveFlag.pinchZoom |
+                      flags:
+                          InteractiveFlag.pinchZoom |
                           InteractiveFlag.drag |
                           InteractiveFlag.doubleTapZoom,
                     ),
                   ),
                   children: [
                     TileLayer(
-                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                       userAgentPackageName: 'com.zuno.zuno',
                     ),
 
@@ -266,7 +300,10 @@ class _SingleJobMapScreenState extends ConsumerState<SingleJobMapScreen> {
                             size: 40,
                             color: theme.colorScheme.tertiary,
                             shadows: const [
-                              Shadow(blurRadius: 4, color: AppColors.shadowStrong),
+                              Shadow(
+                                blurRadius: 4,
+                                color: AppColors.shadowStrong,
+                              ),
                             ],
                           ),
                         ),
@@ -296,13 +333,41 @@ class _SingleJobMapScreenState extends ConsumerState<SingleJobMapScreen> {
                           color: theme.colorScheme.surface,
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: const [
-                            BoxShadow(blurRadius: 4, color: AppColors.shadowSoft),
+                            BoxShadow(
+                              blurRadius: 4,
+                              color: AppColors.shadowSoft,
+                            ),
                           ],
                         ),
                         child: Text(
                           'Finding the way…',
                           style: theme.textTheme.bodySmall,
                         ),
+                      ),
+                    ),
+                  ),
+
+                // The way back to the whole journey.
+                //
+                // The map is draggable and pinchable, which is the point — a worker zooms in to see
+                // which turning it is. But zooming in is a one-way door without this: they are left
+                // holding one corner of the route with no idea how to get the rest of it back, and
+                // the only way out is to leave the screen and come in again.
+                if (_journey.length >= 2)
+                  Positioned(
+                    right: 12,
+                    // Clear of the attribution, which the map draws into the bottom-right corner
+                    // and which must stay readable.
+                    bottom: 56,
+                    child: Material(
+                      color: theme.colorScheme.surface,
+                      shape: const CircleBorder(),
+                      elevation: 2,
+                      child: IconButton(
+                        onPressed: _frameJourney,
+                        icon: const Icon(Icons.fit_screen_outlined),
+                        tooltip: 'Show the whole route',
+                        color: theme.colorScheme.primary,
                       ),
                     ),
                   ),

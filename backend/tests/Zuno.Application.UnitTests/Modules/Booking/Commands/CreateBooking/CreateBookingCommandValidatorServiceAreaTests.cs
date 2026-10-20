@@ -70,7 +70,7 @@ public class CreateBookingCommandValidatorServiceAreaTests
         var result = await Validator(Kanyakumari).TestValidateAsync(Command(12.9352m, 77.6245m));
 
         result.ShouldHaveValidationErrorFor(x => x.Latitude)
-            .WithErrorMessage("Service not available for your location. This service is offered only in Kanyakumari.");
+            .WithErrorMessage("Sorry, this service isn't available at your location yet. It's offered in Kanyakumari.");
     }
 
     [Fact]

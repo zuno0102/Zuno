@@ -3,9 +3,11 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Zuno.Application.Modules.Notifications.Commands.MarkAllNotificationsRead;
+using Zuno.Application.Modules.Notifications.Commands.MarkTargetNotificationsRead;
 using Zuno.Application.Modules.Notifications.Commands.MarkNotificationRead;
 using Zuno.Application.Modules.Notifications.Queries.GetMyNotifications;
 using Zuno.Application.Modules.Notifications.Queries.GetUnreadNotificationCount;
+using Zuno.Domain.Enums;
 
 namespace Zuno.Api.Controllers;
 
@@ -32,10 +34,16 @@ public class NotificationsController(ISender mediator) : ControllerBase
     public async Task<IActionResult> GetMine(
         [FromQuery] int take = 50,
         [FromQuery] bool unreadOnly = false,
+        [FromQuery] bool includeChat = false,
         CancellationToken cancellationToken = default)
     {
         var result = await mediator.Send(
-            new GetMyNotificationsQuery { Take = take, UnreadOnly = unreadOnly },
+            new GetMyNotificationsQuery
+            {
+                Take = take,
+                UnreadOnly = unreadOnly,
+                IncludeChat = includeChat,
+            },
             cancellationToken);
         return Ok(result);
     }
@@ -63,6 +71,26 @@ public class NotificationsController(ISender mediator) : ControllerBase
     public async Task<IActionResult> MarkAllRead(CancellationToken cancellationToken)
     {
         await mediator.Send(new MarkAllNotificationsReadCommand(), cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Marks read whatever this person was told about one particular thing.
+    /// </summary>
+    /// <remarks>
+    /// Called when they open the thing itself — a booking, a hiring post — rather than the
+    /// notification about it. Somebody who reads the booking has dealt with the message, and a
+    /// badge that keeps counting it afterwards teaches people to ignore the badge.
+    /// </remarks>
+    [HttpPost("targets/{target}/{targetId:guid}/read")]
+    public async Task<IActionResult> MarkTargetRead(
+        NotificationTarget target,
+        Guid targetId,
+        CancellationToken cancellationToken)
+    {
+        await mediator.Send(
+            new MarkTargetNotificationsReadCommand { Target = target, TargetId = targetId },
+            cancellationToken);
         return NoContent();
     }
 }

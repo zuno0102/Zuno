@@ -55,6 +55,60 @@ public class NominatimPlaceSearchService(
             return cached;
         }
 
+        // Three tries, cheapest and most exact first. Villages are where this matters: people type
+        // "auttukonam, manalikarai" — a hamlet the free map has never heard of, then the village it
+        // belongs to — and the exact search wants every word to match, so it found nothing at all.
+        var results = await NominatimSearchAsync(trimmed, cancellationToken);
+
+        // Spelling varies ("manalikkarai" / "Manalikarai"); Photon forgives that, Nominatim does not.
+        if (results.Count == 0)
+        {
+            results = await PhotonSearchAsync(trimmed, cancellationToken);
+        }
+
+        // Still nothing: look for each part on its own, and say which part was found, so the person
+        // gets the village and can drag the pin to their house rather than hitting a dead end.
+        if (results.Count == 0)
+        {
+            foreach (var part in PartsOf(trimmed))
+            {
+                var partial = await NominatimSearchAsync(part, cancellationToken);
+                if (partial.Count == 0)
+                {
+                    partial = await PhotonSearchAsync(part, cancellationToken);
+                }
+
+                if (partial.Count > 0)
+                {
+                    results = [.. partial.Select(p => p with { MatchedText = part })];
+                    break;
+                }
+            }
+        }
+
+        cache.Set(cacheKey, (IReadOnlyList<PlaceResult>)results, CacheFor);
+        return results;
+    }
+
+    /// <summary>
+    /// The pieces of a typed place to try on their own: comma-separated parts, or the words of a
+    /// multi-word query. Short scraps ("rd", "st") are skipped — they match half of India.
+    /// </summary>
+    internal static IReadOnlyList<string> PartsOf(string query)
+    {
+        var parts = query.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length <= 1)
+        {
+            parts = query.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        }
+
+        return parts.Length <= 1
+            ? []
+            : [.. parts.Where(p => p.Length >= 4).Distinct(StringComparer.OrdinalIgnoreCase)];
+    }
+
+    private async Task<List<PlaceResult>> NominatimSearchAsync(string trimmed, CancellationToken cancellationToken)
+    {
         try
         {
             // Restricted to India: this app hires within it, and the restriction removes a whole
@@ -98,8 +152,6 @@ public class NominatimPlaceSearchService(
                     double.Parse(p.Longitude!, CultureInfo.InvariantCulture)))
                 .ToList();
 
-            cache.Set(cacheKey, (IReadOnlyList<PlaceResult>)results, CacheFor);
-
             return results;
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or JsonException)
@@ -107,6 +159,70 @@ public class NominatimPlaceSearchService(
             logger.LogWarning(exception, "Place search for {Query} failed", trimmed);
             return [];
         }
+    }
+
+    /// <summary>
+    /// Photon (photon.komoot.io): the same free OpenStreetMap data, searched with typo tolerance.
+    /// Only reached when the exact search found nothing, so it adds no load to ordinary searches.
+    /// </summary>
+    private async Task<List<PlaceResult>> PhotonSearchAsync(string trimmed, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // India's bounding box, the same restriction the exact search applies by country code.
+            var url = "https://photon.komoot.io/api/"
+                + $"?q={Uri.EscapeDataString(trimmed)}"
+                + $"&limit={MaxResults}"
+                + "&lang=en"
+                + "&bbox=68.1,6.5,97.4,35.7";
+
+            using var response = await httpClient.GetAsync(url, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                logger.LogWarning("Photon search for {Query} returned {StatusCode}", trimmed, response.StatusCode);
+                return [];
+            }
+
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            return ParsePhoton(body);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            logger.LogWarning(exception, "Photon search for {Query} failed", trimmed);
+            return [];
+        }
+    }
+
+    /// <summary>Photon's GeoJSON as our results. Internal so the mapping is tested without a network.</summary>
+    internal static List<PlaceResult> ParsePhoton(string body)
+    {
+        var payload = JsonSerializer.Deserialize<PhotonResponse>(body, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        return [.. (payload?.Features ?? [])
+            .Where(f => f.Geometry?.Coordinates is { Count: >= 2 }
+                && string.Equals(f.Properties?.CountryCode, "IN", StringComparison.OrdinalIgnoreCase))
+            .Select(f =>
+            {
+                var p = f.Properties!;
+                var lon = f.Geometry!.Coordinates![0];
+                var lat = f.Geometry.Coordinates[1];
+                var city = FirstOf(p.City, p.District, p.County);
+                var name = FirstOf(p.Name, p.Street, city) ?? "Unnamed place";
+                var full = string.Join(", ", new[] { p.Name, p.Street, p.Locality, p.District, p.City, p.County, p.State, p.Postcode }
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Distinct(StringComparer.OrdinalIgnoreCase));
+
+                return new PlaceResult(
+                    Name: name,
+                    FullName: full,
+                    Latitude: lat,
+                    Longitude: lon,
+                    Street: FirstOf(p.Street),
+                    Locality: FirstOf(p.Locality, p.District),
+                    City: city,
+                    State: FirstOf(p.State),
+                    PostalCode: FirstOf(p.Postcode));
+            })];
     }
 
 
@@ -243,6 +359,36 @@ public class NominatimPlaceSearchService(
 
         [JsonPropertyName("lon")]
         public string? Longitude { get; set; }
+    }
+
+    private sealed class PhotonResponse
+    {
+        [JsonPropertyName("features")] public List<PhotonFeature>? Features { get; set; }
+    }
+
+    private sealed class PhotonFeature
+    {
+        [JsonPropertyName("geometry")] public PhotonGeometry? Geometry { get; set; }
+        [JsonPropertyName("properties")] public PhotonProperties? Properties { get; set; }
+    }
+
+    private sealed class PhotonGeometry
+    {
+        /// <summary>[longitude, latitude], GeoJSON order.</summary>
+        [JsonPropertyName("coordinates")] public List<double>? Coordinates { get; set; }
+    }
+
+    private sealed class PhotonProperties
+    {
+        [JsonPropertyName("name")] public string? Name { get; set; }
+        [JsonPropertyName("street")] public string? Street { get; set; }
+        [JsonPropertyName("locality")] public string? Locality { get; set; }
+        [JsonPropertyName("district")] public string? District { get; set; }
+        [JsonPropertyName("city")] public string? City { get; set; }
+        [JsonPropertyName("county")] public string? County { get; set; }
+        [JsonPropertyName("state")] public string? State { get; set; }
+        [JsonPropertyName("postcode")] public string? Postcode { get; set; }
+        [JsonPropertyName("countrycode")] public string? CountryCode { get; set; }
     }
 
     /// <summary>The <c>addressdetails=1</c> breakdown.</summary>

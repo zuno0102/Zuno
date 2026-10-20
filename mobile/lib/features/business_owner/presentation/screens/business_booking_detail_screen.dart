@@ -7,6 +7,7 @@ import 'package:collection/collection.dart';
 import 'package:zuno/features/booking/presentation/widgets/booking_crew_list.dart';
 import 'package:zuno/features/booking/presentation/widgets/booking_terms_section.dart';
 import 'package:zuno/features/booking/presentation/widgets/propose_terms_sheet.dart';
+import 'package:zuno/features/booking/presentation/screens/booking_chat_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/constants/api_constants.dart';
@@ -223,12 +224,46 @@ class _BusinessBookingDetailScreenState
             alignment: Alignment.centerLeft,
             child: BookingStatusChip(order: booking),
           ),
-          if (booking.canBeCalled && booking.customerPhone != null) ...[
+          if (booking.canBeCalled && booking.customerPhone != null ||
+              booking.canBeMessaged) ...[
             const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () => launchPhoneCall(context, booking.customerPhone!),
-              icon: const Icon(Icons.call),
-              label: const Text('Call customer'),
+            Row(
+              children: [
+                if (booking.canBeCalled && booking.customerPhone != null) ...[
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () =>
+                          launchPhoneCall(context, booking.customerPhone!),
+                      icon: const Icon(Icons.call),
+                      label: const Text('Call customer'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                // Where a conversation starts from this end, the same way the customer starts one
+                // from theirs. The Messages tab lists only orders somebody has already written on,
+                // so without this the business could never write first.
+                //
+                // Offered in the same window as the phone: once the order has been taken on, and
+                // not after the customer has rated it. The server refuses outside it either way.
+                if (booking.canBeMessaged)
+                  Expanded(
+                    child: FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => BookingChatScreen(
+                            bookingId: booking.id,
+                            title: booking.variantName ?? booking.serviceName,
+                            // The customer, since this is the business reading it.
+                            counterpartName: booking.customerName,
+                          ),
+                        ),
+                      ),
+                      icon: const Icon(Icons.chat_bubble_outline),
+                      label: const Text('Message'),
+                    ),
+                  ),
+              ],
             ),
           ],
           const SizedBox(height: 20),
@@ -236,19 +271,17 @@ class _BusinessBookingDetailScreenState
             label: 'Scheduled for',
             // Through the shared formatters, not a substring of toString(), which printed
             // "2026-09-23 09:0" — machine format, with a digit clipped off the time.
-            value: '${formatDate(booking.scheduledDate)} · '
+            value:
+                '${formatDate(booking.scheduledDate)} · '
                 '${formatTime(booking.scheduledDate)}',
           ),
-          _DetailRow(
-            label: 'Price',
-            value: booking.priceDisplay(),
-          ),
+          _DetailRow(label: 'Price', value: booking.priceDisplay()),
           if (booking.customerPhone != null)
             _DetailRow(label: 'Customer phone', value: booking.customerPhone!),
+
           // What the customer told the business about the job, each line carrying the question as it
 
           // was worded when they answered it.
-
           for (final answer in booking.serviceAnswers)
             _DetailRow(label: answer.questionPrompt, value: answer.answerText),
 

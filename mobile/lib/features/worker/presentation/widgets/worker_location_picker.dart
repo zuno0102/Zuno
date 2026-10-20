@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/location/location_service.dart';
 import 'package:zuno/features/worker/presentation/providers/worker_job_filter_provider.dart';
 import 'package:zuno/features/worker/presentation/widgets/place_search_sheet.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
+import 'package:zuno/shared/widgets/location_pin_picker.dart';
 
 // Asking a worker where they are, and remembering the answer.
 ///
@@ -19,6 +21,81 @@ import 'package:zuno/shared/widgets/app_messages.dart';
 ///
 /// The answer is stored in [workerJobFilterProvider], so setting it once on a map also narrows the
 /// Find work feed rather than being thrown away.
+/// A settings page that would fix the problem. Null where no page can.
+enum WorkerLocationFix {
+  /// Zuno's own permissions, where a refusal is taken back.
+  appSettings,
+
+  /// The phone's location switch, which no app can flip for it.
+  phoneLocationSettings,
+}
+
+/// The words for [problem], and the button that fixes it.
+///
+/// Each problem needs different words, because each has a different way out. A dialog, not a
+/// snackbar: this is the thing standing between the worker and what they asked for, so it needs a
+/// button that fixes it rather than a notice that slides off the screen.
+///
+/// Pure, and [isWeb] rather than `kIsWeb` inside it, so the wording can be tested without a
+/// browser. That is the whole reason it is out here: in a browser there is no app settings page to
+/// open and no reaching the phone's location switch, so both buttons did nothing at all when they
+/// were pressed on the web — a dead end dressed up as the way out. There the way out is words, and
+/// the button retries once the setting has been changed.
+(String, String, String, WorkerLocationFix?) workerLocationHelp(
+  LocationProblem? problem, {
+  required bool isWeb,
+}) => switch (problem) {
+  LocationProblem.deniedForever when isWeb => (
+    'Allow location for this site',
+    'Your browser is blocking location for Zuno. Tap the padlock (or ⓘ) to the left of the web '
+        'address, open Permissions, then Location, and choose Allow. Then try again — or type a '
+        'place instead.',
+    'Try again',
+    null,
+  ),
+  LocationProblem.serviceDisabled when isWeb => (
+    'Turn on location',
+    'Location is switched off for this phone, so the browser cannot find you either. Turn it on '
+        'from the quick settings, then try again — or type a place instead.',
+    'Try again',
+    null,
+  ),
+  LocationProblem.serviceDisabled => (
+    'Turn on location',
+    'Location is switched off for this phone, so no app can find you. Turn it on, then try '
+        'again — or type a place instead.',
+    'Open settings',
+    WorkerLocationFix.phoneLocationSettings,
+  ),
+  LocationProblem.deniedForever => (
+    'Location is blocked',
+    'Zuno is not allowed to read your location. You can change that in the app settings, or '
+        'type a place instead.',
+    'Open settings',
+    WorkerLocationFix.appSettings,
+  ),
+  LocationProblem.denied => (
+    'Location needed',
+    'Zuno needs to know where you are to measure the distance. You can also type a place '
+        'instead.',
+    'Try again',
+    null,
+  ),
+  LocationProblem.timedOut => (
+    'Could not find you',
+    'No location came back — that often happens indoors. Try again outside, or type a place '
+        'instead.',
+    'Try again',
+    null,
+  ),
+  _ => (
+    'Could not read your location',
+    'Something went wrong finding you. You can type a place instead.',
+    'Try again',
+    null,
+  ),
+};
+
 /// Opens the full control: type a place, use the phone's position, or clear what is set.
 ///
 /// Returns true when a position was set or cleared, so a caller can react.
@@ -40,6 +117,30 @@ Future<bool> chooseWorkerLocation(BuildContext context, WidgetRef ref) async {
 
   if (choice.useCurrentLocation) {
     return useCurrentWorkerLocation(context, ref);
+  }
+
+  // A hamlet no search knows by name: point at it. Opens on the village that was found, if any,
+  // so the worker only has to drag from there to their own spot.
+  if (choice.pickOnMap) {
+    final picked = await showLocationPinPicker(
+      context,
+      title: 'Where are you?',
+      initialLatitude: choice.place?.latitude,
+      initialLongitude: choice.place?.longitude,
+    );
+    if (picked == null || !context.mounted) return false;
+
+    final label =
+        picked.locality ?? picked.city ?? picked.label ?? 'Pinned spot';
+    ref
+        .read(workerJobFilterProvider.notifier)
+        .setPosition(
+          latitude: picked.latitude,
+          longitude: picked.longitude,
+          placeLabel: label,
+        );
+    context.showSuccessMessage('Location set to $label.');
+    return true;
   }
 
   if (choice.place case final place?) {
@@ -99,46 +200,16 @@ Future<bool> useCurrentWorkerLocation(
     return true;
   }
 
-  // Each problem needs different words, because each has a different way out.
-  //
-  // A dialog, not a snackbar: this is the thing standing between the worker and what they asked
-  // for, so it needs a button that fixes it rather than a notice that slides off the screen.
-  final (title, message, actionLabel, onAction) = switch (result.problem) {
-    LocationProblem.serviceDisabled => (
-      'Turn on location',
-      'Location is switched off for this phone, so no app can find you. Turn it on, then try '
-          'again — or type a place instead.',
-      'Open settings',
-      // The phone's own location page: the app's permission screen cannot switch the radio on.
-      service.openLocationSettings,
-    ),
-    LocationProblem.deniedForever => (
-      'Location is blocked',
-      'Zuno is not allowed to read your location. You can change that in the app settings, or '
-          'type a place instead.',
-      'Open settings',
-      service.openSettings,
-    ),
-    LocationProblem.denied => (
-      'Location needed',
-      'Zuno needs to know where you are to measure the distance. You can also type a place '
-          'instead.',
-      'Try again',
-      null,
-    ),
-    LocationProblem.timedOut => (
-      'Could not find you',
-      'No location came back — that often happens indoors. Try again outside, or type a place '
-          'instead.',
-      'Try again',
-      null,
-    ),
-    _ => (
-      'Could not read your location',
-      'Something went wrong finding you. You can type a place instead.',
-      'Try again',
-      null,
-    ),
+  final (title, message, actionLabel, fix) = workerLocationHelp(
+    result.problem,
+    isWeb: kIsWeb,
+  );
+
+  final onAction = switch (fix) {
+    WorkerLocationFix.appSettings => service.openSettings,
+    // The phone's own location page: the app's permission screen cannot switch the radio on.
+    WorkerLocationFix.phoneLocationSettings => service.openLocationSettings,
+    null => null,
   };
 
   final retry = await showDialog<bool>(

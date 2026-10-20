@@ -9,9 +9,6 @@ import 'package:zuno/features/booking/domain/entities/booking.dart';
 import 'package:zuno/features/booking/domain/repositories/booking_repository.dart';
 import 'package:zuno/features/booking/presentation/providers/booking_providers.dart';
 import 'package:zuno/features/customer/domain/entities/customer_service.dart';
-import 'package:zuno/features/customer/domain/entities/service_coverage.dart';
-import 'package:zuno/features/customer/domain/repositories/customer_repository.dart';
-import 'package:zuno/features/customer/presentation/providers/customer_providers.dart';
 import 'package:zuno/features/customer/presentation/screens/create_booking_screen.dart';
 import 'package:zuno/shared/widgets/job_location_card.dart';
 import 'package:zuno/shared/widgets/location_pin_picker.dart';
@@ -274,84 +271,4 @@ void main() {
     expect(find.textContaining('the worker uses this pin'), findsOneWidget);
     expect(repository.createCalls, 0);
   });
-
-  testWidgets('a pin outside the service area is flagged at once and cannot be booked', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(1080, 2400);
-    tester.view.devicePixelRatio = 3;
-    addTearDown(tester.view.reset);
-
-    final bookings = _CountingBookingRepository();
-    final customer = _CoverageRepository(
-      const ServiceCoverage(isAvailable: false, servedDistricts: ['Kanyakumari']),
-    );
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          bookingRepositoryProvider.overrideWithValue(bookings),
-          customerRepositoryProvider.overrideWithValue(customer),
-          // The customer is in Bengaluru; the service only goes to Kanyakumari.
-          locationServiceProvider.overrideWithValue(
-            _QueuedLocationService([const LocationResult.found(12.9352, 77.6245)]),
-          ),
-          placeSearchClientProvider.overrideWithValue(_SilentPlaces()),
-        ],
-        child: const MaterialApp(
-          home: CreateBookingScreen(
-            businessName: 'Shajil Caterers',
-            service: CustomerService(
-              id: 's-1',
-              serviceCategoryName: 'Catering',
-              name: 'Wedding catering',
-              priceType: 'Fixed',
-              price: 25000,
-            ),
-          ),
-        ),
-      ),
-    );
-
-    await tester.ensureVisible(find.byKey(const Key('bookingPickPin')));
-    await tester.tap(find.byKey(const Key('bookingPickPin')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 700));
-    await tester.tap(find.byKey(const Key('pinPickerConfirm')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 700));
-
-    expect(customer.checkedLatitude, 12.9352);
-    expect(find.byKey(const Key('bookingServiceUnavailable')), findsOneWidget);
-    expect(find.text('Service not available for your location'), findsOneWidget);
-    expect(find.text('This service is offered only in Kanyakumari.'), findsOneWidget);
-
-    final confirm = find.byType(PrimaryButton);
-    await tester.ensureVisible(confirm);
-    await tester.pump();
-    await tester.tap(confirm);
-    await tester.pump();
-    expect(bookings.createCalls, 0);
-  });
-}
-
-/// Answers every coverage check the same way, and remembers where it was asked about.
-class _CoverageRepository implements CustomerRepository {
-  _CoverageRepository(this._answer);
-
-  final ServiceCoverage _answer;
-  double? checkedLatitude;
-
-  @override
-  Future<ServiceCoverage> checkServiceCoverage(
-    String serviceId, {
-    required double latitude,
-    required double longitude,
-  }) async {
-    checkedLatitude = latitude;
-    return _answer;
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      throw UnimplementedError(invocation.memberName.toString());
 }

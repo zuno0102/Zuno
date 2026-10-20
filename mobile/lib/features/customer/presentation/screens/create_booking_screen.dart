@@ -6,7 +6,6 @@ import 'package:zuno/features/customer/domain/entities/customer_service.dart';
 import 'package:zuno/features/customer/domain/entities/service_coverage.dart';
 import 'package:zuno/features/customer/presentation/providers/customer_providers.dart';
 import 'package:zuno/features/customer/domain/entities/service_variant.dart';
-import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/job_location_card.dart';
@@ -50,7 +49,16 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
   /// Set when somebody tried to book without a pin, so the pin tile can say so in red.
   bool _pinMissing = false;
 
-  static const _pinMissingMessage = 'Pin the job location on the map before booking.';
+  static const _pinMissingMessage =
+      'Pin the job location on the map before booking.';
+
+  /// Set when somebody tried to book without a date, so the date button can say so.
+  bool _dateMissing = false;
+
+  /// Where the form scrolls to when something there needs attention. The Confirm button is at the
+  /// bottom; a message shown at the top of a long form is a message nobody sees.
+  final _dateKey = GlobalKey();
+  final _pinKey = GlobalKey();
 
   /// Whether the service is offered at [_pin], asked as soon as it is pinned. Null until the
   /// answer arrives, or when the check could not be made — the server still refuses the booking
@@ -64,7 +72,6 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
   int _coverageRequest = 0;
 
   bool _isSubmitting = false;
-  String? _errorMessage;
 
   /// One controller per question the business asks, keyed by the question's id.
   ///
@@ -109,15 +116,16 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
       return;
     }
 
-    setState(
-      () => _scheduledDate = DateTime(
+    setState(() {
+      _scheduledDate = DateTime(
         date.year,
         date.month,
         date.day,
         time.hour,
         time.minute,
-      ),
-    );
+      );
+      _dateMissing = false;
+    });
   }
 
   /// Opens the map, then fills City, State and Pincode from the pin. They stay editable — the map
@@ -135,7 +143,6 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
     setState(() {
       _pin = picked;
       _pinMissing = false;
-      if (_errorMessage == _pinMissingMessage) _errorMessage = null;
       if (picked.city case final city?) _cityController.text = city;
       if (picked.state case final state?) _stateController.text = state;
       if (picked.postalCode case final code?) _postalCodeController.text = code;
@@ -144,15 +151,21 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
         if (street.isNotEmpty) _addressLine1Controller.text = street;
       }
       _coverage = null;
-      if (_errorMessage == _notAvailableMessage) _errorMessage = null;
     });
-    _coverageCheck = _checkCoverage(picked);
+    _coverageCheck = _checkCoverage(picked, announce: true);
   }
 
-  static const _notAvailableMessage = 'Service not available for your location.';
+  static const _notAvailableMessage =
+      "Sorry, this service isn't available at your location yet.";
 
-  Future<void> _checkCoverage(PickedLocation pin) async {
+  /// Asks whether the service reaches [pin]. With [announce], a "not here" answer is also said in
+  /// a message, so the customer hears it the moment they pin — not after filling in the rest.
+  Future<void> _checkCoverage(
+    PickedLocation pin, {
+    bool announce = false,
+  }) async {
     final request = ++_coverageRequest;
+    final messenger = AppMessenger.of(context);
     try {
       final coverage = await ref
           .read(customerRepositoryProvider)
@@ -163,41 +176,66 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
           );
       if (!mounted || request != _coverageRequest) return;
       setState(() => _coverage = coverage);
+      if (announce && !coverage.isAvailable)
+        messenger.showInfo(_notAvailableMessage);
     } catch (_) {
       // Left unknown on purpose: the booking itself is checked by the server.
     }
+  }
+
+  /// Brings [key]'s part of the form into view, where the customer can fix it.
+  void _scrollTo(GlobalKey key) {
+    final target = key.currentContext;
+    if (target == null) return;
+    Scrollable.ensureVisible(
+      target,
+      alignment: 0.15,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  /// The service does not reach the pin: say so gently, and take them to where it can be changed.
+  void _explainNotAvailable(AppMessenger messenger) {
+    messenger.showInfo(_notAvailableMessage);
+    _scrollTo(_pinKey);
   }
 
   bool get _isUnavailable => _coverage?.isAvailable == false;
 
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
-    final formOk = _formKey.currentState!.validate();
+    // Every problem is told where the customer is — in a message by the Confirm button they just
+    // pressed — and the form moves to the part that needs them.
+    final messenger = AppMessenger.of(context);
     if (_pin == null) {
-      setState(() {
-        _pinMissing = true;
-        _errorMessage = _pinMissingMessage;
-      });
+      setState(() => _pinMissing = true);
+      messenger.showInfo(_pinMissingMessage);
+      _scrollTo(_pinKey);
       return;
     }
     await _coverageCheck;
     if (!mounted) return;
     if (_isUnavailable) {
-      setState(() => _errorMessage = _notAvailableMessage);
+      _explainNotAvailable(messenger);
       return;
     }
-    if (!formOk) {
+    // Only now: when the business cannot come here at all, marking the address boxes "Required"
+    // would be noise around the one thing that matters.
+    if (!_formKey.currentState!.validate()) {
+      messenger.showInfo(
+        'A few details are still missing — they are marked above.',
+      );
       return;
     }
     if (_scheduledDate == null) {
-      setState(() => _errorMessage = 'Select a date and time for the service.');
+      setState(() => _dateMissing = true);
+      messenger.showInfo('Choose a date and time for the service.');
+      _scrollTo(_dateKey);
       return;
     }
 
-    setState(() {
-      _isSubmitting = true;
-      _errorMessage = null;
-    });
+    setState(() => _isSubmitting = true);
 
     try {
       await ref
@@ -231,7 +269,17 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
         Navigator.of(context).pop();
       }
     } catch (e) {
-      setState(() => _errorMessage = e.toString());
+      // The server refused the area (an app that could not ask beforehand, or a business that
+      // changed its districts meanwhile): ask again so the note under the pin can explain it.
+      if (e.toString().contains("isn't available at your location")) {
+        await _checkCoverage(_pin!);
+        if (!mounted) return;
+        if (_isUnavailable) {
+          _explainNotAvailable(messenger);
+          return;
+        }
+      }
+      messenger.showFailure(e.toString());
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
@@ -292,12 +340,17 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              if (_errorMessage != null) ...[
-                ErrorBanner(message: _errorMessage!),
-                const SizedBox(height: 16),
-              ],
               OutlinedButton.icon(
+                key: _dateKey,
                 onPressed: _pickScheduledDate,
+                style: _dateMissing
+                    ? OutlinedButton.styleFrom(
+                        side: BorderSide(
+                          color: Theme.of(context).colorScheme.error,
+                          width: 1.5,
+                        ),
+                      )
+                    : null,
                 icon: const Icon(Icons.event_outlined),
                 label: Text(
                   _scheduledDate == null
@@ -361,6 +414,8 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
               ),
               const SizedBox(height: 12),
               _JobLocationField(
+                key: _pinKey,
+                businessName: widget.businessName,
                 pin: _pin,
                 isMissing: _pinMissing,
                 onPick: _pickLocation,
@@ -456,12 +511,15 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
 /// the map preview with a Change button, so the customer can see the pin is on the right house.
 class _JobLocationField extends StatelessWidget {
   const _JobLocationField({
+    required this.businessName,
     required this.pin,
     required this.isMissing,
     required this.onPick,
     this.unavailable,
+    super.key,
   });
 
+  final String businessName;
   final PickedLocation? pin;
   final bool isMissing;
   final VoidCallback onPick;
@@ -487,61 +545,29 @@ class _JobLocationField extends StatelessWidget {
             showActions: false,
           ),
           if (unavailable case final coverage?) ...[
-            const SizedBox(height: 10),
-            Container(
-              key: const Key('bookingServiceUnavailable'),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.errorContainer,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: theme.colorScheme.error),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.location_off_outlined, color: theme.colorScheme.error),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Service not available for your location',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            color: theme.colorScheme.onErrorContainer,
-                          ),
-                        ),
-                        if (coverage.servedDistricts.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            'This service is offered only in '
-                            '${coverage.servedDistricts.join(', ')}.',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onErrorContainer,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
+            const SizedBox(height: 12),
+            _NotAvailableNote(
+              businessName: businessName,
+              servedDistricts: coverage.servedDistricts,
+              onChangePin: onPick,
+            ),
+          ] else
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                key: const Key('bookingChangePin'),
+                onPressed: onPick,
+                icon: const Icon(Icons.edit_location_alt_outlined, size: 18),
+                label: const Text('Change pin'),
               ),
             ),
-          ],
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              key: const Key('bookingChangePin'),
-              onPressed: onPick,
-              icon: const Icon(Icons.edit_location_alt_outlined, size: 18),
-              label: const Text('Change pin'),
-            ),
-          ),
         ],
       );
     }
 
-    final colour = isMissing ? theme.colorScheme.error : theme.colorScheme.primary;
+    final colour = isMissing
+        ? theme.colorScheme.error
+        : theme.colorScheme.primary;
 
     return InkWell(
       key: const Key('bookingPickPin'),
@@ -559,7 +585,10 @@ class _JobLocationField extends StatelessWidget {
             CircleAvatar(
               radius: 20,
               backgroundColor: colour,
-              child: Icon(Icons.location_on, color: theme.colorScheme.onPrimary),
+              child: Icon(
+                Icons.location_on,
+                color: theme.colorScheme.onPrimary,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -587,3 +616,97 @@ class _JobLocationField extends StatelessWidget {
     );
   }
 }
+
+/// What the customer sees under the pin when the business does not work there.
+///
+/// Worded as an apology with a way forward rather than an error: nobody did anything wrong. The
+/// business simply works elsewhere, and the useful thing is to say where, and to offer the one
+/// action that helps — moving the pin.
+class _NotAvailableNote extends StatelessWidget {
+  const _NotAvailableNote({
+    required this.businessName,
+    required this.servedDistricts,
+    required this.onChangePin,
+  });
+
+  final String businessName;
+  final List<String> servedDistricts;
+  final VoidCallback onChangePin;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final where = joinPlaceNames(servedDistricts);
+
+    return Container(
+      key: const Key('bookingServiceUnavailable'),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: scheme.primary.withValues(alpha: 0.12),
+                child: Icon(
+                  Icons.travel_explore_rounded,
+                  size: 20,
+                  color: scheme.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "This service doesn't reach your location yet",
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: scheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      where.isEmpty
+                          ? 'Move the pin to another address, or look for a service closer to you.'
+                          : '$businessName works in $where. Move the pin to an address there, '
+                                'or look for a service closer to you.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              key: const Key('bookingChangePin'),
+              onPressed: onChangePin,
+              icon: const Icon(Icons.edit_location_alt_outlined, size: 18),
+              label: const Text('Change location'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Kanyakumari", "Kanyakumari and Thiruvananthapuram", "A, B and C".
+String joinPlaceNames(List<String> names) => switch (names.length) {
+  0 => '',
+  1 => names.single,
+  _ => '${names.sublist(0, names.length - 1).join(', ')} and ${names.last}',
+};

@@ -73,7 +73,9 @@ class NotificationSurfacer extends _$NotificationSurfacer {
     try {
       final models = await ref
           .read(notificationDataSourceProvider)
-          .getMine(take: 30);
+          // Messages included: the tray announces a new message like anything else. The bell is
+          // the one that leaves them to the Chat tab.
+          .getMine(take: 30, includeChat: true);
       waiting = models.map((m) => m.toEntity()).toList();
     } catch (error) {
       // A failed read draws nothing. The bell still carries the count, and the next resume tries
@@ -124,10 +126,7 @@ class NotificationSurfacer extends _$NotificationSurfacer {
   }
 
   void _remember_(List<AppNotification> shown) {
-    _surfaced = {
-      ..._surfaced,
-      ...shown.map((n) => n.id),
-    };
+    _surfaced = {..._surfaced, ...shown.map((n) => n.id)};
 
     if (_surfaced.length > _remember) {
       _surfaced = _surfaced.skip(_surfaced.length - _remember).toSet();

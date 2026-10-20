@@ -57,6 +57,184 @@ final class NotificationDataSourceProvider
 String _$notificationDataSourceHash() =>
     r'623c08d8f19454c54371b1410008535b4a65397a';
 
+/// Which things the person has been told about and not yet looked at, by the id of the thing.
+///
+/// One source for two badges. The bell counts unread notifications; the Bookings tab marks the
+/// orders among them that still need the customer. Deriving both from the same set is what keeps
+/// them agreeing: opening a booking takes it out of here, and both numbers fall together. Two
+/// independent counts drift, and a person who clears one only to find the other still lit stops
+/// trusting either.
+///
+/// Kept alive for the same reason as the count: the tabs it feeds are rebuilt constantly, and a
+/// fetch per rebuild would make the badges flicker.
+
+@ProviderFor(UnreadNotificationTargets)
+final unreadNotificationTargetsProvider = UnreadNotificationTargetsProvider._();
+
+/// Which things the person has been told about and not yet looked at, by the id of the thing.
+///
+/// One source for two badges. The bell counts unread notifications; the Bookings tab marks the
+/// orders among them that still need the customer. Deriving both from the same set is what keeps
+/// them agreeing: opening a booking takes it out of here, and both numbers fall together. Two
+/// independent counts drift, and a person who clears one only to find the other still lit stops
+/// trusting either.
+///
+/// Kept alive for the same reason as the count: the tabs it feeds are rebuilt constantly, and a
+/// fetch per rebuild would make the badges flicker.
+final class UnreadNotificationTargetsProvider
+    extends $AsyncNotifierProvider<UnreadNotificationTargets, Set<String>> {
+  /// Which things the person has been told about and not yet looked at, by the id of the thing.
+  ///
+  /// One source for two badges. The bell counts unread notifications; the Bookings tab marks the
+  /// orders among them that still need the customer. Deriving both from the same set is what keeps
+  /// them agreeing: opening a booking takes it out of here, and both numbers fall together. Two
+  /// independent counts drift, and a person who clears one only to find the other still lit stops
+  /// trusting either.
+  ///
+  /// Kept alive for the same reason as the count: the tabs it feeds are rebuilt constantly, and a
+  /// fetch per rebuild would make the badges flicker.
+  UnreadNotificationTargetsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'unreadNotificationTargetsProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$unreadNotificationTargetsHash();
+
+  @$internal
+  @override
+  UnreadNotificationTargets create() => UnreadNotificationTargets();
+}
+
+String _$unreadNotificationTargetsHash() =>
+    r'ccda496d1fc16fdf1804876dc6db62ef7c30fb7c';
+
+/// Which things the person has been told about and not yet looked at, by the id of the thing.
+///
+/// One source for two badges. The bell counts unread notifications; the Bookings tab marks the
+/// orders among them that still need the customer. Deriving both from the same set is what keeps
+/// them agreeing: opening a booking takes it out of here, and both numbers fall together. Two
+/// independent counts drift, and a person who clears one only to find the other still lit stops
+/// trusting either.
+///
+/// Kept alive for the same reason as the count: the tabs it feeds are rebuilt constantly, and a
+/// fetch per rebuild would make the badges flicker.
+
+abstract class _$UnreadNotificationTargets extends $AsyncNotifier<Set<String>> {
+  FutureOr<Set<String>> build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<AsyncValue<Set<String>>, Set<String>>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<Set<String>>, Set<String>>,
+              AsyncValue<Set<String>>,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}
+
+/// Whether anything unread points at this exact thing.
+
+@ProviderFor(hasUnreadNotificationFor)
+final hasUnreadNotificationForProvider = HasUnreadNotificationForFamily._();
+
+/// Whether anything unread points at this exact thing.
+
+final class HasUnreadNotificationForProvider
+    extends $FunctionalProvider<bool, bool, bool>
+    with $Provider<bool> {
+  /// Whether anything unread points at this exact thing.
+  HasUnreadNotificationForProvider._({
+    required HasUnreadNotificationForFamily super.from,
+    required (String, String) super.argument,
+  }) : super(
+         retry: null,
+         name: r'hasUnreadNotificationForProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$hasUnreadNotificationForHash();
+
+  @override
+  String toString() {
+    return r'hasUnreadNotificationForProvider'
+        ''
+        '$argument';
+  }
+
+  @$internal
+  @override
+  $ProviderElement<bool> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  bool create(Ref ref) {
+    final argument = this.argument as (String, String);
+    return hasUnreadNotificationFor(ref, argument.$1, argument.$2);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is HasUnreadNotificationForProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$hasUnreadNotificationForHash() =>
+    r'58527c65632d90cd366338630d5cab15f86cb0c4';
+
+/// Whether anything unread points at this exact thing.
+
+final class HasUnreadNotificationForFamily extends $Family
+    with $FunctionalFamilyOverride<bool, (String, String)> {
+  HasUnreadNotificationForFamily._()
+    : super(
+        retry: null,
+        name: r'hasUnreadNotificationForProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Whether anything unread points at this exact thing.
+
+  HasUnreadNotificationForProvider call(String target, String targetId) =>
+      HasUnreadNotificationForProvider._(
+        argument: (target, targetId),
+        from: this,
+      );
+
+  @override
+  String toString() => r'hasUnreadNotificationForProvider';
+}
+
 /// The number on the bell.
 ///
 /// Kept alive, because the bell sits above every tab in all three shells: rebuilding it per tab

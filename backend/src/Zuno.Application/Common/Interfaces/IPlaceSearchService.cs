@@ -50,6 +50,11 @@ public interface IPlaceSearchService
 /// <param name="City">City, town or village.</param>
 /// <param name="State">State, e.g. "Tamil Nadu".</param>
 /// <param name="PostalCode">PIN code.</param>
+/// <param name="MatchedText">
+/// Set when nothing matched the whole search and this result matched only part of it — the part
+/// that was found, e.g. "manalikarai" out of "auttukonam, manalikarai". The app says so, so the
+/// person knows to drag the pin to their exact spot.
+/// </param>
 public record PlaceResult(
     string Name,
     string FullName,
@@ -59,4 +64,5 @@ public record PlaceResult(
     string? Locality = null,
     string? City = null,
     string? State = null,
-    string? PostalCode = null);
+    string? PostalCode = null,
+    string? MatchedText = null);

@@ -33,7 +33,9 @@ HiringPost _job() => HiringPost(
 Future<void> pump(WidgetTester tester, {LatLng? from}) async {
   await tester.pumpWidget(
     ProviderScope(
-      child: MaterialApp(home: SingleJobMapScreen(job: _job(), from: from)),
+      child: MaterialApp(
+        home: SingleJobMapScreen(job: _job(), from: from),
+      ),
     ),
   );
   // Pumped by hand: the map fetches tiles and a route, so settling waits on network calls that
@@ -49,10 +51,7 @@ void main() {
 
       // An icon alone answers somebody who already knows what is missing. This says what the map
       // cannot show, and offers to fix it.
-      expect(
-        find.text('Show the way from where you are'),
-        findsOneWidget,
-      );
+      expect(find.text('Show the way from where you are'), findsOneWidget);
     });
 
     testWidgets('and as a control in the bar', (tester) async {
@@ -96,6 +95,24 @@ void main() {
         findsOneWidget,
       );
     });
+
+    /// Zooming in is otherwise a one-way door. The map is draggable and pinchable so a worker can
+    /// see which turning it is, and without this they are left holding one corner of the route
+    /// with no way back to the whole of it but leaving the screen.
+    testWidgets('and offers the whole route back', (tester) async {
+      await pump(tester, from: const LatLng(8.4875, 76.9525));
+
+      expect(find.byTooltip('Show the whole route'), findsOneWidget);
+    });
+  });
+
+  // Nothing to frame with one point: the control would promise a journey the map does not have.
+  testWidgets('with no starting point there is no route to show', (
+    tester,
+  ) async {
+    await pump(tester);
+
+    expect(find.byTooltip('Show the whole route'), findsNothing);
   });
 }
 

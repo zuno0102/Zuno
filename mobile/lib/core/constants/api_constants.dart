@@ -59,6 +59,7 @@ class ApiConstants {
 
   static String businessWorkerBusyDatesPath(String id) =>
       '$businessWorkersPath/$id/busy-dates';
+
   /// The boxes this service asks a customer to fill in. PUT replaces the whole set.
   static String businessServiceQuestionsPath(String id) =>
       '${businessServicePath(id)}/questions';
@@ -143,6 +144,7 @@ class ApiConstants {
       '$businessBookingsPath/$id/confirm';
   static String businessBookingStartPath(String id) =>
       '$businessBookingsPath/$id/start';
+
   /// Offering, countering and accepting the crew size and price.
   ///
   /// Two routes for each verb, one per side — the server works out who is calling and enforces
@@ -162,8 +164,10 @@ class ApiConstants {
       '$businessBookingsPath/$id/assign-worker';
 
   /// What one crew member is on one job. A blank role takes it away.
-  static String businessBookingCrewRolePath(String id, String workerProfileId) =>
-      '$businessBookingsPath/$id/crew/$workerProfileId/role';
+  static String businessBookingCrewRolePath(
+    String id,
+    String workerProfileId,
+  ) => '$businessBookingsPath/$id/crew/$workerProfileId/role';
   static String businessBookingCancelPath(String id) =>
       '$businessBookingsPath/$id/cancel';
 
@@ -214,6 +218,7 @@ class ApiConstants {
       '/api/$apiVersion/worker/hiring-posts';
   static String applyToHiringPostPath(String id) =>
       '$workerHiringPostsPath/$id/apply';
+
   /// Jobs a business invited this worker onto, still waiting on an answer.
   static const String workerJobOffersPath = '$workerHiringPostsPath/offers';
 
@@ -242,4 +247,14 @@ class ApiConstants {
 
   static const String markAllNotificationsReadPath =
       '$notificationsPath/read-all';
+
+  /// Marks read whatever this person was told about one particular thing.
+  ///
+  /// Sent when they open the thing itself rather than the notification about it: somebody who
+  /// reads the booking has dealt with the message, and a badge still counting it afterwards is
+  /// counting something they have already seen.
+  static String markTargetNotificationsReadPath(
+    String target,
+    String targetId,
+  ) => '$notificationsPath/targets/$target/$targetId/read';
 }

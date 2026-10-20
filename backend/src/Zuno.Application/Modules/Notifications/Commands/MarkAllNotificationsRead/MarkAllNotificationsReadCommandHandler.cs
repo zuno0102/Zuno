@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Zuno.Application.Common.Interfaces;
+using Zuno.Application.Modules.Notifications.Common;
 
 namespace Zuno.Application.Modules.Notifications.Commands.MarkAllNotificationsRead;
 
@@ -23,7 +24,11 @@ public class MarkAllNotificationsReadCommandHandler(
         // interceptor stamps ModifiedBy/ModifiedDate the way it does everywhere else in this schema.
         // The filtered index keeps this to the unread ones, which is a handful even for a busy
         // worker who has ignored the bell for a week.
+        // Chat is left out, for the reason given on OnTheBell. This runs because somebody opened the
+        // bell list, and the messages are not in it — reading them here would take the number off
+        // the Chat tab for messages nobody has looked at.
         var unread = await dbContext.Notifications
+            .OnTheBell()
             .Where(n => n.UserId == userId && n.ReadAt == null)
             .ToListAsync(cancellationToken);
 

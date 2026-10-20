@@ -6,8 +6,10 @@ import 'package:zuno/features/booking/domain/entities/booking.dart';
 import 'package:zuno/features/booking/presentation/providers/business_bookings_notifier.dart';
 import 'package:zuno/features/booking/presentation/widgets/booking_status_chip.dart';
 import 'package:zuno/features/booking/presentation/widgets/booking_crew_list.dart';
+import 'package:zuno/features/booking/presentation/widgets/booking_threads_list.dart';
 import 'package:zuno/features/booking/presentation/widgets/booking_tracks.dart';
 import 'package:zuno/features/booking/presentation/widgets/order_code.dart';
+import 'package:zuno/features/booking/presentation/providers/booking_message_providers.dart';
 import 'package:zuno/features/business_owner/presentation/screens/business_booking_detail_screen.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/pay_crew_sheet.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
@@ -15,6 +17,7 @@ import 'package:zuno/features/hiring_post/presentation/providers/business_hiring
 import 'package:zuno/shared/widgets/call_icon_button.dart';
 import 'package:zuno/shared/widgets/empty_state.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
+import 'package:zuno/shared/widgets/message_icon_button.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
 import 'package:zuno/shared/widgets/status_track.dart';
 
@@ -30,24 +33,85 @@ class BusinessOrdersTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Column(
         children: [
           Material(
             color: Theme.of(context).colorScheme.surface,
             child: const TabBar(
+              // Fixed thirds, not a scrolling bar. A scrolling bar sized itself to the labels and
+              // pushed Messages off the right edge of a phone, where it had to be swiped into
+              // view — which is the same "there is nowhere to message from" this tab exists to
+              // answer. Three equal thirds keep it on screen; a long label ellipsises instead,
+              // which is a smaller price than a tab nobody finds.
               tabs: [
                 Tab(text: 'From customers'),
                 Tab(text: 'Status management'),
+                Tab(child: _MessagesTabLabel()),
               ],
             ),
           ),
           const Expanded(
             child: TabBarView(
-              children: [_CustomerOrdersTab(), _StatusManagementTab()],
+              children: [
+                _CustomerOrdersTab(),
+                _StatusManagementTab(),
+                _BusinessMessagesTab(),
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// "Messages", carrying the number of unread ones.
+///
+/// Watched here rather than on [BusinessOrdersTab] so a message arriving repaints two words
+/// instead of both order lists — and so the bar above can stay const.
+class _MessagesTabLabel extends ConsumerWidget {
+  const _MessagesTabLabel();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unread = ref.watch(unreadChatCountProvider);
+
+    return Badge(
+      isLabelVisible: unread > 0,
+      // Capped, because the badge has to stay a badge. Anything past this is "a lot", and the
+      // list is where the real number lives.
+      label: Text(unread > 99 ? '99+' : '$unread'),
+      child: const Text('Messages'),
+    );
+  }
+}
+
+/// Every order with a conversation on it.
+///
+/// The same list the customer sees, read from the other end: the server decides who the counterpart
+/// is, so nothing here knows which side it is on.
+class _BusinessMessagesTab extends StatelessWidget {
+  const _BusinessMessagesTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return BookingThreadsList(
+      emptyState: EmptyState(
+        icon: Icons.chat_bubble_outline,
+        title: 'No messages yet',
+        message:
+            'Open an order and send the customer a message. Anything you '
+            'agree there stays with that order.',
+        actionLabel: 'Go to an order',
+        // A thread exists only once somebody has written, so an empty list has to point at the
+        // place a conversation can be started rather than leave them here. One tab back, where
+        // every order the business has taken on now carries a message button.
+        //
+        // Looked up from this context, which is inside the controller. Asking from
+        // BusinessOrdersTab.build would be asking from above it, and `of` throws rather than
+        // returning null.
+        onAction: () => DefaultTabController.of(context).animateTo(0),
       ),
     );
   }
@@ -144,11 +208,46 @@ class _OrderCard extends StatelessWidget {
             // One status, and the one a customer would recognise. The work, crew and wage
             // tracks belong to the other tab — this list is for reading, not working.
             BookingStatusChip(order: order),
-            if (order.canBeCalled && order.customerPhone != null)
-              CallIconButton(
-                phoneNumber: order.customerPhone!,
-                tooltip: 'Call customer',
+            // Side by side and tight, for one reason: a ListTile takes its height from the title
+            // and subtitle and never from this column, so there are about 62 logical pixels here
+            // and the pill already spends 26. A stock IconButton reserves a 48dp tap target and
+            // overflowed this card by 18 even on its own, before there were two of them — which
+            // is why the style below is set here rather than left to the theme.
+            IconButtonTheme(
+              data: IconButtonThemeData(
+                style: IconButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  padding: const EdgeInsets.all(6),
+                  // IconButton floors itself at 40dp square without this, which is what the
+                  // remaining two pixels of overflow were. The padding above sets the size now.
+                  minimumSize: Size.zero,
+                ),
               ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Where a conversation starts from this end. The Messages tab only lists orders
+                  // somebody has already written on, so without this the business could only ever
+                  // reply to a customer who wrote first.
+                  if (order.canBeMessaged)
+                    MessageIconButton(
+                      bookingId: order.id,
+                      title: order.variantName ?? order.serviceName,
+                      // The customer, since this is the business reading it.
+                      counterpartName: order.customerName,
+                      tooltip: 'Message customer',
+                      iconSize: 20,
+                    ),
+                  if (order.canBeCalled && order.customerPhone != null)
+                    CallIconButton(
+                      phoneNumber: order.customerPhone!,
+                      tooltip: 'Call customer',
+                      iconSize: 20,
+                    ),
+                ],
+              ),
+            ),
           ],
         ),
         onTap: () => Navigator.of(context).push(
@@ -198,17 +297,14 @@ class _StatusManagementTab extends ConsumerWidget {
 
     // A cancelled order has nothing left to manage, and one still awaiting confirmation is
     // answered from the other tab — this list is work the business has already taken on.
-    final live = orders
-        .where((o) => !o.isPending && !o.isCancelled)
-        .toList()
+    final live = orders.where((o) => !o.isPending && !o.isCancelled).toList()
       ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
 
     // Own events only. A post raised for an order is managed through that order, so listing it
     // here as well would ask the business to finish the same job twice.
-    final ownEvents = posts
-        .where((p) => p.bookingId == null && !p.isLapsed())
-        .toList()
-      ..sort((a, b) => a.eventDate.compareTo(b.eventDate));
+    final ownEvents =
+        posts.where((p) => p.bookingId == null && !p.isLapsed()).toList()
+          ..sort((a, b) => a.eventDate.compareTo(b.eventDate));
 
     if (live.isEmpty && ownEvents.isEmpty) {
       return const EmptyState(
@@ -330,23 +426,25 @@ class _OrderStepCardState extends ConsumerState<_OrderStepCard> {
         ),
         // Paying runs through the hiring post that owes the money; there is no second payment
         // path for orders.
-        _ when order.isCompleted && order.hasOutstandingWages =>
-          switch (_linkedPost) {
-            final post? => _Step(
-              'Pay crew · ${rupees(order.wageOutstandingAmount)}',
-              Icons.payments_outlined,
-              () async {
-                // Captured before the await, not read after it. Paying the last wage makes
-                // this order entirely complete, which drops it out of the list and disposes
-                // this very card — so by the time the sheet closes, `ref` has no context left
-                // to use and throws. The container outlives the card and refreshes either way.
-                final container = ProviderScope.containerOf(context, listen: false);
-                await PayCrewSheet.show(context, post);
-                container.invalidate(businessBookingsProvider);
-              },
-            ),
-            _ => null,
-          },
+        _ when order.isCompleted && order.hasOutstandingWages => switch (_linkedPost) {
+          final post? => _Step(
+            'Pay crew · ${rupees(order.wageOutstandingAmount)}',
+            Icons.payments_outlined,
+            () async {
+              // Captured before the await, not read after it. Paying the last wage makes
+              // this order entirely complete, which drops it out of the list and disposes
+              // this very card — so by the time the sheet closes, `ref` has no context left
+              // to use and throws. The container outlives the card and refreshes either way.
+              final container = ProviderScope.containerOf(
+                context,
+                listen: false,
+              );
+              await PayCrewSheet.show(context, post);
+              container.invalidate(businessBookingsProvider);
+            },
+          ),
+          _ => null,
+        },
         _ => null,
       },
       waitingFor: switch (order) {

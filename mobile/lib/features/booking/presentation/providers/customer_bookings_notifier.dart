@@ -2,6 +2,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:zuno/features/booking/domain/entities/booking.dart';
 import 'package:zuno/features/booking/domain/repositories/booking_repository.dart';
 import 'package:zuno/features/booking/presentation/providers/booking_providers.dart';
+import 'package:zuno/features/notifications/presentation/providers/notification_providers.dart';
 
 part 'customer_bookings_notifier.g.dart';
 
@@ -24,11 +25,31 @@ part 'customer_bookings_notifier.g.dart';
 ///
 /// Things only the customer can move forward: the business sent a price or crew offer that needs an
 /// answer, or a finished job is waiting for its rating.
+/// Counted only while the customer has not looked.
+///
+/// The number still means "you have something to do here" — an offer to answer, a job to rate —
+/// but it stops counting an order once they have opened it, and starts again the moment the
+/// business does something new on it. Before this it counted the state alone, so reading the
+/// booking changed nothing and the badge sat there afterwards saying something the customer had
+/// already seen.
+///
+/// Tied to the same unread notifications the bell counts, so opening an order moves both numbers
+/// at once, whichever way it was opened.
 @riverpod
-int customerBookingsNeedingMeCount(Ref ref) =>
-    (ref.watch(customerBookingsProvider).value ?? const <Booking>[])
-        .where(bookingNeedsCustomer)
-        .length;
+int customerBookingsNeedingMeCount(Ref ref) {
+  final unread =
+      ref.watch(unreadNotificationTargetsProvider).value ?? const <String>{};
+
+  // Either target counts: an order is pointed at both as itself and as the job waiting to be
+  // rated, and a rating invitation is exactly what the badge is for.
+  bool unseen(Booking b) => UnreadNotificationTargets.bookingTargets.any(
+    (target) => unread.contains(UnreadNotificationTargets.keyFor(target, b.id)),
+  );
+
+  return (ref.watch(customerBookingsProvider).value ?? const <Booking>[])
+      .where((b) => bookingNeedsCustomer(b) && unseen(b))
+      .length;
+}
 
 /// Whether one order is waiting on the customer. Separate so it can be tested on its own.
 bool bookingNeedsCustomer(Booking booking) =>
@@ -56,21 +77,20 @@ class CustomerBookingsNotifier extends _$CustomerBookingsNotifier {
     Map<String, String> answers = const {},
   }) async {
     final repository = ref.read(bookingRepositoryProvider);
-    await repository
-        .createBooking(
-          businessServiceId: businessServiceId,
-          businessServiceVariantId: businessServiceVariantId,
-          scheduledDate: scheduledDate,
-          notes: notes,
-          addressLine1: addressLine1,
-          addressLine2: addressLine2,
-          city: city,
-          state: state,
-          postalCode: postalCode,
-          latitude: latitude,
-          longitude: longitude,
-          answers: answers,
-        );
+    await repository.createBooking(
+      businessServiceId: businessServiceId,
+      businessServiceVariantId: businessServiceVariantId,
+      scheduledDate: scheduledDate,
+      notes: notes,
+      addressLine1: addressLine1,
+      addressLine2: addressLine2,
+      city: city,
+      state: state,
+      postalCode: postalCode,
+      latitude: latitude,
+      longitude: longitude,
+      answers: answers,
+    );
     await _refresh(repository);
   }
 
@@ -82,14 +102,13 @@ class CustomerBookingsNotifier extends _$CustomerBookingsNotifier {
     String? message,
   }) async {
     final repository = ref.read(bookingRepositoryProvider);
-    await repository
-        .proposeTerms(
-          bookingId,
-          asBusiness: false,
-          workerCount: workerCount,
-          price: price,
-          message: message,
-        );
+    await repository.proposeTerms(
+      bookingId,
+      asBusiness: false,
+      workerCount: workerCount,
+      price: price,
+      message: message,
+    );
     await _refresh(repository);
   }
 
@@ -120,7 +139,9 @@ class CustomerBookingsNotifier extends _$CustomerBookingsNotifier {
   /// A failed check keeps what is on screen.
   Future<void> refreshQuietly() async {
     final repository = ref.read(bookingRepositoryProvider);
-    final result = await AsyncValue.guard<List<Booking>>(repository.getMyBookingsAsCustomer);
+    final result = await AsyncValue.guard<List<Booking>>(
+      repository.getMyBookingsAsCustomer,
+    );
     if (!ref.mounted || result.hasError) return;
     state = result;
   }
