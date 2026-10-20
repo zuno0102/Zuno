@@ -5,6 +5,7 @@ import 'package:zuno/core/constants/app_constants.dart';
 import 'package:zuno/core/utils/validators.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:zuno/features/auth/presentation/widgets/auth_text_field.dart';
+import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/auth_backdrop.dart';
 import 'package:zuno/shared/widgets/auth_card.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
@@ -49,11 +50,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
     if (_emailController.text.trim().isEmpty &&
         _phoneController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Provide either an email or a phone number.'),
-        ),
-      );
+      context.showFailureMessage('Provide either an email or a phone number.');
       return;
     }
 

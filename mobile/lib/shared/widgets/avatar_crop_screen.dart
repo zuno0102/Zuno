@@ -4,6 +4,7 @@ import 'package:crop_your_image/crop_your_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/shared/widgets/app_messages.dart';
 
 /// A full-screen editor for framing a profile picture before it is uploaded.
 ///
@@ -83,9 +84,7 @@ class _AvatarCropScreenState extends State<AvatarCropScreen> {
         Navigator.of(context).pop(croppedImage);
       case CropFailure():
         setState(() => _isCropping = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not crop this photo. Try another one.')),
-        );
+        context.showFailureMessage('Could not crop this photo. Try another one.');
     }
   }
 

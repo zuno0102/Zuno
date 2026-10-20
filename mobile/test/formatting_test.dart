@@ -64,4 +64,29 @@ void main() {
       expect(formatHoursElapsed(72), '3 days');
     });
   });
+
+  group('dates', () {
+    // The server sends UTC. A business screen that printed it as it came showed a job at 10:00
+    // that the customer saw at 15:30. Written against the machine's own zone, so it holds anywhere.
+    final fromServer = DateTime.utc(2026, 10, 30, 10, 0);
+    final local = fromServer.toLocal();
+
+    test('a time from the server is shown in local time, on every screen', () {
+      expect(formatTime(fromServer), formatTime(local));
+      expect(
+        formatTime(fromServer),
+        '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}',
+      );
+    });
+
+    test('so is the day it falls on', () {
+      expect(formatDate(fromServer), formatDate(local));
+      expect(formatDayMonth(fromServer), formatDayMonth(local));
+    });
+
+    test('a date that is already local is left as it is', () {
+      expect(formatDate(DateTime(2026, 9, 14)), '14 Sep 2026');
+      expect(formatTime(DateTime(2026, 9, 14, 9, 5)), '09:05');
+    });
+  });
 }

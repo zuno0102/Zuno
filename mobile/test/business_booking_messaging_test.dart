@@ -105,7 +105,7 @@ void main() {
           ),
           businessHiringPostsProvider.overrideWith(_FakePosts.new),
           bookingThreadsProvider.overrideWith(() => _FakeThreads(threads)),
-          bookingConversationProvider.overrideWith(_FakeConversation.new),
+          bookingConversationProvider.overrideWith2((_) => _FakeConversation()),
         ],
         child: const MaterialApp(home: Scaffold(body: BusinessOrdersTab())),
       ),

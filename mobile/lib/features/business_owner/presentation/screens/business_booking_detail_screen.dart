@@ -10,6 +10,7 @@ import 'package:zuno/features/booking/presentation/widgets/propose_terms_sheet.d
 import 'package:zuno/features/booking/presentation/screens/booking_chat_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/core/constants/api_constants.dart';
 import 'package:zuno/features/booking/domain/entities/booking.dart';
 import 'package:zuno/features/booking/presentation/providers/business_bookings_notifier.dart';
@@ -43,9 +44,7 @@ class _BusinessBookingDetailScreenState
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        context.showFailureMessage(e.toString().replaceFirst('Exception: ', ''));
         setState(() => _isProcessing = false);
       }
     }
@@ -101,9 +100,7 @@ class _BusinessBookingDetailScreenState
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-      );
+      context.showFailureMessage(e.toString().replaceFirst('Exception: ', ''));
       setState(() => _isProcessing = false);
     }
   }
@@ -161,9 +158,7 @@ class _BusinessBookingDetailScreenState
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        context.showFailureMessage(e.toString().replaceFirst('Exception: ', ''));
         setState(() => _isProcessing = false);
       }
     }

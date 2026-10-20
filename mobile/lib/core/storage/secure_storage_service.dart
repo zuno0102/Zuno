@@ -31,10 +31,12 @@ class SecureStorageService {
     required String refreshToken,
   }) async {
     _ownerUserId = userIdOf(accessToken);
-    await Future.wait([
-      _storage.write(key: _accessTokenKey, value: accessToken),
-      _storage.write(key: _refreshTokenKey, value: refreshToken),
-    ]);
+    // One after the other, never together. On the web the plugin encrypts with a key it creates on
+    // the first write; two writes at once in a fresh browser each created their own key, the second
+    // replaced the first, and one token could no longer be read back. That was a first sign-in that
+    // got 401 on every request and was signed out by the next reload.
+    await _storage.write(key: _accessTokenKey, value: accessToken);
+    await _storage.write(key: _refreshTokenKey, value: refreshToken);
   }
 
   Future<String?> getAccessToken() => _storage.read(key: _accessTokenKey);

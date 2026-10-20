@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:zuno/core/utils/formatting.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:zuno/features/notifications/presentation/providers/notification_providers.dart';
@@ -347,7 +348,7 @@ class _CustomerBookingDetailScreenState
           const SizedBox(height: 20),
           _DetailRow(
             label: 'Scheduled for',
-            value: booking.scheduledDate.toLocal().toString().substring(0, 16),
+            value: '${formatDate(booking.scheduledDate)} · ${formatTime(booking.scheduledDate)}',
           ),
           _DetailRow(label: 'Price', value: booking.priceDisplay()),
 

@@ -143,6 +143,31 @@ class PlaceSearchClient {
 /// One sheet answering for both ways of saying where you are, so the filter bar carries a single
 /// location control rather than a typed-place button competing with a GPS button — which is what
 /// overflowed the row at phone width.
+/// What to say when the places found matched only part of what was [typed], or null when they
+/// matched all of it.
+///
+/// Shared by the worker's place search and the customer's pin picker, so a hamlet the free map does
+/// not know reads the same wherever it is typed. [advice] is what to do next on that screen.
+String? partialMatchNote(
+  String typed,
+  List<SearchedPlace> found, {
+  required String advice,
+}) {
+  final matched = found
+      .map((p) => p.matchedText)
+      .firstWhere((m) => m != null && m.isNotEmpty, orElse: () => null);
+  if (matched == null) return null;
+
+  final missing = typed
+      .trim()
+      .split(RegExp(r'[,\s]+'))
+      .where((w) => w.isNotEmpty && w.toLowerCase() != matched.toLowerCase())
+      .join(' ');
+  return missing.isEmpty
+      ? 'Showing places for "$matched".'
+      : '"$missing" is not on the free map. Showing "$matched" — $advice';
+}
+
 class PlaceChoice {
   const PlaceChoice.searched(SearchedPlace this.place)
     : useCurrentLocation = false,
@@ -344,22 +369,11 @@ class _PlaceSearchSheetState extends ConsumerState<_PlaceSearchSheet> {
 
   /// What to say when the places shown matched only part of what was typed, or null when they
   /// matched all of it.
-  String? _partialNote(List<SearchedPlace> found) {
-    final matched = found
-        .map((p) => p.matchedText)
-        .firstWhere((m) => m != null && m.isNotEmpty, orElse: () => null);
-    if (matched == null) return null;
-
-    final typed = _controller.text.trim();
-    final missing = typed
-        .split(RegExp(r'[,\s]+'))
-        .where((w) => w.isNotEmpty && w.toLowerCase() != matched.toLowerCase())
-        .join(' ');
-    return missing.isEmpty
-        ? 'Showing places for "$matched".'
-        : '"$missing" is not on the free map. Showing "$matched" — '
-              'pick it, or point at your exact spot on the map.';
-  }
+  String? _partialNote(List<SearchedPlace> found) => partialMatchNote(
+    _controller.text,
+    found,
+    advice: 'pick it, or point at your exact spot on the map.',
+  );
 
   @override
   Widget build(BuildContext context) {

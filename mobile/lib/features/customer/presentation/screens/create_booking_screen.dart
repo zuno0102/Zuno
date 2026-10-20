@@ -128,9 +128,16 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
     });
   }
 
-  /// Opens the map, then fills City, State and Pincode from the pin. They stay editable — the map
-  /// is usually right, and the customer knows best when it is not. The house/street line is only
-  /// filled when empty, so a typed house number is never overwritten.
+  /// What the last pin wrote into each address box, so the next pin knows which boxes are still
+  /// its own to change.
+  final Map<TextEditingController, String> _filledByPin = {};
+
+  /// Opens the map, then fills the address from the pin. Every box stays editable — the map is
+  /// usually right, and the customer knows best when it is not.
+  ///
+  /// A box is filled only while it is empty or still holds what the previous pin put there. That
+  /// keeps a typed house number safe, and it also means moving the pin moves the address with it:
+  /// before, the first pin's street stayed put, so a pin in Chennai sat over a Nagercoil address.
   Future<void> _pickLocation() async {
     FocusScope.of(context).unfocus();
     final picked = await showLocationPinPicker(
@@ -140,19 +147,30 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
     );
     if (picked == null || !mounted) return;
 
+    final street = [?picked.street, ?picked.locality].join(', ');
     setState(() {
       _pin = picked;
       _pinMissing = false;
-      if (picked.city case final city?) _cityController.text = city;
-      if (picked.state case final state?) _stateController.text = state;
-      if (picked.postalCode case final code?) _postalCodeController.text = code;
-      if (_addressLine1Controller.text.trim().isEmpty) {
-        final street = [?picked.street, ?picked.locality].join(', ');
-        if (street.isNotEmpty) _addressLine1Controller.text = street;
-      }
+      _fillFromPin(_addressLine1Controller, street);
+      _fillFromPin(_cityController, picked.city);
+      _fillFromPin(_stateController, picked.state);
+      _fillFromPin(_postalCodeController, picked.postalCode);
       _coverage = null;
     });
     _coverageCheck = _checkCoverage(picked, announce: true);
+  }
+
+  void _fillFromPin(TextEditingController box, String? value) {
+    final current = box.text.trim();
+    final ours = current.isEmpty || current == _filledByPin[box];
+    if (!ours) return; // Typed by the customer: theirs to keep.
+    final next = value?.trim() ?? '';
+    box.text = next;
+    if (next.isEmpty) {
+      _filledByPin.remove(box);
+    } else {
+      _filledByPin[box] = next;
+    }
   }
 
   static const _notAvailableMessage =
@@ -176,8 +194,9 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
           );
       if (!mounted || request != _coverageRequest) return;
       setState(() => _coverage = coverage);
-      if (announce && !coverage.isAvailable)
+      if (announce && !coverage.isAvailable) {
         messenger.showInfo(_notAvailableMessage);
+      }
     } catch (_) {
       // Left unknown on purpose: the booking itself is checked by the server.
     }
@@ -355,7 +374,7 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
                 label: Text(
                   _scheduledDate == null
                       ? 'Select date & time'
-                      : '${_scheduledDate!.toLocal()}'.substring(0, 16),
+                      : '${formatDate(_scheduledDate!)} · ${formatTime(_scheduledDate!)}',
                 ),
               ),
               const SizedBox(height: 16),

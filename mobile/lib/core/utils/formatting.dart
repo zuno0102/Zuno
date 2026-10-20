@@ -11,17 +11,28 @@ const _months = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 
+// Every date below is shown in the phone's own time. The server sends UTC, and a screen that
+// forgot `.toLocal()` showed the business a job at 10:00 that the customer saw at 15:30. Converting
+// here covers every caller; on a date that is already local it changes nothing.
+
 /// "14 Sep 2026".
-String formatDate(DateTime date) =>
-    '${date.day} ${_months[date.month - 1]} ${date.year}';
+String formatDate(DateTime date) {
+  final d = date.toLocal();
+  return '${d.day} ${_months[d.month - 1]} ${d.year}';
+}
 
 /// "14 Sep" — for rows where the year is obvious from context.
-String formatDayMonth(DateTime date) => '${date.day} ${_months[date.month - 1]}';
+String formatDayMonth(DateTime date) {
+  final d = date.toLocal();
+  return '${d.day} ${_months[d.month - 1]}';
+}
 
 /// "15:30", 24-hour and zero-padded.
-String formatTime(DateTime date) =>
-    '${date.hour.toString().padLeft(2, '0')}:'
-    '${date.minute.toString().padLeft(2, '0')}';
+String formatTime(DateTime date) {
+  final d = date.toLocal();
+  return '${d.hour.toString().padLeft(2, '0')}:'
+      '${d.minute.toString().padLeft(2, '0')}';
+}
 
 /// "Today" / "Tomorrow" / "In 3 days" / "Yesterday" / "5 days ago".
 ///

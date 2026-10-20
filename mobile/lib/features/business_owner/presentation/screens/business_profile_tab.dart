@@ -9,6 +9,7 @@ import 'package:zuno/shared/widgets/status_pill.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_profile_notifier.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
+import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/app_permissions_link.dart';
 import 'package:zuno/shared/widgets/avatar_crop_screen.dart';
 
@@ -130,11 +131,7 @@ class _BusinessProfileFormState extends ConsumerState<_BusinessProfileForm> {
             // Keeps what was saved; the default only fills a country that was never set.
             country: widget.profile.country ?? AppConstants.defaultCountry,
           );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Business profile updated.')),
-        );
-      }
+      if (mounted) context.showSuccessMessage('Business profile updated.');
     } catch (e) {
       setState(() => _errorMessage = e.toString());
     } finally {
@@ -374,7 +371,7 @@ class _ProfileAvatarState extends ConsumerState<_ProfileAvatar> {
 
       _say('Profile picture updated');
     } catch (e) {
-      _say(_readable(e));
+      _say(_readable(e), failed: true);
     } finally {
       if (mounted) setState(() => _isBusy = false);
     }
@@ -394,17 +391,17 @@ class _ProfileAvatarState extends ConsumerState<_ProfileAvatar> {
       await _evict(previousUrl);
       _say('Profile picture removed');
     } catch (e) {
-      _say(_readable(e));
+      _say(_readable(e), failed: true);
     } finally {
       if (mounted) setState(() => _isBusy = false);
     }
   }
 
-  void _say(String message) {
+  void _say(String message, {bool failed = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    failed
+        ? context.showFailureMessage(message)
+        : context.showSuccessMessage(message);
   }
 
   static String _readable(Object error) =>

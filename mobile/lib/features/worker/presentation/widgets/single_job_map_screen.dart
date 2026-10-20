@@ -175,8 +175,15 @@ class _SingleJobMapScreenState extends ConsumerState<SingleJobMapScreen> {
   /// be — most of the screen empty, the route a short stroke across the centre. The same happens
   /// when the size changes afterwards: a phone turned on its side, or a browser window resized,
   /// which is the one place this app is a web page as much as an app.
+  ///
+  /// After the frame, not inside the event. Moving the camera while the map is still taking on its
+  /// new size left the tile layer working from the old one: turned to landscape, the route was
+  /// re-framed but tiles were drawn only in the middle, with grey down both sides.
   void _onMapEvent(MapEvent event) {
-    if (event is MapEventNonRotatedSizeChange) _frameJourney();
+    if (event is! MapEventNonRotatedSizeChange) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _frameJourney();
+    });
   }
 
   @override

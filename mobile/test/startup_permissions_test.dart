@@ -16,17 +16,14 @@ import 'package:zuno/core/permissions/startup_permission_primer.dart';
 ///   * **location is never asked for up front.** It is the one permission the app can do without:
 ///     somebody who never opens Find work and never picks a service area never needs it. Asking at
 ///     launch for something not yet used is how people learn to refuse everything.
-class _FakePermissionService implements PermissionService {
-  _FakePermissionService({
-    this.cameraAlreadyGranted = false,
-    this.snapshotValue = const PermissionSnapshot(
-      camera: PermissionState.notAsked,
-      location: PermissionState.notAsked,
-    ),
-  });
+class FakePermissionService implements PermissionService {
+  FakePermissionService({this.cameraAlreadyGranted = false});
 
   final bool cameraAlreadyGranted;
-  final PermissionSnapshot snapshotValue;
+  final PermissionSnapshot snapshotValue = const PermissionSnapshot(
+    camera: PermissionState.notAsked,
+    location: PermissionState.notAsked,
+  );
 
   int essentialsRequested = 0;
   int snapshotsTaken = 0;
@@ -51,7 +48,7 @@ class _FakePermissionService implements PermissionService {
 }
 
 /// Counts any attempt to touch location. Nothing at startup may reach this.
-class _SpyLocationService implements LocationService {
+class SpyLocationService implements LocationService {
   int asked = 0;
 
   @override
@@ -67,12 +64,12 @@ class _SpyLocationService implements LocationService {
   Future<void> openLocationSettings() async {}
 }
 
-Future<_FakePermissionService> pumpDashboard(
+Future<FakePermissionService> pumpDashboard(
   WidgetTester tester, {
   bool cameraAlreadyGranted = false,
-  _SpyLocationService? location,
+  SpyLocationService? location,
 }) async {
-  final permissions = _FakePermissionService(
+  final permissions = FakePermissionService(
     cameraAlreadyGranted: cameraAlreadyGranted,
   );
 
@@ -146,7 +143,7 @@ void main() {
 
   group('location at startup', () {
     testWidgets('is never touched, whichever answer is given', (tester) async {
-      final location = _SpyLocationService();
+      final location = SpyLocationService();
       await pumpDashboard(tester, location: location);
 
       await tester.tap(find.text('Continue'));

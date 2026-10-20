@@ -59,7 +59,8 @@ class _AppPermissionsScreenState extends ConsumerState<AppPermissionsScreen> {
       ),
       PermissionState.blocked => (
         'Blocked',
-        'Zuno is not allowed to read your location. You can change that in app settings.',
+        'Zuno is not allowed to read your location. You can change that in '
+            '${kIsWeb ? 'your browser' : 'app settings'}.',
       ),
       PermissionState.notAsked => (
         'Not asked yet',
@@ -79,7 +80,8 @@ class _AppPermissionsScreenState extends ConsumerState<AppPermissionsScreen> {
       ),
       PermissionState.blocked => (
         'Blocked',
-        'Zuno is not allowed to use the camera. You can change that in app settings.',
+        'Zuno is not allowed to use the camera. You can change that in '
+            '${kIsWeb ? 'your browser' : 'app settings'}.',
       ),
       _ => (
         'Not allowed',

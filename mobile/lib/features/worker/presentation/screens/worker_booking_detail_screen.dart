@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:zuno/core/utils/formatting.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/constants/api_constants.dart';
 import 'package:zuno/features/booking/domain/entities/booking.dart';
@@ -117,7 +118,7 @@ class _WorkerBookingDetailScreenState
             _DetailRow(label: 'Customer phone', value: booking.customerPhone!),
           _DetailRow(
             label: 'Scheduled for',
-            value: booking.scheduledDate.toLocal().toString().substring(0, 16),
+            value: '${formatDate(booking.scheduledDate)} · ${formatTime(booking.scheduledDate)}',
           ),
           _DetailRow(
             label: 'Price',

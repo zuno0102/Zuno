@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/booking/domain/entities/booking.dart';
@@ -373,9 +374,7 @@ class _OrderStepCardState extends ConsumerState<_OrderStepCard> {
       await action();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        context.showFailureMessage(e.toString().replaceFirst('Exception: ', ''));
       }
     } finally {
       if (mounted) {
@@ -479,9 +478,7 @@ class _OwnEventStepCardState extends ConsumerState<_OwnEventStepCard> {
       await action();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        context.showFailureMessage(e.toString().replaceFirst('Exception: ', ''));
       }
     } finally {
       if (mounted) {

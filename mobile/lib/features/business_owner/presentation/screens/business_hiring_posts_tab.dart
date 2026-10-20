@@ -2,6 +2,7 @@ import 'package:zuno/core/utils/formatting.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/core/constants/api_constants.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/create_hiring_post_sheet.dart';
@@ -137,9 +138,7 @@ class _PostCardState extends ConsumerState<_PostCard> {
       await ref.read(businessHiringPostsProvider.notifier).deletePost(post.id);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        context.showFailureMessage(e.toString().replaceFirst('Exception: ', ''));
         setState(() => _isDeleting = false);
       }
     }
@@ -560,9 +559,7 @@ class _ApplicationRowState extends ConsumerState<_ApplicationRow> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        context.showFailureMessage(e.toString().replaceFirst('Exception: ', ''));
       }
     } finally {
       if (mounted) {

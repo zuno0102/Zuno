@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:zuno/core/utils/formatting.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/features/booking/domain/entities/booking.dart';
 import 'package:zuno/features/booking/presentation/providers/customer_bookings_notifier.dart';
@@ -75,7 +76,7 @@ class _BookingCard extends StatelessWidget {
               ),
             Text(booking.businessName),
             const SizedBox(height: 4),
-            Text(booking.scheduledDate.toLocal().toString().substring(0, 16)),
+            Text('${formatDate(booking.scheduledDate)} · ${formatTime(booking.scheduledDate)}'),
           ],
         ),
         isThreeLine: true,

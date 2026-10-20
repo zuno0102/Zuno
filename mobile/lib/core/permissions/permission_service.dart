@@ -88,7 +88,7 @@ class PermissionHandlerService implements PermissionService {
   Future<bool> hasCamera() async {
     try {
       return await ph.Permission.camera.isGranted;
-    } on Exception {
+    } catch (_) {
       // A phone that cannot answer is treated as not granted: the worst outcome is asking once
       // more, where guessing "granted" would be a camera screen that silently shows nothing.
       return false;
@@ -96,18 +96,26 @@ class PermissionHandlerService implements PermissionService {
   }
 
   @override
-  Future<PermissionSnapshot> snapshot() async {
+  Future<PermissionSnapshot> snapshot() async => PermissionSnapshot(
+    camera: await _status(ph.Permission.camera),
+    // `status`, not `request`. This is the whole point of the method.
+    //
+    // A browser knows only `location`. Asked about `locationWhenInUse`, the web plugin throws an
+    // UnimplementedError — an Error, which `on Exception` let through — and the App permissions
+    // page sat on "Checking…" for good.
+    location: await _status(
+      kIsWeb ? ph.Permission.location : ph.Permission.locationWhenInUse,
+    ),
+  );
+
+  /// One permission's state. Read on its own so a failure in one leaves the other readable, and
+  /// caught whole — Error as well as Exception — so a platform that cannot answer reads as "not
+  /// asked" instead of leaving the page waiting.
+  static Future<PermissionState> _status(ph.Permission permission) async {
     try {
-      return PermissionSnapshot(
-        camera: _read(await ph.Permission.camera.status),
-        // `status`, not `request`. This is the whole point of the method.
-        location: _read(await ph.Permission.locationWhenInUse.status),
-      );
-    } on Exception {
-      return const PermissionSnapshot(
-        camera: PermissionState.notAsked,
-        location: PermissionState.notAsked,
-      );
+      return _read(await permission.status);
+    } catch (_) {
+      return PermissionState.notAsked;
     }
   }
 
@@ -150,7 +158,7 @@ class PermissionHandlerService implements PermissionService {
         photosGranted: photos.isGranted || photos.isLimited,
         cameraPermanentlyDenied: camera.isPermanentlyDenied,
       );
-    } on Exception {
+    } catch (_) {
       return const PermissionOutcome(cameraGranted: false, photosGranted: false);
     }
   }
@@ -159,7 +167,7 @@ class PermissionHandlerService implements PermissionService {
   Future<void> openAppSettings() async {
     try {
       await ph.openAppSettings();
-    } on Exception {
+    } catch (_) {
       // Nothing more to offer if the settings screen will not open.
     }
   }

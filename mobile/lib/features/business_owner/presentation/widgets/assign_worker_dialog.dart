@@ -379,7 +379,7 @@ class _AssignWorkerDialogState extends ConsumerState<_AssignWorkerDialog> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        _scheduledDate.toLocal().toString().substring(0, 16),
+                        '${formatDate(_scheduledDate)} · ${formatTime(_scheduledDate)}',
                       ),
                       const Icon(Icons.edit_calendar_outlined),
                     ],

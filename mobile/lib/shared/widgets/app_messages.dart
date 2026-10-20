@@ -55,13 +55,32 @@ class AppMessenger {
   );
 
   /// Neither — a plain statement of what changed, like a filter being cleared.
-  void showInfo(String message) =>
-      _show(message: message, icon: Icons.info_outline_rounded);
+  ///
+  /// With [actionLabel], the message carries one button — "Settings", "Retry" — and stays up long
+  /// enough to reach it.
+  void showInfo(
+    String message, {
+    String? actionLabel,
+    VoidCallback? onAction,
+  }) => _show(
+    message: message,
+    icon: Icons.info_outline_rounded,
+    actionLabel: actionLabel,
+    onAction: onAction,
+    duration: actionLabel == null
+        ? const Duration(seconds: 3)
+        : const Duration(seconds: 6),
+  );
+
+  /// Takes the current message down, when whatever it warned about has been put right.
+  void hide() => _messenger.hideCurrentSnackBar();
 
   void _show({
     required String message,
     required IconData icon,
     Duration duration = const Duration(seconds: 3),
+    String? actionLabel,
+    VoidCallback? onAction,
   }) {
     // Only one at a time. Two actions in quick succession — saving a photo, then a name — otherwise
     // queue up and the second message arrives after the person has moved on from both.
@@ -93,6 +112,15 @@ class AppMessenger {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           elevation: 4,
           duration: duration,
+          // A message with a button would otherwise wait for it to be pressed.
+          persist: false,
+          action: actionLabel == null || onAction == null
+              ? null
+              : SnackBarAction(
+                  label: actionLabel,
+                  textColor: _foreground,
+                  onPressed: onAction,
+                ),
         ),
       );
   }

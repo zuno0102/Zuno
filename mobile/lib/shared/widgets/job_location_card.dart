@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/map_layers.dart';
 
 /// Where a job is: a small map with its pin, the address, and a way to get there.
@@ -49,17 +50,15 @@ class JobLocationCard extends StatelessWidget {
       : Uri.https('www.google.com', '/maps/search/', {'api': '1', 'query': _address});
 
   Future<void> _openMaps(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = AppMessenger.of(context);
     final opened = await launchUrl(_mapsUri, mode: LaunchMode.externalApplication);
-    if (!opened) {
-      messenger.showSnackBar(const SnackBar(content: Text('Could not open Maps on this device.')));
-    }
+    if (!opened) messenger.showFailure('Could not open Maps on this device.');
   }
 
   Future<void> _copy(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = AppMessenger.of(context);
     await Clipboard.setData(ClipboardData(text: _address));
-    messenger.showSnackBar(const SnackBar(content: Text('Address copied')));
+    messenger.showSuccess('Address copied');
   }
 
   @override

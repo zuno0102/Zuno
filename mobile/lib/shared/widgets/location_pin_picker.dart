@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:zuno/core/location/location_service.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/features/worker/presentation/widgets/place_search_sheet.dart';
+import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/map_layers.dart';
 
 /// What to tell somebody whose location could not be read, and what — if anything — a button can
@@ -257,7 +258,7 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
 
     if (result.hasPosition) {
       // Whatever went wrong before has been put right; a warning left on screen now is wrong.
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      AppMessenger.of(context).hide();
       _hasMoved = true;
       _moveTo(LatLng(result.latitude!, result.longitude!));
       if (result.isApproximate) {
@@ -282,7 +283,7 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
     final help = locationHelp(problem, isWeb: kIsWeb);
 
     if (help.isDialog) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      AppMessenger.of(context).hide();
       showDialog<void>(
         context: context,
         builder: (dialogContext) => AlertDialog(
@@ -336,22 +337,13 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
     }
   }
 
-  /// A short message that goes away on its own, and can be closed by hand.
+  /// A short message that goes away on its own, in the app's own message style.
   ///
-  /// Not persistent even with a button: a SnackBar with an action otherwise stays until tapped, which
-  /// left "location is off" on screen long after location had been turned on.
+  /// Not persistent even with a button (see [AppMessenger.showInfo]): a message with an action
+  /// otherwise stays until tapped, which left "location is off" on screen long after location had
+  /// been turned on.
   void _say(String message, {String? actionLabel, VoidCallback? action}) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-          duration: const Duration(seconds: 6),
-          persist: false,
-          showCloseIcon: true,
-          action: actionLabel == null ? null : SnackBarAction(label: actionLabel, onPressed: action!),
-        ),
-      );
+    AppMessenger.of(context).showInfo(message, actionLabel: actionLabel, onAction: action);
   }
 
   void _moveTo(LatLng point) {
@@ -389,7 +381,7 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
   }
 
   void _pickResult(SearchedPlace place) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    AppMessenger.of(context).hide();
     _searchFocus.unfocus();
     setState(() => _results = null);
     _hasMoved = true;
@@ -534,6 +526,38 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
                                       shrinkWrap: true,
                                       padding: EdgeInsets.zero,
                                       children: [
+                                        // Only part of the search was found (a hamlet the free
+                                        // map does not know): say so, and say what to do.
+                                        if (partialMatchNote(
+                                          _searchController.text,
+                                          results,
+                                          advice: 'pick it, then drag the map so the pin sits on '
+                                              'your exact spot.',
+                                        ) case final note?)
+                                          Container(
+                                            key: const Key('pinPickerPartialNote'),
+                                            color: theme.colorScheme.secondaryContainer,
+                                            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.info_outline,
+                                                  size: 18,
+                                                  color: theme.colorScheme.onSecondaryContainer,
+                                                ),
+                                                const SizedBox(width: 10),
+                                                Expanded(
+                                                  child: Text(
+                                                    note,
+                                                    style: theme.textTheme.bodySmall?.copyWith(
+                                                      color: theme
+                                                          .colorScheme.onSecondaryContainer,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
                                         for (final place in results)
                                           ListTile(
                                             dense: true,
