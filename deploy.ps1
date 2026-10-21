@@ -129,7 +129,16 @@ if ($webChanged) {
     try {
         flutter build web --release "--dart-define=API_BASE_URL=$($Settings.API_BASE_URL)"; Run 'flutter build web'
         Set-Location 'build/web'
-        vercel deploy --prod --yes; Run 'vercel deploy'
+        if ($Settings.VERCEL_TOKEN) {
+            # Deploy as the Zuno Vercel account, whoever the CLI happens to be signed in as.
+            $vercelArgs = @('--token', $Settings.VERCEL_TOKEN)
+            if ($Settings.VERCEL_SCOPE) { $vercelArgs += @('--scope', $Settings.VERCEL_SCOPE) }
+            $project = if ($Settings.VERCEL_PROJECT) { $Settings.VERCEL_PROJECT } else { 'zuno' }
+            vercel link --yes --project $project @vercelArgs; Run 'vercel link'
+            vercel deploy --prod --yes @vercelArgs; Run 'vercel deploy'
+        } else {
+            vercel deploy --prod --yes; Run 'vercel deploy'
+        }
     } finally {
         Pop-Location
     }
