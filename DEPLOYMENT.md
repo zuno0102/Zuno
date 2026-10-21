@@ -18,7 +18,9 @@ The Android app is unaffected by all of this — it keeps talking to whatever
 ## How Zuno ships — read this before every deploy
 
 **The only repository is https://github.com/zuno0102/Zuno.** Not `Riva0904/Zuno`, not
-`zuno0102/ZunoProject`. `git remote -v` must show exactly:
+`zuno0102/ZunoProject`. **Every part of Zuno uses the Zuno accounts** — GitHub `zuno0102`, Vercel
+team `Zuno_team` — never a personal account (`Riva0904`, `bsundaram-6826`). `git remote -v` must
+show exactly:
 
 ```
 origin  https://github.com/zuno0102/Zuno.git
@@ -29,7 +31,9 @@ origin  https://github.com/zuno0102/Zuno.git
 | Work branch | `Zuno_Dev` — every change is committed here first |
 | Release branch | `main` — always a fast-forward of `Zuno_Dev`, never committed to directly |
 | API (Render) | service `zuno-api` → https://zuno-api-qon8.onrender.com, deploys branch **`main`** |
-| Web (Vercel) | project `web` (linked from `mobile/build/web`) → https://web-three-zeta-59.vercel.app |
+| Web (Vercel) | team `Zuno_team`, project `zuno` (linked from `mobile/build/web` by `deploy.ps1` with `VERCEL_TOKEN`) |
+| Old web (Vercel) | project `web` under `bsundaram-6826` → https://web-three-zeta-59.vercel.app — being replaced by the Zuno project; delete it once the new site works |
+| Commit author | `zuno0102 <342959199+zuno0102@users.noreply.github.com>` (`git config user.name/user.email` in this repo) |
 | Database (Neon) | PostgreSQL; schema changes go out with `dotnet ef database update` |
 
 ### Deploy with one command
@@ -57,14 +61,24 @@ Vercel regardless.
 
 1. Copy `deploy.env.example` to `.env.deploy` (gitignored) and fill in:
    - `RENDER_DEPLOY_HOOK_URL` — Render → `zuno-api` → **Settings → Deploy Hook**;
-   - `NEON_CONNECTION_STRING` — Neon dashboard → **Connect**, in the Npgsql form shown below.
+   - `NEON_CONNECTION_STRING` — Neon dashboard → **Connect**, in the Npgsql form shown below;
+   - `VERCEL_TOKEN` — signed in to Vercel as the Zuno account: **Account Settings → Tokens**,
+     scope **Zuno_team**; `VERCEL_SCOPE` = the team slug from its dashboard URL;
+     `VERCEL_PROJECT` = `zuno`. With the token the script deploys as Zuno no matter which account
+     `vercel login` is signed in to.
 2. Render → `zuno-api` → **Settings**: repository `zuno0102/Zuno`, branch **`main`**, auto-deploy on.
-3. `vercel login` once (the CLI must be signed in to the account that owns the `web` project).
-4. Git signed in to GitHub as `zuno0102` (Windows Credential Manager → `git:https://github.com`).
+3. Git signed in to GitHub as `zuno0102` (Windows Credential Manager → `git:https://github.com`),
+   and commits authored as `zuno0102`:
+   ```powershell
+   git config user.name "zuno0102"
+   git config user.email "342959199+zuno0102@users.noreply.github.com"
+   ```
 
 ### Render environment variables that must be set
 
-`ConnectionStrings__ZunoDatabase`, `Cors__AllowedOrigins__0` (= `https://web-three-zeta-59.vercel.app`),
+`ConnectionStrings__ZunoDatabase`, `Cors__AllowedOrigins__0` (= the website's address, no trailing
+slash; while moving to the Zuno Vercel project add the new one as `Cors__AllowedOrigins__1` so both
+work),
 `Razorpay__KeyId`, `Razorpay__KeySecret`, `AdminSeed__Email`, `AdminSeed__Password`, and — while
 testing, until the admin verification screen exists — `Verification__AutoVerifyBusinesses=true`.
 
@@ -102,10 +116,11 @@ itself, so wages on the deployed site need a real payment to settle.
 
 ### Log in (you have to do this part)
 
-Each of these opens a browser. Run them in your own terminal:
+Each of these opens a browser. Run them in your own terminal, signed in to the browser as the
+**Zuno** account first — the approval page uses whoever the browser is signed in as. For Vercel the
+`VERCEL_TOKEN` in `.env.deploy` replaces `vercel login`.
 
 ```bash
-vercel login
 neonctl auth
 render login
 ```
@@ -162,8 +177,11 @@ whenever that address changes.
 cd mobile
 flutter build web --release --dart-define=API_BASE_URL=https://zuno-api-qon8.onrender.com
 cd build/web
-vercel deploy --prod
+vercel link --yes --project zuno --scope <Zuno_team slug> --token <VERCEL_TOKEN>
+vercel deploy --prod --yes --scope <Zuno_team slug> --token <VERCEL_TOKEN>
 ```
+
+`deploy.ps1` runs exactly these two commands when `VERCEL_TOKEN` is set.
 
 `mobile/web/vercel.json` is copied into `build/web` by the build. It sends every path to
 `index.html` and leaves the entry points uncached so a new deploy is actually picked up.
