@@ -60,4 +60,8 @@ public enum NotificationKind : short
 
     // ---- Either side ----
     ChatMessage = 60,
+
+    /// <summary>A message between a business and a worker on its team.</summary>
+    /// <remarks>Kept off the bell like <see cref="ChatMessage"/>: its own Messages list counts it.</remarks>
+    WorkChatMessage = 61,
 }

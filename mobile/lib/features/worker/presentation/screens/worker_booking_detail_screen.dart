@@ -7,6 +7,7 @@ import 'package:zuno/features/booking/domain/entities/booking.dart';
 import 'package:zuno/features/booking/presentation/providers/worker_jobs_notifier.dart';
 import 'package:zuno/features/booking/presentation/widgets/booking_status_chip.dart';
 import 'package:zuno/features/notifications/presentation/providers/notification_providers.dart';
+import 'package:zuno/features/work_chat/presentation/screens/work_chat_screen.dart';
 import 'package:zuno/shared/widgets/call_icon_button.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/job_location_card.dart';
@@ -126,18 +127,39 @@ class _WorkerBookingDetailScreenState
               BookingStatusChip(order: booking),
             ],
           ),
-          if (booking.canBeCalled && booking.customerPhone != null) ...[
+          // The business is who a worker contacts about a job — never the customer directly; the
+          // business is the middle man and arranges everything with the customer.
+          if (booking.workerCanContactBusiness) ...[
             const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () => launchPhoneCall(context, booking.customerPhone!),
-              icon: const Icon(Icons.call),
-              label: const Text('Call customer'),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => WorkChatScreen(
+                        counterpartId: booking.businessOwnerProfileId,
+                        counterpartName: booking.businessName,
+                        subtitle: booking.variantName ?? booking.serviceName,
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.chat_bubble_outline),
+                  label: const Text('Message business'),
+                ),
+                if (booking.businessPhone != null)
+                  OutlinedButton.icon(
+                    onPressed: () =>
+                        launchPhoneCall(context, booking.businessPhone!),
+                    icon: const Icon(Icons.call),
+                    label: const Text('Call business'),
+                  ),
+              ],
             ),
           ],
           const SizedBox(height: 20),
           _DetailRow(label: 'Customer', value: booking.customerName),
-          if (booking.customerPhone != null)
-            _DetailRow(label: 'Customer phone', value: booking.customerPhone!),
           _DetailRow(
             label: 'Scheduled for',
             value:

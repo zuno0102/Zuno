@@ -20,6 +20,9 @@ enum NotificationTarget {
   payments,
   payouts,
   profile,
+
+  /// A business–worker conversation; the id is the other side's profile.
+  workChat,
   unknown;
 
   /// Maps the server's name onto a target. Anything unrecognised becomes [unknown].
@@ -36,13 +39,14 @@ enum NotificationTarget {
     'Payments' => payments,
     'Payouts' => payouts,
     'Profile' => profile,
+    'WorkChat' => workChat,
     _ => unknown,
   };
 
   /// Whether this target needs an id to open anything.
   bool get needsId => switch (this) {
     booking || bookingRating || bookingChat => true,
-    hiringPost || hiringPostApplicants || payouts => true,
+    hiringPost || hiringPostApplicants || payouts || workChat => true,
     _ => false,
   };
 }

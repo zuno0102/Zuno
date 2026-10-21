@@ -15,11 +15,15 @@ import 'package:zuno/features/business_owner/presentation/screens/business_booki
 import 'package:zuno/features/business_owner/presentation/widgets/pay_crew_sheet.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/business_hiring_posts_notifier.dart';
+import 'package:zuno/features/notifications/presentation/providers/notification_providers.dart';
+import 'package:zuno/features/work_chat/presentation/providers/work_chat_providers.dart';
+import 'package:zuno/features/work_chat/presentation/widgets/work_threads_list.dart';
 import 'package:zuno/shared/widgets/call_icon_button.dart';
 import 'package:zuno/shared/widgets/empty_state.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/message_icon_button.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
+import 'package:zuno/shared/widgets/status_with_actions.dart';
 import 'package:zuno/shared/widgets/status_track.dart';
 
 /// Everything that came in from customers, and everything waiting on the business to act.
@@ -70,13 +74,30 @@ class BusinessOrdersTab extends StatelessWidget {
   }
 }
 
-/// New orders still waiting on the business: placed by a customer and not yet answered.
+/// New orders the business has not opened yet: placed by a customer, still waiting on the
+/// business, and not looked at since.
 ///
-/// One the business has already made an offer on is waiting on the customer instead, so it is
-/// not counted — the number is "things for you to do", not "things that exist".
-int newOrdersAwaitingBusiness(List<Booking> orders) => orders
-    .where((o) => o.isPending && !o.awaitingTheirReply(viewerIsBusiness: true))
-    .length;
+/// Read like unread mail. Five new requests read "From customers 5"; opening one makes it 4. The
+/// [unread] set is what the business has been told about and not yet opened (the same set the
+/// bell counts), and opening an order takes it out — so the number falls the moment an order is
+/// read, and rises again if the customer does something new on it, such as answering an offer.
+///
+/// One the business has already made an offer on is waiting on the customer instead, so it is not
+/// counted at all.
+int newOrdersAwaitingBusiness(List<Booking> orders, Set<String> unread) {
+  bool unopened(Booking o) => UnreadNotificationTargets.bookingTargets.any(
+    (target) => unread.contains(UnreadNotificationTargets.keyFor(target, o.id)),
+  );
+
+  return orders
+      .where(
+        (o) =>
+            o.isPending &&
+            !o.awaitingTheirReply(viewerIsBusiness: true) &&
+            unopened(o),
+      )
+      .length;
+}
 
 /// Jobs whose next step can be taken right now: work to start on the day, or to mark completed.
 ///
@@ -108,13 +129,14 @@ class _NewOrdersTabLabel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Selected, so the label rebuilds only when the number changes, not on every order update.
-    final count = ref.watch(
-      businessBookingsProvider.select(
-        (orders) => newOrdersAwaitingBusiness(orders.value ?? const []),
-      ),
+    final orders =
+        ref.watch(businessBookingsProvider).value ?? const <Booking>[];
+    final unread =
+        ref.watch(unreadNotificationTargetsProvider).value ?? const <String>{};
+    return _CountedTabLabel(
+      label: 'From customers',
+      count: newOrdersAwaitingBusiness(orders, unread),
     );
-    return _CountedTabLabel(label: 'From customers', count: count);
   }
 }
 
@@ -151,9 +173,12 @@ class _MessagesTabLabel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Customers and workers together: everything waiting to be read in this tab.
     return _CountedTabLabel(
       label: 'Messages',
-      count: ref.watch(unreadChatCountProvider),
+      count:
+          ref.watch(unreadChatCountProvider) +
+          ref.watch(unreadWorkChatCountProvider),
     );
   }
 }
@@ -266,8 +291,76 @@ class _CountPill extends StatelessWidget {
 ///
 /// The same list the customer sees, read from the other end: the server decides who the counterpart
 /// is, so nothing here knows which side it is on.
-class _BusinessMessagesTab extends StatelessWidget {
+class _BusinessMessagesTab extends ConsumerStatefulWidget {
   const _BusinessMessagesTab();
+
+  @override
+  ConsumerState<_BusinessMessagesTab> createState() =>
+      _BusinessMessagesTabState();
+}
+
+/// Who the business is reading: its customers (one chat per order) or its workers (one chat per
+/// worker). The business is the go-between, so it is the one side that talks to both.
+enum _Audience { customers, workers }
+
+class _BusinessMessagesTabState extends ConsumerState<_BusinessMessagesTab> {
+  _Audience _audience = _Audience.customers;
+
+  @override
+  Widget build(BuildContext context) {
+    final customerUnread = ref.watch(unreadChatCountProvider);
+    final workerUnread = ref.watch(unreadWorkChatCountProvider);
+
+    String label(String name, int unread) =>
+        unread > 0 ? '$name ($unread)' : name;
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<_Audience>(
+              key: const Key('businessMessagesAudience'),
+              showSelectedIcon: false,
+              segments: [
+                ButtonSegment(
+                  value: _Audience.customers,
+                  icon: const Icon(Icons.person_outline),
+                  label: Text(label('Customers', customerUnread)),
+                ),
+                ButtonSegment(
+                  value: _Audience.workers,
+                  icon: const Icon(Icons.engineering_outlined),
+                  label: Text(label('Workers', workerUnread)),
+                ),
+              ],
+              selected: {_audience},
+              onSelectionChanged: (s) => setState(() => _audience = s.first),
+            ),
+          ),
+        ),
+        Expanded(
+          child: _audience == _Audience.customers
+              ? const _CustomerThreads()
+              : const WorkThreadsList(
+                  emptyState: EmptyState(
+                    icon: Icons.engineering_outlined,
+                    title: 'No messages with workers yet',
+                    message:
+                        'Message a worker from the crew on an order or a hiring post. '
+                        'Once they have taken a job on, you can message and call them.',
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Conversations with customers, one per order.
+class _CustomerThreads extends StatelessWidget {
+  const _CustomerThreads();
 
   @override
   Widget build(BuildContext context) {
@@ -344,98 +437,82 @@ class _OrderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    final canMessage = order.canBeMessaged;
+    final canCall = order.canBeCalled && order.customerPhone != null;
+
+    // A plain row rather than a ListTile. A ListTile takes its height from its text alone, which
+    // left the status and the buttons about 62px to share: they were squeezed together and the
+    // buttons shrunk below a comfortable tap size. Laid out like this, the card grows to fit
+    // whichever side is taller, so the status, a real gap and normal buttons all fit.
     return Card(
       margin: EdgeInsets.zero,
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // The order code first. A business running three weddings at once needs something
-            // it can say out loud and match against the hiring post it raised for that job.
-            if (order.reference.isNotEmpty)
-              OrderCode(code: order.reference, compact: true),
-            const SizedBox(height: 4),
-            Text(
-              order.variantName ?? order.serviceName,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ],
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => BusinessBookingDetailScreen(booking: order),
+          ),
         ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            if (order.variantName != null)
-              Text(order.serviceName, style: theme.textTheme.bodySmall),
-            Text(order.customerName),
-            const SizedBox(height: 4),
-            Text(
-              '${formatDate(order.scheduledDate)} · '
-              '${formatTime(order.scheduledDate)}',
-            ),
-          ],
-        ),
-        isThreeLine: true,
-        trailing: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // One status, and the one a customer would recognise. The work, crew and wage
-            // tracks belong to the other tab — this list is for reading, not working.
-            BookingStatusChip(order: order),
-            // Breathing room between the status and the buttons, which otherwise read as one
-            // crowded block. Paid for by the smaller button padding below, so the column still
-            // fits: 26 (pill) + 6 (gap) + 28 (button) = 60 of the 62 available.
-            const SizedBox(height: 6),
-            // Side by side and tight, for one reason: a ListTile takes its height from the title
-            // and subtitle and never from this column, so there are about 62 logical pixels here
-            // and the pill already spends 26. A stock IconButton reserves a 48dp tap target and
-            // overflowed this card by 18 even on its own, before there were two of them — which
-            // is why the style below is set here rather than left to the theme.
-            IconButtonTheme(
-              data: IconButtonThemeData(
-                style: IconButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  padding: const EdgeInsets.all(4),
-                  // IconButton floors itself at 40dp square without this, which is what the
-                  // remaining two pixels of overflow were. The padding above sets the size now.
-                  minimumSize: Size.zero,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // The order code first. A business running three weddings at once needs
+                    // something it can say out loud and match against the hiring post it raised.
+                    if (order.reference.isNotEmpty)
+                      OrderCode(code: order.reference, compact: true),
+                    const SizedBox(height: 4),
+                    Text(
+                      order.variantName ?? order.serviceName,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    if (order.variantName != null)
+                      Text(order.serviceName, style: theme.textTheme.bodySmall),
+                    Text(order.customerName, style: theme.textTheme.bodyMedium),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${formatDate(order.scheduledDate)} · '
+                      '${formatTime(order.scheduledDate)}',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ],
                 ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Where a conversation starts from this end. The Messages tab only lists orders
-                  // somebody has already written on, so without this the business could only ever
-                  // reply to a customer who wrote first.
-                  if (order.canBeMessaged)
+              const SizedBox(width: 8),
+              StatusWithActions(
+                // One status, and the one a customer would recognise. The work, crew and wage
+                // tracks belong to the other tab — this list is for reading, not working.
+                status: BookingStatusChip(order: order),
+                actions: [
+                  // Where a conversation starts from this end. The Messages tab only lists
+                  // orders somebody has already written on, so without this the business could
+                  // only ever reply to a customer who wrote first.
+                  if (canMessage)
                     MessageIconButton(
                       bookingId: order.id,
                       title: order.variantName ?? order.serviceName,
                       // The customer, since this is the business reading it.
                       counterpartName: order.customerName,
                       tooltip: 'Message customer',
-                      iconSize: 20,
+                      iconSize: 22,
                     ),
-                  if (order.canBeMessaged &&
-                      order.canBeCalled &&
-                      order.customerPhone != null)
-                    const SizedBox(width: 8),
-                  if (order.canBeCalled && order.customerPhone != null)
+                  if (canCall)
                     CallIconButton(
                       phoneNumber: order.customerPhone!,
                       tooltip: 'Call customer',
-                      iconSize: 20,
+                      iconSize: 22,
                     ),
                 ],
               ),
-            ),
-          ],
-        ),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => BusinessBookingDetailScreen(booking: order),
+            ],
           ),
         ),
       ),

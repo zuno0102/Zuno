@@ -10540,6 +10540,75 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Zuno.Domain.Entities.WorkMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("body");
+
+                    b.Property<Guid>("BusinessOwnerProfileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("business_owner_profile_id");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_date");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("read_at");
+
+                    b.Property<short>("SenderRole")
+                        .HasColumnType("smallint")
+                        .HasColumnName("sender_role");
+
+                    b.Property<Guid>("SenderUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sender_user_id");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("WorkerProfileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("worker_profile_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_work_messages");
+
+                    b.HasIndex("WorkerProfileId", "CreatedDate")
+                        .HasDatabaseName("ix_work_messages_worker_profile_id_created_date");
+
+                    b.HasIndex("BusinessOwnerProfileId", "WorkerProfileId", "CreatedDate")
+                        .HasDatabaseName("ix_work_messages_business_owner_profile_id_worker_profile_id_c");
+
+                    b.ToTable("work_messages", (string)null);
+                });
+
             modelBuilder.Entity("Zuno.Domain.Entities.WorkerPayoutDetail", b =>
                 {
                     b.Property<Guid>("Id")
@@ -11207,6 +11276,27 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_users_roles_role_id");
 
                     b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("Zuno.Domain.Entities.WorkMessage", b =>
+                {
+                    b.HasOne("Zuno.Domain.Entities.BusinessOwnerProfile", "BusinessOwnerProfile")
+                        .WithMany()
+                        .HasForeignKey("BusinessOwnerProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_work_messages_business_owner_profiles_business_owner_profil");
+
+                    b.HasOne("Zuno.Domain.Entities.WorkerProfile", "WorkerProfile")
+                        .WithMany()
+                        .HasForeignKey("WorkerProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_work_messages_worker_profiles_worker_profile_id");
+
+                    b.Navigation("BusinessOwnerProfile");
+
+                    b.Navigation("WorkerProfile");
                 });
 
             modelBuilder.Entity("Zuno.Domain.Entities.WorkerPayoutDetail", b =>

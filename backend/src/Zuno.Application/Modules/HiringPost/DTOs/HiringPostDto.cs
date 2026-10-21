@@ -27,6 +27,12 @@ public class HiringPostDto
 
     public string? BusinessLogoUrl { get; set; }
 
+    /// <summary>
+    /// The business's phone number. Only filled for a worker's own accepted jobs ("Jobs you took"),
+    /// so a worker can call the business about the work; empty everywhere else.
+    /// </summary>
+    public string? BusinessPhone { get; set; }
+
     public string Title { get; set; } = string.Empty;
 
     public string? Description { get; set; }

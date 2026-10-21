@@ -1,6 +1,7 @@
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zuno/features/work_chat/presentation/screens/work_chat_screen.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_profile_notifier.dart';
@@ -62,6 +63,17 @@ class _BusinessOwnerDashboardShellState
 
       case NotificationTarget.bookingChat:
         _openChat(notification.targetId!);
+
+      // A message from one of the business's workers. The title is the sender's name.
+      case NotificationTarget.workChat:
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => WorkChatScreen(
+              counterpartId: notification.targetId!,
+              counterpartName: notification.title,
+            ),
+          ),
+        );
 
       // Hiring: applicants to go through, offers answered, wages to settle. All three live on the
       // hire post list under Workers.

@@ -9,6 +9,7 @@ import 'package:zuno/features/booking/presentation/providers/business_bookings_n
 import 'package:zuno/features/business_owner/presentation/screens/business_orders_tab.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/business_hiring_posts_notifier.dart';
+import 'package:zuno/features/notifications/presentation/providers/notification_providers.dart';
 
 /// The numbers on the business's Orders tabs: "From customers 1", "Status management 2",
 /// "Messages 1".
@@ -34,6 +35,14 @@ class _Posts extends BusinessHiringPostsNotifier {
   final List<HiringPost> _posts;
   @override
   Future<List<HiringPost>> build() async => _posts;
+}
+
+/// What the business has been told about and not opened yet.
+class _Unread extends UnreadNotificationTargets {
+  _Unread(this._keys);
+  final Set<String> _keys;
+  @override
+  Future<Set<String>> build() async => _keys;
 }
 
 class _Threads extends BookingThreads {
@@ -117,7 +126,12 @@ void main() {
   final nextMonth = now.add(const Duration(days: 30));
 
   group('newOrdersAwaitingBusiness', () {
-    test('newOrdersAwaitingBusiness_PendingOrders_CountsEach', () {
+    // What the business has been told about and not opened, keyed as the app keys it.
+    Set<String> unopened(List<String> ids) => {
+      for (final id in ids) UnreadNotificationTargets.keyFor('booking', id),
+    };
+
+    test('newOrdersAwaitingBusiness_UnopenedPendingOrders_CountsEach', () {
       expect(
         newOrdersAwaitingBusiness([
           _order('a', when: nextMonth, status: 'Pending'),
@@ -127,8 +141,57 @@ void main() {
             status: 'Pending',
             agreementStatus: 'AwaitingBusiness',
           ),
-        ]),
+        ], unopened(['a', 'b'])),
         2,
+      );
+    });
+
+    test('newOrdersAwaitingBusiness_FiveNewOneOpened_CountsFour', () {
+      final five = [
+        for (var i = 1; i <= 5; i++)
+          _order('n$i', when: nextMonth, status: 'Pending'),
+      ];
+      expect(
+        newOrdersAwaitingBusiness(
+          five,
+          unopened(['n1', 'n2', 'n3', 'n4', 'n5']),
+        ),
+        5,
+      );
+      // n3 opened: its notification is no longer unread.
+      expect(
+        newOrdersAwaitingBusiness(five, unopened(['n1', 'n2', 'n4', 'n5'])),
+        4,
+      );
+    });
+
+    test('newOrdersAwaitingBusiness_AllOpened_IsZeroEvenIfStillPending', () {
+      expect(
+        newOrdersAwaitingBusiness([
+          _order('a', when: nextMonth, status: 'Pending'),
+        ], const {}),
+        0,
+      );
+    });
+
+    test('newOrdersAwaitingBusiness_RatingTargetAlsoCountsAsUnopened', () {
+      expect(
+        newOrdersAwaitingBusiness(
+          [_order('a', when: nextMonth, status: 'Pending')],
+          {UnreadNotificationTargets.keyFor('BookingRating', 'a')},
+        ),
+        1,
+      );
+    });
+
+    test('newOrdersAwaitingBusiness_UnreadAboutAChatOnly_NotCounted', () {
+      // A message on the order belongs to Messages, not to "new order".
+      expect(
+        newOrdersAwaitingBusiness(
+          [_order('a', when: nextMonth, status: 'Pending')],
+          {UnreadNotificationTargets.keyFor('BookingChat', 'a')},
+        ),
+        0,
       );
     });
 
@@ -141,31 +204,26 @@ void main() {
             status: 'Pending',
             agreementStatus: 'AwaitingCustomer',
           ),
-        ]),
+        ], unopened(['a'])),
         0,
       );
     });
 
     test('newOrdersAwaitingBusiness_OrdersPastPending_NotCounted', () {
+      final statuses = ['Confirmed', 'InProgress', 'Completed', 'Cancelled'];
       expect(
         newOrdersAwaitingBusiness([
-          for (final status in [
-            'Confirmed',
-            'InProgress',
-            'Completed',
-            'Cancelled',
-          ])
+          for (final status in statuses)
             _order(status, when: nextMonth, status: status),
-        ]),
+        ], unopened(statuses)),
         0,
       );
     });
 
     test('newOrdersAwaitingBusiness_NoOrders_IsZero', () {
-      expect(newOrdersAwaitingBusiness(const []), 0);
+      expect(newOrdersAwaitingBusiness(const [], const {}), 0);
     });
   });
-
   group('workStepsReady', () {
     test('workStepsReady_OrderOnItsDayWithCrew_CountsAsStart', () {
       expect(
@@ -297,6 +355,7 @@ void main() {
       Future<List<Booking>> Function()? orders,
       List<HiringPost> posts = const [],
       int unread = 0,
+      Set<String>? unopened,
       bool settle = true,
     }) async {
       // A 360dp-wide phone, the narrowest the app targets.
@@ -311,6 +370,9 @@ void main() {
               () => _Bookings(orders ?? () async => const []),
             ),
             businessHiringPostsProvider.overrideWith(() => _Posts(posts)),
+            unreadNotificationTargetsProvider.overrideWith(
+              () => _Unread(unopened ?? const {}),
+            ),
             bookingThreadsProvider.overrideWith(
               () => _Threads([if (unread > 0) _thread(unread, realNow)]),
             ),
@@ -341,6 +403,7 @@ void main() {
         ],
         posts: [_event('own', when: dueNow)],
         unread: 1,
+        unopened: {UnreadNotificationTargets.keyFor('booking', 'new')},
       );
 
       expect(countOn(tester, 'From customers'), '1');
@@ -348,6 +411,53 @@ void main() {
       expect(countOn(tester, 'Messages'), '1');
       // Three names and three counts fit a 360dp phone without spilling over.
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('FromCustomers_FiveNewThenOneOpened_GoesFromFiveToFour', (
+      tester,
+    ) async {
+      final ids = ['n1', 'n2', 'n3', 'n4', 'n5'];
+      await pumpTabs(
+        tester,
+        orders: () async => [
+          for (final id in ids) _order(id, when: later, status: 'Pending'),
+        ],
+        unopened: {
+          for (final id in ids) UnreadNotificationTargets.keyFor('booking', id),
+        },
+      );
+      expect(countOn(tester, 'From customers'), '5');
+
+      // What opening the order does: the detail screen marks it seen, which takes it out of the
+      // unread set. (markBookingSeen also tells the server; forget is the same change, locally.)
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(BusinessOrdersTab)),
+      );
+      container
+          .read(unreadNotificationTargetsProvider.notifier)
+          .forget('Booking', 'n3');
+      await tester.pumpAndSettle();
+
+      expect(countOn(tester, 'From customers'), '4');
+    });
+
+    testWidgets('FromCustomers_LastNewOneOpened_CountDisappears', (
+      tester,
+    ) async {
+      await pumpTabs(
+        tester,
+        orders: () async => [_order('only', when: later, status: 'Pending')],
+        unopened: {UnreadNotificationTargets.keyFor('booking', 'only')},
+      );
+      expect(countOn(tester, 'From customers'), '1');
+
+      ProviderScope.containerOf(tester.element(find.byType(BusinessOrdersTab)))
+          .read(unreadNotificationTargetsProvider.notifier)
+          .forget('Booking', 'only');
+      await tester.pumpAndSettle();
+
+      expect(pillOn('From customers'), findsNothing);
+      expect(find.text('From customers'), findsOneWidget);
     });
 
     testWidgets('Tabs_NothingWaiting_ShowNamesOnly', (tester) async {

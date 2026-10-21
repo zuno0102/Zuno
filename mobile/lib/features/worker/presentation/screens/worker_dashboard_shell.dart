@@ -1,6 +1,7 @@
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zuno/features/work_chat/presentation/screens/work_chat_screen.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_state.dart';
@@ -75,6 +76,17 @@ class _WorkerDashboardShellState extends ConsumerState<WorkerDashboardShell> {
 
       case NotificationTarget.bookingChat:
         _openChat(notification.targetId!);
+
+      // A message from a business this worker works for. The title is the sender's name.
+      case NotificationTarget.workChat:
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => WorkChatScreen(
+              counterpartId: notification.targetId!,
+              counterpartName: notification.title,
+            ),
+          ),
+        );
 
       // An offer or an invitation on a hiring post. The post's own details and its answer buttons
       // live on My jobs › Invitations, which is where a worker answers one.

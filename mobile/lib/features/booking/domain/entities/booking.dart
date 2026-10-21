@@ -60,6 +60,7 @@ class Booking {
   });
 
   final String id;
+
   /// The short order code — "#7A3F91C2" — for people to quote and match.
   final String reference;
 
@@ -399,7 +400,8 @@ class Booking {
   };
 
   String paymentDetail() => switch (paymentState()) {
-    TrackState.completed => owesNoWages ? 'No wages through Zuno' : 'All crew paid',
+    TrackState.completed =>
+      owesNoWages ? 'No wages through Zuno' : 'All crew paid',
     TrackState.inProgress =>
       isWageDisputed ? 'Disputed' : '${rupees(wageOutstandingAmount)} owed',
     TrackState.lapsed => 'Called off',
@@ -432,6 +434,14 @@ class Booking {
   bool get myAssignmentAwaitingResponse => myAssignmentStatus == 'Assigned';
   bool get myAssignmentIsAccepted => myAssignmentStatus == 'Accepted';
   bool get myAssignmentIsCompleted => myAssignmentStatus == 'Completed';
+
+  /// Whether the viewing worker may message and call the business about this job: once they have
+  /// taken it on (or finished it), and not on a cancelled order.
+  ///
+  /// The business, never the customer — the business is the middle man, and workers and customers
+  /// do not contact each other directly.
+  bool get workerCanContactBusiness =>
+      !isCancelled && (myAssignmentIsAccepted || myAssignmentIsCompleted);
 
   /// Whether the viewer is the Lead on this job, and so can move its work status.
   ///
@@ -490,5 +500,4 @@ class Booking {
   String get wagePaidLabel => '$wagePaidPayeeCount of $wagePayeeCount paid';
 
   // ---- The whole order --------------------------------------------------------------------
-
 }

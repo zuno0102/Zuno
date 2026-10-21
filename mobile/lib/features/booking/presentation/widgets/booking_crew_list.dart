@@ -4,7 +4,9 @@ import 'package:zuno/features/booking/domain/entities/booking.dart';
 import 'package:zuno/features/booking/domain/entities/booking_worker_assignment.dart';
 import 'package:zuno/features/booking/domain/entities/job_role.dart';
 import 'package:zuno/features/booking/presentation/widgets/set_crew_role_sheet.dart';
+import 'package:zuno/features/work_chat/presentation/widgets/work_message_button.dart';
 import 'package:zuno/shared/widgets/call_icon_button.dart';
+import 'package:zuno/shared/widgets/status_with_actions.dart';
 
 /// Who is on this job, and where each of them stands.
 ///
@@ -87,6 +89,11 @@ class BookingCrewList extends StatelessWidget {
             _CrewRow(
               worker: worker,
               canCall: booking.canCallCrewMember(worker),
+              // Message the worker once they have taken the job on, while the order is live. The
+              // business is the go-between: workers and customers never contact each other.
+              canMessage:
+                  !booking.isCancelled &&
+                  (worker.isAccepted || worker.isCompleted),
               // Only once they have said yes. A role is what lets somebody declare this job
               // started, so offering it to a worker who has not answered would be handing that
               // power to somebody who might still decline — and the server refuses it anyway.
@@ -130,12 +137,20 @@ class BookingCrewList extends StatelessWidget {
 }
 
 class _CrewRow extends StatelessWidget {
-  const _CrewRow({required this.worker, required this.canCall, this.onSetRole});
+  const _CrewRow({
+    required this.worker,
+    required this.canCall,
+    this.canMessage = false,
+    this.onSetRole,
+  });
 
   final BookingWorkerAssignment worker;
 
   /// Worked out by the order, which is the only thing that knows whether the job is over.
   final bool canCall;
+
+  /// Whether the business can message this worker from here.
+  final bool canMessage;
 
   /// Hold the row to set or remove this person's role. Null where that is not the viewer's to do.
   final VoidCallback? onSetRole;
@@ -144,7 +159,6 @@ class _CrewRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final declined = worker.isRejected;
-
 
     final (icon, colour) = switch (worker.displayStatus) {
       'Completed' => (Icons.check_circle, theme.colorScheme.primary),
@@ -227,10 +241,21 @@ class _CrewRow extends StatelessWidget {
                 ],
               ),
             ),
-            if (canCall)
-              CallIconButton(
-                phoneNumber: worker.workerPhone!,
-                tooltip: 'Call worker',
+            if (canMessage || canCall)
+              CardActions(
+                actions: [
+                  if (canMessage)
+                    WorkMessageButton(
+                      counterpartId: worker.workerProfileId,
+                      counterpartName: worker.workerName,
+                      tooltip: 'Message worker',
+                    ),
+                  if (canCall)
+                    CallIconButton(
+                      phoneNumber: worker.workerPhone!,
+                      tooltip: 'Call worker',
+                    ),
+                ],
               ),
           ],
         ),

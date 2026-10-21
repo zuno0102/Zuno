@@ -12,6 +12,7 @@ import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post_application.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/business_hiring_posts_notifier.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
+import 'package:zuno/features/work_chat/presentation/widgets/work_message_button.dart';
 import 'package:zuno/shared/widgets/call_icon_button.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
 
@@ -757,6 +758,15 @@ class _ApplicationRowState extends ConsumerState<_ApplicationRow> {
             // Beside the pills, not beneath them: in the isApplied branch above the actions sit
             // flush right, and stacking a 48dp button under two pills would treble the height of
             // every crew row.
+            // Message once the worker has agreed (the business accepted them, they accepted the
+            // job) — the business is the go-between, so this is the worker's line to it.
+            if (application.isAccepted)
+              WorkMessageButton(
+                counterpartId: application.workerProfileId,
+                counterpartName: application.workerName,
+                tooltip: 'Message worker',
+                iconSize: 18,
+              ),
             if (widget.canCall)
               CallIconButton(
                 phoneNumber: application.workerPhone!,

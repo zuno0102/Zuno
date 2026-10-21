@@ -30,9 +30,17 @@ class SectionHeader extends StatelessWidget {
       padding: padding,
       child: Row(
         children: [
-          Text(
-            title,
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          // Allowed to shorten on a narrow phone or with large text, so the count and the action
+          // stay on screen instead of the row spilling over its edge.
+          Flexible(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
           if (count != null) ...[
             const SizedBox(width: 8),

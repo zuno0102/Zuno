@@ -135,6 +135,12 @@ class ApiConstants {
   static String bookingMessagesPath(String bookingId) =>
       '/api/$apiVersion/bookings/$bookingId/messages';
 
+  // Messages between a business and a worker on its team. Addressed by the other side's profile id;
+  // which side the caller is comes from their own account, never from the path.
+  static const String workThreadsPath = '/api/$apiVersion/work-threads';
+  static String workMessagesPath(String counterpartId) =>
+      '/api/$apiVersion/work-threads/$counterpartId/messages';
+
   static const String businessBookingsPath =
       '/api/$apiVersion/business/bookings';
 

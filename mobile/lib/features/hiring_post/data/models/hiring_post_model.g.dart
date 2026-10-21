@@ -15,6 +15,7 @@ HiringPostModel _$HiringPostModelFromJson(Map<String, dynamic> json) =>
       bookingStatus: json['bookingStatus'] as String?,
       businessName: json['businessName'] as String,
       businessLogoUrl: json['businessLogoUrl'] as String?,
+      businessPhone: json['businessPhone'] as String?,
       title: json['title'] as String,
       description: json['description'] as String?,
       imageUrl: json['imageUrl'] as String?,

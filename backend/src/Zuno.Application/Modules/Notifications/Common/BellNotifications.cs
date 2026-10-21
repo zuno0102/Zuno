@@ -22,5 +22,7 @@ namespace Zuno.Application.Modules.Notifications.Common;
 public static class BellNotifications
 {
     public static IQueryable<Notification> OnTheBell(this IQueryable<Notification> notifications) =>
-        notifications.Where(n => n.Kind != NotificationKind.ChatMessage);
+        notifications.Where(n =>
+            n.Kind != NotificationKind.ChatMessage
+            && n.Kind != NotificationKind.WorkChatMessage);
 }

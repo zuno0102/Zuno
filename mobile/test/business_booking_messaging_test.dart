@@ -202,6 +202,98 @@ void main() {
     });
   });
 
+  group('the order card layout', () {
+    // The status pill and the Message / Call buttons used to be squeezed into ~62px beside the
+    // text: 6px apart, with buttons shrunk below a comfortable tap size.
+    Future<void> pumpPhone(WidgetTester tester, List<Booking> orders) async {
+      tester.view.physicalSize = const Size(
+        720,
+        1600,
+      ); // 360dp, the narrowest phone targeted
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            businessBookingsProvider.overrideWith(
+              () => _FakeBusinessBookings(orders),
+            ),
+            businessHiringPostsProvider.overrideWith(_FakePosts.new),
+            bookingThreadsProvider.overrideWith(() => _FakeThreads(const [])),
+            bookingConversationProvider.overrideWith2(
+              (_) => _FakeConversation(),
+            ),
+          ],
+          child: const MaterialApp(home: Scaffold(body: BusinessOrdersTab())),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    Finder button(String tooltip) => find
+        .ancestor(
+          of: find.byTooltip(tooltip),
+          matching: find.byType(IconButton),
+        )
+        .first;
+
+    testWidgets('OrderCard_Confirmed_LeavesSpaceBetweenStatusAndButtons', (
+      tester,
+    ) async {
+      await pumpPhone(tester, [order()]);
+
+      final status = tester.getRect(find.text('Confirmed'));
+      final message = tester.getRect(button('Message customer'));
+      expect(message.top - status.bottom, greaterThanOrEqualTo(12));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('OrderCard_Buttons_AreAtLeast40dpToTap', (tester) async {
+      await pumpPhone(tester, [order()]);
+
+      for (final tip in ['Message customer', 'Call customer']) {
+        final size = tester.getSize(button(tip));
+        expect(size.width, greaterThanOrEqualTo(40), reason: tip);
+        expect(size.height, greaterThanOrEqualTo(40), reason: tip);
+      }
+    });
+
+    testWidgets('OrderCard_AnyShapeOfOrder_FitsA360dpPhone', (tester) async {
+      Booking long(String id) => Booking(
+        id: id,
+        businessOwnerProfileId: 'bo-1',
+        businessName: 'Shajil Caterers',
+        customerProfileId: 'c-1',
+        customerName: 'Beaulin Shajil Sundaram from Marthandam',
+        customerPhone: '9876500000',
+        businessServiceId: 's-1',
+        serviceName: 'Home wall painting with two coats and primer',
+        serviceCategoryName: 'Painting',
+        variantName: 'Exterior, full house',
+        status: 'Confirmed',
+        scheduledDate: scheduled,
+        priceQuoted: 1400,
+        agreementStatus: 'NotRequired',
+      );
+
+      await pumpPhone(tester, [
+        order(),
+        order(status: 'Pending'), // no buttons at all
+        order(customerPhone: null), // message only
+        long('bk-long'),
+      ]);
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('OrderCard_Pending_ShowsStatusWithoutButtons', (tester) async {
+      await pumpPhone(tester, [order(status: 'Pending')]);
+
+      expect(find.byTooltip('Message customer'), findsNothing);
+      expect(find.byTooltip('Call customer'), findsNothing);
+    });
+  });
+
   group('the Messages tab', () {
     testWidgets('joins the other two inside Orders', (tester) async {
       await pumpOrders(tester);

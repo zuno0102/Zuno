@@ -60,4 +60,10 @@ public enum NotificationTarget : short
 
     /// <summary>The signed-in person's own profile. No id.</summary>
     Profile = 50,
+
+    /// <summary>
+    /// A business–worker conversation — id is the other side's profile: the business profile for a
+    /// worker reading it, the worker profile for a business.
+    /// </summary>
+    WorkChat = 60,
 }

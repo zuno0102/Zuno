@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show ProviderListenable;
 import 'package:zuno/features/booking/domain/entities/booking_message.dart';
 import 'package:zuno/features/booking/presentation/providers/booking_message_providers.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 
-/// The conversation on one booking.
+/// The conversation on one booking, between the customer and the business.
 ///
 /// Opened from the Chat tab or from the booking itself, and the same screen serves both sides — a
 /// customer and a business see their own messages on the right, because the server says which are
 /// theirs rather than the app guessing from the role it signed in as.
-class BookingChatScreen extends ConsumerStatefulWidget {
+class BookingChatScreen extends StatelessWidget {
   const BookingChatScreen({
     required this.bookingId,
     required this.title,
@@ -26,10 +27,44 @@ class BookingChatScreen extends ConsumerStatefulWidget {
   final String counterpartName;
 
   @override
-  ConsumerState<BookingChatScreen> createState() => _BookingChatScreenState();
+  Widget build(BuildContext context) => ChatScreen(
+    title: title,
+    counterpartName: counterpartName,
+    messages: bookingConversationProvider(bookingId),
+    onSend: (ref, body) =>
+        ref.read(bookingConversationProvider(bookingId).notifier).send(body),
+  );
 }
 
-class _BookingChatScreenState extends ConsumerState<BookingChatScreen> {
+/// A conversation screen: bubbles, read ticks, and a composer.
+///
+/// Shared by every chat in the app — customer↔business on a booking and business↔worker on a team —
+/// so they look and behave the same. Each passes where its messages come from and how to send one.
+class ChatScreen extends ConsumerStatefulWidget {
+  const ChatScreen({
+    required this.title,
+    required this.counterpartName,
+    required this.messages,
+    required this.onSend,
+    super.key,
+  });
+
+  /// The line under the other side's name: what the order is for, or what the chat is about.
+  final String title;
+
+  final String counterpartName;
+
+  /// The conversation, oldest first, kept fresh while the screen is open.
+  final ProviderListenable<AsyncValue<List<BookingMessage>>> messages;
+
+  /// Sends one message; throws if it could not be sent, so the words are put back.
+  final Future<void> Function(WidgetRef ref, String body) onSend;
+
+  @override
+  ConsumerState<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   bool _isSending = false;
@@ -62,9 +97,7 @@ class _BookingChatScreenState extends ConsumerState<BookingChatScreen> {
     _controller.clear();
 
     try {
-      await ref
-          .read(bookingConversationProvider(widget.bookingId).notifier)
-          .send(body);
+      await widget.onSend(ref, body);
       _scrollToEnd();
     } catch (e) {
       if (!mounted) return;
@@ -80,16 +113,18 @@ class _BookingChatScreenState extends ConsumerState<BookingChatScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final messagesAsync = ref.watch(
-      bookingConversationProvider(widget.bookingId),
-    );
+    final messagesAsync = ref.watch(widget.messages);
 
     return Scaffold(
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.counterpartName, maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text(
+              widget.counterpartName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
             Text(
               widget.title,
               maxLines: 1,
@@ -225,7 +260,9 @@ class _Bubble extends StatelessWidget {
                     Icon(
                       message.isRead ? Icons.done_all : Icons.done,
                       size: 13,
-                      color: theme.colorScheme.onPrimary.withValues(alpha: 0.75),
+                      color: theme.colorScheme.onPrimary.withValues(
+                        alpha: 0.75,
+                      ),
                     ),
                   ],
                 ],

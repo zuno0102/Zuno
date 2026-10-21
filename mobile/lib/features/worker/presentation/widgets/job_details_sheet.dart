@@ -10,6 +10,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:zuno/features/worker/presentation/providers/worker_job_filter_provider.dart';
 import 'package:zuno/features/worker/presentation/screens/hiring_business_screen.dart';
 import 'package:zuno/features/worker/presentation/widgets/single_job_map_screen.dart';
+import 'package:zuno/features/work_chat/presentation/screens/work_chat_screen.dart';
+import 'package:zuno/shared/widgets/call_icon_button.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/worker_job_offers_notifier.dart';
@@ -310,12 +312,52 @@ class _JobDetailsSheetState extends ConsumerState<_JobDetailsSheet> {
               // card", which was a direction rather than a control — and once invitations started
               // opening this sheet it became a dead end: the one screen that exists to show a job
               // somebody was picked for, with no way to take it.
-              _ when job.myApplicationStatus == 'Confirmed' &&
+              _
+                  when job.myApplicationStatus == 'Confirmed' &&
                       job.myApplicationId != null =>
                 _OfferAnswer(
                   applicationId: job.myApplicationId!,
                   onAnswered: () => Navigator.of(context).pop(),
                 ),
+              // A job this worker took: the business accepted them and they agreed. They can now
+              // message and call the business — never the customer; the business is the middle man.
+              _ when job.myApplicationStatus == 'Accepted' => Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 12,
+                    runSpacing: 8,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => WorkChatScreen(
+                              counterpartId: job.businessOwnerProfileId,
+                              counterpartName: job.businessName,
+                              subtitle: job.title,
+                            ),
+                          ),
+                        ),
+                        icon: const Icon(Icons.chat_bubble_outline),
+                        label: const Text('Message business'),
+                      ),
+                      if (job.businessPhone case final phone?
+                          when phone.isNotEmpty)
+                        OutlinedButton.icon(
+                          onPressed: () => launchPhoneCall(context, phone),
+                          icon: const Icon(Icons.call),
+                          label: const Text('Call business'),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  const StatusPill(
+                    label: 'You took this job',
+                    tone: StatusTone.success,
+                  ),
+                ],
+              ),
               _ when job.hasApplied => Center(
                 child: StatusPill(
                   label: switch (job.myApplicationStatus) {
@@ -468,7 +510,10 @@ class _OfferAnswerState extends ConsumerState<_OfferAnswer> {
     final notifier = ref.read(workerJobOffersProvider.notifier);
 
     try {
-      await notifier.respond(applicationId: widget.applicationId, accept: accept);
+      await notifier.respond(
+        applicationId: widget.applicationId,
+        accept: accept,
+      );
       widget.onAnswered();
       messenger.showSuccess(
         accept

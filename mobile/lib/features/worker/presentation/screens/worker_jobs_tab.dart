@@ -14,6 +14,10 @@ import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/worker_post_jobs_notifier.dart';
 import 'package:zuno/features/worker/presentation/widgets/job_details_sheet.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
+import 'package:zuno/shared/widgets/status_with_actions.dart';
+import 'package:zuno/features/work_chat/presentation/providers/work_chat_providers.dart';
+import 'package:zuno/features/work_chat/presentation/widgets/work_message_button.dart';
+import 'package:zuno/features/work_chat/presentation/widgets/work_threads_list.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/worker_job_offers_notifier.dart';
 import 'package:zuno/features/worker/domain/entities/worker_invitation.dart';
@@ -43,6 +47,7 @@ class WorkerJobsTab extends ConsumerWidget {
   static const currentTab = 0;
   static const historyTab = 1;
   static const invitationsTab = 2;
+  static const messagesTab = 3;
 
   /// Which tab opens first — the Invitations tab when a notification about one was tapped.
   final int initialTab;
@@ -109,32 +114,53 @@ class WorkerJobsTab extends ConsumerWidget {
     String label(String name, int? count) =>
         count == null ? name : '$name ($count)';
 
+    // Unread messages from the businesses this worker works for.
+    final messageCount = ref.watch(unreadWorkChatCountProvider);
+
+    // Four tabs on a phone: tight side padding and room for two lines, so a long name wraps
+    // rather than being cut off (the same treatment as the business's Orders tabs).
+    Tab tab(String text, {Key? key}) => Tab(
+      key: key,
+      height: 56,
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+
     return DefaultTabController(
-      length: 3,
+      length: 4,
       initialIndex: initialTab,
       child: Column(
         children: [
           TabBar(
+            labelPadding: const EdgeInsets.symmetric(horizontal: 4),
             tabs: [
-              Tab(
-                text: label(
+              tab(
+                label(
                   'Current',
                   sections == null
                       ? null
                       : sections.currentCount + livePosts.length,
                 ),
               ),
-              Tab(
-                text: label(
+              tab(
+                label(
                   'History',
                   sections == null
                       ? null
                       : sections.finished.length + donePosts.length,
                 ),
               ),
-              Tab(
+              tab(
+                label('Invitations', invitationCount),
                 key: const Key('workerInvitationsTab'),
-                text: label('Invitations', invitationCount),
+              ),
+              tab(
+                label('Messages', messageCount),
+                key: const Key('workerMessagesTab'),
               ),
             ],
           ),
@@ -146,6 +172,17 @@ class WorkerJobsTab extends ConsumerWidget {
                   (s) => _JobHistory(jobs: s.finished, postJobs: donePosts),
                 ),
                 const WorkerInvitationsTab(),
+                // Conversations with the businesses this worker works for. Customers are never
+                // here: the business is the go-between for everything about a job.
+                const WorkThreadsList(
+                  emptyState: EmptyState(
+                    icon: Icons.chat_bubble_outline,
+                    title: 'No messages yet',
+                    message:
+                        'Once a business has taken you on for a job, you can message and call '
+                        'it from the job card.',
+                  ),
+                ),
               ],
             ),
           ),
@@ -453,18 +490,43 @@ class _PostJobCard extends StatelessWidget {
                 ),
 
               const SizedBox(height: 10),
-              StatusPill(
-                label: post.isWorkCompleted
-                    ? 'Work finished'
-                    : post.isWorkStarted
-                    ? 'Work started'
-                    : 'Booked',
-                tone: post.isWorkCompleted
-                    ? StatusTone.success
-                    : post.isWorkStarted
-                    ? StatusTone.progress
-                    : StatusTone.waiting,
-                compact: true,
+              Row(
+                children: [
+                  StatusPill(
+                    label: post.isWorkCompleted
+                        ? 'Work finished'
+                        : post.isWorkStarted
+                        ? 'Work started'
+                        : 'Booked',
+                    tone: post.isWorkCompleted
+                        ? StatusTone.success
+                        : post.isWorkStarted
+                        ? StatusTone.progress
+                        : StatusTone.waiting,
+                    compact: true,
+                  ),
+                  const Spacer(),
+                  // Every job here is one the worker was accepted on, so the business can be
+                  // messaged and called about it — the business, never the customer.
+                  CardActions(
+                    actions: [
+                      WorkMessageButton(
+                        counterpartId: post.businessOwnerProfileId,
+                        counterpartName: post.businessName,
+                        subtitle: post.title,
+                        tooltip: 'Message business',
+                        iconSize: 22,
+                      ),
+                      if (post.businessPhone case final phone?
+                          when phone.isNotEmpty)
+                        CallIconButton(
+                          phoneNumber: phone,
+                          tooltip: 'Call business',
+                          iconSize: 22,
+                        ),
+                    ],
+                  ),
+                ],
               ),
             ],
           ),
@@ -603,6 +665,8 @@ class _JobCardState extends ConsumerState<_JobCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                // Top-aligned, so the status sits level with the job's name as on every card.
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Column(
@@ -630,14 +694,27 @@ class _JobCardState extends ConsumerState<_JobCard> {
                       ],
                     ),
                   ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      BookingStatusChip(order: booking),
-                      if (booking.canBeCalled && booking.customerPhone != null)
+                  const SizedBox(width: 8),
+                  // The same right-hand side as the business's and customer's cards: status,
+                  // a gap, then the buttons. The worker contacts the business — never the
+                  // customer directly; the business is the middle man.
+                  StatusWithActions(
+                    status: BookingStatusChip(order: booking),
+                    actions: [
+                      if (booking.workerCanContactBusiness)
+                        WorkMessageButton(
+                          counterpartId: booking.businessOwnerProfileId,
+                          counterpartName: booking.businessName,
+                          subtitle: booking.variantName ?? booking.serviceName,
+                          tooltip: 'Message business',
+                          iconSize: 22,
+                        ),
+                      if (booking.workerCanContactBusiness &&
+                          booking.businessPhone != null)
                         CallIconButton(
-                          phoneNumber: booking.customerPhone!,
-                          tooltip: 'Call customer',
+                          phoneNumber: booking.businessPhone!,
+                          tooltip: 'Call business',
+                          iconSize: 22,
                         ),
                     ],
                   ),

@@ -37,6 +37,22 @@ public class GetMyPostJobsQueryHandler(
             .OrderBy(p => p.EventDate)
             .ToListAsync(cancellationToken);
 
-        return posts.Select(p => p.ToDto(workerProfile.Id)).ToList();
+        // The business's number, for jobs this worker has been accepted on — every post here is one.
+        // The business is who a worker calls about the job; customers are never contacted directly.
+        var businessIds = posts.Select(p => p.BusinessOwnerProfileId).Distinct().ToList();
+        var businessPhones = await dbContext.BusinessOwnerProfiles
+            .Where(b => businessIds.Contains(b.Id))
+            .Select(b => new { b.Id, b.User.PhoneNumber })
+            .ToDictionaryAsync(b => b.Id, b => b.PhoneNumber, cancellationToken);
+
+        return
+        [
+            .. posts.Select(p =>
+            {
+                var dto = p.ToDto(workerProfile.Id);
+                dto.BusinessPhone = businessPhones.GetValueOrDefault(p.BusinessOwnerProfileId);
+                return dto;
+            }),
+        ];
     }
 }

@@ -11,6 +11,7 @@ class HiringPost {
     this.bookingStatus,
     required this.businessName,
     this.businessLogoUrl,
+    this.businessPhone,
     required this.title,
     this.description,
     this.imageUrl,
@@ -52,6 +53,7 @@ class HiringPost {
 
   final String id;
   final String businessOwnerProfileId;
+
   /// The customer order this crew was hired for, when the post came from one.
   final String? bookingId;
 
@@ -63,11 +65,16 @@ class HiringPost {
   final String? bookingStatus;
   final String businessName;
   final String? businessLogoUrl;
+
+  /// The business's phone, on a worker's own accepted jobs only — who a worker calls about the job.
+  /// Customers and workers never contact each other directly; the business is the middle man.
+  final String? businessPhone;
   final String title;
   final String? description;
   final String? imageUrl;
   final DateTime eventDate;
   final int durationMinutes;
+
   /// When the business said the crew started. Null while the job is only scheduled.
   final DateTime? workStartedAt;
 
@@ -137,6 +144,7 @@ class HiringPost {
     }
     return null;
   }
+
   final int workersNeeded;
   final double salaryAmount;
   final String salaryUnit;
@@ -186,7 +194,8 @@ class HiringPost {
   /// Whether the event window has opened but not yet closed.
   bool isEventUnderway({DateTime? now}) {
     final at = now ?? DateTime.now();
-    return !at.isBefore(eventDate.toLocal()) && at.isBefore(eventEndDate.toLocal());
+    return !at.isBefore(eventDate.toLocal()) &&
+        at.isBefore(eventEndDate.toLocal());
   }
 
   /// Whether workers can actually see and apply to this post right now.
@@ -268,7 +277,6 @@ class HiringPost {
   /// Marking it complete releases the crew for other jobs before the scheduled end time.
   bool canMarkComplete({DateTime? now}) => isWorkStarted && !isWorkCompleted;
 
-
   // ---- The three tracks --------------------------------------------------------------------
   //
   // "Complete" used to mean three unrelated things on one card — the date had passed, the
@@ -301,7 +309,9 @@ class HiringPost {
     // Nothing left to hire for once the day has gone by with nobody taken on.
     if (isEventOver(now: now) && filledCount == 0) return TrackState.lapsed;
     // The crew is only "active" from the moment they are actually due on site.
-    if (isEventUnderway(now: now) || isEventOver(now: now)) return TrackState.active;
+    if (isEventUnderway(now: now) || isEventOver(now: now)) {
+      return TrackState.active;
+    }
     return TrackState.notStarted;
   }
 
@@ -327,9 +337,11 @@ class HiringPost {
 
   /// A short line under each track name, saying what the state actually rests on.
   String eventDetail({DateTime? now}) => switch (eventState(now: now)) {
-    TrackState.completed => 'Finished ${formatDayMonth(eventEndDate.toLocal())}',
+    TrackState.completed =>
+      'Finished ${formatDayMonth(eventEndDate.toLocal())}',
     TrackState.inProgress => 'Happening now',
-    TrackState.lapsed => 'Passed ${formatDayMonth(eventDate.toLocal())}, unfilled',
+    TrackState.lapsed =>
+      'Passed ${formatDayMonth(eventDate.toLocal())}, unfilled',
     _ => 'Due ${formatDayMonth(eventDate.toLocal())}',
   };
 
@@ -359,7 +371,6 @@ class HiringPost {
 
   bool get isMyPaymentPaid => myPaymentStatus == 'Paid';
   bool get isMyPaymentDisputed => myPaymentStatus == 'Disputed';
-
 
   /// Whether to offer the confirm / dispute buttons.
   bool get canRespondToMyPayment =>

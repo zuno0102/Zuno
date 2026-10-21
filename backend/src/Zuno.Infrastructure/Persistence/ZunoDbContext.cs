@@ -52,6 +52,8 @@ public class ZunoDbContext(
 
     public DbSet<BookingThreadClear> BookingThreadClears => Set<BookingThreadClear>();
 
+    public DbSet<WorkMessage> WorkMessages => Set<WorkMessage>();
+
     public DbSet<BusinessWorker> BusinessWorkers => Set<BusinessWorker>();
 
     public DbSet<Booking> Bookings => Set<Booking>();

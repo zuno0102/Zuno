@@ -14,6 +14,7 @@ class HiringPostModel {
     this.bookingStatus,
     required this.businessName,
     this.businessLogoUrl,
+    this.businessPhone,
     required this.title,
     this.description,
     this.imageUrl,
@@ -58,6 +59,7 @@ class HiringPostModel {
 
   final String id;
   final String businessOwnerProfileId;
+
   /// The customer order this crew was hired for, when the post came from one.
   final String? bookingId;
 
@@ -68,6 +70,7 @@ class HiringPostModel {
   final String? bookingStatus;
   final String businessName;
   final String? businessLogoUrl;
+  final String? businessPhone;
   final String title;
   final String? description;
   final String? imageUrl;
@@ -82,6 +85,7 @@ class HiringPostModel {
   final int paidPayeeCount;
   final bool hasDisputedPayment;
   final bool isFullyComplete;
+
   /// The kind of work, inside the category — "Interior wall painting".
   final String? serviceSubCategoryId;
   final String? serviceSubCategoryName;
@@ -115,6 +119,7 @@ class HiringPostModel {
     bookingStatus: bookingStatus,
     businessName: businessName,
     businessLogoUrl: businessLogoUrl,
+    businessPhone: businessPhone,
     title: title,
     description: description,
     imageUrl: imageUrl,

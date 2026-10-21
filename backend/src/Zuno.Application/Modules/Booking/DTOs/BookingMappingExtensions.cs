@@ -40,7 +40,9 @@ public static class BookingMappingExtensions
         BusinessPhone = booking.BusinessOwnerProfile.User.PhoneNumber,
         CustomerProfileId = booking.CustomerProfileId,
         CustomerName = $"{booking.CustomerProfile.User.FirstName} {booking.CustomerProfile.User.LastName}",
-        CustomerPhone = booking.CustomerProfile.User.PhoneNumber,
+        // Never to a worker. Customers and workers do not contact each other directly — the business
+        // is the middle man — so a worker's copy of an order carries the business's number only.
+        CustomerPhone = viewerWorkerProfileId is null ? booking.CustomerProfile.User.PhoneNumber : null,
         BusinessServiceId = booking.BusinessServiceId,
         ServiceName = booking.BusinessService.Name,
         ServiceCategoryName = booking.BusinessService.ServiceCategory.Name,

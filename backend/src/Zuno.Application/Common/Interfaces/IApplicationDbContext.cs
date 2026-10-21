@@ -47,6 +47,8 @@ public interface IApplicationDbContext
 
     DbSet<BookingThreadClear> BookingThreadClears { get; }
 
+    DbSet<WorkMessage> WorkMessages { get; }
+
     DbSet<BusinessWorker> BusinessWorkers { get; }
 
     DbSet<Booking> Bookings { get; }
