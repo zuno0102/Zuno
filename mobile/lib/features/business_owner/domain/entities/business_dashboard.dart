@@ -6,6 +6,7 @@ class BusinessDashboard {
   const BusinessDashboard({
     this.eventsCompleted = 0,
     this.upcomingEvents = 0,
+    this.awaitingPaymentEvents = 0,
     this.cancelledEvents = 0,
     this.totalRevenue = 0,
     this.crewEventsCompleted = 0,
@@ -14,15 +15,22 @@ class BusinessDashboard {
     this.trend = const [],
     this.completed = const [],
     this.upcoming = const [],
+    this.awaitingPayment = const [],
     this.cancelled = const [],
     this.crewEvents = const [],
     this.workers = const [],
     this.trust = const BusinessTrust(),
   });
 
-  /// Customer bookings seen through — the figure that splits by category.
+  /// Customer bookings closed for good — event, crew, work and payment all done. The figure
+  /// that splits by category.
   final int eventsCompleted;
+
+  /// Confirmed bookings whose date is still ahead. A request not yet confirmed is not counted.
   final int upcomingEvents;
+
+  /// Work marked complete while somebody on the crew is still unpaid.
+  final int awaitingPaymentEvents;
   final int cancelledEvents;
   final double totalRevenue;
 
@@ -36,9 +44,12 @@ class BusinessDashboard {
   final List<CategoryBreakdown> byCategory;
   final List<MonthlyActivity> trend;
 
-  /// Bookings seen through, most recently finished first.
+  /// Bookings closed for good, most recently finished first.
   final List<DashboardEvent> completed;
   final List<DashboardEvent> upcoming;
+
+  /// Work done but a wage still owed, most recently finished first.
+  final List<DashboardEvent> awaitingPayment;
   final List<DashboardEvent> cancelled;
   final List<CrewEvent> crewEvents;
 
@@ -51,8 +62,9 @@ class BusinessDashboard {
   /// Whether the trend chart has anything worth drawing.
   bool get hasTrend => trend.any((m) => m.completed > 0);
 
-  int get busiestMonthCount =>
-      trend.isEmpty ? 0 : trend.map((m) => m.completed).reduce((a, b) => a > b ? a : b);
+  int get busiestMonthCount => trend.isEmpty
+      ? 0
+      : trend.map((m) => m.completed).reduce((a, b) => a > b ? a : b);
 }
 
 /// One main category — "Painting 2" — and the sub-categories inside it.

@@ -11,6 +11,7 @@ BusinessDashboardModel _$BusinessDashboardModelFromJson(
 ) => BusinessDashboardModel(
   eventsCompleted: (json['eventsCompleted'] as num?)?.toInt() ?? 0,
   upcomingEvents: (json['upcomingEvents'] as num?)?.toInt() ?? 0,
+  awaitingPaymentEvents: (json['awaitingPaymentEvents'] as num?)?.toInt() ?? 0,
   cancelledEvents: (json['cancelledEvents'] as num?)?.toInt() ?? 0,
   totalRevenue: (json['totalRevenue'] as num?)?.toDouble() ?? 0,
   crewEventsCompleted: (json['crewEventsCompleted'] as num?)?.toInt() ?? 0,
@@ -34,6 +35,11 @@ BusinessDashboardModel _$BusinessDashboardModelFromJson(
       const [],
   upcoming:
       (json['upcoming'] as List<dynamic>?)
+          ?.map((e) => DashboardEventModel.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const [],
+  awaitingPayment:
+      (json['awaitingPayment'] as List<dynamic>?)
           ?.map((e) => DashboardEventModel.fromJson(e as Map<String, dynamic>))
           .toList() ??
       const [],

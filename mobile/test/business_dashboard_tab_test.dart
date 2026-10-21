@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:zuno/features/business_owner/data/models/business_dashboard_model.dart';
 import 'package:zuno/features/business_owner/domain/entities/business_dashboard.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_dashboard_notifier.dart';
 import 'package:zuno/features/business_owner/presentation/screens/business_dashboard_tab.dart';
@@ -16,6 +17,20 @@ void main() {
   final dashboard = BusinessDashboard(
     eventsCompleted: 5,
     upcomingEvents: 1,
+    awaitingPaymentEvents: 9,
+    awaitingPayment: [
+      DashboardEvent(
+        id: 'b-2',
+        serviceName: 'Paintings',
+        categoryName: 'Painting',
+        subCategoryName: 'Wall painting',
+        customerName: 'Test Customer',
+        scheduledDate: DateTime(2026, 10, 1),
+        completedAt: DateTime(2026, 10, 2),
+        price: 3000,
+        status: 'Completed',
+      ),
+    ],
     cancelledEvents: 1,
     crewEventsCompleted: 6,
     activeWorkers: 4,
@@ -27,14 +42,36 @@ void main() {
         count: 2,
         revenue: 8400,
         subCategories: [
-          SubCategoryBreakdown(name: 'Acrylic painting', count: 2, revenue: 8400),
+          SubCategoryBreakdown(
+            name: 'Acrylic painting',
+            count: 2,
+            revenue: 8400,
+          ),
         ],
       ),
     ],
     trend: const [
-      MonthlyActivity(label: 'Jul', year: 2026, month: 7, completed: 2, revenue: 4900),
-      MonthlyActivity(label: 'Aug', year: 2026, month: 8, completed: 2, revenue: 6000),
-      MonthlyActivity(label: 'Sep', year: 2026, month: 9, completed: 1, revenue: 2500),
+      MonthlyActivity(
+        label: 'Jul',
+        year: 2026,
+        month: 7,
+        completed: 2,
+        revenue: 4900,
+      ),
+      MonthlyActivity(
+        label: 'Aug',
+        year: 2026,
+        month: 8,
+        completed: 2,
+        revenue: 6000,
+      ),
+      MonthlyActivity(
+        label: 'Sep',
+        year: 2026,
+        month: 9,
+        completed: 1,
+        revenue: 2500,
+      ),
     ],
     completed: [
       DashboardEvent(
@@ -80,9 +117,7 @@ void main() {
         overrides: [
           businessDashboardProvider.overrideWith((ref) async => data),
         ],
-        child: const MaterialApp(
-          home: Scaffold(body: BusinessDashboardTab()),
-        ),
+        child: const MaterialApp(home: Scaffold(body: BusinessDashboardTab())),
       ),
     );
     await tester.pumpAndSettle();
@@ -101,17 +136,22 @@ void main() {
     expect(find.text('Customer activity'), findsOneWidget);
   });
 
-  testWidgets('shows all five stat tiles', (tester) async {
+  testWidgets('shows all six stat tiles', (tester) async {
     await pump(tester, dashboard);
 
     for (final label in [
       'Upcoming',
+      'Awaiting payment',
       'Finished',
       'Cancelled',
       'Crew events',
       'Active workers',
     ]) {
-      expect(find.text(label), findsOneWidget, reason: '$label tile is missing');
+      expect(
+        find.text(label),
+        findsOneWidget,
+        reason: '$label tile is missing',
+      );
     }
   });
 
@@ -120,6 +160,45 @@ void main() {
 
     expect(find.text('4'), findsOneWidget); // active workers
     expect(find.text('6'), findsOneWidget); // crew events
+    expect(find.text('9'), findsOneWidget); // awaiting payment
+  });
+
+  testWidgets('Awaiting payment opens the work still owing wages', (
+    tester,
+  ) async {
+    await pump(tester, dashboard);
+
+    await tester.tap(find.text('Awaiting payment'));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('1 booking with a wage still owed'), findsOneWidget);
+    expect(find.text('Wall painting'), findsOneWidget);
+    // The order reads Completed in the database; here it must say what is left to do.
+    expect(find.text('Awaiting payment'), findsWidgets);
+    expect(find.text('Completed'), findsNothing);
+  });
+
+  testWidgets('the API fields reach the tile', (tester) async {
+    final model = BusinessDashboardModel.fromJson({
+      'upcomingEvents': 3,
+      'awaitingPaymentEvents': 7,
+      'awaitingPayment': [
+        {
+          'id': 'b-9',
+          'serviceName': 'Paintings',
+          'categoryName': 'Painting',
+          'customerName': 'A Customer',
+          'scheduledDate': '2026-10-01T09:00:00Z',
+          'price': 1000,
+          'status': 'Completed',
+        },
+      ],
+    }).toEntity();
+
+    expect(model.upcomingEvents, 3);
+    expect(model.awaitingPaymentEvents, 7);
+    expect(model.awaitingPayment.single.id, 'b-9');
   });
 
   testWidgets('an empty dashboard still lays out', (tester) async {

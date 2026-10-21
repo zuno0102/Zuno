@@ -6,6 +6,7 @@ using Zuno.Application.Modules.Business.DTOs;
 using Zuno.Domain.Entities;
 using Zuno.Domain.Enums;
 using Zuno.Domain.Exceptions;
+using Zuno.Domain.Specifications;
 
 namespace Zuno.Application.Modules.Business.Queries.GetBusinessDashboard;
 
@@ -71,28 +72,37 @@ public class GetBusinessDashboardQueryHandler(
             })
             .ToListAsync(cancellationToken);
 
-        var now = dateTimeProvider.UtcNow;
-        var completed = bookings.Where(b => b.Status == BookingStatus.Completed).ToList();
+        // Orders closed for good: work done and nobody on the crew still owed. Asked of the
+        // database with the same rule that credits the business's record, so the Finished tile
+        // and the record can never disagree.
+        var settledIds = (await dbContext.Bookings
+                .Where(b => b.BusinessOwnerProfileId == business.Id)
+                .Where(BookingWageRules.CountsAsCompleted)
+                .Select(b => b.Id)
+                .ToListAsync(cancellationToken))
+            .ToHashSet();
 
-        var upcoming = bookings
-            .Where(b => b.ScheduledDate > now
-                && b.Status is BookingStatus.Pending
-                    or BookingStatus.Confirmed
-                    or BookingStatus.Assigned
-                    or BookingStatus.InProgress)
+        var now = dateTimeProvider.UtcNow;
+        var byStage = bookings.ToLookup(b =>
+            DashboardOrderStages.Of(b.Status, b.ScheduledDate, settledIds.Contains(b.Id), now));
+
+        // Newest first: what a business wants from these lists is the job they just finished, not
+        // the one they finished two years ago. CompletedAt is null on rows completed before it
+        // was recorded, so the scheduled date stands in.
+        var completed = byStage[DashboardOrderStage.Finished]
+            .OrderByDescending(b => b.CompletedAt ?? b.ScheduledDate)
+            .ToList();
+
+        var awaitingPayment = byStage[DashboardOrderStage.AwaitingPayment]
+            .OrderByDescending(b => b.CompletedAt ?? b.ScheduledDate)
+            .ToList();
+
+        var upcoming = byStage[DashboardOrderStage.Upcoming]
             .OrderBy(b => b.ScheduledDate)
             .ToList();
 
-        var cancelled = bookings
-            .Where(b => b.Status == BookingStatus.Cancelled)
+        var cancelled = byStage[DashboardOrderStage.Cancelled]
             .OrderByDescending(b => b.CancelledAt ?? b.ScheduledDate)
-            .ToList();
-
-        // Newest first: what a business wants from this list is the job they just finished, not
-        // the one they finished two years ago. CompletedAt is null on rows completed before it
-        // was recorded, so the scheduled date stands in.
-        var completedNewestFirst = completed
-            .OrderByDescending(b => b.CompletedAt ?? b.ScheduledDate)
             .ToList();
 
         var workers = await BuildWorkersAsync(business.Id, cancellationToken);
@@ -101,6 +111,7 @@ public class GetBusinessDashboardQueryHandler(
         {
             EventsCompleted = completed.Count,
             UpcomingEvents = upcoming.Count,
+            AwaitingPaymentEvents = awaitingPayment.Count,
             CancelledEvents = cancelled.Count,
             TotalRevenue = completed.Sum(b => b.Price),
             CrewEventsCompleted = await dbContext.HiringPosts
@@ -109,7 +120,8 @@ public class GetBusinessDashboardQueryHandler(
             ActiveWorkers = workers.Count,
             ByCategory = BuildBreakdown(completed),
             Trend = BuildTrend(completed, now),
-            Completed = completedNewestFirst.Take(DetailLimit).Select(ToDto).ToList(),
+            Completed = completed.Take(DetailLimit).Select(ToDto).ToList(),
+            AwaitingPayment = awaitingPayment.Take(DetailLimit).Select(ToDto).ToList(),
             Upcoming = upcoming.Take(DetailLimit).Select(ToDto).ToList(),
             Cancelled = cancelled.Take(DetailLimit).Select(ToDto).ToList(),
             CrewEvents = await BuildCrewEventsAsync(business.Id, cancellationToken),

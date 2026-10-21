@@ -5,7 +5,7 @@ import 'package:zuno/features/business_owner/domain/entities/business_dashboard.
 import 'package:zuno/shared/widgets/empty_state.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
 
-/// Bookings behind the Upcoming, Completed and Cancelled tiles.
+/// Bookings behind the Upcoming, Awaiting payment, Finished and Cancelled tiles.
 ///
 /// One screen for all three, because the row is the same booking whichever tile opened it —
 /// what changes is which date matters, and what is worth saying about it.
@@ -33,19 +33,23 @@ class BookingListScreen extends StatelessWidget {
           ? EmptyState(
               icon: switch (mode) {
                 BookingListMode.upcoming => Icons.event_available_outlined,
+                BookingListMode.awaitingPayment => Icons.payments_outlined,
                 BookingListMode.completed => Icons.task_alt_outlined,
                 BookingListMode.cancelled => Icons.event_busy_outlined,
               },
               title: switch (mode) {
-                BookingListMode.upcoming => 'Nothing booked yet',
-                BookingListMode.completed => 'No completed work yet',
+                BookingListMode.upcoming => 'Nothing confirmed yet',
+                BookingListMode.awaitingPayment => 'Nobody waiting to be paid',
+                BookingListMode.completed => 'No finished orders yet',
                 BookingListMode.cancelled => 'Nothing cancelled',
               },
               message: switch (mode) {
                 BookingListMode.upcoming =>
-                  'Confirmed bookings with a date still ahead will appear here.',
+                  'Bookings you have confirmed, with a date still ahead, will appear here.',
+                BookingListMode.awaitingPayment =>
+                  'Work you marked complete while a worker is still unpaid will appear here.',
                 BookingListMode.completed =>
-                  'Bookings you have seen through to the end will appear here.',
+                  'Orders with the event, crew, work and payment all done will appear here.',
                 BookingListMode.cancelled =>
                   'Bookings called off by you or the customer will appear here.',
               },
@@ -61,9 +65,11 @@ class BookingListScreen extends StatelessWidget {
                     child: Text(
                       switch (mode) {
                         BookingListMode.upcoming =>
-                          '${events.length} booking$plural still to come',
+                          '${events.length} confirmed booking$plural still to come',
+                        BookingListMode.awaitingPayment =>
+                          '${events.length} booking$plural with a wage still owed',
                         BookingListMode.completed =>
-                          '${events.length} booking$plural seen through',
+                          '${events.length} booking$plural finished and paid',
                         BookingListMode.cancelled =>
                           '${events.length} cancelled booking$plural',
                       },
@@ -81,7 +87,7 @@ class BookingListScreen extends StatelessWidget {
   }
 }
 
-enum BookingListMode { upcoming, completed, cancelled }
+enum BookingListMode { upcoming, awaitingPayment, completed, cancelled }
 
 class _BookingCard extends StatelessWidget {
   const _BookingCard({required this.event, required this.mode});
@@ -164,9 +170,15 @@ class _BookingCard extends StatelessWidget {
             Row(
               children: [
                 StatusPill(
-                  label: event.status,
+                  // The order itself says Completed; what the business needs to read here is
+                  // that the crew still has to be paid.
+                  label: mode == BookingListMode.awaitingPayment
+                      ? 'Awaiting payment'
+                      : event.status,
                   tone: isCancelled
                       ? StatusTone.danger
+                      : mode == BookingListMode.awaitingPayment
+                      ? StatusTone.progress
                       : switch (event.status) {
                           'Completed' ||
                           'Confirmed' ||
@@ -366,7 +378,9 @@ class _CrewEventCard extends StatelessWidget {
                     ),
                     Expanded(
                       child: _WageFigure(
-                        label: event.outstandingWages > 0 ? 'Still owed' : 'Paid',
+                        label: event.outstandingWages > 0
+                            ? 'Still owed'
+                            : 'Paid',
                         value: event.outstandingWages > 0
                             ? rupees(event.outstandingWages)
                             : 'In full',
@@ -454,7 +468,6 @@ class _DetailLine extends StatelessWidget {
     );
   }
 }
-
 
 /// The roster behind the Active workers tile.
 ///

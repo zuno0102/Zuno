@@ -94,7 +94,8 @@ class _CompletedCard extends StatelessWidget {
         onTap: canOpen
             ? () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
-                  builder: (_) => CompletedBreakdownScreen(dashboard: dashboard),
+                  builder: (_) =>
+                      CompletedBreakdownScreen(dashboard: dashboard),
                 ),
               )
             : null,
@@ -186,10 +187,7 @@ class _ProfileCard extends ConsumerWidget {
 
     // Null while it loads or if it fails: the card still draws, and the page behind it reports
     // any error properly rather than this card trying to.
-    final profile = profileAsync.maybeWhen(
-      data: (p) => p,
-      orElse: () => null,
-    );
+    final profile = profileAsync.maybeWhen(data: (p) => p, orElse: () => null);
     final isVerified = profile?.verificationStatus == 'Verified';
 
     // Only the parts that were actually filled in, so a half-finished address does not read
@@ -313,6 +311,23 @@ class _QuickStats extends StatelessWidget {
         ),
       ),
       _StatTile(
+        label: 'Awaiting payment',
+        value: '${dashboard.awaitingPaymentEvents}',
+        icon: Icons.payments_outlined,
+        tone: dashboard.awaitingPaymentEvents > 0
+            ? StatusTone.progress
+            : StatusTone.waiting,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => BookingListScreen(
+              title: 'Awaiting payment',
+              events: dashboard.awaitingPayment,
+              mode: BookingListMode.awaitingPayment,
+            ),
+          ),
+        ),
+      ),
+      _StatTile(
         label: 'Finished',
         value: '${dashboard.eventsCompleted}',
         icon: Icons.task_alt_outlined,
@@ -385,7 +400,9 @@ class _QuickStats extends StatelessWidget {
                   if (i > start) const SizedBox(width: 10),
                   // A short last row keeps the tile width of a full one, so every tile on the
                   // screen is the same size rather than the last two stretching to fill.
-                  Expanded(child: i < tiles.length ? tiles[i] : const SizedBox()),
+                  Expanded(
+                    child: i < tiles.length ? tiles[i] : const SizedBox(),
+                  ),
                 ],
               ],
             ),
@@ -489,7 +506,9 @@ class _TrendChart extends StatelessWidget {
               Icon(
                 Icons.show_chart_rounded,
                 size: 28,
-                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.6,
+                ),
               ),
               const SizedBox(height: 10),
               Text(
@@ -505,7 +524,9 @@ class _TrendChart extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodySmall?.copyWith(
                   fontSize: 11.5,
-                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.8,
+                  ),
                 ),
               ),
             ],
@@ -697,7 +718,9 @@ class _CategoryCard extends StatelessWidget {
                       height: 6,
                       margin: const EdgeInsets.only(right: 10),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.55),
+                        color: theme.colorScheme.primary.withValues(
+                          alpha: 0.55,
+                        ),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),

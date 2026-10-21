@@ -10,6 +10,7 @@ class BusinessDashboardModel {
   const BusinessDashboardModel({
     this.eventsCompleted = 0,
     this.upcomingEvents = 0,
+    this.awaitingPaymentEvents = 0,
     this.cancelledEvents = 0,
     this.totalRevenue = 0,
     this.crewEventsCompleted = 0,
@@ -18,6 +19,7 @@ class BusinessDashboardModel {
     this.trend = const [],
     this.completed = const [],
     this.upcoming = const [],
+    this.awaitingPayment = const [],
     this.cancelled = const [],
     this.crewEvents = const [],
     this.workers = const [],
@@ -29,6 +31,7 @@ class BusinessDashboardModel {
 
   final int eventsCompleted;
   final int upcomingEvents;
+  final int awaitingPaymentEvents;
   final int cancelledEvents;
   final double totalRevenue;
   final int crewEventsCompleted;
@@ -37,6 +40,7 @@ class BusinessDashboardModel {
   final List<MonthlyActivityModel> trend;
   final List<DashboardEventModel> completed;
   final List<DashboardEventModel> upcoming;
+  final List<DashboardEventModel> awaitingPayment;
   final List<DashboardEventModel> cancelled;
   final List<CrewEventModel> crewEvents;
   final List<DashboardWorkerModel> workers;
@@ -45,6 +49,7 @@ class BusinessDashboardModel {
   BusinessDashboard toEntity() => BusinessDashboard(
     eventsCompleted: eventsCompleted,
     upcomingEvents: upcomingEvents,
+    awaitingPaymentEvents: awaitingPaymentEvents,
     cancelledEvents: cancelledEvents,
     totalRevenue: totalRevenue,
     crewEventsCompleted: crewEventsCompleted,
@@ -53,6 +58,7 @@ class BusinessDashboardModel {
     trend: trend.map((m) => m.toEntity()).toList(),
     completed: completed.map((e) => e.toEntity()).toList(),
     upcoming: upcoming.map((e) => e.toEntity()).toList(),
+    awaitingPayment: awaitingPayment.map((e) => e.toEntity()).toList(),
     cancelled: cancelled.map((e) => e.toEntity()).toList(),
     crewEvents: crewEvents.map((e) => e.toEntity()).toList(),
     workers: workers.map((w) => w.toEntity()).toList(),

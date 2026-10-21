@@ -6,16 +6,22 @@ namespace Zuno.Application.Modules.Business.DTOs;
 /// </summary>
 public class BusinessDashboardDto
 {
-    /// <summary>Customer bookings seen through to completion — the number that splits by category.</summary>
+    /// <summary>
+    /// Customer bookings closed for good — event, crew, work and payment all done. The number
+    /// that splits by category.
+    /// </summary>
     public int EventsCompleted { get; set; }
 
-    /// <summary>Bookings on the books that have not happened yet.</summary>
+    /// <summary>Confirmed bookings whose date is still ahead. Unconfirmed requests are not counted.</summary>
     public int UpcomingEvents { get; set; }
+
+    /// <summary>Work marked complete while somebody on the crew is still unpaid.</summary>
+    public int AwaitingPaymentEvents { get; set; }
 
     /// <summary>Bookings the business or customer called off.</summary>
     public int CancelledEvents { get; set; }
 
-    /// <summary>Money from completed bookings.</summary>
+    /// <summary>Money from finished bookings.</summary>
     public decimal TotalRevenue { get; set; }
 
     /// <summary>
@@ -33,8 +39,11 @@ public class BusinessDashboardDto
     /// <summary>Completed work grouped by main category, then by sub-category inside it.</summary>
     public List<CategoryBreakdownDto> ByCategory { get; set; } = [];
 
-    /// <summary>Bookings seen through to completion, most recently finished first.</summary>
+    /// <summary>Bookings closed for good, most recently finished first.</summary>
     public List<DashboardEventDto> Completed { get; set; } = [];
+
+    /// <summary>Work done but a wage still owed, most recently finished first.</summary>
+    public List<DashboardEventDto> AwaitingPayment { get; set; } = [];
 
     /// <summary>Bookings still to happen, soonest first.</summary>
     public List<DashboardEventDto> Upcoming { get; set; } = [];
