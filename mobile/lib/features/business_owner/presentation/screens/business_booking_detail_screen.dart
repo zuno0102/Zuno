@@ -8,6 +8,7 @@ import 'package:zuno/features/booking/presentation/widgets/booking_crew_list.dar
 import 'package:zuno/features/booking/presentation/widgets/booking_terms_section.dart';
 import 'package:zuno/features/booking/presentation/widgets/propose_terms_sheet.dart';
 import 'package:zuno/features/booking/presentation/screens/booking_chat_screen.dart';
+import 'package:zuno/features/notifications/presentation/providers/notification_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
@@ -33,6 +34,24 @@ class _BusinessBookingDetailScreenState
   late Booking _booking = widget.booking;
   bool _isProcessing = false;
 
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      // Reading the order is as good as reading the notification about it — better, since they
+      // are looking at the thing itself. The customer's screen has done this for a while; without
+      // it here the business opened an order from the list and the bell went on counting the very
+      // thing they had just read, because read state only ever changed by tapping the
+      // notification. Works whichever way round: opening the notification clears it too.
+      ref
+          .read(unreadNotificationTargetsProvider.notifier)
+          .markBookingSeen(_booking.id);
+    });
+  }
+
   Future<void> _confirm() async {
     setState(() => _isProcessing = true);
     try {
@@ -44,7 +63,9 @@ class _BusinessBookingDetailScreenState
       }
     } catch (e) {
       if (mounted) {
-        context.showFailureMessage(e.toString().replaceFirst('Exception: ', ''));
+        context.showFailureMessage(
+          e.toString().replaceFirst('Exception: ', ''),
+        );
         setState(() => _isProcessing = false);
       }
     }
@@ -158,7 +179,9 @@ class _BusinessBookingDetailScreenState
       }
     } catch (e) {
       if (mounted) {
-        context.showFailureMessage(e.toString().replaceFirst('Exception: ', ''));
+        context.showFailureMessage(
+          e.toString().replaceFirst('Exception: ', ''),
+        );
         setState(() => _isProcessing = false);
       }
     }

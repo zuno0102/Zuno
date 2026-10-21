@@ -327,7 +327,6 @@ class _VerificationBadge extends StatelessWidget {
   }
 }
 
-
 /// The business's picture, and the control for changing it.
 ///
 /// Tappable, with a camera badge, because an avatar that can be changed and an avatar that
@@ -359,9 +358,7 @@ class _ProfileAvatarState extends ConsumerState<_ProfileAvatar> {
     setState(() => _isBusy = true);
     try {
       final previousUrl = widget.profile.logoUrl;
-      await ref
-          .read(businessProfileProvider.notifier)
-          .uploadLogo(compressed);
+      await ref.read(businessProfileProvider.notifier).uploadLogo(compressed);
 
       // Replacing a JPEG with a JPEG reuses the same URL, and Flutter's image cache is keyed
       // on exactly that — so without evicting, the old picture stays on screen and a
@@ -515,7 +512,10 @@ class _ProfileAvatarState extends ConsumerState<_ProfileAvatar> {
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primary,
                     shape: BoxShape.circle,
-                    border: Border.all(color: theme.colorScheme.surface, width: 2),
+                    border: Border.all(
+                      color: theme.colorScheme.surface,
+                      width: 2,
+                    ),
                   ),
                   child: Icon(
                     Icons.photo_camera,

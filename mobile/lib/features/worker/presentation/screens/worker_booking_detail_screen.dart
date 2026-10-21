@@ -6,6 +6,7 @@ import 'package:zuno/core/constants/api_constants.dart';
 import 'package:zuno/features/booking/domain/entities/booking.dart';
 import 'package:zuno/features/booking/presentation/providers/worker_jobs_notifier.dart';
 import 'package:zuno/features/booking/presentation/widgets/booking_status_chip.dart';
+import 'package:zuno/features/notifications/presentation/providers/notification_providers.dart';
 import 'package:zuno/shared/widgets/call_icon_button.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/job_location_card.dart';
@@ -24,6 +25,22 @@ class _WorkerBookingDetailScreenState
     extends ConsumerState<WorkerBookingDetailScreen> {
   bool _isProcessing = false;
 
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      // Reading the job is as good as reading the notification about it. The same rule all three
+      // roles now follow: the bell counts what you have not looked at, and the thing itself counts
+      // as having looked.
+      ref
+          .read(unreadNotificationTargetsProvider.notifier)
+          .markBookingSeen(widget.booking.id);
+    });
+  }
+
   Future<void> _respond({required bool accept}) => _run(
     () => ref
         .read(workerJobsProvider.notifier)
@@ -35,11 +52,14 @@ class _WorkerBookingDetailScreenState
   );
 
   Future<void> _startJob() => _run(
-    () => ref.read(workerJobsProvider.notifier).startJobAsLead(widget.booking.id),
+    () =>
+        ref.read(workerJobsProvider.notifier).startJobAsLead(widget.booking.id),
   );
 
   Future<void> _finishJob() => _run(
-    () => ref.read(workerJobsProvider.notifier).finishJobAsLead(widget.booking.id),
+    () => ref
+        .read(workerJobsProvider.notifier)
+        .finishJobAsLead(widget.booking.id),
   );
 
   Future<void> _run(Future<void> Function() action) async {
@@ -51,7 +71,9 @@ class _WorkerBookingDetailScreenState
       }
     } catch (e) {
       if (mounted) {
-        context.showFailureMessage(e.toString().replaceFirst('Exception: ', ''));
+        context.showFailureMessage(
+          e.toString().replaceFirst('Exception: ', ''),
+        );
         setState(() => _isProcessing = false);
       }
     }
@@ -118,16 +140,14 @@ class _WorkerBookingDetailScreenState
             _DetailRow(label: 'Customer phone', value: booking.customerPhone!),
           _DetailRow(
             label: 'Scheduled for',
-            value: '${formatDate(booking.scheduledDate)} · ${formatTime(booking.scheduledDate)}',
+            value:
+                '${formatDate(booking.scheduledDate)} · ${formatTime(booking.scheduledDate)}',
           ),
-          _DetailRow(
-            label: 'Price',
-            value: booking.priceDisplay(),
-          ),
+          _DetailRow(label: 'Price', value: booking.priceDisplay()),
+
           // What the customer told the business about the job, each line carrying the question as it
 
           // was worded when they answered it.
-
           for (final answer in booking.serviceAnswers)
             _DetailRow(label: answer.questionPrompt, value: answer.answerText),
 
@@ -184,8 +204,7 @@ class _WorkerBookingDetailScreenState
                 // Only while the job is still live. Once it is finished or called off the Lead
                 // cannot start or finish anything — the order refuses both — so a banner still
                 // offering it would be the screen promising something the server would reject.
-                canMoveWork:
-                    booking.iLeadThisJob && booking.canHoldCrewRoles,
+                canMoveWork: booking.iLeadThisJob && booking.canHoldCrewRoles,
                 isOver: !booking.canHoldCrewRoles,
               ),
               const SizedBox(height: 12),

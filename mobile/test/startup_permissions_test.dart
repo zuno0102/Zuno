@@ -77,12 +77,11 @@ Future<FakePermissionService> pumpDashboard(
     ProviderScope(
       overrides: [
         permissionServiceProvider.overrideWithValue(permissions),
-        if (location != null) locationServiceProvider.overrideWithValue(location),
+        if (location != null)
+          locationServiceProvider.overrideWithValue(location),
       ],
       child: const MaterialApp(
-        home: StartupPermissionPrimer(
-          child: Scaffold(body: Text('dashboard')),
-        ),
+        home: StartupPermissionPrimer(child: Scaffold(body: Text('dashboard'))),
       ),
     ),
   );
@@ -109,10 +108,7 @@ void main() {
     ) async {
       await pumpDashboard(tester);
 
-      expect(
-        find.textContaining('profile picture'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('profile picture'), findsOneWidget);
       // The promise this whole design rests on.
       expect(
         find.textContaining('location is only asked for later'),
@@ -152,7 +148,8 @@ void main() {
       expect(
         location.asked,
         0,
-        reason: 'location must be asked for on the control that needs a place, not at launch',
+        reason:
+            'location must be asked for on the control that needs a place, not at launch',
       );
     });
   });

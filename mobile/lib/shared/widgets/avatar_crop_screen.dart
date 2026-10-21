@@ -23,7 +23,10 @@ class AvatarCropScreen extends StatefulWidget {
 
   /// The whole journey from a freshly picked photo to an upload-ready avatar: normalise it, let
   /// the person frame it, and re-encode the result. Returns null if they back out.
-  static Future<Uint8List?> frame(BuildContext context, Uint8List rawBytes) async {
+  static Future<Uint8List?> frame(
+    BuildContext context,
+    Uint8List rawBytes,
+  ) async {
     // Phone cameras commonly hand back HEIC, which neither the cropper nor the server can read,
     // so it goes through the platform's own decoder first. Capping it near screen size also
     // keeps the cropper — which works in Dart — quick on a 50MP original.
@@ -84,7 +87,9 @@ class _AvatarCropScreenState extends State<AvatarCropScreen> {
         Navigator.of(context).pop(croppedImage);
       case CropFailure():
         setState(() => _isCropping = false);
-        context.showFailureMessage('Could not crop this photo. Try another one.');
+        context.showFailureMessage(
+          'Could not crop this photo. Try another one.',
+        );
     }
   }
 

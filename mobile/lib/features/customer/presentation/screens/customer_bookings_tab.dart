@@ -76,7 +76,9 @@ class _BookingCard extends StatelessWidget {
               ),
             Text(booking.businessName),
             const SizedBox(height: 4),
-            Text('${formatDate(booking.scheduledDate)} · ${formatTime(booking.scheduledDate)}'),
+            Text(
+              '${formatDate(booking.scheduledDate)} · ${formatTime(booking.scheduledDate)}',
+            ),
           ],
         ),
         isThreeLine: true,

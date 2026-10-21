@@ -48,7 +48,8 @@ LocationHelp locationHelp(LocationProblem? problem, {required bool isWeb}) {
       if (isWeb) {
         return const LocationHelp(
           title: 'Allow location for this site',
-          message: 'Your browser is blocking location for Zuno. To use where you are now:',
+          message:
+              'Your browser is blocking location for Zuno. To use where you are now:',
           steps: [
             'Tap the padlock (or ⓘ) to the left of the web address at the top.',
             'Open Permissions, then Location, and choose Allow.',
@@ -59,11 +60,13 @@ LocationHelp locationHelp(LocationProblem? problem, {required bool isWeb}) {
       return problem == LocationProblem.denied
           ? const LocationHelp(
               title: 'Location not allowed',
-              message: 'Location permission was not given. Search for the place instead.',
+              message:
+                  'Location permission was not given. Search for the place instead.',
             )
           : const LocationHelp(
               title: 'Location is off for Zuno',
-              message: 'Location permission is off for Zuno. Allow it in settings, or search for the place.',
+              message:
+                  'Location permission is off for Zuno. Allow it in settings, or search for the place.',
               action: LocationHelpAction.openAppSettings,
             );
     case LocationProblem.serviceDisabled:
@@ -75,13 +78,15 @@ LocationHelp locationHelp(LocationProblem? problem, {required bool isWeb}) {
             )
           : const LocationHelp(
               title: 'Location is off',
-              message: 'Location is turned off on this phone. Turn it on, or search for the place.',
+              message:
+                  'Location is turned off on this phone. Turn it on, or search for the place.',
               action: LocationHelpAction.openLocationSettings,
             );
     case LocationProblem.timedOut:
       return const LocationHelp(
         title: 'No GPS fix',
-        message: 'Could not get a GPS fix here. Search for the place, then drag the map to it.',
+        message:
+            'Could not get a GPS fix here. Search for the place, then drag the map to it.',
       );
     case LocationProblem.failed:
     case null:
@@ -128,7 +133,9 @@ class PickedLocation {
       ?city,
     ];
     if (parts.isNotEmpty) return parts.join(', ');
-    return label ?? fullAddress ?? '${latitude.toStringAsFixed(5)}, ${longitude.toStringAsFixed(5)}';
+    return label ??
+        fullAddress ??
+        '${latitude.toStringAsFixed(5)}, ${longitude.toStringAsFixed(5)}';
   }
 }
 
@@ -163,10 +170,12 @@ class LocationPinPickerScreen extends ConsumerStatefulWidget {
   final LatLng? initial;
 
   @override
-  ConsumerState<LocationPinPickerScreen> createState() => _LocationPinPickerScreenState();
+  ConsumerState<LocationPinPickerScreen> createState() =>
+      _LocationPinPickerScreenState();
 }
 
-class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScreen> {
+class _LocationPinPickerScreenState
+    extends ConsumerState<LocationPinPickerScreen> {
   /// Where the map opens when there is nothing better: the middle of southern India, zoomed out, so
   /// the first thing on screen is a recognisable map rather than the sea off Africa.
   static const _fallbackCentre = LatLng(10.0, 77.5);
@@ -204,7 +213,9 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
       WidgetsBinding.instance.addPostFrameCallback((_) => _nameCentre());
     } else {
       // Straight to the phone's own position: most jobs are booked from the place they happen at.
-      WidgetsBinding.instance.addPostFrameCallback((_) => _useMyLocation(quiet: true));
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _useMyLocation(quiet: true),
+      );
     }
   }
 
@@ -252,7 +263,9 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
 
   Future<void> _useMyLocation({bool quiet = false}) async {
     setState(() => _isLocating = true);
-    final result = await ref.read(locationServiceProvider).current(precise: true);
+    final result = await ref
+        .read(locationServiceProvider)
+        .current(precise: true);
     if (!mounted) return;
     setState(() => _isLocating = false);
 
@@ -262,7 +275,9 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
       _hasMoved = true;
       _moveTo(LatLng(result.latitude!, result.longitude!));
       if (result.isApproximate) {
-        _say('Showing your last known location. Drag the map to the exact place.');
+        _say(
+          'Showing your last known location. Drag the map to the exact place.',
+        );
       }
       return;
     }
@@ -329,9 +344,17 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
     final service = ref.read(locationServiceProvider);
     switch (help.action) {
       case LocationHelpAction.openAppSettings:
-        _say(help.message, actionLabel: 'Settings', action: service.openSettings);
+        _say(
+          help.message,
+          actionLabel: 'Settings',
+          action: service.openSettings,
+        );
       case LocationHelpAction.openLocationSettings:
-        _say(help.message, actionLabel: 'Turn on', action: service.openLocationSettings);
+        _say(
+          help.message,
+          actionLabel: 'Turn on',
+          action: service.openLocationSettings,
+        );
       case null:
         _say(help.message);
     }
@@ -343,7 +366,9 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
   /// otherwise stays until tapped, which left "location is off" on screen long after location had
   /// been turned on.
   void _say(String message, {String? actionLabel, VoidCallback? action}) {
-    AppMessenger.of(context).showInfo(message, actionLabel: actionLabel, onAction: action);
+    AppMessenger.of(
+      context,
+    ).showInfo(message, actionLabel: actionLabel, onAction: action);
   }
 
   void _moveTo(LatLng point) {
@@ -362,7 +387,10 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
       return;
     }
     // A pause, not a request per keystroke: the map provider asks clients not to autocomplete.
-    _searchDebounce = Timer(const Duration(milliseconds: 650), () => _search(text));
+    _searchDebounce = Timer(
+      const Duration(milliseconds: 650),
+      () => _search(text),
+    );
   }
 
   Future<void> _search(String text) async {
@@ -400,7 +428,11 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
       // Confirmed before the name came back: ask once more rather than lose the address.
       place = await ref
           .read(placeSearchClientProvider)
-          .reverse(latitude: _centre.latitude, longitude: _centre.longitude, precise: true);
+          .reverse(
+            latitude: _centre.latitude,
+            longitude: _centre.longitude,
+            precise: true,
+          );
       if (!mounted) return;
     }
 
@@ -440,16 +472,14 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
                     maxZoom: kMapMaxZoom,
                     onPositionChanged: _onMapMoved,
                     interactionOptions: const InteractionOptions(
-                      flags: InteractiveFlag.pinchZoom |
+                      flags:
+                          InteractiveFlag.pinchZoom |
                           InteractiveFlag.drag |
                           InteractiveFlag.doubleTapZoom |
                           InteractiveFlag.scrollWheelZoom,
                     ),
                   ),
-                  children: [
-                    ...baseMapLayers(_style),
-                    mapAttribution(_style),
-                  ],
+                  children: [...baseMapLayers(_style), mapAttribution(_style)],
                 ),
 
                 // The pin itself, fixed in the middle; its point is the map's centre.
@@ -461,7 +491,9 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
                         Icons.location_on,
                         size: 48,
                         color: theme.colorScheme.error,
-                        shadows: const [Shadow(blurRadius: 6, color: AppColors.shadowStrong)],
+                        shadows: const [
+                          Shadow(blurRadius: 6, color: AppColors.shadowStrong),
+                        ],
                       ),
                     ),
                   ),
@@ -497,7 +529,9 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
                                     child: SizedBox(
                                       width: 16,
                                       height: 16,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
                                     ),
                                   )
                                 : null,
@@ -520,7 +554,9 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
                               child: results.isEmpty
                                   ? const ListTile(
                                       leading: Icon(Icons.search_off),
-                                      title: Text('No place found. Try a nearby town or landmark.'),
+                                      title: Text(
+                                        'No place found. Try a nearby town or landmark.',
+                                      ),
                                     )
                                   : ListView(
                                       shrinkWrap: true,
@@ -529,30 +565,47 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
                                         // Only part of the search was found (a hamlet the free
                                         // map does not know): say so, and say what to do.
                                         if (partialMatchNote(
-                                          _searchController.text,
-                                          results,
-                                          advice: 'pick it, then drag the map so the pin sits on '
-                                              'your exact spot.',
-                                        ) case final note?)
+                                              _searchController.text,
+                                              results,
+                                              advice:
+                                                  'pick it, then drag the map so the pin sits on '
+                                                  'your exact spot.',
+                                            )
+                                            case final note?)
                                           Container(
-                                            key: const Key('pinPickerPartialNote'),
-                                            color: theme.colorScheme.secondaryContainer,
-                                            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                                            key: const Key(
+                                              'pinPickerPartialNote',
+                                            ),
+                                            color: theme
+                                                .colorScheme
+                                                .secondaryContainer,
+                                            padding: const EdgeInsets.fromLTRB(
+                                              16,
+                                              10,
+                                              16,
+                                              10,
+                                            ),
                                             child: Row(
                                               children: [
                                                 Icon(
                                                   Icons.info_outline,
                                                   size: 18,
-                                                  color: theme.colorScheme.onSecondaryContainer,
+                                                  color: theme
+                                                      .colorScheme
+                                                      .onSecondaryContainer,
                                                 ),
                                                 const SizedBox(width: 10),
                                                 Expanded(
                                                   child: Text(
                                                     note,
-                                                    style: theme.textTheme.bodySmall?.copyWith(
-                                                      color: theme
-                                                          .colorScheme.onSecondaryContainer,
-                                                    ),
+                                                    style: theme
+                                                        .textTheme
+                                                        .bodySmall
+                                                        ?.copyWith(
+                                                          color: theme
+                                                              .colorScheme
+                                                              .onSecondaryContainer,
+                                                        ),
                                                   ),
                                                 ),
                                               ],
@@ -561,7 +614,9 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
                                         for (final place in results)
                                           ListTile(
                                             dense: true,
-                                            leading: const Icon(Icons.place_outlined),
+                                            leading: const Icon(
+                                              Icons.place_outlined,
+                                            ),
                                             title: Text(place.name),
                                             subtitle: Text(
                                               place.fullName,
@@ -590,7 +645,9 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
                     child: SegmentedButton<MapStyle>(
                       key: const Key('pinPickerMapStyle'),
                       showSelectedIcon: false,
-                      style: const ButtonStyle(visualDensity: VisualDensity.compact),
+                      style: const ButtonStyle(
+                        visualDensity: VisualDensity.compact,
+                      ),
                       segments: const [
                         ButtonSegment(
                           value: MapStyle.satellite,
@@ -604,7 +661,8 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
                         ),
                       ],
                       selected: {_style},
-                      onSelectionChanged: (s) => setState(() => _style = s.first),
+                      onSelectionChanged: (s) =>
+                          setState(() => _style = s.first),
                     ),
                   ),
                 ),
@@ -652,12 +710,17 @@ class _LocationPinPickerScreenState extends ConsumerState<LocationPinPickerScree
                                 style: theme.textTheme.bodyMedium,
                               )
                             : _isNaming && _place == null
-                            ? Text('Finding the address…', style: theme.textTheme.bodyMedium)
+                            ? Text(
+                                'Finding the address…',
+                                style: theme.textTheme.bodyMedium,
+                              )
                             : Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    _place?.street ?? _place?.name ?? 'Pinned location',
+                                    _place?.street ??
+                                        _place?.name ??
+                                        'Pinned location',
                                     style: theme.textTheme.titleSmall,
                                   ),
                                   Text(

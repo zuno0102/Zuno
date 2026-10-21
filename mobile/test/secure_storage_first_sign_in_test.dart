@@ -58,14 +58,21 @@ class _FirstWriteMakesTheKey extends FlutterSecureStorage {
 }
 
 void main() {
-  test('a first sign-in in a fresh browser can read both tokens back', () async {
-    final storage = _FirstWriteMakesTheKey();
-    final service = SecureStorageService(storage: storage);
+  test(
+    'a first sign-in in a fresh browser can read both tokens back',
+    () async {
+      final storage = _FirstWriteMakesTheKey();
+      final service = SecureStorageService(storage: storage);
 
-    await service.saveTokens(accessToken: 'access', refreshToken: 'refresh');
+      await service.saveTokens(accessToken: 'access', refreshToken: 'refresh');
 
-    expect(storage.overlapped, isFalse, reason: 'the two writes must not be in flight together');
-    expect(await service.getAccessToken(), 'access');
-    expect(await service.getRefreshToken(), 'refresh');
-  });
+      expect(
+        storage.overlapped,
+        isFalse,
+        reason: 'the two writes must not be in flight together',
+      );
+      expect(await service.getAccessToken(), 'access');
+      expect(await service.getRefreshToken(), 'refresh');
+    },
+  );
 }

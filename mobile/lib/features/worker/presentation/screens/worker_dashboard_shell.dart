@@ -16,7 +16,6 @@ import 'package:zuno/shared/widgets/async_detail_screen.dart';
 import 'package:zuno/features/worker/presentation/screens/scan_booking_qr_screen.dart';
 import 'package:zuno/features/worker/presentation/screens/worker_dashboard_tab.dart';
 import 'package:zuno/features/worker/presentation/screens/worker_hiring_posts_tab.dart';
-import 'package:zuno/features/worker/presentation/screens/worker_invitations_tab.dart';
 import 'package:zuno/features/worker/presentation/screens/worker_jobs_tab.dart';
 import 'package:zuno/shared/widgets/role_header.dart';
 import 'package:zuno/shared/widgets/role_theme.dart';
@@ -24,7 +23,7 @@ import 'package:zuno/core/permissions/startup_permission_primer.dart';
 
 /// The worker's home, in the worker's green.
 ///
-/// Four tabs, home first: the figures a worker opens the app for used to live on a Profile tab at
+/// Three tabs, home first: the figures a worker opens the app for used to live on a Profile tab at
 /// the far end of the bar, which put what they care about most furthest from where they landed.
 class WorkerDashboardShell extends ConsumerStatefulWidget {
   const WorkerDashboardShell({super.key});
@@ -37,17 +36,31 @@ class WorkerDashboardShell extends ConsumerStatefulWidget {
 class _WorkerDashboardShellState extends ConsumerState<WorkerDashboardShell> {
   int _index = 0;
 
-  static const _tabs = <Widget>[
-    WorkerDashboardTab(),
-    WorkerJobsTab(),
-    WorkerInvitationsTab(),
-    WorkerHiringPostsTab(),
-  ];
-
   static const _homeTab = 0;
   static const _myJobsTab = 1;
-  static const _invitationsTab = 2;
-  static const _findWorkTab = 3;
+  static const _findWorkTab = 2;
+
+  /// Which of My jobs' own tabs to open on. Invitations live inside My jobs, so a notification about
+  /// one opens My jobs on that tab rather than on Current.
+  int _myJobsStartTab = WorkerJobsTab.currentTab;
+
+  /// Bumped to rebuild My jobs on [_myJobsStartTab] even when it is already the tab on screen.
+  int _myJobsOpenCount = 0;
+
+  void _openMyJobs(int tab) => setState(() {
+    _index = _myJobsTab;
+    _myJobsStartTab = tab;
+    _myJobsOpenCount++;
+  });
+
+  Widget _tab(int index) => switch (index) {
+    _myJobsTab => WorkerJobsTab(
+      key: ValueKey(_myJobsOpenCount),
+      initialTab: _myJobsStartTab,
+    ),
+    _findWorkTab => const WorkerHiringPostsTab(),
+    _ => const WorkerDashboardTab(),
+  };
 
   /// Takes the worker to the thing a notification is about.
   ///
@@ -64,22 +77,22 @@ class _WorkerDashboardShellState extends ConsumerState<WorkerDashboardShell> {
         _openChat(notification.targetId!);
 
       // An offer or an invitation on a hiring post. The post's own details and its answer buttons
-      // live on the Invitations tab, which is where a worker answers one.
+      // live on My jobs › Invitations, which is where a worker answers one.
       case NotificationTarget.hiringPost:
       case NotificationTarget.invitations:
-        setState(() => _index = _invitationsTab);
+        _openMyJobs(WorkerJobsTab.invitationsTab);
 
       case NotificationTarget.myJobs:
-        setState(() => _index = _myJobsTab);
+        _openMyJobs(WorkerJobsTab.currentTab);
 
       // After losing a post, the useful thing is the next job rather than the one they did not get.
       case NotificationTarget.findWork:
         setState(() => _index = _findWorkTab);
 
       case NotificationTarget.payments:
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const WorkerPaymentsScreen()),
-        );
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const WorkerPaymentsScreen()));
 
       default:
         setState(() => _index = _homeTab);
@@ -93,8 +106,7 @@ class _WorkerDashboardShellState extends ConsumerState<WorkerDashboardShell> {
           title: 'Job',
           fetch: () =>
               ref.read(bookingRepositoryProvider).getJobByIdAsWorker(bookingId),
-          builder: (_, booking) =>
-              WorkerBookingDetailScreen(booking: booking),
+          builder: (_, booking) => WorkerBookingDetailScreen(booking: booking),
         ),
       ),
     );
@@ -137,7 +149,7 @@ class _WorkerDashboardShellState extends ConsumerState<WorkerDashboardShell> {
 
     // From the dashboard, not the job feed. The feed is now filtered by distance and needs a
     // location before it returns anything, so deriving this from it would read zero on a header that
-    // sits above all four tabs.
+    // sits above every tab.
     final openJobs = dashboard.maybeWhen(
       data: (d) => d.openHiringPostCount,
       orElse: () => 0,
@@ -191,12 +203,15 @@ class _WorkerDashboardShellState extends ConsumerState<WorkerDashboardShell> {
                   ),
                 ],
               ),
-              Expanded(child: _tabs[_index]),
+              Expanded(child: _tab(_index)),
             ],
           ),
           bottomNavigationBar: NavigationBar(
             selectedIndex: _index,
-            onDestinationSelected: (i) => setState(() => _index = i),
+            onDestinationSelected: (i) =>
+                i == _myJobsTab && _index != _myJobsTab
+                ? _openMyJobs(WorkerJobsTab.currentTab)
+                : setState(() => _index = i),
             destinations: const [
               NavigationDestination(
                 icon: Icon(Icons.dashboard_outlined),
@@ -207,11 +222,6 @@ class _WorkerDashboardShellState extends ConsumerState<WorkerDashboardShell> {
                 icon: Icon(Icons.work_outline),
                 selectedIcon: Icon(Icons.work),
                 label: 'My jobs',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.mail_outline),
-                selectedIcon: Icon(Icons.mail),
-                label: 'Invitations',
               ),
               NavigationDestination(
                 icon: Icon(Icons.campaign_outlined),

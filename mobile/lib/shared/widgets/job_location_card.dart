@@ -47,11 +47,17 @@ class JobLocationCard extends StatelessWidget {
           'api': '1',
           'destination': '$latitude,$longitude',
         })
-      : Uri.https('www.google.com', '/maps/search/', {'api': '1', 'query': _address});
+      : Uri.https('www.google.com', '/maps/search/', {
+          'api': '1',
+          'query': _address,
+        });
 
   Future<void> _openMaps(BuildContext context) async {
     final messenger = AppMessenger.of(context);
-    final opened = await launchUrl(_mapsUri, mode: LaunchMode.externalApplication);
+    final opened = await launchUrl(
+      _mapsUri,
+      mode: LaunchMode.externalApplication,
+    );
     if (!opened) messenger.showFailure('Could not open Maps on this device.');
   }
 
@@ -90,7 +96,9 @@ class JobLocationCard extends StatelessWidget {
                       // Close enough to recognise the house in the photograph.
                       initialZoom: 18,
                       maxZoom: kMapMaxZoom,
-                      interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+                      interactionOptions: const InteractionOptions(
+                        flags: InteractiveFlag.none,
+                      ),
                     ),
                     children: [
                       // The photograph rather than the street map: it is what lets somebody
@@ -107,7 +115,12 @@ class JobLocationCard extends StatelessWidget {
                               Icons.location_on,
                               size: 40,
                               color: theme.colorScheme.error,
-                              shadows: const [Shadow(blurRadius: 4, color: AppColors.shadowStrong)],
+                              shadows: const [
+                                Shadow(
+                                  blurRadius: 4,
+                                  color: AppColors.shadowStrong,
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -122,7 +135,9 @@ class JobLocationCard extends StatelessWidget {
                       color: theme.colorScheme.surface.withValues(alpha: 0.7),
                       child: Text(
                         mapCreditText(MapStyle.satellite),
-                        style: theme.textTheme.labelSmall?.copyWith(fontSize: 9),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontSize: 9,
+                        ),
                       ),
                     ),
                   ),
@@ -148,7 +163,9 @@ class JobLocationCard extends StatelessWidget {
                             ? (caption ?? 'Exact location pinned on the map')
                             : 'No map pin for this order — address only',
                         style: theme.textTheme.labelMedium?.copyWith(
-                          color: _hasPin ? ok : theme.colorScheme.onSurfaceVariant,
+                          color: _hasPin
+                              ? ok
+                              : theme.colorScheme.onSurfaceVariant,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -172,7 +189,10 @@ class JobLocationCard extends StatelessWidget {
                     child: FilledButton.icon(
                       key: const Key('jobLocationDirections'),
                       onPressed: () => _openMaps(context),
-                      icon: Icon(_hasPin ? Icons.directions : Icons.map_outlined, size: 18),
+                      icon: Icon(
+                        _hasPin ? Icons.directions : Icons.map_outlined,
+                        size: 18,
+                      ),
                       label: Text(_hasPin ? 'Directions' : 'Search in Maps'),
                     ),
                   ),

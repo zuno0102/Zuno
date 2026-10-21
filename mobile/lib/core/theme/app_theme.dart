@@ -18,10 +18,22 @@ class AppTheme {
       brightness: brightness,
     );
 
-    final base = ThemeData(useMaterial3: true, brightness: brightness, colorScheme: scheme);
+    final base = ThemeData(
+      useMaterial3: true,
+      brightness: brightness,
+      colorScheme: scheme,
+    );
 
     return base.copyWith(
       scaffoldBackgroundColor: AppColors.scaffold(brightness),
+
+      // Counts — unread messages, orders waiting — in the role's own colour, not Material's
+      // default red. Red is what the app uses when something has gone wrong; a new message is not
+      // a fault. The notification bell already followed this rule; this makes every count do so.
+      badgeTheme: BadgeThemeData(
+        backgroundColor: scheme.primary,
+        textColor: scheme.onPrimary,
+      ),
 
       appBarTheme: AppBarTheme(
         backgroundColor: scheme.surface,
@@ -51,14 +63,18 @@ class AppTheme {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size(0, 48),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(0, 48),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ),
@@ -81,7 +97,9 @@ class AppTheme {
                 ? scheme.onPrimary
                 : scheme.onSurfaceVariant,
           ),
-          side: WidgetStatePropertyAll(BorderSide(color: scheme.outlineVariant)),
+          side: WidgetStatePropertyAll(
+            BorderSide(color: scheme.outlineVariant),
+          ),
           textStyle: const WidgetStatePropertyAll(
             TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
           ),
@@ -91,7 +109,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.fieldFill(brightness),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -137,7 +158,11 @@ class AppTheme {
         indicatorColor: scheme.primaryContainer,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         labelTextStyle: WidgetStatePropertyAll(
-          TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: scheme.onSurfaceVariant),
+          TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+            color: scheme.onSurfaceVariant,
+          ),
         ),
       ),
 

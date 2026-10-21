@@ -9,8 +9,7 @@ import 'package:zuno/features/booking/presentation/providers/customer_bookings_n
 import 'package:zuno/features/booking/presentation/providers/booking_message_providers.dart';
 import 'package:zuno/features/booking/presentation/screens/booking_chat_screen.dart';
 import 'package:zuno/features/customer/presentation/screens/customer_booking_detail_screen.dart';
-import 'package:zuno/features/customer/presentation/screens/customer_bookings_tab.dart';
-import 'package:zuno/features/customer/presentation/screens/customer_chat_tab.dart';
+import 'package:zuno/features/customer/presentation/screens/customer_bookings_hub.dart';
 import 'package:zuno/features/customer/presentation/screens/customer_profile_tab.dart';
 import 'package:zuno/features/customer/presentation/screens/customer_search_tab.dart';
 import 'package:zuno/features/notifications/domain/entities/app_notification.dart';
@@ -58,7 +57,10 @@ class _CustomerDashboardShellState
 
   static const _homeTab = 0;
   static const _bookingsTab = 1;
-  static const _profileTab = 3;
+  static const _profileTab = 2;
+
+  /// Which top tab of Bookings to show — its orders, or its messages.
+  int _bookingsSection = CustomerBookingsHub.bookingsTab;
 
   /// Takes the customer to the thing a notification is about.
   ///
@@ -87,7 +89,10 @@ class _CustomerDashboardShellState
       // Everything else a customer can be sent: their own orders are the nearest thing to a
       // worker's or a business's screens, and Home is the fallback.
       case NotificationTarget.myJobs:
-        setState(() => _index = _bookingsTab);
+        setState(() {
+          _index = _bookingsTab;
+          _bookingsSection = CustomerBookingsHub.bookingsTab;
+        });
 
       default:
         setState(() => _index = _homeTab);
@@ -104,8 +109,9 @@ class _CustomerDashboardShellState
       MaterialPageRoute(
         builder: (_) => AsyncDetailScreen<Booking>(
           title: 'Booking',
-          fetch: () =>
-              ref.read(bookingRepositoryProvider).getBookingByIdAsCustomer(bookingId),
+          fetch: () => ref
+              .read(bookingRepositoryProvider)
+              .getBookingByIdAsCustomer(bookingId),
           builder: (_, booking) => CustomerBookingDetailScreen(
             booking: booking,
             openRating: openRating,
@@ -125,8 +131,9 @@ class _CustomerDashboardShellState
       MaterialPageRoute(
         builder: (_) => AsyncDetailScreen<Booking>(
           title: 'Chat',
-          fetch: () =>
-              ref.read(bookingRepositoryProvider).getBookingByIdAsCustomer(bookingId),
+          fetch: () => ref
+              .read(bookingRepositoryProvider)
+              .getBookingByIdAsCustomer(bookingId),
           builder: (_, booking) => BookingChatScreen(
             bookingId: booking.id,
             title: booking.variantName ?? booking.serviceName,
@@ -139,17 +146,18 @@ class _CustomerDashboardShellState
 
   @override
   Widget build(BuildContext context) {
-    final unreadChats = ref.watch(unreadChatCountProvider);
-    final bookingsNeedingMe = ref.watch(customerBookingsNeedingMeCountProvider);
+    // One number on Bookings for both halves inside it: orders waiting on the customer, and
+    // messages they have not read. Each top tab inside shows its own share.
+    final int waitingOnMe =
+        (ref.watch(customerBookingsNeedingMeCountProvider) +
+                ref.watch(unreadChatCountProvider))
+            .toInt();
 
     final tabs = <Widget>[
       CustomerSearchTab(
         notificationBell: NotificationBell(onOpen: _openNotification),
       ),
-      const CustomerBookingsTab(),
-      CustomerChatTab(
-        onGoToBookings: () => setState(() => _index = _bookingsTab),
-      ),
+      CustomerBookingsHub(initialTab: _bookingsSection),
       const CustomerProfileTab(),
     ];
 
@@ -167,30 +175,18 @@ class _CustomerDashboardShellState
                 selectedIcon: Icon(Icons.home),
                 label: 'Home',
               ),
-              // Orders waiting on the customer: an offer to answer, a job to rate.
+              // Orders and their messages together: an offer to answer, a job to rate, a reply to
+              // read. Visible from any tab, so nothing waits unnoticed.
               NavigationDestination(
                 icon: _UnreadBadge(
-                  count: bookingsNeedingMe,
+                  count: waitingOnMe,
                   child: const Icon(Icons.event_note_outlined),
                 ),
                 selectedIcon: _UnreadBadge(
-                  count: bookingsNeedingMe,
+                  count: waitingOnMe,
                   child: const Icon(Icons.event_note),
                 ),
                 label: 'Bookings',
-              ),
-              // The number of unread messages, like WhatsApp: visible from any tab, so a reply is
-              // noticed without opening the chat list first.
-              NavigationDestination(
-                icon: _UnreadBadge(
-                  count: unreadChats,
-                  child: const Icon(Icons.chat_bubble_outline),
-                ),
-                selectedIcon: _UnreadBadge(
-                  count: unreadChats,
-                  child: const Icon(Icons.chat_bubble),
-                ),
-                label: 'Chat',
               ),
               const NavigationDestination(
                 icon: Icon(Icons.person_outline),

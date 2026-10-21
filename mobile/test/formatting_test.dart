@@ -32,10 +32,13 @@ void main() {
       expect(priceLabel(500, PriceType.perPerson), '₹500 per person');
     });
 
-    test('per person shows its working, because the headcount is the negotiation', () {
-      expect(perPersonTotalLabel(500, 20), '20 × ₹500 = ₹10,000');
-      expect(perPersonTotalLabel(500, 18), '18 × ₹500 = ₹9,000');
-    });
+    test(
+      'per person shows its working, because the headcount is the negotiation',
+      () {
+        expect(perPersonTotalLabel(500, 20), '20 × ₹500 = ₹10,000');
+        expect(perPersonTotalLabel(500, 18), '18 × ₹500 = ₹9,000');
+      },
+    );
 
     test('only per person is priced by headcount', () {
       expect(isPerPersonPrice(PriceType.perPerson), isTrue);
@@ -50,9 +53,12 @@ void main() {
       expect(rateFieldLabel(PriceType.fixed), 'Price (INR)');
     });
 
-    test('per person is priced by headcount, not time, so its duration is plain minutes', () {
-      expect(durationFieldLabel(PriceType.perPerson), 'Duration (mins)');
-    });
+    test(
+      'per person is priced by headcount, not time, so its duration is plain minutes',
+      () {
+        expect(durationFieldLabel(PriceType.perPerson), 'Duration (mins)');
+      },
+    );
   });
 
   group('durations', () {

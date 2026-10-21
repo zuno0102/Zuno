@@ -113,7 +113,7 @@ final class UnreadNotificationTargetsProvider
 }
 
 String _$unreadNotificationTargetsHash() =>
-    r'ccda496d1fc16fdf1804876dc6db62ef7c30fb7c';
+    r'dc50dd3924cc5669e2ec6ddbdba04908c4c155c2';
 
 /// Which things the person has been told about and not yet looked at, by the id of the thing.
 ///
@@ -208,7 +208,7 @@ final class HasUnreadNotificationForProvider
 }
 
 String _$hasUnreadNotificationForHash() =>
-    r'58527c65632d90cd366338630d5cab15f86cb0c4';
+    r'395d5987f16462f87931f208263e9170effb15b1';
 
 /// Whether anything unread points at this exact thing.
 
@@ -347,7 +347,7 @@ final class NotificationListProvider
   NotificationList create() => NotificationList();
 }
 
-String _$notificationListHash() => r'8eaa4596f5b76330690f1250e039e69981cb47a7';
+String _$notificationListHash() => r'349ddb1c5de61cf24ae2199d58c9159d042c0a75';
 
 /// The list itself, newest first.
 ///

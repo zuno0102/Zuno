@@ -277,7 +277,8 @@ class _PlaceSearchSheetState extends ConsumerState<_PlaceSearchSheet> {
   List<SearchedPlace> _localMatches(String query) {
     if (query.length < 2) return const [];
 
-    final districts = ref.read(allDistrictsProvider).value ?? const <District>[];
+    final districts =
+        ref.read(allDistrictsProvider).value ?? const <District>[];
     final needle = query.toLowerCase();
 
     return districts
@@ -424,25 +425,30 @@ class _PlaceSearchSheetState extends ConsumerState<_PlaceSearchSheet> {
                         ),
                       ),
                       subtitle: const Text('Stops showing jobs by distance'),
-                      onTap: () =>
-                          Navigator.of(context).pop(const PlaceChoice.cleared()),
+                      onTap: () => Navigator.of(
+                        context,
+                      ).pop(const PlaceChoice.cleared()),
                     ),
                     const Divider(height: 1),
                   ],
                   ListTile(
                     leading: const Icon(Icons.my_location),
                     title: const Text('Use my current location'),
-                    onTap: () => Navigator.of(context)
-                        .pop(const PlaceChoice.currentLocation()),
+                    onTap: () => Navigator.of(
+                      context,
+                    ).pop(const PlaceChoice.currentLocation()),
                   ),
                   // For a hamlet no search knows: point at it on the satellite map instead.
                   ListTile(
                     key: const Key('placeSheetPickOnMap'),
                     leading: const Icon(Icons.add_location_alt_outlined),
                     title: const Text('Pick on the map'),
-                    subtitle: const Text('For a small place search cannot find'),
-                    onTap: () => Navigator.of(context)
-                        .pop(const PlaceChoice.pickOnMap()),
+                    subtitle: const Text(
+                      'For a small place search cannot find',
+                    ),
+                    onTap: () => Navigator.of(
+                      context,
+                    ).pop(const PlaceChoice.pickOnMap()),
                   ),
                   const Divider(height: 1),
                   const SizedBox(height: 10),
@@ -463,7 +469,9 @@ class _PlaceSearchSheetState extends ConsumerState<_PlaceSearchSheet> {
                               child: SizedBox(
                                 width: 18,
                                 height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               ),
                             )
                           : IconButton(
@@ -508,8 +516,9 @@ class _PlaceSearchSheetState extends ConsumerState<_PlaceSearchSheet> {
                         const SizedBox(height: 12),
                         OutlinedButton.icon(
                           key: const Key('placeSheetEmptyPickOnMap'),
-                          onPressed: () => Navigator.of(context)
-                              .pop(const PlaceChoice.pickOnMap()),
+                          onPressed: () => Navigator.of(
+                            context,
+                          ).pop(const PlaceChoice.pickOnMap()),
                           icon: const Icon(Icons.add_location_alt_outlined),
                           label: const Text('Pick on the map'),
                         ),
@@ -520,7 +529,8 @@ class _PlaceSearchSheetState extends ConsumerState<_PlaceSearchSheet> {
                 final found => ListView.separated(
                   controller: scrollController,
                   // One extra row on top when only part of the search was found, to say so.
-                  itemCount: found.length + (_partialNote(found) == null ? 0 : 1),
+                  itemCount:
+                      found.length + (_partialNote(found) == null ? 0 : 1),
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, row) {
                     final note = _partialNote(found);
@@ -546,9 +556,9 @@ class _PlaceSearchSheetState extends ConsumerState<_PlaceSearchSheet> {
                               ),
                             ),
                             TextButton(
-                              onPressed: () => Navigator.of(context).pop(
-                                PlaceChoice.pickOnMap(place: found.first),
-                              ),
+                              onPressed: () => Navigator.of(
+                                context,
+                              ).pop(PlaceChoice.pickOnMap(place: found.first)),
                               child: const Text('Pick on map'),
                             ),
                           ],
@@ -568,8 +578,9 @@ class _PlaceSearchSheetState extends ConsumerState<_PlaceSearchSheet> {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      onTap: () =>
-                          Navigator.of(context).pop(PlaceChoice.searched(place)),
+                      onTap: () => Navigator.of(
+                        context,
+                      ).pop(PlaceChoice.searched(place)),
                     );
                   },
                 ),

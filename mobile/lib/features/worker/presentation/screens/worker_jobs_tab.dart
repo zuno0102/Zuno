@@ -15,20 +15,37 @@ import 'package:zuno/features/hiring_post/presentation/providers/worker_post_job
 import 'package:zuno/features/worker/presentation/widgets/job_details_sheet.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
 import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/features/hiring_post/presentation/providers/worker_job_offers_notifier.dart';
+import 'package:zuno/features/worker/domain/entities/worker_invitation.dart';
+import 'package:zuno/features/worker/presentation/providers/worker_invitations_notifier.dart';
+import 'package:zuno/features/worker/presentation/screens/worker_invitations_tab.dart';
 
-/// A worker's jobs, split into the work they still have to do and the work behind them.
+/// A worker's jobs, split into the work they still have to do, the work behind them, and the work
+/// being offered to them.
 ///
 /// This was one flat list in whatever order the server returned, which for a worker with a dozen
 /// jobs meant a job awaiting their answer could sit below one finished last month. Sections fixed
-/// the order; two tabs fix the length. History only grows, so on any worker with a few months
+/// the order; tabs fix the length. History only grows, so on any worker with a few months
 /// behind them the live work — the part they can still act on — ends up at the top of a very long
 /// scroll, with nothing to stop them scrolling past it into last March.
 ///
 /// **Current** is everything still live: offers waiting on an answer, work under way, and what is
 /// coming. **History** is finished and called-off work, which is a record to look things up in
-/// rather than a list to act on.
+/// rather than a list to act on. **Invitations** is work a business is offering them by name, and
+/// teams asking them to join — the next jobs, so they sit beside the jobs rather than on a tab of
+/// their own in the bottom bar.
+///
+/// The tab bar is always shown. A new worker with no jobs yet is exactly the one most likely to have
+/// an invitation, so "no jobs" can never be allowed to replace the screen.
 class WorkerJobsTab extends ConsumerWidget {
-  const WorkerJobsTab({super.key});
+  const WorkerJobsTab({this.initialTab = currentTab, super.key});
+
+  static const currentTab = 0;
+  static const historyTab = 1;
+  static const invitationsTab = 2;
+
+  /// Which tab opens first — the Invitations tab when a notification about one was tapped.
+  final int initialTab;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -38,6 +55,16 @@ class WorkerJobsTab extends ConsumerWidget {
     // bookings endpoint, so this screen showed none of them while the home page counted them.
     final postJobsAsync = ref.watch(workerPostJobsProvider);
 
+    // Only for the Invitations count: what is still waiting on this worker's answer.
+    final offerCount = ref.watch(workerJobOffersProvider).value?.length ?? 0;
+    final teamCount = [
+      for (final t
+          in ref.watch(workerInvitationsProvider).value ??
+              const <WorkerInvitation>[])
+        if (t.status == 'Invited') t,
+    ].length;
+    final invitationCount = offerCount + teamCount;
+
     Future<void> refresh() async {
       ref
         ..invalidate(workerJobsProvider)
@@ -45,71 +72,85 @@ class WorkerJobsTab extends ConsumerWidget {
       await ref.read(workerJobsProvider.future);
     }
 
-    return jobsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, _) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: ErrorBanner(message: error.toString()),
-        ),
-      ),
-      data: (jobs) {
-        // Post work is the lesser half: a failure to load it must not replace a worker's bookings
-        // with an error, so it falls back to nothing and the bookings still show.
-        final postJobs = postJobsAsync.value ?? const <HiringPost>[];
+    // Post work is the lesser half: a failure to load it must not replace a worker's bookings
+    // with an error, so it falls back to nothing and the bookings still show.
+    final postJobs = postJobsAsync.value ?? const <HiringPost>[];
 
-        final livePosts = [
-          for (final p in postJobs)
-            if (!p.isWorkCompleted) p,
-        ]..sort((a, b) => a.eventDate.compareTo(b.eventDate));
+    final livePosts = [
+      for (final p in postJobs)
+        if (!p.isWorkCompleted) p,
+    ]..sort((a, b) => a.eventDate.compareTo(b.eventDate));
 
-        final donePosts = [
-          for (final p in postJobs)
-            if (p.isWorkCompleted) p,
-        ]..sort((a, b) => b.eventDate.compareTo(a.eventDate));
+    final donePosts = [
+      for (final p in postJobs)
+        if (p.isWorkCompleted) p,
+    ]..sort((a, b) => b.eventDate.compareTo(a.eventDate));
 
-        if (jobs.isEmpty && postJobs.isEmpty) {
-          return RefreshIndicator(onRefresh: refresh, child: const _NoJobs());
-        }
+    final jobs = jobsAsync.value;
+    final sections = jobs == null ? null : WorkerJobSections.from(jobs);
+    final hasNoJobs = jobs != null && jobs.isEmpty && postJobs.isEmpty;
 
-        final sections = WorkerJobSections.from(jobs);
-        final currentCount = sections.currentCount + livePosts.length;
-        final historyCount = sections.finished.length + donePosts.length;
+    /// One of the two job tabs, or the loading, error or empty state they share.
+    Widget jobsTab(Widget Function(WorkerJobSections sections) builder) =>
+        jobsAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: ErrorBanner(message: error.toString()),
+            ),
+          ),
+          data: (_) => RefreshIndicator(
+            onRefresh: refresh,
+            child: hasNoJobs ? const _NoJobs() : builder(sections!),
+          ),
+        );
 
-        return DefaultTabController(
-          length: 2,
-          child: Column(
-            children: [
-              TabBar(
-                tabs: [
-                  Tab(text: 'Current ($currentCount)'),
-                  Tab(text: 'History ($historyCount)'),
-                ],
-              ),
-              Expanded(
-                child: TabBarView(
-                  children: [
-                    RefreshIndicator(
-                      onRefresh: refresh,
-                      child: _CurrentJobs(
-                        sections: sections,
-                        postJobs: livePosts,
-                      ),
-                    ),
-                    RefreshIndicator(
-                      onRefresh: refresh,
-                      child: _JobHistory(
-                        jobs: sections.finished,
-                        postJobs: donePosts,
-                      ),
-                    ),
-                  ],
+    String label(String name, int? count) =>
+        count == null ? name : '$name ($count)';
+
+    return DefaultTabController(
+      length: 3,
+      initialIndex: initialTab,
+      child: Column(
+        children: [
+          TabBar(
+            tabs: [
+              Tab(
+                text: label(
+                  'Current',
+                  sections == null
+                      ? null
+                      : sections.currentCount + livePosts.length,
                 ),
+              ),
+              Tab(
+                text: label(
+                  'History',
+                  sections == null
+                      ? null
+                      : sections.finished.length + donePosts.length,
+                ),
+              ),
+              Tab(
+                key: const Key('workerInvitationsTab'),
+                text: label('Invitations', invitationCount),
               ),
             ],
           ),
-        );
-      },
+          Expanded(
+            child: TabBarView(
+              children: [
+                jobsTab((s) => _CurrentJobs(sections: s, postJobs: livePosts)),
+                jobsTab(
+                  (s) => _JobHistory(jobs: s.finished, postJobs: donePosts),
+                ),
+                const WorkerInvitationsTab(),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -532,7 +573,9 @@ class _JobCardState extends ConsumerState<_JobCard> {
       await action();
     } catch (e) {
       if (mounted) {
-        context.showFailureMessage(e.toString().replaceFirst('Exception: ', ''));
+        context.showFailureMessage(
+          e.toString().replaceFirst('Exception: ', ''),
+        );
       }
     } finally {
       if (mounted) {

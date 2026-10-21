@@ -348,7 +348,8 @@ class _CustomerBookingDetailScreenState
           const SizedBox(height: 20),
           _DetailRow(
             label: 'Scheduled for',
-            value: '${formatDate(booking.scheduledDate)} · ${formatTime(booking.scheduledDate)}',
+            value:
+                '${formatDate(booking.scheduledDate)} · ${formatTime(booking.scheduledDate)}',
           ),
           _DetailRow(label: 'Price', value: booking.priceDisplay()),
 

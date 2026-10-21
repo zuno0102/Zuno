@@ -27,6 +27,16 @@ part of 'customer_bookings_notifier.dart';
 ///
 /// Things only the customer can move forward: the business sent a price or crew offer that needs an
 /// answer, or a finished job is waiting for its rating.
+/// Counted only while the customer has not looked.
+///
+/// The number still means "you have something to do here" — an offer to answer, a job to rate —
+/// but it stops counting an order once they have opened it, and starts again the moment the
+/// business does something new on it. Before this it counted the state alone, so reading the
+/// booking changed nothing and the badge sat there afterwards saying something the customer had
+/// already seen.
+///
+/// Tied to the same unread notifications the bell counts, so opening an order moves both numbers
+/// at once, whichever way it was opened.
 
 @ProviderFor(customerBookingsNeedingMeCount)
 final customerBookingsNeedingMeCountProvider =
@@ -51,6 +61,16 @@ final customerBookingsNeedingMeCountProvider =
 ///
 /// Things only the customer can move forward: the business sent a price or crew offer that needs an
 /// answer, or a finished job is waiting for its rating.
+/// Counted only while the customer has not looked.
+///
+/// The number still means "you have something to do here" — an offer to answer, a job to rate —
+/// but it stops counting an order once they have opened it, and starts again the moment the
+/// business does something new on it. Before this it counted the state alone, so reading the
+/// booking changed nothing and the badge sat there afterwards saying something the customer had
+/// already seen.
+///
+/// Tied to the same unread notifications the bell counts, so opening an order moves both numbers
+/// at once, whichever way it was opened.
 
 final class CustomerBookingsNeedingMeCountProvider
     extends $FunctionalProvider<int, int, int>
@@ -74,6 +94,16 @@ final class CustomerBookingsNeedingMeCountProvider
   ///
   /// Things only the customer can move forward: the business sent a price or crew offer that needs an
   /// answer, or a finished job is waiting for its rating.
+  /// Counted only while the customer has not looked.
+  ///
+  /// The number still means "you have something to do here" — an offer to answer, a job to rate —
+  /// but it stops counting an order once they have opened it, and starts again the moment the
+  /// business does something new on it. Before this it counted the state alone, so reading the
+  /// booking changed nothing and the badge sat there afterwards saying something the customer had
+  /// already seen.
+  ///
+  /// Tied to the same unread notifications the bell counts, so opening an order moves both numbers
+  /// at once, whichever way it was opened.
   CustomerBookingsNeedingMeCountProvider._()
     : super(
         from: null,
@@ -108,7 +138,7 @@ final class CustomerBookingsNeedingMeCountProvider
 }
 
 String _$customerBookingsNeedingMeCountHash() =>
-    r'd1fad784032ef3f7e2dd43d4770728c3f245d2f1';
+    r'0ee552f7c7f0886dbc60ce8b25d2059373b55ba5';
 
 @ProviderFor(CustomerBookingsNotifier)
 final customerBookingsProvider = CustomerBookingsNotifierProvider._();

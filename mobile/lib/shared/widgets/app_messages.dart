@@ -109,7 +109,9 @@ class AppMessenger {
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
           elevation: 4,
           duration: duration,
           // A message with a button would otherwise wait for it to be pressed.

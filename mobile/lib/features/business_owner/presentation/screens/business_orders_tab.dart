@@ -43,12 +43,15 @@ class BusinessOrdersTab extends StatelessWidget {
               // Fixed thirds, not a scrolling bar. A scrolling bar sized itself to the labels and
               // pushed Messages off the right edge of a phone, where it had to be swiped into
               // view — which is the same "there is nowhere to message from" this tab exists to
-              // answer. Three equal thirds keep it on screen; a long label ellipsises instead,
-              // which is a smaller price than a tab nobody finds.
+              // answer. Three equal thirds keep it on screen.
+              //
+              // Tight side padding and room for two lines, so a long name with its count after it
+              // wraps ("Status / management 2") rather than being cut off.
+              labelPadding: EdgeInsets.symmetric(horizontal: 4),
               tabs: [
-                Tab(text: 'From customers'),
-                Tab(text: 'Status management'),
-                Tab(child: _MessagesTabLabel()),
+                Tab(height: 56, child: _NewOrdersTabLabel()),
+                Tab(height: 56, child: _WorkStepsTabLabel()),
+                Tab(height: 56, child: _MessagesTabLabel()),
               ],
             ),
           ),
@@ -67,6 +70,78 @@ class BusinessOrdersTab extends StatelessWidget {
   }
 }
 
+/// New orders still waiting on the business: placed by a customer and not yet answered.
+///
+/// One the business has already made an offer on is waiting on the customer instead, so it is
+/// not counted — the number is "things for you to do", not "things that exist".
+int newOrdersAwaitingBusiness(List<Booking> orders) => orders
+    .where((o) => o.isPending && !o.awaitingTheirReply(viewerIsBusiness: true))
+    .length;
+
+/// Jobs whose next step can be taken right now: work to start on the day, or to mark completed.
+///
+/// Exactly the cards on the Status management tab that are showing a Start or Complete button,
+/// for customer orders and the business's own events alike.
+int workStepsReady(
+  List<Booking> orders,
+  List<HiringPost> posts, {
+  DateTime? now,
+}) {
+  final orderSteps = orders
+      .where((o) => o.canStartWork(now: now) || o.canCompleteWork)
+      .length;
+  final eventSteps = posts
+      .where(
+        // The same events the tab lists: the business's own, and not lapsed.
+        (p) =>
+            p.bookingId == null &&
+            !p.isLapsed(now: now) &&
+            (p.canStartWork(now: now) || p.canMarkComplete(now: now)),
+      )
+      .length;
+  return orderSteps + eventSteps;
+}
+
+/// "From customers", with the new orders waiting on the business written after it.
+class _NewOrdersTabLabel extends ConsumerWidget {
+  const _NewOrdersTabLabel();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Selected, so the label rebuilds only when the number changes, not on every order update.
+    final count = ref.watch(
+      businessBookingsProvider.select(
+        (orders) => newOrdersAwaitingBusiness(orders.value ?? const []),
+      ),
+    );
+    return _CountedTabLabel(label: 'From customers', count: count);
+  }
+}
+
+/// "Status management", with the jobs ready to start or finish written after it.
+class _WorkStepsTabLabel extends ConsumerWidget {
+  const _WorkStepsTabLabel();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Each half selected on its own, so the label rebuilds only when a number changes.
+    final orderSteps = ref.watch(
+      businessBookingsProvider.select(
+        (orders) => workStepsReady(orders.value ?? const [], const []),
+      ),
+    );
+    final eventSteps = ref.watch(
+      businessHiringPostsProvider.select(
+        (posts) => workStepsReady(const [], posts.value ?? const []),
+      ),
+    );
+    return _CountedTabLabel(
+      label: 'Status management',
+      count: orderSteps + eventSteps,
+    );
+  }
+}
+
 /// "Messages", carrying the number of unread ones.
 ///
 /// Watched here rather than on [BusinessOrdersTab] so a message arriving repaints two words
@@ -76,14 +151,113 @@ class _MessagesTabLabel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final unread = ref.watch(unreadChatCountProvider);
+    return _CountedTabLabel(
+      label: 'Messages',
+      count: ref.watch(unreadChatCountProvider),
+    );
+  }
+}
 
-    return Badge(
-      isLabelVisible: unread > 0,
-      // Capped, because the badge has to stay a badge. Anything past this is "a lot", and the
-      // list is where the real number lives.
-      label: Text(unread > 99 ? '99+' : '$unread'),
-      child: const Text('Messages'),
+/// A tab's name with its count written after it — "Messages 1" — never on top of it.
+///
+/// It was a corner badge, and on a phone the badge sat over the last letters of the name. The
+/// count now follows the name as a small pill in the same line of text, so a long name wraps
+/// with its count rather than either one being hidden.
+class _CountedTabLabel extends StatelessWidget {
+  const _CountedTabLabel({required this.label, required this.count});
+
+  final String label;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    if (count <= 0) {
+      return Text(
+        label,
+        textAlign: TextAlign.center,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
+
+    // The last word and the pill travel as one piece. Left as separate pieces, a name that filled
+    // the tab let the pill drop onto a line of its own; held together, the name wraps before its
+    // last word and the count stays after it: "From / customers 1".
+    final cut = label.lastIndexOf(' ');
+    final head = cut < 0 ? '' : label.substring(0, cut + 1);
+    final lastWord = cut < 0 ? label : label.substring(cut + 1);
+
+    return Semantics(
+      // Read as one thing by a screen reader: "Messages, 1 new".
+      label: '$label, $count new',
+      excludeSemantics: true,
+      child: Text.rich(
+        TextSpan(
+          text: head,
+          children: [
+            WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Inherits the tab's own text style, so it reads as part of the name. Allowed to
+                  // shorten only on a screen too narrow for the word itself — the count is the
+                  // part that must stay readable.
+                  Flexible(
+                    child: Text(
+                      lastWord,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  _CountPill(key: ValueKey('tabCount:$label'), count: count),
+                ],
+              ),
+            ),
+          ],
+        ),
+        textAlign: TextAlign.center,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+}
+
+/// The small red number after a tab's name.
+class _CountPill extends StatelessWidget {
+  const _CountPill({super.key, required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    // The app's badge colours (the role's own colour, set in AppTheme), so this pill matches every
+    // other count in the app rather than borrowing the red kept for errors.
+    final background =
+        theme.badgeTheme.backgroundColor ?? theme.colorScheme.primary;
+    final foreground =
+        theme.badgeTheme.textColor ?? theme.colorScheme.onPrimary;
+    return Container(
+      constraints: const BoxConstraints(minWidth: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Text(
+        // Capped, so the pill stays a pill. Past this is "a lot", and the list is where the real
+        // number lives.
+        count > 99 ? '99+' : '$count',
+        textAlign: TextAlign.center,
+        // The theme's small label style, the same one Material's own badges use.
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: foreground,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     );
   }
 }
@@ -209,6 +383,10 @@ class _OrderCard extends StatelessWidget {
             // One status, and the one a customer would recognise. The work, crew and wage
             // tracks belong to the other tab — this list is for reading, not working.
             BookingStatusChip(order: order),
+            // Breathing room between the status and the buttons, which otherwise read as one
+            // crowded block. Paid for by the smaller button padding below, so the column still
+            // fits: 26 (pill) + 6 (gap) + 28 (button) = 60 of the 62 available.
+            const SizedBox(height: 6),
             // Side by side and tight, for one reason: a ListTile takes its height from the title
             // and subtitle and never from this column, so there are about 62 logical pixels here
             // and the pill already spends 26. A stock IconButton reserves a 48dp tap target and
@@ -219,7 +397,7 @@ class _OrderCard extends StatelessWidget {
                 style: IconButton.styleFrom(
                   visualDensity: VisualDensity.compact,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  padding: const EdgeInsets.all(6),
+                  padding: const EdgeInsets.all(4),
                   // IconButton floors itself at 40dp square without this, which is what the
                   // remaining two pixels of overflow were. The padding above sets the size now.
                   minimumSize: Size.zero,
@@ -240,6 +418,10 @@ class _OrderCard extends StatelessWidget {
                       tooltip: 'Message customer',
                       iconSize: 20,
                     ),
+                  if (order.canBeMessaged &&
+                      order.canBeCalled &&
+                      order.customerPhone != null)
+                    const SizedBox(width: 8),
                   if (order.canBeCalled && order.customerPhone != null)
                     CallIconButton(
                       phoneNumber: order.customerPhone!,
@@ -374,7 +556,9 @@ class _OrderStepCardState extends ConsumerState<_OrderStepCard> {
       await action();
     } catch (e) {
       if (mounted) {
-        context.showFailureMessage(e.toString().replaceFirst('Exception: ', ''));
+        context.showFailureMessage(
+          e.toString().replaceFirst('Exception: ', ''),
+        );
       }
     } finally {
       if (mounted) {
@@ -478,7 +662,9 @@ class _OwnEventStepCardState extends ConsumerState<_OwnEventStepCard> {
       await action();
     } catch (e) {
       if (mounted) {
-        context.showFailureMessage(e.toString().replaceFirst('Exception: ', ''));
+        context.showFailureMessage(
+          e.toString().replaceFirst('Exception: ', ''),
+        );
       }
     } finally {
       if (mounted) {

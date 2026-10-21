@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:zuno/core/logging/app_log.dart';
 import 'package:permission_handler/permission_handler.dart' as ph;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -88,7 +89,8 @@ class PermissionHandlerService implements PermissionService {
   Future<bool> hasCamera() async {
     try {
       return await ph.Permission.camera.isGranted;
-    } catch (_) {
+    } catch (error, stackTrace) {
+      AppLog.handled('permissions: camera check', error, stackTrace);
       // A phone that cannot answer is treated as not granted: the worst outcome is asking once
       // more, where guessing "granted" would be a camera screen that silently shows nothing.
       return false;
@@ -114,14 +116,15 @@ class PermissionHandlerService implements PermissionService {
   static Future<PermissionState> _status(ph.Permission permission) async {
     try {
       return _read(await permission.status);
-    } catch (_) {
+    } catch (error, stackTrace) {
+      AppLog.handled('permissions: $permission status', error, stackTrace);
       return PermissionState.notAsked;
     }
   }
 
   static PermissionState _read(ph.PermissionStatus status) => switch (status) {
-    ph.PermissionStatus.granted || ph.PermissionStatus.limited =>
-      PermissionState.granted,
+    ph.PermissionStatus.granted ||
+    ph.PermissionStatus.limited => PermissionState.granted,
     ph.PermissionStatus.permanentlyDenied ||
     ph.PermissionStatus.restricted => PermissionState.blocked,
     ph.PermissionStatus.denied => PermissionState.notAsked,
@@ -158,8 +161,12 @@ class PermissionHandlerService implements PermissionService {
         photosGranted: photos.isGranted || photos.isLimited,
         cameraPermanentlyDenied: camera.isPermanentlyDenied,
       );
-    } catch (_) {
-      return const PermissionOutcome(cameraGranted: false, photosGranted: false);
+    } catch (error, stackTrace) {
+      AppLog.handled('permissions: request', error, stackTrace);
+      return const PermissionOutcome(
+        cameraGranted: false,
+        photosGranted: false,
+      );
     }
   }
 
@@ -167,11 +174,13 @@ class PermissionHandlerService implements PermissionService {
   Future<void> openAppSettings() async {
     try {
       await ph.openAppSettings();
-    } catch (_) {
-      // Nothing more to offer if the settings screen will not open.
+    } catch (error, stackTrace) {
+      // Nothing more to offer if the settings screen will not open; recorded, not shown.
+      AppLog.handled('permissions: open settings', error, stackTrace);
     }
   }
 }
 
 @Riverpod(keepAlive: true)
-PermissionService permissionService(Ref ref) => const PermissionHandlerService();
+PermissionService permissionService(Ref ref) =>
+    const PermissionHandlerService();

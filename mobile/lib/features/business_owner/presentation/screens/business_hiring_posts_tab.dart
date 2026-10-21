@@ -81,7 +81,9 @@ class _PostCardState extends ConsumerState<_PostCard> {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(post.isLapsed() ? 'Remove this post?' : 'Delete this post?'),
+        title: Text(
+          post.isLapsed() ? 'Remove this post?' : 'Delete this post?',
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -138,7 +140,9 @@ class _PostCardState extends ConsumerState<_PostCard> {
       await ref.read(businessHiringPostsProvider.notifier).deletePost(post.id);
     } catch (e) {
       if (mounted) {
-        context.showFailureMessage(e.toString().replaceFirst('Exception: ', ''));
+        context.showFailureMessage(
+          e.toString().replaceFirst('Exception: ', ''),
+        );
         setState(() => _isDeleting = false);
       }
     }
@@ -319,10 +323,13 @@ class _PostCardState extends ConsumerState<_PostCard> {
                 else if (post.isWorkStarted)
                   StatusPill(
                     icon: Icons.groups,
-                    label: '${post.filledCount} '
+                    label:
+                        '${post.filledCount} '
                         '${post.filledCount == 1 ? 'worker' : 'workers'}',
                     tone: StatusTone.success,
-                    detail: post.isWorkCompleted ? 'worked this job' : 'on the job',
+                    detail: post.isWorkCompleted
+                        ? 'worked this job'
+                        : 'on the job',
                   )
                 else
                   StatusPill(
@@ -374,7 +381,9 @@ class _PostCardState extends ConsumerState<_PostCard> {
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.5,
+                    ),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Column(
@@ -395,7 +404,10 @@ class _PostCardState extends ConsumerState<_PostCard> {
                           TextButton.icon(
                             onPressed: () =>
                                 showCreateHiringPostSheet(context, post: post),
-                            icon: const Icon(Icons.event_repeat_outlined, size: 18),
+                            icon: const Icon(
+                              Icons.event_repeat_outlined,
+                              size: 18,
+                            ),
                             label: const Text('Give it a new date'),
                             style: TextButton.styleFrom(
                               visualDensity: VisualDensity.compact,
@@ -559,7 +571,9 @@ class _ApplicationRowState extends ConsumerState<_ApplicationRow> {
       }
     } catch (e) {
       if (mounted) {
-        context.showFailureMessage(e.toString().replaceFirst('Exception: ', ''));
+        context.showFailureMessage(
+          e.toString().replaceFirst('Exception: ', ''),
+        );
       }
     } finally {
       if (mounted) {
@@ -612,7 +626,8 @@ class _ApplicationRowState extends ConsumerState<_ApplicationRow> {
                   : () => Navigator.of(context).pop('confirm'),
               child: Text(widget.isPostFull ? 'Post is full' : 'Confirm'),
             ),
-          ] else if ((application.isAccepted || application.isOfferPending) && application.hasAgreedSalary)
+          ] else if ((application.isAccepted || application.isOfferPending) &&
+              application.hasAgreedSalary)
             FilledButton.tonal(
               onPressed: () => Navigator.of(context).pop('raise'),
               child: const Text('Raise salary'),
@@ -827,7 +842,6 @@ class _DetailLine extends StatelessWidget {
     );
   }
 }
-
 
 /// Tone per application state. "Awaiting worker" is deliberately the in-flight tone rather than
 /// the danger one — a pending offer is neither a win nor a loss, it is simply unresolved.
