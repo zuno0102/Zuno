@@ -134,7 +134,14 @@ if ($webChanged) {
             $vercelArgs = @('--token', $Settings.VERCEL_TOKEN)
             if ($Settings.VERCEL_SCOPE) { $vercelArgs += @('--scope', $Settings.VERCEL_SCOPE) }
             $project = if ($Settings.VERCEL_PROJECT) { $Settings.VERCEL_PROJECT } else { 'zuno' }
-            vercel link --yes --project $project @vercelArgs; Run 'vercel link'
+            # Link only once: linking also connects the project to GitHub, and Vercel's own builds
+            # from GitHub cannot build Flutter (Settings -> Git must stay disconnected).
+            $linked = Get-Content '.vercel/project.json' -ErrorAction SilentlyContinue | ConvertFrom-Json
+            if ($linked.projectName -ne $project) {
+                vercel link --yes --project $project @vercelArgs; Run 'vercel link'
+            }
+            # 'vercel link' pulls the project's env vars into .env.local; it must never be uploaded.
+            Remove-Item '.env.local' -ErrorAction SilentlyContinue
             vercel deploy --prod --yes @vercelArgs; Run 'vercel deploy'
         } else {
             vercel deploy --prod --yes; Run 'vercel deploy'

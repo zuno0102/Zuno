@@ -181,7 +181,10 @@ vercel link --yes --project zuno --scope <Zuno_team slug> --token <VERCEL_TOKEN>
 vercel deploy --prod --yes --scope <Zuno_team slug> --token <VERCEL_TOKEN>
 ```
 
-`deploy.ps1` runs exactly these two commands when `VERCEL_TOKEN` is set.
+`deploy.ps1` runs exactly these two commands when `VERCEL_TOKEN` is set (the link only the first
+time). **The Vercel project must not be connected to GitHub** (project → Settings → Git →
+Disconnect): `vercel link` connects it automatically, and then every push to `main` makes Vercel
+build from the repository, which has no Flutter — the result is an empty site that answers 404.
 
 `mobile/web/vercel.json` is copied into `build/web` by the build. It sends every path to
 `index.html` and leaves the entry points uncached so a new deploy is actually picked up.
