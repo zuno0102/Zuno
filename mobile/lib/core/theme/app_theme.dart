@@ -128,7 +128,15 @@ class AppTheme {
       ),
 
       chipTheme: ChipThemeData(
-        side: BorderSide.none,
+        // Outlined rather than bare. Unselected chips sit on a fill barely off the page's own
+        // ground, so without an edge a filter row read as floating words rather than as things
+        // to press; the selected one takes the accent so the chosen filter is obvious at a
+        // glance. Resolved per state, since one BorderSide cannot serve both grounds.
+        side: WidgetStateBorderSide.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? BorderSide(color: scheme.primary)
+              : BorderSide(color: scheme.outlineVariant),
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
         // The colour has to be named here. A labelStyle given without one does not mean "keep the
         // sensible default" — it replaces the style the chip would otherwise have resolved, colour
