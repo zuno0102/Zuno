@@ -231,22 +231,29 @@ void main() {
     expect(fake.raises, isEmpty);
   });
 
-  testWidgets('the +₹200 shortcut fills the extra pay: ₹1,000 becomes ₹1,200', (
-    tester,
-  ) async {
-    final fake = await pumpHiringTab(tester, [hire('1')]);
+  testWidgets(
+    'typing 200 as extra pay: ₹1,000 becomes ₹1,200, no shortcut buttons',
+    (tester) async {
+      final fake = await pumpHiringTab(tester, [hire('1')]);
 
-    await tester.tap(find.byTooltip(_raiseTooltip));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('+₹200'));
-    await tester.pump();
-    expect(find.text('₹1,000 + ₹200 = ₹1,200'), findsOneWidget);
+      await tester.tap(find.byTooltip(_raiseTooltip));
+      await tester.pumpAndSettle();
+      // Typed by hand only: the +₹200 / +₹500 shortcuts were taken out.
+      expect(find.text('+₹200'), findsNothing);
+      expect(find.text('+₹500'), findsNothing);
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Extra pay'),
+        '200',
+      );
+      await tester.pump();
+      expect(find.text('₹1,000 + ₹200 = ₹1,200'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Raise'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Raise'));
+      await tester.pumpAndSettle();
 
-    expect(fake.raises, [('1', 1200.0, null)]);
-  });
+      expect(fake.raises, [('1', 1200.0, null)]);
+    },
+  );
 
   // ---- Status management: order card crew -------------------------------------------------
 
@@ -538,7 +545,10 @@ void main() {
 
     await tester.tap(find.widgetWithText(ListTile, 'Raise salary'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('+₹500'));
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Extra pay'),
+      '500',
+    );
     await tester.pump();
     expect(find.text('₹1,000 + ₹500 = ₹1,500'), findsOneWidget);
 

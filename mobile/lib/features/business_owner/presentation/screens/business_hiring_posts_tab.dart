@@ -748,31 +748,6 @@ class _ApplicationRowState extends ConsumerState<_ApplicationRow> {
                         color: theme.colorScheme.primary,
                       ),
                     ),
-                  // Their earlier job has run past its finish time, so this one is at risk.
-                  // Shown while there is still time to arrange cover.
-                  if (application.delayRisk != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 3),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            Icons.schedule_outlined,
-                            size: 14,
-                            color: theme.colorScheme.error,
-                          ),
-                          const SizedBox(width: 5),
-                          Expanded(
-                            child: Text(
-                              application.delayRisk!,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.error,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                 ],
               ),
             ),

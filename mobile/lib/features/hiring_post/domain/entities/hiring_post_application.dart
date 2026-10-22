@@ -11,7 +11,6 @@ class HiringPostApplication {
     this.agreedSalaryAmount,
     this.agreedSalaryUnit,
     this.workerRespondedAt,
-    this.delayRisk,
     this.paymentStatus = 'Unpaid',
     this.paidAt,
     this.disputeReason,
@@ -29,9 +28,6 @@ class HiringPostApplication {
   final double? agreedSalaryAmount;
   final String? agreedSalaryUnit;
   final DateTime? workerRespondedAt;
-
-  /// Set when this worker is running late on an earlier job. Null when on schedule.
-  final String? delayRisk;
 
   /// Where this worker's wages have got to, independent of the application itself:
   /// work can be long finished before anyone is paid.

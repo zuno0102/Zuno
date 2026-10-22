@@ -16,7 +16,6 @@ class HiringPostApplicationModel {
     this.agreedSalaryAmount,
     this.agreedSalaryUnit,
     this.workerRespondedAt,
-    this.delayRisk,
     this.paymentStatus = 'Unpaid',
     this.paidAt,
     this.disputeReason,
@@ -35,7 +34,6 @@ class HiringPostApplicationModel {
   final double? agreedSalaryAmount;
   final String? agreedSalaryUnit;
   final DateTime? workerRespondedAt;
-  final String? delayRisk;
   final String paymentStatus;
   final DateTime? paidAt;
   final String? disputeReason;
@@ -51,7 +49,6 @@ class HiringPostApplicationModel {
     agreedSalaryAmount: agreedSalaryAmount,
     agreedSalaryUnit: agreedSalaryUnit,
     workerRespondedAt: workerRespondedAt,
-    delayRisk: delayRisk,
     paymentStatus: paymentStatus,
     paidAt: paidAt,
     disputeReason: disputeReason,

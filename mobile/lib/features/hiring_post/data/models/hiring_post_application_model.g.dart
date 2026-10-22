@@ -20,7 +20,6 @@ HiringPostApplicationModel _$HiringPostApplicationModelFromJson(
   workerRespondedAt: json['workerRespondedAt'] == null
       ? null
       : DateTime.parse(json['workerRespondedAt'] as String),
-  delayRisk: json['delayRisk'] as String?,
   paymentStatus: json['paymentStatus'] as String? ?? 'Unpaid',
   paidAt: json['paidAt'] == null
       ? null

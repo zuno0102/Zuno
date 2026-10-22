@@ -7,9 +7,8 @@ import 'package:zuno/features/hiring_post/domain/entities/hiring_post_applicatio
 import 'package:zuno/features/hiring_post/presentation/providers/business_hiring_posts_notifier.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 
-/// A raise is extra pay added to the fixed wage — ₹1,000 plus ₹200 for three extra hours is
-/// ₹1,200 — never a new total typed in. These are the amounts offered as one-tap shortcuts.
-const raiseShortcuts = <double>[200, 500];
+// A raise is extra pay added to the fixed wage — ₹1,000 plus ₹200 for three extra hours is
+// ₹1,200 — never a new total. The business types the extra amount.
 
 /// What the dialog hands back to the caller to actually raise the wage.
 typedef RaiseAction =
@@ -215,11 +214,6 @@ class _RaiseSalaryDialogState extends ConsumerState<_RaiseSalaryDialog> {
     super.dispose();
   }
 
-  void _useShortcut(double amount) {
-    _amountController.text = amount.toStringAsFixed(0);
-    setState(() {});
-  }
-
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -300,17 +294,6 @@ class _RaiseSalaryDialogState extends ConsumerState<_RaiseSalaryDialog> {
                 ),
                 validator: _validateAmount,
                 onChanged: (_) => setState(() {}),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: [
-                  for (final amount in raiseShortcuts)
-                    ActionChip(
-                      label: Text('+${rupees(amount)}'),
-                      onPressed: _isSaving ? null : () => _useShortcut(amount),
-                    ),
-                ],
               ),
               if (increase != null && current != null) ...[
                 const SizedBox(height: 8),

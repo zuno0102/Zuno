@@ -5,12 +5,9 @@ using Zuno.Domain.Enums;
 namespace Zuno.Application.Common.Services;
 
 /// <summary>
-/// Finds clashes in a worker's diary across both hiring posts and bookings, and spots work that
-/// is running past its finish time.
+/// Finds clashes in a worker's diary across both hiring posts and bookings.
 /// </summary>
-public class WorkerScheduleService(
-    IDateTimeProvider dateTimeProvider,
-    IApplicationDbContext dbContext) : IWorkerScheduleService
+public class WorkerScheduleService(IApplicationDbContext dbContext) : IWorkerScheduleService
 {
     /// <summary>
     /// Used when a booking's service carries no estimate. Two hours is the same assumption a
@@ -92,51 +89,6 @@ public class WorkerScheduleService(
         }
 
         return null;
-    }
-
-    public async Task<IReadOnlyDictionary<Guid, WorkerOverrun>> FindOverrunsAsync(
-        IReadOnlyCollection<Guid> workerProfileIds,
-        CancellationToken cancellationToken = default)
-    {
-        var result = new Dictionary<Guid, WorkerOverrun>();
-        if (workerProfileIds.Count == 0)
-        {
-            return result;
-        }
-
-        var now = dateTimeProvider.UtcNow;
-
-        var hiringJobs = await dbContext.HiringPostApplications
-            .Where(a => workerProfileIds.Contains(a.WorkerProfileId)
-                && a.ApplicationStatus == HiringPostApplicationStatus.Accepted
-                && a.HiringPost.WorkCompletedAt == null)
-            .Select(a => new
-            {
-                a.WorkerProfileId,
-                a.HiringPostId,
-                a.HiringPost.Title,
-                a.HiringPost.EventDate,
-                a.HiringPost.DurationMinutes,
-            })
-            .ToListAsync(cancellationToken);
-
-        foreach (var job in hiringJobs)
-        {
-            var due = job.EventDate.AddMinutes(job.DurationMinutes);
-            if (due >= now)
-            {
-                continue;
-            }
-
-            var late = (int)Math.Floor((now - due).TotalMinutes);
-            // Keep the worst offender per worker, since that is the one that explains the delay.
-            if (!result.TryGetValue(job.WorkerProfileId, out var current) || late > current.MinutesLate)
-            {
-                result[job.WorkerProfileId] = new WorkerOverrun(job.Title, due, late, job.HiringPostId);
-            }
-        }
-
-        return result;
     }
 
     private async Task<List<Commitment>> LoadCommitmentsAsync(

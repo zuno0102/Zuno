@@ -17,12 +17,6 @@ public class HiringPostApplicationDto
     /// <summary>When the worker accepted or declined the offer. Null while it is still pending.</summary>
     public DateTimeOffset? WorkerRespondedAt { get; set; }
 
-    /// <summary>
-    /// Set when this worker is running late on an earlier job, so the business can see the
-    /// risk to this one before it becomes a no-show. Null when their day is on schedule.
-    /// </summary>
-    public string? DelayRisk { get; set; }
-
     /// <summary>The figure locked in when this worker was confirmed. Null while still pending.</summary>
     public decimal? AgreedSalaryAmount { get; set; }
 

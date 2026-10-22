@@ -59,18 +59,8 @@ public record WorkerCommitment(
     DateTimeOffset StartsAt,
     DateTimeOffset EndsAt);
 
-/// <summary>A job that should have finished by now but has not been marked done.</summary>
-/// <param name="Title">The job that is running late.</param>
-/// <param name="DueToEndAt">When it was scheduled to finish.</param>
-/// <param name="MinutesLate">How far past that it now is.</param>
-public record WorkerOverrun(
-    string Title,
-    DateTimeOffset DueToEndAt,
-    int MinutesLate,
-    Guid? HiringPostId);
-
 /// <summary>
-/// Answers whether a worker is free for a window, and whether their current work is running late.
+/// Answers whether a worker is free for a window.
 /// </summary>
 /// <remarks>
 /// Deliberately spans both hiring posts and bookings. A worker hired through a hiring post is
@@ -87,7 +77,7 @@ public interface IWorkerScheduleService
     /// A worker must <em>exceed</em> this, not merely match it: with a 30-minute buffer, work
     /// ending at 11:00 frees them from 11:31, and 11:30 is still refused.
     /// </remarks>
-    int TravelBufferMinutes { get; }
+    public int TravelBufferMinutes { get; }
 
     /// <summary>
     /// Returns the first job standing in the way, or null when the worker is free for the
@@ -114,24 +104,15 @@ public interface IWorkerScheduleService
     /// they are, and merging them would hide the double-booking worth seeing.
     /// </para>
     /// </remarks>
-    Task<IReadOnlyList<WorkerCommitment>> GetCommitmentsAsync(
+    public Task<IReadOnlyList<WorkerCommitment>> GetCommitmentsAsync(
         IReadOnlyCollection<Guid> workerProfileIds,
         CancellationToken cancellationToken = default);
 
-    Task<WorkerScheduleConflict?> FindConflictAsync(
+    public Task<WorkerScheduleConflict?> FindConflictAsync(
         Guid workerProfileId,
         DateTimeOffset startsAt,
         DateTimeOffset endsAt,
         Guid? excludeHiringPostId = null,
         Guid? excludeBookingId = null,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// For each of the given workers, the job that was due to finish before now and has not been
-    /// marked complete — the reason they may not make it to whatever they are booked on next.
-    /// Workers whose work is on schedule are absent from the result.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, WorkerOverrun>> FindOverrunsAsync(
-        IReadOnlyCollection<Guid> workerProfileIds,
         CancellationToken cancellationToken = default);
 }
