@@ -4,6 +4,7 @@ import 'package:zuno/features/booking/domain/entities/booking.dart';
 import 'package:zuno/features/booking/domain/entities/booking_worker_assignment.dart';
 import 'package:zuno/features/booking/domain/entities/job_role.dart';
 import 'package:zuno/features/booking/presentation/widgets/set_crew_role_sheet.dart';
+import 'package:zuno/features/hiring_post/domain/entities/hiring_post_application.dart';
 import 'package:zuno/features/work_chat/presentation/widgets/work_message_button.dart';
 import 'package:zuno/shared/widgets/call_icon_button.dart';
 import 'package:zuno/shared/widgets/status_with_actions.dart';
@@ -21,8 +22,20 @@ class BookingCrewList extends StatelessWidget {
     required this.booking,
     this.canSetRoles = false,
     this.initiallyExpanded = false,
+    this.postHires = const {},
+    this.raiseSalaryAction,
     super.key,
   });
+
+  /// Workers hired through this order's hiring post, by worker profile id.
+  ///
+  /// Their wage is agreed on the post, not on the order, so without this they would read as
+  /// paid outside Zuno and be left out of the amount owed.
+  final Map<String, HiringPostApplication> postHires;
+
+  /// Builds the raise-salary action for a post hire whose salary can still be raised. Null where
+  /// raising is not the viewer's to do.
+  final Widget Function(HiringPostApplication hire)? raiseSalaryAction;
 
   /// Whether the crew is already unfurled when the card appears.
   ///
@@ -48,8 +61,8 @@ class BookingCrewList extends StatelessWidget {
     if (crew.isEmpty) return const SizedBox.shrink();
 
     final owed = crew
-        .where((w) => w.isPayee && !w.isPaid && !w.isRejected)
-        .fold<double>(0, (sum, w) => sum + (w.agreedSalaryAmount ?? 0));
+        .where((w) => !w.isRejected)
+        .fold<double>(0, (sum, w) => sum + _owedTo(w));
 
     return Theme(
       // The default divider makes an ExpansionTile look like a separate card inside a card.
@@ -88,6 +101,8 @@ class BookingCrewList extends StatelessWidget {
           for (final worker in crew)
             _CrewRow(
               worker: worker,
+              hire: postHires[worker.workerProfileId],
+              raiseSalaryAction: raiseSalaryAction,
               canCall: booking.canCallCrewMember(worker),
               // Message the worker once they have taken the job on, while the order is live. The
               // business is the go-between: workers and customers never contact each other.
@@ -118,6 +133,17 @@ class BookingCrewList extends StatelessWidget {
     );
   }
 
+  /// What this worker is still owed through Zuno: their wage on the order, or else their wage on
+  /// the hiring post that brought them in.
+  double _owedTo(BookingWorkerAssignment worker) {
+    if (worker.isPayee) {
+      return worker.isPaid ? 0 : worker.agreedSalaryAmount!;
+    }
+    final hire = postHires[worker.workerProfileId];
+    if (hire == null || !hire.hasAgreedSalary || hire.isPaid) return 0;
+    return hire.agreedSalaryAmount!;
+  }
+
   /// "2 of 18", "2 assigned", or "2 worked this job".
   String _countLabel() {
     final onJob = booking.assignedWorkers.where((w) => !w.isRejected).length;
@@ -142,9 +168,28 @@ class _CrewRow extends StatelessWidget {
     required this.canCall,
     this.canMessage = false,
     this.onSetRole,
+    this.hire,
+    this.raiseSalaryAction,
   });
 
   final BookingWorkerAssignment worker;
+
+  /// Their hiring-post record, when the hiring post is how they came onto this order.
+  final HiringPostApplication? hire;
+
+  final Widget Function(HiringPostApplication hire)? raiseSalaryAction;
+
+  /// Their wage on the order, or else on the hiring post. Null when they are paid outside Zuno.
+  String? get _wageLabel {
+    if (worker.wageLabel case final label?) return label;
+    final hire = this.hire;
+    if (hire == null || !hire.hasAgreedSalary) return null;
+    return '${rupees(hire.agreedSalaryAmount!)} '
+        '${salaryUnitWords(hire.agreedSalaryUnit ?? SalaryUnit.perEvent)}'
+        '${hire.hasBeenRaised ? ' (raised)' : ''}';
+  }
+
+  bool get _isPaid => worker.isPaid || (hire?.isPaid ?? false);
 
   /// Worked out by the order, which is the only thing that knows whether the job is over.
   final bool canCall;
@@ -159,6 +204,12 @@ class _CrewRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final declined = worker.isRejected;
+    // Extra work on the day: raise this worker's wage before the crew is paid.
+    final raiseAction = switch ((hire, raiseSalaryAction)) {
+      (final hire?, final build?) when hire.canRaiseSalary && !declined =>
+        build(hire),
+      _ => null,
+    };
 
     final (icon, colour) = switch (worker.displayStatus) {
       'Completed' => (Icons.check_circle, theme.colorScheme.primary),
@@ -210,8 +261,8 @@ class _CrewRow extends StatelessWidget {
                       worker.displayStatusLabel,
                       // Said plainly rather than left blank: "no wage" and "wage not yet entered"
                       // look identical otherwise, and only one of them is a mistake.
-                      worker.wageLabel ?? 'Paid outside Zuno',
-                      if (worker.isPaid) 'Paid',
+                      _wageLabel ?? 'Paid outside Zuno',
+                      if (_isPaid) 'Paid',
                     ].join(' · '),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
@@ -241,9 +292,10 @@ class _CrewRow extends StatelessWidget {
                 ],
               ),
             ),
-            if (canMessage || canCall)
+            if (canMessage || canCall || raiseAction != null)
               CardActions(
                 actions: [
+                  ?raiseAction,
                   if (canMessage)
                     WorkMessageButton(
                       counterpartId: worker.workerProfileId,

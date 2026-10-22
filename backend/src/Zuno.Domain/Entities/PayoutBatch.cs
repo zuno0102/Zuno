@@ -53,4 +53,15 @@ public class PayoutBatch : BaseEntity
     public bool AllItemsPaid => Items.Count > 0 && Items.All(i => i.PaymentStatus == PaymentStatus.Paid);
 
     public bool HasFailures => Items.Any(i => i.PaymentStatus == PaymentStatus.Failed);
+
+    /// <summary>
+    /// Whether this run pays the same workers the same amounts as <paramref name="other"/>.
+    /// False once a salary has been raised since this run was opened.
+    /// </summary>
+    public bool PaysSameWagesAs(PayoutBatch other) =>
+        Items.Count == other.Items.Count
+        && Items
+            .Select(i => (i.HiringPostApplicationId, i.Amount))
+            .ToHashSet()
+            .SetEquals(other.Items.Select(i => (i.HiringPostApplicationId, i.Amount)));
 }

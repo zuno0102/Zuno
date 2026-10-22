@@ -27,6 +27,9 @@ HiringPostModel _$HiringPostModelFromJson(Map<String, dynamic> json) =>
       workCompletedAt: json['workCompletedAt'] == null
           ? null
           : DateTime.parse(json['workCompletedAt'] as String),
+      hiringStoppedAt: json['hiringStoppedAt'] == null
+          ? null
+          : DateTime.parse(json['hiringStoppedAt'] as String),
       settledAt: json['settledAt'] == null
           ? null
           : DateTime.parse(json['settledAt'] as String),

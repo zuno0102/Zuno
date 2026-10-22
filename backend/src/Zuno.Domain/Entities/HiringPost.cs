@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Zuno.Domain.Common;
 using Zuno.Domain.Enums;
 
@@ -42,6 +43,12 @@ public class HiringPost : BaseEntity
     /// </summary>
     public int DurationMinutes { get; set; } = 120;
 
+    /// <summary>Shortest job a post may describe.</summary>
+    public const int MinDurationMinutes = 15;
+
+    /// <summary>Longest job a post may describe: one day. Queries rely on it as a bound.</summary>
+    public const int MaxDurationMinutes = 1440;
+
     /// <summary>
     /// When the crew actually started. Null until the business says so on the day.
     /// </summary>
@@ -61,8 +68,55 @@ public class HiringPost : BaseEntity
     /// </summary>
     public DateTimeOffset? SettledAt { get; set; }
 
+    /// <summary>
+    /// When the business said it will manage with the crew it has. Null while still hiring.
+    /// Set once: a stopped post never reopens, not even when an accepted worker drops out.
+    /// </summary>
+    public DateTimeOffset? HiringStoppedAt { get; set; }
+
     /// <summary>The window this job occupies in a worker's day.</summary>
     public DateTimeOffset EventEndDate => EventDate.AddMinutes(DurationMinutes);
+
+    /// <summary>
+    /// Whether hiring for this job is over for good: stopped by the business, the work marked
+    /// done, or the scheduled end gone by. A job already under way still hires — a worker who
+    /// can arrive late is better than one short for the rest of the day.
+    /// </summary>
+    public bool IsHiringOver(DateTimeOffset now) =>
+        HiringStoppedAt is not null || WorkCompletedAt is not null || EventEndDate <= now;
+
+    /// <summary>Whether a worker can apply, be offered a place, or accept one right now.</summary>
+    public bool IsAcceptingWorkers(DateTimeOffset now) =>
+        !IsHiringOver(now) && HiringPostStatus == HiringPostStatus.Open;
+
+    /// <summary>
+    /// <see cref="IsHiringOver"/> negated, in a form the database can run. The first date test is
+    /// redundant on its own but lets the (status, event_date) index range-scan: nothing that started
+    /// more than <see cref="MaxDurationMinutes"/> ago can still be running.
+    /// </summary>
+    public static Expression<Func<HiringPost, bool>> StillHiringAt(DateTimeOffset now)
+    {
+        var earliestLiveStart = now.AddMinutes(-MaxDurationMinutes);
+        return p => p.HiringStoppedAt == null
+            && p.WorkCompletedAt == null
+            && p.EventDate > earliestLiveStart
+            && p.EventDate.AddMinutes(p.DurationMinutes) > now;
+    }
+
+    /// <summary>
+    /// Posts whose time ran out with nobody ever hired: nothing was worked and nothing is owed.
+    /// Hidden from the business at once and soft-deleted by the cleanup job.
+    /// </summary>
+    public static Expression<Func<HiringPost, bool>> UnfilledAndOverAt(DateTimeOffset now) =>
+        p => p.WorkStartedAt == null
+            && p.EventDate.AddMinutes(p.DurationMinutes) <= now
+            && !p.Applications.Any(a => a.ApplicationStatus == HiringPostApplicationStatus.Accepted);
+
+    /// <summary>The exact opposite of <see cref="UnfilledAndOverAt"/>: still live, or somebody worked it.</summary>
+    public static Expression<Func<HiringPost, bool>> WorthKeepingAt(DateTimeOffset now) =>
+        p => p.WorkStartedAt != null
+            || p.EventDate.AddMinutes(p.DurationMinutes) > now
+            || p.Applications.Any(a => a.ApplicationStatus == HiringPostApplicationStatus.Accepted);
 
     /// <summary>
     /// The free-text job address, as the business typed it. Still what a worker reads.
@@ -170,10 +224,12 @@ public class HiringPost : BaseEntity
     /// Keeps the post's open/closed state in step with its staffing, which is the only thing
     /// that decides it: a post is Open exactly while it still needs people who have said yes.
     /// Called after any change to the accepted head count or to <see cref="WorkersNeeded"/>,
-    /// so a declined offer reopens the vacancy on its own.
+    /// so a declined offer reopens the vacancy on its own — unless hiring was stopped.
     /// </summary>
     public void SyncStatusToStaffing() =>
-        HiringPostStatus = IsFullyStaffed ? HiringPostStatus.Closed : HiringPostStatus.Open;
+        HiringPostStatus = IsFullyStaffed || HiringStoppedAt is not null
+            ? HiringPostStatus.Closed
+            : HiringPostStatus.Open;
 
     // ---- Settlement -------------------------------------------------------------------------
     //

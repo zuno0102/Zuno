@@ -35,7 +35,7 @@ final class BusinessHiringPostsNotifierProvider
 }
 
 String _$businessHiringPostsNotifierHash() =>
-    r'fbfb52f77a75f0c3b4bfb5323c083500cb3c16e3';
+    r'fbc13b0037826035ab68daac73f44258d19ba7fc';
 
 abstract class _$BusinessHiringPostsNotifier
     extends $AsyncNotifier<List<HiringPost>> {

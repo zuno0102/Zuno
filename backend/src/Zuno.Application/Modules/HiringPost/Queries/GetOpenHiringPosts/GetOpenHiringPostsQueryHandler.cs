@@ -58,11 +58,12 @@ public class GetOpenHiringPostsQueryHandler(
             .Include(p => p.District)
             .Include(p => p.Applications).ThenInclude(a => a.WorkerProfile).ThenInclude(wp => wp.User)
             .Include(p => p.Applications).ThenInclude(a => a.SalaryAdjustments)
-            // A post is advertised only while it still needs people AND its event is ahead of us;
-            // a job whose date has gone is not a vacancy. The second branch is deliberate: a worker
-            // keeps seeing any post they have applied to, closed or past, so they can still see
-            // their own outcome and the details of work they committed to.
-            .Where(p => (p.HiringPostStatus == HiringPostStatus.Open && p.EventDate > now)
+            // A post is advertised while it still needs people and hiring has not ended — which
+            // includes a job already under way, so a worker can still join late. Once the business
+            // stops hiring or marks the work done, the post leaves this feed for everyone, applicants
+            // included; anyone who actually worked it finds it in their job history instead.
+            .Where(Domain.Entities.HiringPost.StillHiringAt(now))
+            .Where(p => p.HiringPostStatus == HiringPostStatus.Open
                 || p.Applications.Any(a => a.WorkerProfileId == workerProfile.Id));
 
         if (request.DistrictIds is { Count: > 0 } districtIds)

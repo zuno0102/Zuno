@@ -40,6 +40,9 @@ class HiringPostRemoteDataSource {
   Future<HiringPostModel> completeWork(String id) =>
       _post(ApiConstants.completeHiringPostWorkPath(id), const {});
 
+  Future<HiringPostModel> stopHiring(String id) =>
+      _post(ApiConstants.stopHiringPostPath(id), const {});
+
   /// The worker's answer on whether their wages arrived.
   Future<void> respondToPayment(
     String applicationId, {
@@ -58,7 +61,10 @@ class HiringPostRemoteDataSource {
 
   /// Opens a pay run. [expectedTotal] is sent as a cross-check only — the server
   /// calculates the real figure and refuses the request if the two disagree.
-  Future<PayoutBatchModel> createPayoutBatch(String id, double expectedTotal) async {
+  Future<PayoutBatchModel> createPayoutBatch(
+    String id,
+    double expectedTotal,
+  ) async {
     try {
       final response = await _dio.post<dynamic>(
         ApiConstants.hiringPostPayoutsPath(id),
@@ -90,7 +96,6 @@ class HiringPostRemoteDataSource {
       throw mapDioExceptionToAppException(e);
     }
   }
-
 
   Future<HiringPostModel> raiseAgreedSalary(
     String applicationId,
@@ -134,15 +139,14 @@ class HiringPostRemoteDataSource {
     double? latitude,
     double? longitude,
     int? radiusKm,
-  }) =>
-      _list(
-        ApiConstants.workerHiringPostsPath,
-        query: {
-          'latitude': ?latitude,
-          'longitude': ?longitude,
-          'radiusKm': ?radiusKm,
-        },
-      );
+  }) => _list(
+    ApiConstants.workerHiringPostsPath,
+    query: {
+      'latitude': ?latitude,
+      'longitude': ?longitude,
+      'radiusKm': ?radiusKm,
+    },
+  );
 
   /// Jobs this worker was invited onto, still waiting on an answer.
   ///
@@ -161,15 +165,22 @@ class HiringPostRemoteDataSource {
   Future<HiringPostModel> apply(String id) =>
       _post(ApiConstants.applyToHiringPostPath(id), const {});
 
-  Future<HiringPostModel> respondToOffer(String applicationId, {required bool accept}) =>
-      _post(ApiConstants.respondToHiringPostOfferPath(applicationId), {'accept': accept});
+  Future<HiringPostModel> respondToOffer(
+    String applicationId, {
+    required bool accept,
+  }) => _post(ApiConstants.respondToHiringPostOfferPath(applicationId), {
+    'accept': accept,
+  });
 
   Future<List<HiringPostModel>> _list(
     String path, {
     Map<String, dynamic>? query,
   }) async {
     try {
-      final response = await _dio.get<List<dynamic>>(path, queryParameters: query);
+      final response = await _dio.get<List<dynamic>>(
+        path,
+        queryParameters: query,
+      );
       return response.data!
           .map((e) => HiringPostModel.fromJson(e as Map<String, dynamic>))
           .toList();

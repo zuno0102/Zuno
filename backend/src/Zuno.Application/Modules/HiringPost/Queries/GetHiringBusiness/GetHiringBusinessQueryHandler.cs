@@ -42,7 +42,8 @@ public class GetHiringBusinessQueryHandler(
             .Include(p => p.Applications).ThenInclude(a => a.WorkerProfile).ThenInclude(wp => wp.User)
             .Include(p => p.Applications).ThenInclude(a => a.SalaryAdjustments)
             .Where(p => p.BusinessOwnerProfileId == business.Id)
-            .Where(p => p.HiringPostStatus == HiringPostStatus.Open && p.EventDate > now)
+            .Where(p => p.HiringPostStatus == HiringPostStatus.Open)
+            .Where(Domain.Entities.HiringPost.StillHiringAt(now))
             .OrderBy(p => p.EventDate)
             .ToListAsync(cancellationToken);
 

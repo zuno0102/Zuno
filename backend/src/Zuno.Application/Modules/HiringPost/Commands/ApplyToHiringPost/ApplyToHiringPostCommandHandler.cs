@@ -32,11 +32,12 @@ public class ApplyToHiringPostCommandHandler(
             .FirstOrDefaultAsync(p => p.Id == request.HiringPostId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Domain.Entities.HiringPost), request.HiringPostId);
 
-        // Checked before the status test so a worker is told the real reason: a past event and a
-        // filled vacancy are both "not open", but only one of them could ever change.
-        if (post.EventDate <= dateTimeProvider.UtcNow)
+        // Checked before the status test so a worker is told the real reason: a finished job and a
+        // filled vacancy are both "not open", but only one of them could ever change. A job that
+        // has started but not finished still takes late joiners.
+        if (post.IsHiringOver(dateTimeProvider.UtcNow))
         {
-            throw new DomainException("This event has already taken place.");
+            throw new DomainException("Hiring for this job has closed.");
         }
 
         if (post.HiringPostStatus != HiringPostStatus.Open)

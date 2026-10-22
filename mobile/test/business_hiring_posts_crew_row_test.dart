@@ -22,7 +22,8 @@ class _FakePosts extends BusinessHiringPostsNotifier {
 }
 
 void main() {
-  final soon = DateTime(2026, 9, 20, 10);
+  // Relative to today: the Hiring tab only lists jobs whose hiring is not yet over.
+  final soon = DateTime.now().add(const Duration(days: 7));
   final createdOn = DateTime(2026, 9, 1, 10);
 
   HiringPostApplication application({
@@ -83,7 +84,8 @@ void main() {
     // an answer, or a payment that failed. So whether it starts open depends on the fixture, and
     // tapping unconditionally would CLOSE the ones that needed no tap.
     final firstWorker = find.text(data.applications.first.workerName);
-    if (firstWorker.evaluate().isEmpty) {
+    if (firstWorker.evaluate().isEmpty &&
+        find.text('Crew').evaluate().isNotEmpty) {
       await tester.tap(find.text('Crew'));
       await tester.pumpAndSettle();
     }
@@ -112,7 +114,7 @@ void main() {
     expect(find.byIcon(Icons.call), findsOneWidget);
   });
 
-  testWidgets('no call button once the order is finished and paid', (
+  testWidgets('a finished, paid order leaves the Hiring tab altogether', (
     tester,
   ) async {
     await pump(
@@ -126,6 +128,7 @@ void main() {
     );
 
     expect(tester.takeException(), isNull);
+    expect(find.text('Paintings'), findsNothing);
     expect(find.byIcon(Icons.call), findsNothing);
   });
 

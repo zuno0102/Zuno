@@ -38,9 +38,9 @@ public class GetMyJobOffersQueryHandler(
             .Where(p => p.Applications.Any(a =>
                 a.WorkerProfileId == workerProfile.Id
                 && a.ApplicationStatus == HiringPostApplicationStatus.Confirmed))
-            // A day that has gone cannot be accepted, and an offer nobody can act on is noise on a
-            // screen whose whole purpose is things that need answering.
-            .Where(p => p.EventDate > now)
+            // A job whose hiring has ended cannot be accepted, and an offer nobody can act on is noise
+            // on a screen whose whole purpose is things that need answering.
+            .Where(Domain.Entities.HiringPost.StillHiringAt(now))
             // Soonest first: the offer that expires first is the one to answer first.
             .OrderBy(p => p.EventDate)
             .ToListAsync(cancellationToken);

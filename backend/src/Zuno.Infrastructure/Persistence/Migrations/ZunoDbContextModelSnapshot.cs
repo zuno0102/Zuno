@@ -8500,6 +8500,10 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                         .HasColumnType("smallint")
                         .HasColumnName("hiring_post_status");
 
+                    b.Property<DateTimeOffset?>("HiringStoppedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("hiring_stopped_at");
+
                     b.Property<string>("ImageUrl")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")

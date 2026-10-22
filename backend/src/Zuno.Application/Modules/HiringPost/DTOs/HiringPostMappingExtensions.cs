@@ -26,6 +26,7 @@ public static class HiringPostMappingExtensions
         EventEndDate = post.EventEndDate,
         WorkStartedAt = post.WorkStartedAt,
         WorkCompletedAt = post.WorkCompletedAt,
+        HiringStoppedAt = post.HiringStoppedAt,
         SettledAt = post.SettledAt,
         TotalPayable = post.TotalPayable,
         OutstandingAmount = post.OutstandingAmount,

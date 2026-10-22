@@ -16,6 +16,7 @@ import 'package:zuno/features/worker/presentation/widgets/nearby_jobs_map.dart';
 import 'package:zuno/features/worker/presentation/widgets/single_job_map_screen.dart';
 import 'package:zuno/shared/widgets/empty_state.dart';
 import 'package:zuno/shared/widgets/status_track.dart';
+import 'package:zuno/shared/widgets/status_pill.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 
@@ -46,7 +47,9 @@ class _WorkerHiringPostsTabState extends ConsumerState<WorkerHiringPostsTab> {
     // Said out loud, because a pull that empties the list would otherwise read as a failed load
     // rather than as the reset it is.
     if (mounted) {
-      context.showInfoMessage('Location cleared. Set where you are to see jobs.');
+      context.showInfoMessage(
+        'Location cleared. Set where you are to see jobs.',
+      );
     }
 
     // The feed watches the filter, so it empties on its own; awaited only so the spinner has
@@ -76,24 +79,24 @@ class _WorkerHiringPostsTabState extends ConsumerState<WorkerHiringPostsTab> {
           const Expanded(child: _AskForLocation())
         else
           Expanded(
-          child: postsAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: ErrorBanner(message: error.toString()),
+            child: postsAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, _) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: ErrorBanner(message: error.toString()),
+                ),
               ),
-            ),
-            data: (posts) => RefreshIndicator(
-              onRefresh: _clearLocationAndReload,
-              child: _Feed(
-                posts: posts,
-                filter: filter,
-                showingMap: _showingMap,
+              data: (posts) => RefreshIndicator(
+                onRefresh: _clearLocationAndReload,
+                child: _Feed(
+                  posts: posts,
+                  filter: filter,
+                  showingMap: _showingMap,
+                ),
               ),
             ),
           ),
-        ),
       ],
     );
   }
@@ -239,7 +242,6 @@ class _Feed extends StatelessWidget {
   }
 }
 
-
 class _PostCard extends ConsumerStatefulWidget {
   const _PostCard({required this.post});
 
@@ -258,7 +260,9 @@ class _PostCardState extends ConsumerState<_PostCard> {
       await ref.read(workerHiringPostsProvider.notifier).apply(widget.post.id);
     } catch (e) {
       if (mounted) {
-        context.showFailureMessage(e.toString().replaceFirst('Exception: ', ''));
+        context.showFailureMessage(
+          e.toString().replaceFirst('Exception: ', ''),
+        );
       }
     } finally {
       if (mounted) {
@@ -301,15 +305,29 @@ class _PostCardState extends ConsumerState<_PostCard> {
                         post.title,
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
+                      // Already started and still a hand short: say so, and say when it ends,
+                      // so a worker can judge whether they can get there in time to matter.
+                      if (post.isNeededNow()) ...[
+                        const SizedBox(height: 4),
+                        StatusPill(
+                          icon: Icons.bolt,
+                          label: 'NEEDED NOW',
+                          tone: StatusTone.progress,
+                          detail: 'ends ${formatTime(post.eventEndDate)}',
+                          compact: true,
+                        ),
+                        const SizedBox(height: 2),
+                      ],
                       // What kind of work it actually is. The reason a worker can skip a
                       // painting job that is not the painting they do.
                       if (post.serviceSubCategoryName case final kind?)
                         Text(
                           kind,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
                         ),
                       // Tappable: before committing a day, a worker can now check what this
                       // business actually pays and whether it pays on time.
@@ -356,9 +374,7 @@ class _PostCardState extends ConsumerState<_PostCard> {
                       Text(
                         'Posted ${timeAgo(post.createdDate)}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurfaceVariant,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                       // Distance and place on one line, with the map a tap away. This is what a
@@ -388,14 +404,18 @@ class _PostCardState extends ConsumerState<_PostCard> {
                                     ].where((p) => p != null).join(' · '),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context).textTheme.bodySmall,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodySmall,
                                   ),
                                 ),
                                 if (post.hasPosition)
                                   Icon(
                                     Icons.map_outlined,
                                     size: 15,
-                                    color: Theme.of(context).colorScheme.primary,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
                                   ),
                               ],
                             ),
@@ -450,16 +470,13 @@ class _PostCardState extends ConsumerState<_PostCard> {
               Align(
                 alignment: Alignment.centerRight,
                 child: Chip(
-                  label: Text(
-                    switch (post.myApplicationStatus) {
-                      'Applied' => 'Applied — awaiting the business',
-                      'Accepted' => 'You accepted this job',
-                      'Declined' => 'You declined this offer',
-                      'Rejected' => 'Not selected',
-                      final other => 'Applied: $other',
-                    },
-                    style: const TextStyle(fontSize: 11),
-                  ),
+                  label: Text(switch (post.myApplicationStatus) {
+                    'Applied' => 'Applied — awaiting the business',
+                    'Accepted' => 'You accepted this job',
+                    'Declined' => 'You declined this offer',
+                    'Rejected' => 'Not selected',
+                    final other => 'Applied: $other',
+                  }, style: const TextStyle(fontSize: 11)),
                   visualDensity: VisualDensity.compact,
                   backgroundColor: post.myOfferAccepted
                       ? AppColors.status(
@@ -469,7 +486,7 @@ class _PostCardState extends ConsumerState<_PostCard> {
                       : null,
                 ),
               )
-            // Gated on isOpenToWorkers, not isOpen: a post whose event has passed is closed
+            // Gated on isOpenToWorkers, not isOpen: a post whose hiring is over is closed
             // even though its stored status still says Open, and the server would refuse.
             else if (post.isOpenToWorkers())
               SizedBox(
@@ -538,7 +555,9 @@ class _OfferDecisionState extends ConsumerState<_OfferDecision> {
           .respondToOffer(applicationId: applicationId, accept: accept);
     } catch (e) {
       if (mounted) {
-        context.showFailureMessage(e.toString().replaceFirst('Exception: ', ''));
+        context.showFailureMessage(
+          e.toString().replaceFirst('Exception: ', ''),
+        );
       }
     } finally {
       if (mounted) setState(() => _isResponding = false);
@@ -760,7 +779,9 @@ class _MyPaymentDecisionState extends ConsumerState<_MyPaymentDecision> {
           );
     } catch (e) {
       if (mounted) {
-        context.showFailureMessage(e.toString().replaceFirst('Exception: ', ''));
+        context.showFailureMessage(
+          e.toString().replaceFirst('Exception: ', ''),
+        );
       }
     } finally {
       if (mounted) setState(() => _isResponding = false);
@@ -879,4 +900,3 @@ class _AskForLocation extends StatelessWidget {
     );
   }
 }
-

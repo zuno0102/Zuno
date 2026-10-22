@@ -54,6 +54,12 @@ public class RespondToHiringPostOfferCommandHandler(
 
         if (request.Accept)
         {
+            // Stopped, finished or past its end: the place on offer no longer exists.
+            if (application.HiringPost.IsHiringOver(dateTimeProvider.UtcNow))
+            {
+                throw new DomainException("Hiring for this job has closed.");
+            }
+
             // Guard the race where two workers accept the last slot at the same moment.
             if (application.HiringPost.IsFullyStaffed)
             {

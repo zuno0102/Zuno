@@ -52,6 +52,9 @@ public class HiringPostDto
     /// <summary>Set when the business marks the work done. Releases the crew for other jobs.</summary>
     public DateTimeOffset? WorkCompletedAt { get; set; }
 
+    /// <summary>Set when the business stopped hiring and will manage with the crew it has.</summary>
+    public DateTimeOffset? HiringStoppedAt { get; set; }
+
     /// <summary>Set when the last worker was paid. The moment the hiring genuinely ended.</summary>
     public DateTimeOffset? SettledAt { get; set; }
 

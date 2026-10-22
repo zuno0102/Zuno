@@ -95,12 +95,18 @@ class HiringPostRepositoryImpl implements HiringPostRepository {
   Future<HiringPost> inviteWorker({
     required String postId,
     required String workerIdentifier,
-  }) async =>
-      (await _remoteDataSource.inviteWorker(postId, workerIdentifier)).toEntity();
+  }) async => (await _remoteDataSource.inviteWorker(
+    postId,
+    workerIdentifier,
+  )).toEntity();
 
   @override
   Future<HiringPost> completeWork(String id) async =>
       (await _remoteDataSource.completeWork(id)).toEntity();
+
+  @override
+  Future<HiringPost> stopHiring(String id) async =>
+      (await _remoteDataSource.stopHiring(id)).toEntity();
 
   @override
   Future<HiringPost> uploadPostImage(String id, Uint8List imageBytes) async =>
@@ -132,14 +138,11 @@ class HiringPostRepositoryImpl implements HiringPostRepository {
     double? latitude,
     double? longitude,
     int? radiusKm,
-  }) async =>
-      (await _remoteDataSource.getOpenPosts(
-            latitude: latitude,
-            longitude: longitude,
-            radiusKm: radiusKm,
-          ))
-          .map((m) => m.toEntity())
-          .toList();
+  }) async => (await _remoteDataSource.getOpenPosts(
+    latitude: latitude,
+    longitude: longitude,
+    radiusKm: radiusKm,
+  )).map((m) => m.toEntity()).toList();
 
   @override
   Future<List<HiringPost>> getMyOffers() async =>
@@ -147,7 +150,9 @@ class HiringPostRepositoryImpl implements HiringPostRepository {
 
   @override
   Future<List<HiringPost>> getMyPostJobs() async =>
-      (await _remoteDataSource.getMyPostJobs()).map((m) => m.toEntity()).toList();
+      (await _remoteDataSource.getMyPostJobs())
+          .map((m) => m.toEntity())
+          .toList();
 
   @override
   Future<HiringPost> apply(String id) async =>
@@ -157,9 +162,10 @@ class HiringPostRepositoryImpl implements HiringPostRepository {
   Future<HiringPost> respondToOffer({
     required String applicationId,
     required bool accept,
-  }) async =>
-      (await _remoteDataSource.respondToOffer(applicationId, accept: accept))
-          .toEntity();
+  }) async => (await _remoteDataSource.respondToOffer(
+    applicationId,
+    accept: accept,
+  )).toEntity();
 
   @override
   Future<HiringPost> startWork(String id) async =>
@@ -180,21 +186,21 @@ class HiringPostRepositoryImpl implements HiringPostRepository {
   Future<PayoutBatch> createPayoutBatch({
     required String postId,
     required double expectedTotal,
-  }) async =>
-      (await _remoteDataSource.createPayoutBatch(postId, expectedTotal))
-          .toEntity();
+  }) async => (await _remoteDataSource.createPayoutBatch(
+    postId,
+    expectedTotal,
+  )).toEntity();
 
   @override
   Future<PayoutBatch> confirmPayoutCollection({
     required String batchId,
     required String providerPaymentId,
     String? signature,
-  }) async =>
-      (await _remoteDataSource.confirmPayoutCollection(
-        batchId,
-        providerPaymentId,
-        signature,
-      )).toEntity();
+  }) async => (await _remoteDataSource.confirmPayoutCollection(
+    batchId,
+    providerPaymentId,
+    signature,
+  )).toEntity();
 
   /// Create and update take the same payload — the server distinguishes them by verb.
   static Map<String, dynamic> _postBody({

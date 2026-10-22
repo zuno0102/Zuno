@@ -110,6 +110,11 @@ class BusinessHiringPostsNotifier extends _$BusinessHiringPostsNotifier {
     await _refresh();
   }
 
+  Future<void> stopHiring(String id) async {
+    await ref.read(hiringPostRepositoryProvider).stopHiring(id);
+    await _refresh();
+  }
+
   /// Opens a pay run without paying anything, so the crew and total can be reviewed first.
   ///
   /// [expectedTotal] is the figure the card is showing. Sending it lets the server refuse

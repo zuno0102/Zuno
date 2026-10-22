@@ -43,35 +43,21 @@ public class RaiseAgreedSalaryCommandHandler(
             throw new UnauthorizedAccessException("This application does not belong to your business.");
         }
 
-        // Raising is allowed both for a worker who has accepted and for one still weighing an
-        // offer — sweetening a pending offer is legitimate; a declined one is not.
-        if (application.ApplicationStatus is not (HiringPostApplicationStatus.Accepted
-            or HiringPostApplicationStatus.Confirmed))
+        // A run already sending money includes this worker at the old figure. A run the business
+        // has not paid yet is fine: Pay all rebuilds it at the new total
+        // (CreatePayoutBatchCommandHandler).
+        var isBeingPaid = await dbContext.PayoutBatches.AnyAsync(
+            b => b.BatchStatus == PayoutBatchStatus.Disbursing
+                 && b.Items.Any(i => i.HiringPostApplicationId == application.Id),
+            cancellationToken);
+
+        if (isBeingPaid)
         {
             throw new DomainException(
-                "Only a worker who has accepted, or who has an offer pending, can have their salary adjusted.");
+                "This worker's payment is already being sent, so their salary can no longer be raised.");
         }
 
-        var currentAmount = application.AgreedSalaryAmount
-            ?? throw new DomainException("This application has no agreed salary recorded.");
-
-        if (request.NewAmount <= currentAmount)
-        {
-            throw new DomainException(
-                $"The agreed salary can only be increased. It is currently {currentAmount:0.##}, " +
-                $"so the new amount must be greater than that.");
-        }
-
-        dbContext.HiringPostSalaryAdjustments.Add(new HiringPostSalaryAdjustment
-        {
-            HiringPostApplicationId = application.Id,
-            HiringPostApplication = application,
-            PreviousAmount = currentAmount,
-            NewAmount = request.NewAmount,
-            Reason = request.Reason,
-        });
-
-        application.AgreedSalaryAmount = request.NewAmount;
+        dbContext.HiringPostSalaryAdjustments.Add(application.RaiseSalary(request.NewAmount, request.Reason));
 
         await dbContext.SaveChangesAsync(cancellationToken);
 

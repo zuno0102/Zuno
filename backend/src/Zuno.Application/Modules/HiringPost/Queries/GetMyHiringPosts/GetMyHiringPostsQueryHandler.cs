@@ -23,12 +23,15 @@ public class GetMyHiringPostsQueryHandler(
             ?? throw new EntityNotFoundException(nameof(BusinessOwnerProfile), userId);
 
         var posts = await dbContext.HiringPosts
+            .AsNoTracking()
             .Include(p => p.BusinessOwnerProfile)
             .Include(p => p.ServiceSubCategory)
             .Include(p => p.Booking).ThenInclude(b => b!.BusinessService)
             .Include(p => p.Applications).ThenInclude(a => a.WorkerProfile).ThenInclude(wp => wp.User)
             .Include(p => p.Applications).ThenInclude(a => a.SalaryAdjustments)
             .Where(p => p.BusinessOwnerProfileId == businessProfile.Id)
+            // Gone by with nobody hired: hidden at once, and soft-deleted by the cleanup job.
+            .Where(Domain.Entities.HiringPost.WorthKeepingAt(dateTimeProvider.UtcNow))
             .OrderByDescending(p => p.CreatedDate)
             .ToListAsync(cancellationToken);
 

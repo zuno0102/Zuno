@@ -22,6 +22,7 @@ class HiringPostModel {
     this.durationMinutes = 120,
     this.workStartedAt,
     this.workCompletedAt,
+    this.hiringStoppedAt,
     this.settledAt,
     this.totalPayable = 0,
     this.outstandingAmount = 0,
@@ -78,6 +79,7 @@ class HiringPostModel {
   final int durationMinutes;
   final DateTime? workStartedAt;
   final DateTime? workCompletedAt;
+  final DateTime? hiringStoppedAt;
   final DateTime? settledAt;
   final double totalPayable;
   final double outstandingAmount;
@@ -127,6 +129,7 @@ class HiringPostModel {
     durationMinutes: durationMinutes,
     workStartedAt: workStartedAt,
     workCompletedAt: workCompletedAt,
+    hiringStoppedAt: hiringStoppedAt,
     settledAt: settledAt,
     totalPayable: totalPayable,
     outstandingAmount: outstandingAmount,

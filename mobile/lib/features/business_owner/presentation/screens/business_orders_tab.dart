@@ -13,6 +13,8 @@ import 'package:zuno/features/booking/presentation/widgets/order_code.dart';
 import 'package:zuno/features/booking/presentation/providers/booking_message_providers.dart';
 import 'package:zuno/features/business_owner/presentation/screens/business_booking_detail_screen.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/pay_crew_sheet.dart';
+import 'package:zuno/features/business_owner/presentation/widgets/post_crew_wage_list.dart';
+import 'package:zuno/features/business_owner/presentation/widgets/raise_salary_dialog.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/business_hiring_posts_notifier.dart';
 import 'package:zuno/features/notifications/presentation/providers/notification_providers.dart';
@@ -656,6 +658,7 @@ class _OrderStepCardState extends ConsumerState<_OrderStepCard> {
   Widget build(BuildContext context) {
     final order = widget.order;
     final notifier = ref.read(businessBookingsProvider.notifier);
+    final linkedPost = _linkedPost;
 
     return _StepCard(
       title: order.variantName ?? order.serviceName,
@@ -669,7 +672,20 @@ class _OrderStepCardState extends ConsumerState<_OrderStepCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           BookingTracks(booking: order),
-          BookingCrewList(booking: order, canSetRoles: true),
+          BookingCrewList(
+            booking: order,
+            canSetRoles: true,
+            // Workers hired through the post carry their wage there, and that is where a raise
+            // for extra work is recorded — and what Pay crew then charges.
+            postHires: {
+              for (final hire in linkedPost?.applications ?? const [])
+                if (hire.isAccepted) hire.workerProfileId: hire,
+            },
+            raiseSalaryAction: (hire) => RaiseSalaryButton(
+              application: hire,
+              crewTotal: order.wageOutstandingAmount,
+            ),
+          ),
         ],
       ),
       isBusy: _isBusy,
@@ -686,7 +702,7 @@ class _OrderStepCardState extends ConsumerState<_OrderStepCard> {
         ),
         // Paying runs through the hiring post that owes the money; there is no second payment
         // path for orders.
-        _ when order.isCompleted && order.hasOutstandingWages => switch (_linkedPost) {
+        _ when order.isCompleted && order.hasOutstandingWages => switch (linkedPost) {
           final post? => _Step(
             'Pay crew · ${rupees(order.wageOutstandingAmount)}',
             Icons.payments_outlined,
@@ -769,23 +785,30 @@ class _OwnEventStepCardState extends ConsumerState<_OwnEventStepCard> {
           : '${post.filledCount} of ${post.workersNeeded} hired',
       // The post's own three strands. Same treatment as an order's, because it is the same
       // question — how far has this job got — asked about the business's own event.
-      tracks: StatusTrackList(
-        tracks: [
-          TrackRow(
-            name: 'Event',
-            state: post.eventState(),
-            detail: post.eventDetail(),
+      tracks: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          StatusTrackList(
+            tracks: [
+              TrackRow(
+                name: 'Event',
+                state: post.eventState(),
+                detail: post.eventDetail(),
+              ),
+              TrackRow(
+                name: 'Workers',
+                state: post.workersState(),
+                detail: post.workersDetail(),
+              ),
+              TrackRow(
+                name: 'Payment',
+                state: post.paymentState(),
+                detail: post.paymentDetail(),
+              ),
+            ],
           ),
-          TrackRow(
-            name: 'Workers',
-            state: post.workersState(),
-            detail: post.workersDetail(),
-          ),
-          TrackRow(
-            name: 'Payment',
-            state: post.paymentState(),
-            detail: post.paymentDetail(),
-          ),
+          // Who is owed what, and where a wage is raised for extra work before Pay all.
+          PostCrewWageList(post: post),
         ],
       ),
       isBusy: _isBusy,

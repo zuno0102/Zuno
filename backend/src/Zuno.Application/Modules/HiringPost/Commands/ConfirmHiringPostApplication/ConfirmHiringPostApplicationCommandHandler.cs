@@ -50,6 +50,11 @@ public class ConfirmHiringPostApplicationCommandHandler(
             throw new DomainException("This application has already been responded to.");
         }
 
+        if (application.HiringPost.IsHiringOver(dateTimeProvider.UtcNow))
+        {
+            throw new DomainException("Hiring for this job has closed.");
+        }
+
         if (!application.HiringPost.CanOfferAnotherWorker)
         {
             var post = application.HiringPost;

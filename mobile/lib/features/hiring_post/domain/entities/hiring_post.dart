@@ -19,6 +19,7 @@ class HiringPost {
     this.durationMinutes = 120,
     this.workStartedAt,
     this.workCompletedAt,
+    this.hiringStoppedAt,
     this.settledAt,
     this.totalPayable = 0,
     this.outstandingAmount = 0,
@@ -79,6 +80,9 @@ class HiringPost {
   final DateTime? workStartedAt;
 
   final DateTime? workCompletedAt;
+
+  /// When the business stopped hiring and chose to manage with the crew it has.
+  final DateTime? hiringStoppedAt;
 
   /// When the last worker was paid. The moment the hiring genuinely ended.
   final DateTime? settledAt;
@@ -198,13 +202,38 @@ class HiringPost {
         at.isBefore(eventEndDate.toLocal());
   }
 
+  bool get isHiringStopped => hiringStoppedAt != null;
+
+  /// Whether hiring for this job is over for good: stopped by the business, the work marked
+  /// done, or the scheduled end gone by. A job already under way still hires — a worker who can
+  /// arrive late beats being one short all day. Mirrors HiringPost.IsHiringOver on the server.
+  bool isHiringOver({DateTime? now}) =>
+      isHiringStopped ||
+      isWorkCompleted ||
+      !(now ?? DateTime.now()).isBefore(eventEndDate.toLocal());
+
   /// Whether workers can actually see and apply to this post right now.
   ///
-  /// Two independent things close a post: every place being taken, and the event date passing.
-  /// [status] only tracks the first — it is a stored column that nothing updates when a date
-  /// simply goes by — so the date is layered on here. Mirrors the server, which filters the
-  /// worker feed and the apply guard on the same two conditions.
-  bool isOpenToWorkers({DateTime? now}) => isOpen && !isEventOver(now: now);
+  /// Two independent things close a post: every place being taken, and hiring being over.
+  /// [status] only tracks the first — it is a stored column that nothing updates when a time
+  /// simply goes by — so the rest is layered on here. Mirrors the server, which filters the
+  /// worker feed and the apply guard on the same conditions.
+  bool isOpenToWorkers({DateTime? now}) => isOpen && !isHiringOver(now: now);
+
+  /// Already under way and still short-handed: the worker feed flags it as needed now.
+  bool isNeededNow({DateTime? now}) =>
+      isOpenToWorkers(now: now) && isEventUnderway(now: now);
+
+  /// Whether the business's Hiring tab still lists this post: it is still a vacancy being
+  /// filled. Once hiring stops or the work is done, the job is run from the Orders tab instead —
+  /// unless a worker's pay failed or is disputed, because this card is where the business rings
+  /// them about it.
+  bool isListedAsVacancy({DateTime? now}) =>
+      (!isHiringOver(now: now) && !isOrderClosed) || hasPaymentProblem;
+
+  /// A worker's payout failed or they say it never arrived: someone has to sort it out by phone.
+  bool get hasPaymentProblem =>
+      applications.any((a) => a.isPaymentFailed || a.isPaymentDisputed);
 
   /// Whether the order behind this post is over — finished or called off.
   ///
@@ -216,16 +245,19 @@ class HiringPost {
 
   /// Whether this job is worth putting in front of the business as somewhere to send a worker.
   ///
-  /// Four things have to hold at once, and only the first is what [status] tracks: the post is
-  /// open, the day has not gone by, the work has not been called done, and there is a place
-  /// left once accepted workers are counted. The order behind it must still be live too — the
-  /// one condition nothing on the post itself can tell you.
+  /// Three things have to hold at once, and only the first is what [status] tracks: the post is
+  /// open, hiring is not over (stopped, done, or past its end), and there is a place left once
+  /// accepted workers are counted. The order behind it must still be live too — the one
+  /// condition nothing on the post itself can tell you.
   bool isInvitable({DateTime? now}) =>
       isOpen &&
       !isOrderClosed &&
-      !isEventOver(now: now) &&
-      !isWorkCompleted &&
+      !isHiringOver(now: now) &&
       canOfferAnotherWorker;
+
+  /// The business can stop hiring at any point before the job is over and manage with the
+  /// crew it has.
+  bool canStopHiring({DateTime? now}) => !isHiringOver(now: now);
 
   /// Deleting an upcoming post with a hired crew pulls the ground out from under them,
   /// so the confirmation dialog warns harder in that case — it does not block it.
@@ -306,8 +338,9 @@ class HiringPost {
   TrackState workersState({DateTime? now}) {
     if (isWorkCompleted) return TrackState.completed;
     if (isWorkStarted) return TrackState.inProgress;
-    // Nothing left to hire for once the day has gone by with nobody taken on.
-    if (isEventOver(now: now) && filledCount == 0) return TrackState.lapsed;
+    // Nothing left to hire for once hiring is over with nobody taken on. Not before: a job
+    // under way still takes late joiners.
+    if (isHiringOver(now: now) && filledCount == 0) return TrackState.lapsed;
     // The crew is only "active" from the moment they are actually due on site.
     if (isEventUnderway(now: now) || isEventOver(now: now)) {
       return TrackState.active;
@@ -351,6 +384,8 @@ class HiringPost {
     TrackState.lapsed => 'Nobody was hired',
     // Hiring is still worth reporting while the track itself is dormant — it is the one thing
     // the business can act on before the day arrives.
+    _ when isHiringStopped && filledCount < workersNeeded =>
+      '$filledCount of $workersNeeded · hiring stopped',
     _ => '$filledCount of $workersNeeded hired',
   };
 

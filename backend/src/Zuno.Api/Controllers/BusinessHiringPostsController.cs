@@ -19,6 +19,7 @@ using Zuno.Application.Modules.HiringPost.Commands.RaiseAgreedSalary;
 using Zuno.Application.Modules.HiringPost.Commands.RejectHiringPostApplication;
 using Zuno.Application.Modules.HiringPost.Commands.SetHiringPostImage;
 using Zuno.Application.Modules.HiringPost.Commands.StartHiringPostWork;
+using Zuno.Application.Modules.HiringPost.Commands.StopHiringPost;
 using Zuno.Application.Modules.HiringPost.Commands.UpdateHiringPost;
 using Zuno.Application.Modules.HiringPost.Queries.GetMyHiringPosts;
 
@@ -105,6 +106,14 @@ public class BusinessHiringPostsController(
     {
         var result = await mediator.Send(
             new CompleteHiringPostWorkCommand { HiringPostId = id }, cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpPost("{id:guid}/stop-hiring")]
+    public async Task<IActionResult> StopHiring(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(
+            new StopHiringPostCommand { HiringPostId = id }, cancellationToken);
         return Ok(result);
     }
 

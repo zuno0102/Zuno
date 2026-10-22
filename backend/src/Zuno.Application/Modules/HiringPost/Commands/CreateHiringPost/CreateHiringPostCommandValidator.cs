@@ -18,7 +18,7 @@ public class CreateHiringPostCommandValidator : AbstractValidator<CreateHiringPo
             .WithMessage("Send both latitude and longitude, or neither.");
         RuleFor(x => x.EventDate).NotEmpty();
         RuleFor(x => x.DurationMinutes)
-            .InclusiveBetween(15, 1440)
+            .InclusiveBetween(Domain.Entities.HiringPost.MinDurationMinutes, Domain.Entities.HiringPost.MaxDurationMinutes)
             .WithMessage("Duration must be between 15 minutes and 24 hours.");
         // Not required: a post raised from an order takes its kind of work from the package the
         // customer chose, and a standalone post has no order to take one from. Validated only

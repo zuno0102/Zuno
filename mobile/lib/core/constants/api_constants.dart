@@ -207,6 +207,8 @@ class ApiConstants {
       '$businessHiringPostsPath/$id/start';
   static String completeHiringPostWorkPath(String id) =>
       '$businessHiringPostsPath/$id/complete';
+  static String stopHiringPostPath(String id) =>
+      '$businessHiringPostsPath/$id/stop-hiring';
   static String inviteWorkerToHiringPostPath(String id) =>
       '$businessHiringPostsPath/$id/invite';
   static String raiseHiringPostSalaryPath(String applicationId) =>

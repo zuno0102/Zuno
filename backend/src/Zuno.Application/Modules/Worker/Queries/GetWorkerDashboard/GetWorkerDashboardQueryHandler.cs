@@ -100,9 +100,9 @@ public class GetWorkerDashboardQueryHandler(
             .ToListAsync(cancellationToken);
 
         var openPostCount = await dbContext.HiringPosts
+            .Where(Domain.Entities.HiringPost.StillHiringAt(now))
             .CountAsync(
                 p => p.HiringPostStatus == HiringPostStatus.Open
-                    && p.EventDate > now
                     && !p.Applications.Any(a => a.WorkerProfileId == profile.Id),
                 cancellationToken);
 

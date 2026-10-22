@@ -16,7 +16,6 @@ namespace Zuno.Application.Modules.HiringPost.Commands.CreatePayoutBatch;
 /// </summary>
 public class CreatePayoutBatchCommandHandler(
     ICurrentUserService currentUserService,
-    IDateTimeProvider dateTimeProvider,
     IBusinessOwnerProfileRepository businessOwnerProfileRepository,
     IPayoutProvider payoutProvider,
     IOptions<RazorpaySettings> razorpaySettings,
@@ -63,12 +62,12 @@ public class CreatePayoutBatchCommandHandler(
                          || b.BatchStatus == PayoutBatchStatus.Disbursing),
                 cancellationToken);
 
-        if (existing is not null)
+        // Money is already moving; that run finishes as it is.
+        if (existing is { BatchStatus: PayoutBatchStatus.Disbursing })
         {
             return existing.ToDto(razorpaySettings.Value.KeyId, razorpaySettings.Value.SimulateCollection);
         }
 
-        var now = dateTimeProvider.UtcNow;
         var batch = new PayoutBatch
         {
             HiringPostId = post.Id,
@@ -122,6 +121,19 @@ public class CreatePayoutBatchCommandHandler(
             throw new DomainException(
                 $"Amount mismatch. This job owes {batch.TotalAmount:C0} across {batch.Items.Count} worker(s), "
                 + $"not {claimed:C0}. Reload the job and try again.");
+        }
+
+        if (existing is not null)
+        {
+            if (existing.PaysSameWagesAs(batch))
+            {
+                return existing.ToDto(razorpaySettings.Value.KeyId, razorpaySettings.Value.SimulateCollection);
+            }
+
+            // A salary was raised after this run was opened but before the business paid it.
+            // Reusing it would collect the old total, so it is closed and a run at the new total
+            // takes its place.
+            existing.BatchStatus = PayoutBatchStatus.Abandoned;
         }
 
         var order = await payoutProvider.CreateCollectionOrderAsync(

@@ -85,9 +85,9 @@ public class InviteWorkerToHiringPostCommandHandler(
             });
         }
 
-        if (post.EventDate <= dateTimeProvider.UtcNow)
+        if (post.IsHiringOver(dateTimeProvider.UtcNow))
         {
-            throw new DomainException("This event has already taken place.");
+            throw new DomainException("Hiring for this job has closed.");
         }
 
         // A post raised from an order outlives that order: nothing closes it when the order is

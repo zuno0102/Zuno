@@ -37,13 +37,17 @@ class BusinessHiringPostsTab extends ConsumerWidget {
             child: ErrorBanner(message: error.toString()),
           ),
         ),
-        data: (posts) {
+        data: (allPosts) {
+          // Vacancies only. Once hiring is stopped or the work is done, the job is run — and
+          // the crew paid — from Orders, so it leaves this list.
+          final posts = allPosts.where((p) => p.isListedAsVacancy()).toList();
+
           if (posts.isEmpty) {
             return const Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
                 child: Text(
-                  'No hiring posts yet. Post an event to recruit extra workers.',
+                  'No open vacancies. Post an event to recruit extra workers.',
                 ),
               ),
             );
@@ -139,6 +143,48 @@ class _PostCardState extends ConsumerState<_PostCard> {
     setState(() => _isDeleting = true);
     try {
       await ref.read(businessHiringPostsProvider.notifier).deletePost(post.id);
+    } catch (e) {
+      if (mounted) {
+        context.showFailureMessage(
+          e.toString().replaceFirst('Exception: ', ''),
+        );
+        setState(() => _isDeleting = false);
+      }
+    }
+  }
+
+  Future<void> _confirmAndStopHiring() async {
+    final short = post.canOfferAnotherWorker;
+    final shouldStop = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Stop hiring?'),
+        content: Text(
+          short
+              ? 'You have ${post.filledCount} of ${post.workersNeeded} workers. Stop hiring '
+                    'and manage with ${post.filledCount}? Workers will no longer see this '
+                    'post. Run the job and pay the crew from Orders.'
+              : 'Everyone you need is hired. Workers will no longer see this post. Run '
+                    'the job and pay the crew from Orders.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Stop hiring'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldStop != true || !mounted) return;
+
+    setState(() => _isDeleting = true);
+    try {
+      await ref.read(businessHiringPostsProvider.notifier).stopHiring(post.id);
     } catch (e) {
       if (mounted) {
         context.showFailureMessage(
@@ -368,6 +414,22 @@ class _PostCardState extends ConsumerState<_PostCard> {
               ],
             ),
 
+            // The way out of hiring: manage with the crew already on board. The post then
+            // leaves this tab and every worker's feed.
+            if (post.canStopHiring() && !_isDeleting)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: _confirmAndStopHiring,
+                  icon: const Icon(Icons.block, size: 18),
+                  label: const Text('Stop hiring'),
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                  ),
+                ),
+              ),
+
             // No event, work or payment tracks here, and no Start / Complete / Pay buttons.
             // This tab is for hiring: who is needed, who applied, who is on it. Where the job
             // itself has got to — and what to do about it next — lives in Orders → Status
@@ -515,6 +577,7 @@ class _CrewSection extends StatelessWidget {
               application: application,
               isPostFull: !post.canOfferAnotherWorker,
               canCall: post.canCallCrewMember(application),
+              crewTotal: post.outstandingAmount,
             ),
           ),
           if (canInvite)
@@ -540,9 +603,13 @@ class _ApplicationRow extends ConsumerStatefulWidget {
     required this.application,
     required this.isPostFull,
     required this.canCall,
+    required this.crewTotal,
   });
 
   final HiringPostApplication application;
+
+  /// What the whole crew is owed, so a raise can show what the job will cost with it.
+  final double crewTotal;
 
   /// Worked out by the post, which is the only thing that knows whether the job is over.
   final bool canCall;
@@ -627,8 +694,7 @@ class _ApplicationRowState extends ConsumerState<_ApplicationRow> {
                   : () => Navigator.of(context).pop('confirm'),
               child: Text(widget.isPostFull ? 'Post is full' : 'Confirm'),
             ),
-          ] else if ((application.isAccepted || application.isOfferPending) &&
-              application.hasAgreedSalary)
+          ] else if (application.canRaiseSalary)
             FilledButton.tonal(
               onPressed: () => Navigator.of(context).pop('raise'),
               child: const Text('Raise salary'),
@@ -645,7 +711,11 @@ class _ApplicationRowState extends ConsumerState<_ApplicationRow> {
       case 'reject':
         await _respond(confirm: false);
       case 'raise':
-        await showRaiseSalaryDialog(context, application: application);
+        await showRaiseSalaryDialog(
+          context,
+          application: application,
+          crewTotal: widget.crewTotal,
+        );
     }
   }
 
@@ -758,6 +828,13 @@ class _ApplicationRowState extends ConsumerState<_ApplicationRow> {
             // Beside the pills, not beneath them: in the isApplied branch above the actions sit
             // flush right, and stacking a 48dp button under two pills would treble the height of
             // every crew row.
+            // Extra work on the day: raise this worker's wage before the crew is paid. Hides
+            // itself once payment has started.
+            RaiseSalaryButton(
+              application: application,
+              crewTotal: widget.crewTotal,
+              iconSize: 18,
+            ),
             // Message once the worker has agreed (the business accepted them, they accepted the
             // job) — the business is the go-between, so this is the worker's line to it.
             if (application.isAccepted)

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Zuno.Application.Common.Interfaces;
 using Zuno.Application.Common.Services;
 using Zuno.Application.Common.Settings;
+using Zuno.Infrastructure.BackgroundJobs;
 using Zuno.Infrastructure.Persistence;
 using Zuno.Infrastructure.Persistence.Interceptors;
 using Zuno.Infrastructure.Repositories;
@@ -58,6 +59,12 @@ public static class DependencyInjection
 
         services.AddOptions<VerificationSettings>()
             .Bind(configuration.GetSection(VerificationSettings.SectionName));
+
+        services.AddOptions<HiringPostCleanupSettings>()
+            .Bind(configuration.GetSection(HiringPostCleanupSettings.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.AddHostedService<UnfilledHiringPostCleanupService>();
 
         // Razorpay moves the money. Its credentials are validated on start-up, so a deployment
         // missing them fails at boot with a clear message rather than at the moment someone

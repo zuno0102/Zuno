@@ -49,6 +49,9 @@ abstract interface class HiringPostRepository {
   /// Marks the work done, releasing the crew for other jobs.
   Future<HiringPost> completeWork(String id);
 
+  /// Closes the vacancy for good; the business will manage with the crew it has.
+  Future<HiringPost> stopHiring(String id);
+
   Future<HiringPost> uploadPostImage(String id, Uint8List imageBytes);
 
   Future<HiringPost> confirmApplication(String applicationId);
@@ -78,7 +81,10 @@ abstract interface class HiringPostRepository {
   Future<HiringPost> apply(String id);
 
   /// Accepts or declines a business offer. Only accepting fills the vacancy.
-  Future<HiringPost> respondToOffer({required String applicationId, required bool accept});
+  Future<HiringPost> respondToOffer({
+    required String applicationId,
+    required bool accept,
+  });
 
   /// Records that the crew has started on the day.
   Future<HiringPost> startWork(String id);

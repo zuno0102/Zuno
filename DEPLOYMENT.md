@@ -31,8 +31,7 @@ origin  https://github.com/zuno0102/Zuno.git
 | Work branch | `Zuno_Dev` — every change is committed here first |
 | Release branch | `main` — always a fast-forward of `Zuno_Dev`, never committed to directly |
 | API (Render) | service `zuno-api` → https://zuno-api-qon8.onrender.com, deploys branch **`main`** |
-| Web (Vercel) | team `Zuno_team` (`zuno-team1`), project `zuno` → **https://zuno-infinite-service.vercel.app** (also https://zuno-ten-henna.vercel.app) (linked from `mobile/build/web` by `deploy.ps1` with `VERCEL_TOKEN`) |
-| Old web (Vercel) | project `web` under `bsundaram-6826` → https://web-three-zeta-59.vercel.app — being replaced by the Zuno project; delete it once the new site works |
+| Web (Vercel) | team `Zuno_team` (`zuno-team1`), project `zuno` → **https://zuno-infinite-service.vercel.app** — the only website (linked from `mobile/build/web` by `deploy.ps1` with `VERCEL_TOKEN`). The old bsundaram site and the zuno-ten-henna address were deleted on 2026-10-21. |
 | Commit author | `zuno0102 <342959199+zuno0102@users.noreply.github.com>` (`git config user.name/user.email` in this repo) |
 | Database (Neon) | PostgreSQL; schema changes go out with `dotnet ef database update` |
 
@@ -76,9 +75,8 @@ Vercel regardless.
 
 ### Render environment variables that must be set
 
-`ConnectionStrings__ZunoDatabase`, `Cors__AllowedOrigins__0/1/2` (each website address, exactly, no
-trailing slash or newline: `__1` = `https://zuno-ten-henna.vercel.app`,
-`__2` = `https://zuno-infinite-service.vercel.app`; `__0` is the old bsundaram site until it is deleted),
+`ConnectionStrings__ZunoDatabase`, `Cors__AllowedOrigins__0` (= `https://zuno-infinite-service.vercel.app`,
+exactly, no trailing slash or newline),
 `Razorpay__KeyId`, `Razorpay__KeySecret`, `AdminSeed__Email`, `AdminSeed__Password`, and — while
 testing, until the admin verification screen exists — `Verification__AutoVerifyBusinesses=true`.
 

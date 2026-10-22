@@ -102,6 +102,16 @@ class HiringPostApplication {
   bool get hasAgreedSalary => agreedSalaryAmount != null;
   bool get hasBeenRaised => salaryAdjustments.isNotEmpty;
 
+  /// Whether the business can still raise this worker's salary for extra work.
+  ///
+  /// On the crew (or holding an offer), with a salary agreed, and only before payment: once a
+  /// payout has started the money is already moving at the old figure. The server applies the
+  /// same rule.
+  bool get canRaiseSalary =>
+      (isAccepted || isOfferPending) &&
+      hasAgreedSalary &&
+      paymentStatus == 'Unpaid';
+
   /// What the salary was when this worker was first confirmed, before any raises.
   double? get originalAgreedSalary => salaryAdjustments.isEmpty
       ? agreedSalaryAmount
