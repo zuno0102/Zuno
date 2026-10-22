@@ -224,6 +224,10 @@ class ApiConstants {
       '$businessHiringPostsPath/$id/stop-hiring';
   static String inviteWorkerToHiringPostPath(String id) =>
       '$businessHiringPostsPath/$id/invite';
+
+  /// Offers a worker one date, creating the business's own event behind it.
+  static const String inviteWorkerForDatePath =
+      '$businessHiringPostsPath/invite-for-date';
   static String raiseHiringPostSalaryPath(String applicationId) =>
       '$businessHiringPostsPath/applications/$applicationId/salary';
   static String raiseHiringPostCrewSalaryPath(String id) =>

@@ -13,6 +13,7 @@ using Zuno.Application.Modules.HiringPost.Commands.ConfirmHiringPostApplication;
 using Zuno.Application.Modules.HiringPost.Commands.ConfirmPayoutCollection;
 using Zuno.Application.Modules.HiringPost.Commands.CreatePayoutBatch;
 using Zuno.Application.Modules.HiringPost.Commands.CreateHiringPost;
+using Zuno.Application.Modules.HiringPost.Commands.InviteWorkerForDate;
 using Zuno.Application.Modules.HiringPost.Commands.DeleteHiringPost;
 using Zuno.Application.Modules.HiringPost.Commands.InviteWorkerToHiringPost;
 using Zuno.Application.Modules.HiringPost.Commands.RaiseAgreedSalary;
@@ -82,6 +83,20 @@ public class BusinessHiringPostsController(
         CancellationToken cancellationToken)
     {
         command.HiringPostId = id;
+        var result = await mediator.Send(command, cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Offers a worker a day's work on a given date, creating the business's own event for it.
+    /// For asking someone to work a date there is no hiring post for — and, unlike adding them to
+    /// the workers list, it can be repeated for every date the business needs them.
+    /// </summary>
+    [HttpPost("invite-for-date")]
+    public async Task<IActionResult> InviteWorkerForDate(
+        InviteWorkerForDateCommand command,
+        CancellationToken cancellationToken)
+    {
         var result = await mediator.Send(command, cancellationToken);
         return Ok(result);
     }

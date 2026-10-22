@@ -38,6 +38,16 @@ class _InviteWorkerDialogState extends ConsumerState<_InviteWorkerDialog> {
   /// specific job, which is what gives the worker a date, time, place and rate to judge.
   String? _selectedPostId;
 
+  /// Sentinel for the "a new date" row, which is not a job id because the job does not exist
+  /// yet — the server raises it from the date and pay given below.
+  static const _newDateOption = '__new_date__';
+
+  /// Set only while [_newDateOption] is chosen.
+  DateTime? _newDate;
+  String _newDatePay = '';
+
+  bool get _isNewDate => _selectedPostId == _newDateOption;
+
   bool _isSubmitting = false;
   String? _errorMessage;
 
@@ -55,6 +65,13 @@ class _InviteWorkerDialogState extends ConsumerState<_InviteWorkerDialog> {
       return;
     }
 
+    // The date comes from a picker rather than a field, so the form's own validation never sees
+    // it. Checked here instead, or an unanswered picker would submit as a null date.
+    if (_isNewDate && _newDate == null) {
+      setState(() => _errorMessage = 'Pick the date you need them.');
+      return;
+    }
+
     setState(() {
       _isSubmitting = true;
       _errorMessage = null;
@@ -64,7 +81,15 @@ class _InviteWorkerDialogState extends ConsumerState<_InviteWorkerDialog> {
     final postId = _selectedPostId;
 
     try {
-      if (postId == null) {
+      if (postId == _newDateOption) {
+        await ref
+            .read(businessHiringPostsProvider.notifier)
+            .inviteWorkerForDate(
+              workerIdentifier: identifier,
+              eventDate: _newDate!,
+              salaryAmount: double.parse(_newDatePay.trim()),
+            );
+      } else if (postId == null) {
         await ref.read(businessWorkersProvider.notifier).invite(identifier);
       } else {
         await ref
@@ -101,7 +126,7 @@ class _InviteWorkerDialogState extends ConsumerState<_InviteWorkerDialog> {
     // The list refreshes under us after a successful invite, and the job just used can drop out
     // of it once its pending count rises. DropdownButtonFormField asserts its value is present
     // among its items, so fall back to null rather than pointing at a job no longer listed.
-    final selectedId = invitable.any((p) => p.id == _selectedPostId)
+    final selectedId = _isNewDate || invitable.any((p) => p.id == _selectedPostId)
         ? _selectedPostId
         : null;
 
@@ -144,6 +169,12 @@ class _InviteWorkerDialogState extends ConsumerState<_InviteWorkerDialog> {
                       value: null,
                       child: Text('My workers list (no specific job)'),
                     ),
+                    // Sits with the jobs rather than beside the workers list, because that is
+                    // what choosing it makes: a job, on a date, that this worker is offered.
+                    const DropdownMenuItem<String?>(
+                      value: _newDateOption,
+                      child: Text('A new date…'),
+                    ),
                     ...invitable.map(
                       (p) => DropdownMenuItem<String?>(
                         value: p.id,
@@ -162,7 +193,41 @@ class _InviteWorkerDialogState extends ConsumerState<_InviteWorkerDialog> {
                   onChanged: (value) => setState(() => _selectedPostId = value),
                 ),
                 const SizedBox(height: 12),
-                if (selected != null)
+                if (_isNewDate) ...[
+                  _NewDateField(
+                    value: _newDate,
+                    onChanged: (picked) => setState(() => _newDate = picked),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    initialValue: _newDatePay,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'Pay for the day',
+                      prefixText: '₹ ',
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (value) => _newDatePay = value,
+                    validator: (value) {
+                      final amount = double.tryParse((value ?? '').trim());
+                      if (amount == null || amount <= 0) {
+                        return 'Enter what they will be paid';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'They are offered this one day and can accept or turn it down. '
+                    'Nobody is assigned until they accept, and you can offer them '
+                    'other dates the same way.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ] else if (selected != null)
                   _JobSummary(post: selected)
                 else
                   Text(
@@ -375,6 +440,68 @@ class _Line extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(child: Text(text, style: theme.textTheme.bodySmall)),
         ],
+      ),
+    );
+  }
+}
+
+/// Picks the day the worker is wanted, and the time it starts.
+///
+/// Reads as a field rather than a button so it sits with the pay box above it, but it opens the
+/// platform pickers: a date, then a time. Both are needed — a worker judging an offer wants to
+/// know whether it is a morning or an evening, and the clash check needs a real start.
+class _NewDateField extends StatelessWidget {
+  const _NewDateField({required this.value, required this.onChanged});
+
+  final DateTime? value;
+  final ValueChanged<DateTime> onChanged;
+
+  Future<void> _pick(BuildContext context) async {
+    final now = DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: value ?? now.add(const Duration(days: 1)),
+      // No past dates: the server refuses them, and offering one is never meant.
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365)),
+    );
+    if (date == null || !context.mounted) return;
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: value == null
+          ? const TimeOfDay(hour: 9, minute: 0)
+          : TimeOfDay.fromDateTime(value!),
+    );
+    if (time == null) return;
+
+    onChanged(
+      DateTime(date.year, date.month, date.day, time.hour, time.minute),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: () => _pick(context),
+      borderRadius: BorderRadius.circular(4),
+      child: InputDecorator(
+        decoration: const InputDecoration(
+          labelText: 'Date needed',
+          border: OutlineInputBorder(),
+          suffixIcon: Icon(Icons.event_outlined),
+        ),
+        child: Text(
+          value == null
+              ? 'Pick a date and time'
+              : '${formatDate(value!)} · ${TimeOfDay.fromDateTime(value!).format(context)}',
+          style: value == null
+              ? theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                )
+              : theme.textTheme.bodyMedium,
+        ),
       ),
     );
   }

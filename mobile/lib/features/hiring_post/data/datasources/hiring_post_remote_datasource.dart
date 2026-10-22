@@ -34,6 +34,17 @@ class HiringPostRemoteDataSource {
         'workerIdentifier': workerIdentifier,
       });
 
+  /// Offers one worker one date. The server raises the job behind it, so there is no post id.
+  Future<HiringPostModel> inviteWorkerForDate({
+    required String workerIdentifier,
+    required DateTime eventDate,
+    required double salaryAmount,
+  }) => _post(ApiConstants.inviteWorkerForDatePath, {
+    'workerIdentifier': workerIdentifier,
+    'eventDate': eventDate.toUtc().toIso8601String(),
+    'salaryAmount': salaryAmount,
+  });
+
   Future<HiringPostModel> startWork(String id) =>
       _post(ApiConstants.startHiringPostWorkPath(id), const {});
 

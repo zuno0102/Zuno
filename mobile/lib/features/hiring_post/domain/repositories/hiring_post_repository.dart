@@ -46,6 +46,16 @@ abstract interface class HiringPostRepository {
     required String workerIdentifier,
   });
 
+  /// Offers a worker a single date, raising the job for it in the same step.
+  ///
+  /// For work there is no post for. Unlike adding someone to the workers list, which holds one
+  /// row per worker and so can only be done once, this can be repeated for every date needed.
+  Future<HiringPost> inviteWorkerForDate({
+    required String workerIdentifier,
+    required DateTime eventDate,
+    required double salaryAmount,
+  });
+
   /// Marks the work done, releasing the crew for other jobs.
   Future<HiringPost> completeWork(String id);
 

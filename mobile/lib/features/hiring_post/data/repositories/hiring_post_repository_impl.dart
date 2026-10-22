@@ -101,6 +101,17 @@ class HiringPostRepositoryImpl implements HiringPostRepository {
   )).toEntity();
 
   @override
+  Future<HiringPost> inviteWorkerForDate({
+    required String workerIdentifier,
+    required DateTime eventDate,
+    required double salaryAmount,
+  }) async => (await _remoteDataSource.inviteWorkerForDate(
+    workerIdentifier: workerIdentifier,
+    eventDate: eventDate,
+    salaryAmount: salaryAmount,
+  )).toEntity();
+
+  @override
   Future<HiringPost> completeWork(String id) async =>
       (await _remoteDataSource.completeWork(id)).toEntity();
 

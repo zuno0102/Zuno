@@ -100,6 +100,23 @@ class BusinessHiringPostsNotifier extends _$BusinessHiringPostsNotifier {
     await _refresh();
   }
 
+  /// Offers a worker one date, creating the job behind it. The refresh matters here more than
+  /// elsewhere: the job did not exist a moment ago and has to appear in the business's lists.
+  Future<void> inviteWorkerForDate({
+    required String workerIdentifier,
+    required DateTime eventDate,
+    required double salaryAmount,
+  }) async {
+    await ref
+        .read(hiringPostRepositoryProvider)
+        .inviteWorkerForDate(
+          workerIdentifier: workerIdentifier,
+          eventDate: eventDate,
+          salaryAmount: salaryAmount,
+        );
+    await _refresh();
+  }
+
   Future<void> startWork(String id) async {
     await ref.read(hiringPostRepositoryProvider).startWork(id);
     await _refresh();
