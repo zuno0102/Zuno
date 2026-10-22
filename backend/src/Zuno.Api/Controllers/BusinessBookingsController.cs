@@ -10,6 +10,8 @@ using Zuno.Application.Modules.Booking.Commands.CompleteBookingWork;
 using Zuno.Application.Modules.Booking.Commands.AcceptBookingTerms;
 using Zuno.Application.Modules.Booking.Commands.ConfirmBooking;
 using Zuno.Application.Modules.Booking.Commands.ProposeBookingTerms;
+using Zuno.Application.Modules.Booking.Commands.RaiseCrewMemberSalary;
+using Zuno.Application.Modules.Booking.Commands.RaiseOrderCrewSalary;
 using Zuno.Application.Modules.Booking.Commands.StartBookingWork;
 using Zuno.Application.Modules.Booking.Commands.UpdateCrewSize;
 using Zuno.Application.Modules.Booking.Queries.GetBookingById;
@@ -142,12 +144,53 @@ public class BusinessBookingsController(ISender mediator) : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>Adds extra pay to one worker added to this order directly. Increases only.</summary>
+    [HttpPost("{id:guid}/crew/{workerProfileId:guid}/raise-salary")]
+    public async Task<IActionResult> RaiseCrewMemberSalary(
+        Guid id,
+        Guid workerProfileId,
+        [FromBody] RaiseSalaryRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(
+            new RaiseCrewMemberSalaryCommand
+            {
+                BookingId = id,
+                WorkerProfileId = workerProfileId,
+                Increase = request.Increase,
+                Reason = request.Reason,
+            },
+            cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>Adds the same extra pay to everyone on this order still to be paid.</summary>
+    [HttpPost("{id:guid}/crew/raise-salary")]
+    public async Task<IActionResult> RaiseOrderCrewSalary(
+        Guid id,
+        [FromBody] RaiseSalaryRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(
+            new RaiseOrderCrewSalaryCommand { BookingId = id, Increase = request.Increase, Reason = request.Reason },
+            cancellationToken);
+        return Ok(result);
+    }
+
     [HttpPost("{id:guid}/cancel")]
     public async Task<IActionResult> Cancel(Guid id, [FromBody] CancelBookingRequest request, CancellationToken cancellationToken)
     {
         var result = await mediator.Send(new CancelBookingCommand { BookingId = id, Reason = request.Reason }, cancellationToken);
         return Ok(result);
     }
+}
+
+/// <summary>Extra pay on top of the current wage: ₹200 on ₹1,000 makes ₹1,200.</summary>
+public class RaiseSalaryRequest
+{
+    public decimal Increase { get; set; }
+
+    public string? Reason { get; set; }
 }
 
 /// <summary>What a crew member is on this job. Blank takes the role away.</summary>

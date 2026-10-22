@@ -17,6 +17,7 @@ BookingWorkerAssignmentModel _$BookingWorkerAssignmentModelFromJson(
   displayStatus: json['displayStatus'] as String? ?? '',
   agreedSalaryAmount: (json['agreedSalaryAmount'] as num?)?.toDouble(),
   agreedSalaryUnit: json['agreedSalaryUnit'] as String?,
+  originalSalaryAmount: (json['originalSalaryAmount'] as num?)?.toDouble(),
   paymentStatus: json['paymentStatus'] as String? ?? '',
   hasPayoutDetails: json['hasPayoutDetails'] as bool? ?? false,
 );

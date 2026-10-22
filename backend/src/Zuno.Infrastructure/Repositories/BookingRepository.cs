@@ -17,6 +17,8 @@ public class BookingRepository(ZunoDbContext dbContext) : IBookingRepository
         .Include(b => b.WorkerAssignments).ThenInclude(a => a.WorkerProfile).ThenInclude(wp => wp.User)
         // Needed to say whether each worker can actually be paid, before a pay run is started.
         .Include(b => b.WorkerAssignments).ThenInclude(a => a.WorkerProfile).ThenInclude(wp => wp.PayoutDetail)
+        // So a raised wage can say what it started at.
+        .Include(b => b.WorkerAssignments).ThenInclude(a => a.SalaryAdjustments)
         .Include(b => b.Address)
         // What the customer told the business about the job. Loaded on every read because it is
         // what the business staffs from, and a handful of short rows per order.

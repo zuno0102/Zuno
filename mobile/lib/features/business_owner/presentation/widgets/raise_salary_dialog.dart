@@ -1,13 +1,21 @@
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zuno/features/booking/domain/entities/booking_worker_assignment.dart';
 import 'package:zuno/features/booking/presentation/providers/business_bookings_notifier.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post_application.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/business_hiring_posts_notifier.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 
-/// Raises a confirmed worker's agreed salary — the "they stayed extra hours" case.
-/// Increases only: the amount can never be revised downwards, here or on the server.
+/// A raise is extra pay added to the fixed wage — ₹1,000 plus ₹200 for three extra hours is
+/// ₹1,200 — never a new total typed in. These are the amounts offered as one-tap shortcuts.
+const raiseShortcuts = <double>[200, 500];
+
+/// What the dialog hands back to the caller to actually raise the wage.
+typedef RaiseAction =
+    Future<void> Function(WidgetRef ref, double increase, String? reason);
+
+/// Extra pay for one worker hired through a hiring post.
 ///
 /// [crewTotal] is what the whole crew is owed now. When given, the dialog shows what it becomes
 /// with this raise, so the business sees the figure it will be asked to pay.
@@ -16,10 +24,114 @@ Future<void> showRaiseSalaryDialog(
   required HiringPostApplication application,
   double? crewTotal,
 }) {
+  final current = application.agreedSalaryAmount ?? 0;
+  return _show(
+    context,
+    title: 'Raise salary',
+    subject: application.workerName,
+    current: current,
+    unit: application.agreedSalaryUnit,
+    crewTotal: crewTotal,
+    onRaise: (ref, increase, reason) async {
+      await ref
+          .read(businessHiringPostsProvider.notifier)
+          .raiseAgreedSalary(
+            applicationId: application.id,
+            newAmount: current + increase,
+            reason: reason,
+          );
+      // An order's "Pay crew" figure is worked out from this wage too, and it is loaded with the
+      // order, not the post.
+      ref.invalidate(businessBookingsProvider);
+    },
+  );
+}
+
+/// Extra pay for one worker the business added to an order directly.
+Future<void> showRaiseAssignmentSalaryDialog(
+  BuildContext context, {
+  required String bookingId,
+  required BookingWorkerAssignment worker,
+  double? crewTotal,
+}) => _show(
+  context,
+  title: 'Raise salary',
+  subject: worker.workerName,
+  current: worker.agreedSalaryAmount ?? 0,
+  unit: worker.agreedSalaryUnit,
+  crewTotal: crewTotal,
+  onRaise: (ref, increase, reason) => ref
+      .read(businessBookingsProvider.notifier)
+      .raiseCrewMemberSalary(
+        bookingId,
+        worker.workerProfileId,
+        increase: increase,
+        reason: reason,
+      ),
+);
+
+/// "Raise all" on an order: the same extra pay for each of [count] workers still to be paid.
+Future<void> showRaiseOrderCrewDialog(
+  BuildContext context, {
+  required String bookingId,
+  required int count,
+  double? crewTotal,
+}) => _show(
+  context,
+  title: 'Raise all',
+  subject: '$count ${count == 1 ? 'worker' : 'workers'}',
+  workerCount: count,
+  crewTotal: crewTotal,
+  onRaise: (ref, increase, reason) async {
+    await ref
+        .read(businessBookingsProvider.notifier)
+        .raiseCrewSalary(bookingId, increase: increase, reason: reason);
+    // Post hires on the order are raised on their post, which the order card reads too.
+    ref.invalidate(businessHiringPostsProvider);
+  },
+);
+
+/// "Raise all" on one of the business's own events.
+Future<void> showRaisePostCrewDialog(
+  BuildContext context, {
+  required String postId,
+  required int count,
+  double? crewTotal,
+}) => _show(
+  context,
+  title: 'Raise all',
+  subject: '$count ${count == 1 ? 'worker' : 'workers'}',
+  workerCount: count,
+  crewTotal: crewTotal,
+  onRaise: (ref, increase, reason) async {
+    await ref
+        .read(businessHiringPostsProvider.notifier)
+        .raiseCrewSalary(postId, increase: increase, reason: reason);
+    ref.invalidate(businessBookingsProvider);
+  },
+);
+
+Future<void> _show(
+  BuildContext context, {
+  required String title,
+  required String subject,
+  required RaiseAction onRaise,
+  double? current,
+  String? unit,
+  int workerCount = 1,
+  double? crewTotal,
+}) {
   return showDialog<void>(
     context: context,
-    builder: (context) =>
-        _RaiseSalaryDialog(application: application, crewTotal: crewTotal),
+    builder: (context) => _RaiseSalaryDialog(
+      title: title,
+      subject: subject,
+      current: current,
+      unit: unit,
+      workerCount: workerCount,
+      crewTotal: crewTotal,
+      onRaise: onRaise,
+    ),
   );
 }
 
@@ -54,10 +166,29 @@ class RaiseSalaryButton extends StatelessWidget {
 }
 
 class _RaiseSalaryDialog extends ConsumerStatefulWidget {
-  const _RaiseSalaryDialog({required this.application, this.crewTotal});
+  const _RaiseSalaryDialog({
+    required this.title,
+    required this.subject,
+    required this.onRaise,
+    this.current,
+    this.unit,
+    this.workerCount = 1,
+    this.crewTotal,
+  });
 
-  final HiringPostApplication application;
+  final String title;
+
+  /// The worker's name, or "5 workers" for Raise all.
+  final String subject;
+
+  /// One worker's current wage. Null for Raise all, where each worker keeps their own figure.
+  final double? current;
+  final String? unit;
+
+  /// How many wages the extra pay lands on.
+  final int workerCount;
   final double? crewTotal;
+  final RaiseAction onRaise;
 
   @override
   ConsumerState<_RaiseSalaryDialog> createState() => _RaiseSalaryDialogState();
@@ -71,12 +202,10 @@ class _RaiseSalaryDialogState extends ConsumerState<_RaiseSalaryDialog> {
   bool _isSaving = false;
   String? _errorMessage;
 
-  double get _currentAmount => widget.application.agreedSalaryAmount ?? 0;
-
-  /// The typed amount, when it is a valid raise. Null otherwise.
-  double? get _newAmount {
+  /// The extra pay typed, when it is a usable amount. Null otherwise.
+  double? get _increase {
     final parsed = double.tryParse(_amountController.text.trim());
-    return parsed != null && parsed > _currentAmount ? parsed : null;
+    return parsed != null && parsed > 0 ? parsed : null;
   }
 
   @override
@@ -84,6 +213,11 @@ class _RaiseSalaryDialogState extends ConsumerState<_RaiseSalaryDialog> {
     _amountController.dispose();
     _reasonController.dispose();
     super.dispose();
+  }
+
+  void _useShortcut(double amount) {
+    _amountController.text = amount.toStringAsFixed(0);
+    setState(() {});
   }
 
   Future<void> _submit() async {
@@ -97,16 +231,7 @@ class _RaiseSalaryDialogState extends ConsumerState<_RaiseSalaryDialog> {
     final reason = _reasonController.text.trim();
 
     try {
-      await ref
-          .read(businessHiringPostsProvider.notifier)
-          .raiseAgreedSalary(
-            applicationId: widget.application.id,
-            newAmount: double.parse(_amountController.text.trim()),
-            reason: reason.isEmpty ? null : reason,
-          );
-      // An order's "Pay crew" figure is worked out from this wage too, and it is loaded with the
-      // order, not the post.
-      ref.invalidate(businessBookingsProvider);
+      await widget.onRaise(ref, _increase!, reason.isEmpty ? null : reason);
       if (mounted) {
         Navigator.of(context).pop();
       }
@@ -122,10 +247,7 @@ class _RaiseSalaryDialogState extends ConsumerState<_RaiseSalaryDialog> {
   String? _validateAmount(String? value) {
     final parsed = double.tryParse((value ?? '').trim());
     if (parsed == null || parsed <= 0) {
-      return 'Enter an amount greater than 0.';
-    }
-    if (parsed <= _currentAmount) {
-      return 'Must be more than the agreed ${rupees(_currentAmount)}.';
+      return 'Enter the extra pay, more than ₹0.';
     }
     return null;
   }
@@ -133,14 +255,17 @@ class _RaiseSalaryDialogState extends ConsumerState<_RaiseSalaryDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final unit = salaryUnitWords(
-      widget.application.agreedSalaryUnit ?? 'PerEvent',
+    final emphasis = theme.textTheme.bodyMedium?.copyWith(
+      fontWeight: FontWeight.w600,
+      color: theme.colorScheme.primary,
     );
+    final unit = widget.unit == null ? null : salaryUnitWords(widget.unit!);
+    final current = widget.current;
     final crewTotal = widget.crewTotal;
-    final newAmount = _newAmount;
+    final increase = _increase;
 
     return AlertDialog(
-      title: const Text('Raise salary'),
+      title: Text(widget.title),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -153,8 +278,10 @@ class _RaiseSalaryDialogState extends ConsumerState<_RaiseSalaryDialog> {
                 const SizedBox(height: 12),
               ],
               Text(
-                '${widget.application.workerName} is confirmed at '
-                '${rupees(_currentAmount)} $unit.',
+                current == null
+                    ? 'Extra pay for each of ${widget.subject} still to be paid.'
+                    : '${widget.subject} is paid ${rupees(current)}'
+                          '${unit == null ? '' : ' $unit'}.',
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: 12),
@@ -164,26 +291,43 @@ class _RaiseSalaryDialogState extends ConsumerState<_RaiseSalaryDialog> {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                decoration: const InputDecoration(
-                  labelText: 'New amount',
-                  prefixText: '₹ ',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: current == null
+                      ? 'Extra pay for each'
+                      : 'Extra pay',
+                  prefixText: '+ ₹ ',
+                  border: const OutlineInputBorder(),
                 ),
                 validator: _validateAmount,
-                // Redraws the crew total below as the amount is typed.
-                onChanged: crewTotal == null ? null : (_) => setState(() {}),
+                onChanged: (_) => setState(() {}),
               ),
-              if (crewTotal != null) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: [
+                  for (final amount in raiseShortcuts)
+                    ActionChip(
+                      label: Text('+${rupees(amount)}'),
+                      onPressed: _isSaving ? null : () => _useShortcut(amount),
+                    ),
+                ],
+              ),
+              if (increase != null && current != null) ...[
                 const SizedBox(height: 8),
                 Text(
-                  newAmount == null
-                      ? 'Crew total: ${rupees(crewTotal)}'
-                      : 'Crew total: ${rupees(crewTotal)} → '
-                            '${rupees(crewTotal - _currentAmount + newAmount)}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.primary,
-                  ),
+                  '${rupees(current)} + ${rupees(increase)} = '
+                  '${rupees(current + increase)}',
+                  style: emphasis,
+                ),
+              ],
+              if (crewTotal != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  increase == null
+                      ? 'Pay crew: ${rupees(crewTotal)}'
+                      : 'Pay crew: ${rupees(crewTotal)} → '
+                            '${rupees(crewTotal + increase * widget.workerCount)}',
+                  style: emphasis,
                 ),
               ],
               const SizedBox(height: 12),
@@ -200,7 +344,7 @@ class _RaiseSalaryDialogState extends ConsumerState<_RaiseSalaryDialog> {
               const SizedBox(height: 4),
               Text(
                 'This is recorded permanently and shown to the worker. '
-                'A salary can only ever be increased, and only before payment.',
+                'Pay can only go up, and only before it is paid.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),

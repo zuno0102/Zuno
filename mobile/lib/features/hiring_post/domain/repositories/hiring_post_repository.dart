@@ -66,6 +66,13 @@ abstract interface class HiringPostRepository {
     String? reason,
   });
 
+  /// The same extra pay for everyone on the post still to be paid: ₹1,000 + ₹200 each.
+  Future<HiringPost> raiseCrewSalary(
+    String postId, {
+    required double increase,
+    String? reason,
+  });
+
   Future<List<HiringPost>> getOpenPosts({
     double? latitude,
     double? longitude,

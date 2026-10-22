@@ -174,6 +174,16 @@ class ApiConstants {
     String id,
     String workerProfileId,
   ) => '$businessBookingsPath/$id/crew/$workerProfileId/role';
+
+  /// Extra pay for one worker added to an order directly.
+  static String businessBookingCrewRaisePath(
+    String id,
+    String workerProfileId,
+  ) => '$businessBookingsPath/$id/crew/$workerProfileId/raise-salary';
+
+  /// The same extra pay for everyone on an order still to be paid.
+  static String businessBookingCrewRaiseAllPath(String id) =>
+      '$businessBookingsPath/$id/crew/raise-salary';
   static String businessBookingCancelPath(String id) =>
       '$businessBookingsPath/$id/cancel';
 
@@ -213,6 +223,8 @@ class ApiConstants {
       '$businessHiringPostsPath/$id/invite';
   static String raiseHiringPostSalaryPath(String applicationId) =>
       '$businessHiringPostsPath/applications/$applicationId/salary';
+  static String raiseHiringPostCrewSalaryPath(String id) =>
+      '$businessHiringPostsPath/$id/crew/raise-salary';
 
   /// Opens a pay run for everyone still owed on a job.
   static String hiringPostPayoutsPath(String id) =>

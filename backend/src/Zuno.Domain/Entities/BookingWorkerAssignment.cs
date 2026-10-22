@@ -1,5 +1,6 @@
 using Zuno.Domain.Common;
 using Zuno.Domain.Enums;
+using Zuno.Domain.Exceptions;
 
 namespace Zuno.Domain.Entities;
 
@@ -46,4 +47,55 @@ public class BookingWorkerAssignment : BaseEntity
 
     /// <summary>Whether this worker is owed money through Zuno at all.</summary>
     public bool IsPayee => AgreedSalaryAmount.HasValue;
+
+    /// <summary>Every raise to this wage, oldest first once ordered by creation.</summary>
+    public ICollection<BookingAssignmentSalaryAdjustment> SalaryAdjustments { get; set; } =
+        new List<BookingAssignmentSalaryAdjustment>();
+
+    /// <summary>Whether this wage can still go up: a payee who did not turn the job down, not yet paid.</summary>
+    public bool CanRaiseSalary =>
+        IsPayee
+        && AssignmentStatus != BookingWorkerAssignmentStatus.Rejected
+        && PaymentStatus == PaymentStatus.Unpaid;
+
+    /// <summary>
+    /// Adds <paramref name="increase"/> to this worker's wage — ₹1,000 plus ₹200 for extra hours is
+    /// ₹1,200 — and records the raise. Only before payment: once money has started moving at the
+    /// old figure, a raise would mark a wage as owed that nothing will ever collect.
+    /// </summary>
+    /// <returns>The adjustment to save alongside this assignment.</returns>
+    public BookingAssignmentSalaryAdjustment RaiseSalary(decimal increase, string? reason)
+    {
+        if (increase <= 0)
+        {
+            throw new DomainException("A raise must add something to the wage.");
+        }
+
+        var currentAmount = AgreedSalaryAmount
+            ?? throw new DomainException("This worker is not paid through Zuno, so there is no wage to raise.");
+
+        if (AssignmentStatus == BookingWorkerAssignmentStatus.Rejected)
+        {
+            throw new DomainException("That worker turned this job down, so their wage cannot be raised.");
+        }
+
+        if (PaymentStatus != PaymentStatus.Unpaid)
+        {
+            throw new DomainException(
+                "This worker's payment has already started, so their salary can no longer be raised.");
+        }
+
+        var adjustment = new BookingAssignmentSalaryAdjustment
+        {
+            BookingWorkerAssignmentId = Id,
+            BookingWorkerAssignment = this,
+            PreviousAmount = currentAmount,
+            NewAmount = currentAmount + increase,
+            Reason = reason,
+        };
+
+        SalaryAdjustments.Add(adjustment);
+        AgreedSalaryAmount = adjustment.NewAmount;
+        return adjustment;
+    }
 }

@@ -4,6 +4,7 @@ import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/booking/domain/entities/booking.dart';
+import 'package:zuno/features/booking/domain/entities/booking_worker_assignment.dart';
 import 'package:zuno/features/booking/presentation/providers/business_bookings_notifier.dart';
 import 'package:zuno/features/booking/presentation/widgets/booking_status_chip.dart';
 import 'package:zuno/features/booking/presentation/widgets/booking_crew_list.dart';
@@ -12,10 +13,12 @@ import 'package:zuno/features/booking/presentation/widgets/booking_tracks.dart';
 import 'package:zuno/features/booking/presentation/widgets/order_code.dart';
 import 'package:zuno/features/booking/presentation/providers/booking_message_providers.dart';
 import 'package:zuno/features/business_owner/presentation/screens/business_booking_detail_screen.dart';
+import 'package:zuno/features/business_owner/presentation/widgets/crew_member_sheet.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/pay_crew_sheet.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/post_crew_wage_list.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/raise_salary_dialog.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
+import 'package:zuno/features/hiring_post/domain/entities/hiring_post_application.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/business_hiring_posts_notifier.dart';
 import 'package:zuno/features/notifications/presentation/providers/notification_providers.dart';
 import 'package:zuno/features/work_chat/presentation/providers/work_chat_providers.dart';
@@ -654,6 +657,62 @@ class _OrderStepCardState extends ConsumerState<_OrderStepCard> {
     return null;
   }
 
+  /// How many on this order can still be given extra pay: added directly, or hired through its post.
+  int _raisableCount(HiringPost? linkedPost) {
+    final direct = widget.order.assignedWorkers.where((w) => w.canRaiseSalary);
+    final hires = (linkedPost?.applications ?? const []).where(
+      (h) => h.isAccepted && h.canRaiseSalary,
+    );
+    return direct.length + hires.length;
+  }
+
+  /// Tapping a worker's name: raise, message or call them, whichever applies right now.
+  void _openWorker(
+    BookingWorkerAssignment worker,
+    HiringPostApplication? hire,
+  ) {
+    final order = widget.order;
+    final crewTotal = order.wageOutstandingAmount;
+
+    final VoidCallback? raise = switch (hire) {
+      final hire? when hire.canRaiseSalary && !worker.isRejected =>
+        () => showRaiseSalaryDialog(
+          context,
+          application: hire,
+          crewTotal: crewTotal,
+        ),
+      null when worker.canRaiseSalary => () => showRaiseAssignmentSalaryDialog(
+        context,
+        bookingId: order.id,
+        worker: worker,
+        crewTotal: crewTotal,
+      ),
+      _ => null,
+    };
+
+    final wage =
+        worker.wageLabel ??
+        switch (hire) {
+          final hire? when hire.hasAgreedSalary =>
+            '${rupees(hire.agreedSalaryAmount!)} '
+                '${salaryUnitWords(hire.agreedSalaryUnit ?? SalaryUnit.perEvent)}'
+                '${hire.hasBeenRaised ? ' (raised)' : ''}',
+          _ => 'Paid outside Zuno',
+        };
+
+    CrewMemberSheet.show(
+      context,
+      name: worker.workerName,
+      detail: '${worker.displayStatusLabel} · $wage',
+      onRaise: raise,
+      messageCounterpartId:
+          !order.isCancelled && (worker.isAccepted || worker.isCompleted)
+          ? worker.workerProfileId
+          : null,
+      phone: order.canCallCrewMember(worker) ? worker.workerPhone : null,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final order = widget.order;
@@ -685,6 +744,26 @@ class _OrderStepCardState extends ConsumerState<_OrderStepCard> {
               application: hire,
               crewTotal: order.wageOutstandingAmount,
             ),
+            raiseAssignmentAction: (worker) => IconButton(
+              icon: const Icon(Icons.trending_up_rounded),
+              tooltip: 'Raise salary',
+              onPressed: () => showRaiseAssignmentSalaryDialog(
+                context,
+                bookingId: order.id,
+                worker: worker,
+                crewTotal: order.wageOutstandingAmount,
+              ),
+            ),
+            onWorkerTap: _openWorker,
+            onRaiseAll: switch (_raisableCount(linkedPost)) {
+              0 => null,
+              final count => () => showRaiseOrderCrewDialog(
+                context,
+                bookingId: order.id,
+                count: count,
+                crewTotal: order.wageOutstandingAmount,
+              ),
+            },
           ),
         ],
       ),

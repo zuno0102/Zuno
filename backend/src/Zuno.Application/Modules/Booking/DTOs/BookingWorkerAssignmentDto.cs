@@ -29,6 +29,9 @@ public class BookingWorkerAssignmentDto
     /// <summary>PerEvent, PerDay or PerHour. Null exactly when the amount is.</summary>
     public string? AgreedSalaryUnit { get; set; }
 
+    /// <summary>The wage before any raise, when it has been raised; otherwise null.</summary>
+    public decimal? OriginalSalaryAmount { get; set; }
+
     /// <summary>Unpaid, Paid, Failed or Disputed. Only meaningful once a wage is agreed.</summary>
     public string PaymentStatus { get; set; } = string.Empty;
 

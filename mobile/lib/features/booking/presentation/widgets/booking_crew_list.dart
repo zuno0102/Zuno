@@ -24,8 +24,25 @@ class BookingCrewList extends StatelessWidget {
     this.initiallyExpanded = false,
     this.postHires = const {},
     this.raiseSalaryAction,
+    this.raiseAssignmentAction,
+    this.onWorkerTap,
+    this.onRaiseAll,
     super.key,
   });
+
+  /// Builds the raise-salary action for a worker added to the order directly, whose wage sits on
+  /// the order. Null where raising is not the viewer's to do.
+  final Widget Function(BookingWorkerAssignment worker)? raiseAssignmentAction;
+
+  /// Tapping a name: opens what the viewer can do with that worker. Null where there is nothing.
+  final void Function(
+    BookingWorkerAssignment worker,
+    HiringPostApplication? hire,
+  )?
+  onWorkerTap;
+
+  /// Gives everyone still to be paid the same extra pay. Null hides the button.
+  final VoidCallback? onRaiseAll;
 
   /// Workers hired through this order's hiring post, by worker profile id.
   ///
@@ -103,6 +120,14 @@ class BookingCrewList extends StatelessWidget {
               worker: worker,
               hire: postHires[worker.workerProfileId],
               raiseSalaryAction: raiseSalaryAction,
+              raiseAssignmentAction: raiseAssignmentAction,
+              onTap: switch (onWorkerTap) {
+                final tap? => () => tap(
+                  worker,
+                  postHires[worker.workerProfileId],
+                ),
+                null => null,
+              },
               canCall: booking.canCallCrewMember(worker),
               // Message the worker once they have taken the job on, while the order is live. The
               // business is the go-between: workers and customers never contact each other.
@@ -126,6 +151,18 @@ class BookingCrewList extends StatelessWidget {
                       worker: worker,
                     )
                   : null,
+            ),
+          if (onRaiseAll case final raiseAll?)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: raiseAll,
+                icon: const Icon(Icons.trending_up_rounded, size: 18),
+                label: const Text('Raise all'),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
             ),
           const SizedBox(height: 4),
         ],
@@ -170,7 +207,14 @@ class _CrewRow extends StatelessWidget {
     this.onSetRole,
     this.hire,
     this.raiseSalaryAction,
+    this.raiseAssignmentAction,
+    this.onTap,
   });
+
+  final Widget Function(BookingWorkerAssignment worker)? raiseAssignmentAction;
+
+  /// Tapping the row: the worker menu. Null where there is nothing to offer.
+  final VoidCallback? onTap;
 
   final BookingWorkerAssignment worker;
 
@@ -208,6 +252,10 @@ class _CrewRow extends StatelessWidget {
     final raiseAction = switch ((hire, raiseSalaryAction)) {
       (final hire?, final build?) when hire.canRaiseSalary && !declined =>
         build(hire),
+      // Added to the order directly: the wage sits on the order itself.
+      (null, _) when worker.canRaiseSalary => raiseAssignmentAction?.call(
+        worker,
+      ),
       _ => null,
     };
 
@@ -220,6 +268,7 @@ class _CrewRow extends StatelessWidget {
     };
 
     return InkWell(
+      onTap: onTap,
       onLongPress: onSetRole,
       child: Padding(
         padding: const EdgeInsets.only(bottom: 10),

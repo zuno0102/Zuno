@@ -54,6 +54,37 @@ class BusinessBookingsNotifier extends _$BusinessBookingsNotifier {
     return updated;
   }
 
+  /// Extra pay for one worker added to the order directly. A full reload, not a swap in place:
+  /// the order's "Pay crew" total is worked out on the server and only comes with the list.
+  Future<void> raiseCrewMemberSalary(
+    String bookingId,
+    String workerProfileId, {
+    required double increase,
+    String? reason,
+  }) async {
+    await ref
+        .read(bookingRepositoryProvider)
+        .raiseCrewMemberSalary(
+          bookingId,
+          workerProfileId,
+          increase: increase,
+          reason: reason,
+        );
+    await _refresh();
+  }
+
+  /// The same extra pay for everyone on the order still to be paid.
+  Future<void> raiseCrewSalary(
+    String bookingId, {
+    required double increase,
+    String? reason,
+  }) async {
+    await ref
+        .read(bookingRepositoryProvider)
+        .raiseCrewSalary(bookingId, increase: increase, reason: reason);
+    await _refresh();
+  }
+
   /// Sets or clears what one crew member is on this job. Null takes the role away.
   Future<Booking> setCrewRole(
     String bookingId,
@@ -77,7 +108,8 @@ class BusinessBookingsNotifier extends _$BusinessBookingsNotifier {
     // list of orders, so the card somebody just worked on would vanish and have to be hunted for
     // again. Nothing else on the screen changed; only this order did.
     state = AsyncData([
-      for (final booking in current) booking.id == bookingId ? updated : booking,
+      for (final booking in current)
+        booking.id == bookingId ? updated : booking,
     ]);
 
     return updated;

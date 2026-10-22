@@ -5,72 +5,74 @@ namespace Zuno.Application.Common.Interfaces;
 
 public interface IApplicationDbContext
 {
-    DbSet<User> Users { get; }
+    public DbSet<User> Users { get; }
 
-    DbSet<Role> Roles { get; }
+    public DbSet<Role> Roles { get; }
 
-    DbSet<RefreshToken> RefreshTokens { get; }
+    public DbSet<RefreshToken> RefreshTokens { get; }
 
-    DbSet<Address> Addresses { get; }
+    public DbSet<Address> Addresses { get; }
 
-    DbSet<CustomerProfile> CustomerProfiles { get; }
+    public DbSet<CustomerProfile> CustomerProfiles { get; }
 
-    DbSet<BusinessOwnerProfile> BusinessOwnerProfiles { get; }
+    public DbSet<BusinessOwnerProfile> BusinessOwnerProfiles { get; }
 
-    DbSet<WorkerProfile> WorkerProfiles { get; }
+    public DbSet<WorkerProfile> WorkerProfiles { get; }
 
-    DbSet<AdminProfile> AdminProfiles { get; }
+    public DbSet<AdminProfile> AdminProfiles { get; }
 
-    DbSet<ServiceCategory> ServiceCategories { get; }
+    public DbSet<ServiceCategory> ServiceCategories { get; }
 
-    DbSet<ServiceSubCategory> ServiceSubCategories { get; }
+    public DbSet<ServiceSubCategory> ServiceSubCategories { get; }
 
-    DbSet<State> States { get; }
+    public DbSet<State> States { get; }
 
-    DbSet<District> Districts { get; }
+    public DbSet<District> Districts { get; }
 
-    DbSet<BusinessService> BusinessServices { get; }
+    public DbSet<BusinessService> BusinessServices { get; }
 
-    DbSet<BusinessServiceMedia> BusinessServiceMedia { get; }
+    public DbSet<BusinessServiceMedia> BusinessServiceMedia { get; }
 
-    DbSet<BusinessServiceDistrict> BusinessServiceDistricts { get; }
+    public DbSet<BusinessServiceDistrict> BusinessServiceDistricts { get; }
 
-    DbSet<BusinessServiceVariant> BusinessServiceVariants { get; }
+    public DbSet<BusinessServiceVariant> BusinessServiceVariants { get; }
 
-    DbSet<BusinessServiceQuestion> BusinessServiceQuestions { get; }
+    public DbSet<BusinessServiceQuestion> BusinessServiceQuestions { get; }
 
-    DbSet<BookingServiceAnswer> BookingServiceAnswers { get; }
+    public DbSet<BookingServiceAnswer> BookingServiceAnswers { get; }
 
-    DbSet<BookingAgreementProposal> BookingAgreementProposals { get; }
+    public DbSet<BookingAgreementProposal> BookingAgreementProposals { get; }
 
-    DbSet<BookingMessage> BookingMessages { get; }
+    public DbSet<BookingMessage> BookingMessages { get; }
 
-    DbSet<BookingThreadClear> BookingThreadClears { get; }
+    public DbSet<BookingThreadClear> BookingThreadClears { get; }
 
-    DbSet<WorkMessage> WorkMessages { get; }
+    public DbSet<WorkMessage> WorkMessages { get; }
 
-    DbSet<BusinessWorker> BusinessWorkers { get; }
+    public DbSet<BusinessWorker> BusinessWorkers { get; }
 
-    DbSet<Booking> Bookings { get; }
+    public DbSet<Booking> Bookings { get; }
 
-    DbSet<BookingWorkerAssignment> BookingWorkerAssignments { get; }
+    public DbSet<BookingWorkerAssignment> BookingWorkerAssignments { get; }
 
-    DbSet<HiringPost> HiringPosts { get; }
+    public DbSet<HiringPost> HiringPosts { get; }
 
-    DbSet<HiringPostApplication> HiringPostApplications { get; }
+    public DbSet<HiringPostApplication> HiringPostApplications { get; }
 
-    DbSet<HiringPostSalaryAdjustment> HiringPostSalaryAdjustments { get; }
+    public DbSet<HiringPostSalaryAdjustment> HiringPostSalaryAdjustments { get; }
+
+    public DbSet<BookingAssignmentSalaryAdjustment> BookingAssignmentSalaryAdjustments { get; }
 
 
-    DbSet<WorkerPayoutDetail> WorkerPayoutDetails { get; }
+    public DbSet<WorkerPayoutDetail> WorkerPayoutDetails { get; }
 
-    DbSet<PayoutBatch> PayoutBatches { get; }
+    public DbSet<PayoutBatch> PayoutBatches { get; }
 
-    DbSet<PayoutBatchItem> PayoutBatchItems { get; }
+    public DbSet<PayoutBatchItem> PayoutBatchItems { get; }
 
-    DbSet<Rating> Ratings { get; }
+    public DbSet<Rating> Ratings { get; }
 
-    DbSet<Notification> Notifications { get; }
+    public DbSet<Notification> Notifications { get; }
 
-    Task<int> SaveChangesAsync(CancellationToken cancellationToken);
+    public Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }

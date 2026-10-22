@@ -365,6 +365,65 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                     b.ToTable("booking_agreement_proposals", (string)null);
                 });
 
+            modelBuilder.Entity("Zuno.Domain.Entities.BookingAssignmentSalaryAdjustment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BookingWorkerAssignmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("booking_worker_assignment_id");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_date");
+
+                    b.Property<decimal>("NewAmount")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("new_amount");
+
+                    b.Property<decimal>("PreviousAmount")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("previous_amount");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("reason");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_booking_assignment_salary_adjustments");
+
+                    b.HasIndex("BookingWorkerAssignmentId")
+                        .HasDatabaseName("ix_booking_assignment_salary_adjustments_assignment_id");
+
+                    b.ToTable("booking_assignment_salary_adjustments", (string)null);
+                });
+
             modelBuilder.Entity("Zuno.Domain.Entities.BookingMessage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -10849,6 +10908,18 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                     b.Navigation("Booking");
                 });
 
+            modelBuilder.Entity("Zuno.Domain.Entities.BookingAssignmentSalaryAdjustment", b =>
+                {
+                    b.HasOne("Zuno.Domain.Entities.BookingWorkerAssignment", "BookingWorkerAssignment")
+                        .WithMany("SalaryAdjustments")
+                        .HasForeignKey("BookingWorkerAssignmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_booking_assignment_salary_adjustments_booking_worker_assign");
+
+                    b.Navigation("BookingWorkerAssignment");
+                });
+
             modelBuilder.Entity("Zuno.Domain.Entities.BookingMessage", b =>
                 {
                     b.HasOne("Zuno.Domain.Entities.Booking", "Booking")
@@ -11342,6 +11413,11 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                     b.Navigation("ThreadClears");
 
                     b.Navigation("WorkerAssignments");
+                });
+
+            modelBuilder.Entity("Zuno.Domain.Entities.BookingWorkerAssignment", b =>
+                {
+                    b.Navigation("SalaryAdjustments");
                 });
 
             modelBuilder.Entity("Zuno.Domain.Entities.BusinessOwnerProfile", b =>

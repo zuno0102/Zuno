@@ -16,6 +16,7 @@ using Zuno.Application.Modules.HiringPost.Commands.CreateHiringPost;
 using Zuno.Application.Modules.HiringPost.Commands.DeleteHiringPost;
 using Zuno.Application.Modules.HiringPost.Commands.InviteWorkerToHiringPost;
 using Zuno.Application.Modules.HiringPost.Commands.RaiseAgreedSalary;
+using Zuno.Application.Modules.HiringPost.Commands.RaisePostCrewSalary;
 using Zuno.Application.Modules.HiringPost.Commands.RejectHiringPostApplication;
 using Zuno.Application.Modules.HiringPost.Commands.SetHiringPostImage;
 using Zuno.Application.Modules.HiringPost.Commands.StartHiringPostWork;
@@ -198,6 +199,18 @@ public class BusinessHiringPostsController(
     public async Task<IActionResult> RejectApplication(Guid applicationId, CancellationToken cancellationToken)
     {
         var result = await mediator.Send(new RejectHiringPostApplicationCommand { ApplicationId = applicationId }, cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>Adds the same extra pay to every worker on this post still to be paid.</summary>
+    [HttpPost("{id:guid}/crew/raise-salary")]
+    public async Task<IActionResult> RaiseCrewSalary(
+        Guid id,
+        RaisePostCrewSalaryCommand command,
+        CancellationToken cancellationToken)
+    {
+        command.HiringPostId = id;
+        var result = await mediator.Send(command, cancellationToken);
         return Ok(result);
     }
 

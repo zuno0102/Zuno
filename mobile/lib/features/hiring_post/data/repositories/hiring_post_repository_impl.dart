@@ -134,6 +134,17 @@ class HiringPostRepositoryImpl implements HiringPostRepository {
   }
 
   @override
+  Future<HiringPost> raiseCrewSalary(
+    String postId, {
+    required double increase,
+    String? reason,
+  }) async => (await _remoteDataSource.raiseCrewSalary(
+    postId,
+    increase: increase,
+    reason: reason,
+  )).toEntity();
+
+  @override
   Future<List<HiringPost>> getOpenPosts({
     double? latitude,
     double? longitude,

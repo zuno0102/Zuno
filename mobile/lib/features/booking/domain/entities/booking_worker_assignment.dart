@@ -10,9 +10,20 @@ class BookingWorkerAssignment {
     this.displayStatus = '',
     this.agreedSalaryAmount,
     this.agreedSalaryUnit,
+    this.originalSalaryAmount,
     this.paymentStatus = '',
     this.hasPayoutDetails = false,
   });
+
+  /// The wage before any raise, when it has been raised; otherwise null.
+  final double? originalSalaryAmount;
+
+  bool get hasBeenRaised => originalSalaryAmount != null;
+
+  /// Whether the business can still add extra pay: a wage through Zuno, not turned down, not yet
+  /// paid. The server applies the same rule.
+  bool get canRaiseSalary =>
+      isPayee && !isRejected && paymentStatus == 'Unpaid';
 
   final String workerProfileId;
   final String workerName;
@@ -84,7 +95,8 @@ class BookingWorkerAssignment {
   String? get wageLabel => agreedSalaryAmount == null
       ? null
       : '${rupees(agreedSalaryAmount!)} '
-            '${salaryUnitWords(agreedSalaryUnit ?? SalaryUnit.perEvent)}';
+            '${salaryUnitWords(agreedSalaryUnit ?? SalaryUnit.perEvent)}'
+            '${hasBeenRaised ? ' (raised)' : ''}';
 
   /// Owed, and no way to send it. Worth saying before a pay run, not after.
   bool get cannotBePaidYet => isPayee && !isPaid && !hasPayoutDetails;

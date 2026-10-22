@@ -66,6 +66,8 @@ public class ZunoDbContext(
 
     public DbSet<HiringPostSalaryAdjustment> HiringPostSalaryAdjustments => Set<HiringPostSalaryAdjustment>();
 
+    public DbSet<BookingAssignmentSalaryAdjustment> BookingAssignmentSalaryAdjustments => Set<BookingAssignmentSalaryAdjustment>();
+
 
     public DbSet<WorkerPayoutDetail> WorkerPayoutDetails => Set<WorkerPayoutDetail>();
 

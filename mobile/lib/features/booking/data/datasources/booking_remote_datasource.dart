@@ -104,6 +104,27 @@ class BookingRemoteDataSource {
     }
   }
 
+  /// Adds [increase] to the wage of one worker added to this order directly.
+  Future<BookingModel> raiseCrewMemberSalary(
+    String bookingId,
+    String workerProfileId, {
+    required double increase,
+    String? reason,
+  }) => _post(
+    ApiConstants.businessBookingCrewRaisePath(bookingId, workerProfileId),
+    {'increase': increase, 'reason': reason},
+  );
+
+  /// Adds [increase] to the wage of everyone on this order still to be paid.
+  Future<BookingModel> raiseCrewSalary(
+    String bookingId, {
+    required double increase,
+    String? reason,
+  }) => _post(ApiConstants.businessBookingCrewRaiseAllPath(bookingId), {
+    'increase': increase,
+    'reason': reason,
+  });
+
   Future<BookingModel> assignWorker(
     String id,
     String workerProfileId, {

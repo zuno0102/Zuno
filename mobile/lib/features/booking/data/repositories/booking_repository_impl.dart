@@ -113,6 +113,30 @@ class BookingRepositoryImpl implements BookingRepository {
       (await _remoteDataSource.completeWork(id)).toEntity();
 
   @override
+  Future<Booking> raiseCrewMemberSalary(
+    String bookingId,
+    String workerProfileId, {
+    required double increase,
+    String? reason,
+  }) async => (await _remoteDataSource.raiseCrewMemberSalary(
+    bookingId,
+    workerProfileId,
+    increase: increase,
+    reason: reason,
+  )).toEntity();
+
+  @override
+  Future<Booking> raiseCrewSalary(
+    String bookingId, {
+    required double increase,
+    String? reason,
+  }) async => (await _remoteDataSource.raiseCrewSalary(
+    bookingId,
+    increase: increase,
+    reason: reason,
+  )).toEntity();
+
+  @override
   Future<Booking> setCrewRole(
     String bookingId,
     String workerProfileId, {

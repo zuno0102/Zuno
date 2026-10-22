@@ -102,6 +102,16 @@ class HiringPostRemoteDataSource {
     Map<String, dynamic> body,
   ) => _post(ApiConstants.raiseHiringPostSalaryPath(applicationId), body);
 
+  /// Adds [increase] to the wage of everyone on this post still to be paid.
+  Future<HiringPostModel> raiseCrewSalary(
+    String postId, {
+    required double increase,
+    String? reason,
+  }) => _post(ApiConstants.raiseHiringPostCrewSalaryPath(postId), {
+    'increase': increase,
+    'reason': reason,
+  });
+
   Future<HiringPostModel> uploadPostImage(
     String id,
     Uint8List imageBytes,

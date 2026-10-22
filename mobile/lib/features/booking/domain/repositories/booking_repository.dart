@@ -56,6 +56,21 @@ abstract interface class BookingRepository {
   /// The business closing the work on an order, finishing any crew still on it.
   Future<Booking> completeWork(String id);
 
+  /// Extra pay on top of one directly added worker's wage: ₹1,000 + ₹200 = ₹1,200.
+  Future<Booking> raiseCrewMemberSalary(
+    String bookingId,
+    String workerProfileId, {
+    required double increase,
+    String? reason,
+  });
+
+  /// The same extra pay for everyone on the order still to be paid.
+  Future<Booking> raiseCrewSalary(
+    String bookingId, {
+    required double increase,
+    String? reason,
+  });
+
   /// Sets or clears a crew member's role on this one job. Null removes it.
   ///
   /// The role is not a label: whoever holds one can mark this job's work started and finished.

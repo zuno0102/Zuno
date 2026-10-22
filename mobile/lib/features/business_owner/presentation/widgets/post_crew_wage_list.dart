@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:zuno/core/utils/formatting.dart';
+import 'package:zuno/features/business_owner/presentation/widgets/crew_member_sheet.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/raise_salary_dialog.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post_application.dart';
@@ -66,6 +67,24 @@ class PostCrewWageList extends StatelessWidget {
               canCall: post.canCallCrewMember(hire),
               crewTotal: post.outstandingAmount,
             ),
+          if (crew.where((h) => h.canRaiseSalary).length case final count
+              when count > 0)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => showRaisePostCrewDialog(
+                  context,
+                  postId: post.id,
+                  count: count,
+                  crewTotal: post.outstandingAmount,
+                ),
+                icon: const Icon(Icons.trending_up_rounded, size: 18),
+                label: const Text('Raise all'),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ),
           const SizedBox(height: 4),
         ],
       ),
@@ -87,54 +106,72 @@ class _CrewWageRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final detail = [
+      if (hire.hasAgreedSalary)
+        '${rupees(hire.agreedSalaryAmount!)} '
+            '${salaryUnitWords(hire.agreedSalaryUnit ?? SalaryUnit.perEvent)}'
+            '${hire.hasBeenRaised ? ' (raised)' : ''}',
+      ?hire.paymentLabel,
+    ].join(' · ');
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  hire.workerName,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+    // Tapping the name: raise, message or call, whichever applies right now.
+    return InkWell(
+      onTap: () => CrewMemberSheet.show(
+        context,
+        name: hire.workerName,
+        detail: detail,
+        onRaise: hire.canRaiseSalary
+            ? () => showRaiseSalaryDialog(
+                context,
+                application: hire,
+                crewTotal: crewTotal,
+              )
+            : null,
+        messageCounterpartId: hire.workerProfileId,
+        phone: canCall ? hire.workerPhone : null,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    hire.workerName,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  [
-                    if (hire.hasAgreedSalary)
-                      '${rupees(hire.agreedSalaryAmount!)} '
-                          '${salaryUnitWords(hire.agreedSalaryUnit ?? SalaryUnit.perEvent)}'
-                          '${hire.hasBeenRaised ? ' (raised)' : ''}',
-                    ?hire.paymentLabel,
-                  ].join(' · '),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                  const SizedBox(height: 1),
+                  Text(
+                    detail,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
+                ],
+              ),
+            ),
+            CardActions(
+              actions: [
+                if (hire.canRaiseSalary)
+                  RaiseSalaryButton(application: hire, crewTotal: crewTotal),
+                WorkMessageButton(
+                  counterpartId: hire.workerProfileId,
+                  counterpartName: hire.workerName,
+                  tooltip: 'Message worker',
                 ),
+                if (canCall)
+                  CallIconButton(
+                    phoneNumber: hire.workerPhone!,
+                    tooltip: 'Call worker',
+                  ),
               ],
             ),
-          ),
-          CardActions(
-            actions: [
-              if (hire.canRaiseSalary)
-                RaiseSalaryButton(application: hire, crewTotal: crewTotal),
-              WorkMessageButton(
-                counterpartId: hire.workerProfileId,
-                counterpartName: hire.workerName,
-                tooltip: 'Message worker',
-              ),
-              if (canCall)
-                CallIconButton(
-                  phoneNumber: hire.workerPhone!,
-                  tooltip: 'Call worker',
-                ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

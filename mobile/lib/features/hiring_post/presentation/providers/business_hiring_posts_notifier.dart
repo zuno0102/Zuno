@@ -183,6 +183,18 @@ class BusinessHiringPostsNotifier extends _$BusinessHiringPostsNotifier {
     await _refresh();
   }
 
+  /// The same extra pay for everyone on this post still to be paid.
+  Future<void> raiseCrewSalary(
+    String postId, {
+    required double increase,
+    String? reason,
+  }) async {
+    await ref
+        .read(hiringPostRepositoryProvider)
+        .raiseCrewSalary(postId, increase: increase, reason: reason);
+    await _refresh();
+  }
+
   Future<void> _refresh() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(

@@ -14,6 +14,7 @@ class BookingWorkerAssignmentModel {
     this.displayStatus = '',
     this.agreedSalaryAmount,
     this.agreedSalaryUnit,
+    this.originalSalaryAmount,
     this.paymentStatus = '',
     this.hasPayoutDetails = false,
   });
@@ -29,6 +30,7 @@ class BookingWorkerAssignmentModel {
   final String displayStatus;
   final double? agreedSalaryAmount;
   final String? agreedSalaryUnit;
+  final double? originalSalaryAmount;
   final String paymentStatus;
   final bool hasPayoutDetails;
 
@@ -41,6 +43,7 @@ class BookingWorkerAssignmentModel {
     displayStatus: displayStatus,
     agreedSalaryAmount: agreedSalaryAmount,
     agreedSalaryUnit: agreedSalaryUnit,
+    originalSalaryAmount: originalSalaryAmount,
     paymentStatus: paymentStatus,
     hasPayoutDetails: hasPayoutDetails,
   );

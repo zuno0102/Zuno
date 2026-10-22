@@ -44,6 +44,12 @@ public class HiringPostApplication : BaseEntity
 
     public ICollection<HiringPostSalaryAdjustment> SalaryAdjustments { get; set; } = new List<HiringPostSalaryAdjustment>();
 
+    /// <summary>A crew member whose wage can still go up: hired, with a wage, not yet paid.</summary>
+    public bool IsRaisableCrewMember =>
+        ApplicationStatus == HiringPostApplicationStatus.Accepted
+        && AgreedSalaryAmount.HasValue
+        && PaymentStatus == PaymentStatus.Unpaid;
+
     /// <summary>
     /// Raises this worker's agreed salary — the "five of them came at ₹1,000 and one stayed three
     /// extra hours" case — and records the raise. The crew's pay total is the sum of each worker's

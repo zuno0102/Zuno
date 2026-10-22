@@ -34,7 +34,7 @@ final class BusinessBookingsNotifierProvider
 }
 
 String _$businessBookingsNotifierHash() =>
-    r'4bce40cd19c25ecaf33910299500e8bc12c1e421';
+    r'5d8d2c72db47e6d1ec48e915aa9739333c96a030';
 
 abstract class _$BusinessBookingsNotifier
     extends $AsyncNotifier<List<Booking>> {
