@@ -19,11 +19,7 @@ import 'package:zuno/shared/widgets/trust_cards.dart';
 /// Leads with what the business has actually delivered, and lets that number open up: tap
 /// "orders finished" and it splits by category, then by the kind of work inside each one.
 class BusinessDashboardTab extends ConsumerWidget {
-  const BusinessDashboardTab({this.onOpenServices, super.key});
-
-  /// Switches the shell to the Services tab. The service tiles open it, since that tab already
-  /// lists every service and marks the inactive ones.
-  final VoidCallback? onOpenServices;
+  const BusinessDashboardTab({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -39,17 +35,16 @@ class BusinessDashboardTab extends ConsumerWidget {
       ),
       data: (dashboard) => RefreshIndicator(
         onRefresh: () => ref.refresh(businessDashboardProvider.future),
-        child: _Body(dashboard: dashboard, onOpenServices: onOpenServices),
+        child: _Body(dashboard: dashboard),
       ),
     );
   }
 }
 
 class _Body extends StatelessWidget {
-  const _Body({required this.dashboard, this.onOpenServices});
+  const _Body({required this.dashboard});
 
   final BusinessDashboard dashboard;
-  final VoidCallback? onOpenServices;
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +54,7 @@ class _Body extends StatelessWidget {
       children: [
         _CompletedCard(dashboard: dashboard),
         const SizedBox(height: 12),
-        _QuickStats(dashboard: dashboard, onOpenServices: onOpenServices),
+        _QuickStats(dashboard: dashboard),
         const SizedBox(height: 12),
         const _ProfileCard(),
         const SizedBox(height: 4),
@@ -105,7 +100,7 @@ class _CompletedCard extends StatelessWidget {
               )
             : null,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 18, 14, 18),
+          padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
           child: Row(
             children: [
               Expanded(
@@ -122,13 +117,13 @@ class _CompletedCard extends StatelessWidget {
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 6),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
                           '${dashboard.eventsCompleted}',
-                          style: theme.textTheme.displaySmall?.copyWith(
+                          style: theme.textTheme.headlineLarge?.copyWith(
                             fontWeight: FontWeight.w700,
                             color: theme.colorScheme.primary,
                             height: 1,
@@ -148,7 +143,7 @@ class _CompletedCard extends StatelessWidget {
                         ],
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
                       canOpen
                           ? 'Tap to see the split by category'
@@ -288,10 +283,9 @@ class _ProfileCard extends ConsumerWidget {
 }
 
 class _QuickStats extends StatelessWidget {
-  const _QuickStats({required this.dashboard, this.onOpenServices});
+  const _QuickStats({required this.dashboard});
 
   final BusinessDashboard dashboard;
-  final VoidCallback? onOpenServices;
 
   /// Tiles per row. Three is as many as fits before the labels start truncating on a phone,
   /// so the rest wrap onto further rows rather than squeezing.
@@ -382,14 +376,31 @@ class _QuickStats extends StatelessWidget {
         tone: dashboard.activeServices > 0
             ? StatusTone.success
             : StatusTone.waiting,
-        onTap: onOpenServices,
+        // Its own list, like every other tile on this screen. Both service tiles used to switch to
+        // the Services tab, which lists all of them — so two tiles showing different numbers landed
+        // on the same page, and the tap said nothing about which one had been pressed.
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const BusinessServiceListScreen(
+              title: 'Active services',
+              active: true,
+            ),
+          ),
+        ),
       ),
       _StatTile(
         label: 'Inactive services',
         value: '${dashboard.inactiveServices}',
         icon: Icons.visibility_off_outlined,
         tone: StatusTone.waiting,
-        onTap: onOpenServices,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const BusinessServiceListScreen(
+              title: 'Inactive services',
+              active: false,
+            ),
+          ),
+        ),
       ),
     ];
 

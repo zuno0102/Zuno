@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zuno/features/business_owner/data/models/business_dashboard_model.dart';
 import 'package:zuno/features/business_owner/domain/entities/business_dashboard.dart';
+import 'package:zuno/features/business_owner/domain/entities/business_service.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_dashboard_notifier.dart';
+import 'package:zuno/features/business_owner/presentation/providers/business_services_notifier.dart';
 import 'package:zuno/features/business_owner/presentation/screens/business_dashboard_tab.dart';
+import 'package:zuno/features/business_owner/presentation/screens/dashboard_detail_screens.dart';
 import 'package:zuno/shared/domain/business_trust.dart';
 
 /// The business home screen must render every section on a phone-sized screen.
@@ -176,33 +179,53 @@ void main() {
     expect(find.text('3'), findsOneWidget); // inactive services
   });
 
-  testWidgets('both service tiles open the Services tab', (tester) async {
+  /// Each service tile opens its own list, the way Awaiting payment and Active workers do.
+  ///
+  /// They used to switch to the Services tab, which lists every service — so two tiles showing
+  /// different numbers landed on the same page and the tap said nothing about which was pressed.
+  /// Each service tile opens its own list, the way Awaiting payment and Active workers do.
+  ///
+  /// They used to switch to the Services tab, which lists every service — so two tiles showing
+  /// different numbers landed on the same page and the tap said nothing about which was pressed.
+  /// One test per tile, because the two must be told apart and a shared pump would not: a second
+  /// `pumpWidget` of the same tree keeps the Navigator's State, and with it the page just pushed.
+  Future<void> tapServiceTile(WidgetTester tester, String label) async {
     tester.view.physicalSize = const Size(720, 1600);
     tester.view.devicePixelRatio = 2;
     addTearDown(tester.view.reset);
-    var opened = 0;
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           businessDashboardProvider.overrideWith((ref) async => dashboard),
+          businessServicesProvider.overrideWith(_NoServices.new),
         ],
-        child: MaterialApp(
-          home: Scaffold(
-            body: BusinessDashboardTab(onOpenServices: () => opened++),
-          ),
-        ),
+        child: const MaterialApp(home: Scaffold(body: BusinessDashboardTab())),
       ),
     );
     await tester.pumpAndSettle();
 
-    for (final label in ['Active services', 'Inactive services']) {
-      await tester.ensureVisible(find.text(label));
-      await tester.tap(find.text(label));
-      await tester.pump();
-    }
+    await tester.ensureVisible(find.text(label));
+    await tester.tap(find.text(label));
+    await tester.pumpAndSettle();
 
-    expect(opened, 2);
+    expect(find.byType(BusinessServiceListScreen), findsOneWidget);
+    // Titled by the tile that opened it, which is the only thing telling the two apart once you
+    // are looking at the page.
+    expect(
+      find.descendant(of: find.byType(AppBar), matching: find.text(label)),
+      findsOneWidget,
+    );
+  }
+
+  testWidgets('the Active services tile opens the live ones', (tester) async {
+    await tapServiceTile(tester, 'Active services');
+  });
+
+  testWidgets('and the Inactive tile opens the switched-off ones', (
+    tester,
+  ) async {
+    await tapServiceTile(tester, 'Inactive services');
   });
 
   testWidgets('Awaiting payment opens the work still owing wages', (
@@ -284,4 +307,11 @@ void main() {
       expect(find.text('Tap to add your details'), findsOneWidget);
     });
   });
+}
+
+/// The service list the tiles open fetches for itself, so a test that only cares about the
+/// navigation still has to answer it.
+class _NoServices extends BusinessServicesNotifier {
+  @override
+  Future<List<BusinessService>> build() async => const [];
 }

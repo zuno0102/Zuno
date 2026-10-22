@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/features/business_owner/domain/entities/business_dashboard.dart';
+import 'package:zuno/features/business_owner/domain/entities/business_service.dart';
+import 'package:zuno/features/business_owner/presentation/providers/business_services_notifier.dart';
 import 'package:zuno/shared/widgets/empty_state.dart';
+import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
 
 /// Bookings behind the Upcoming, Awaiting payment and Cancelled tiles.
@@ -549,6 +553,146 @@ class _WorkerCard extends StatelessWidget {
               label: worker.availabilityLabel,
               tone: tone,
               compact: true,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The services behind the Active services and Inactive services tiles.
+///
+/// One screen for both, because the row is the same service either way — what differs is which half
+/// of the list it belongs to, and that is already said in the title.
+///
+/// A `ConsumerWidget` where its neighbours here are plain, and for one reason: the dashboard carries
+/// `activeServices` and `inactiveServices` as counts, not as lists, unlike the bookings and workers
+/// the other tiles hand straight to their screen. So this reads the services the Services tab
+/// already loads and takes the half it wants, rather than widening the dashboard payload for a page
+/// most people never open.
+///
+/// Read-only, like [ActiveWorkerListScreen]. Editing a service, managing its items and switching it
+/// off all live on the Services tab, where the whole list is.
+class BusinessServiceListScreen extends ConsumerWidget {
+  const BusinessServiceListScreen({
+    required this.title,
+    required this.active,
+    super.key,
+  });
+
+  final String title;
+
+  /// Which half this page is: the services customers can find, or the ones switched off.
+  final bool active;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final servicesAsync = ref.watch(businessServicesProvider);
+
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: servicesAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: ErrorBanner(message: error.toString()),
+          ),
+        ),
+        data: (services) {
+          final shown = services.where((s) => s.isActive == active).toList();
+
+          if (shown.isEmpty) {
+            // Reached by tapping a tile that reads 0, which is a thing somebody does to find out
+            // what it means. A blank page would answer nothing.
+            return EmptyState(
+              icon: active
+                  ? Icons.storefront_outlined
+                  : Icons.visibility_off_outlined,
+              title: active
+                  ? 'Nothing live for customers'
+                  : 'Nothing switched off',
+              message: active
+                  ? 'Services you switch on appear here, ready for customers to '
+                        'find and book.'
+                  : 'Services you switch off are kept here, out of sight of '
+                        'customers but yours to switch back on.',
+            );
+          }
+
+          return RefreshIndicator(
+            onRefresh: () => ref.refresh(businessServicesProvider.future),
+            child: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              itemCount: shown.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
+              itemBuilder: (context, index) =>
+                  _ServiceSummaryCard(service: shown[index]),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ServiceSummaryCard extends StatelessWidget {
+  const _ServiceSummaryCard({required this.service});
+
+  final BusinessService service;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              radius: 19,
+              backgroundColor: theme.colorScheme.primaryContainer,
+              child: Icon(
+                Icons.design_services_outlined,
+                size: 19,
+                color: theme.colorScheme.onPrimaryContainer,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    service.name,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  _DetailLine(
+                    icon: Icons.category_outlined,
+                    text: service.serviceCategoryName,
+                  ),
+                  _DetailLine(
+                    icon: Icons.payments_outlined,
+                    text: priceLabel(service.price, service.priceType),
+                  ),
+                  // Only where there are any: an item count of nothing reads as a fault rather
+                  // than as a service priced as one thing.
+                  if (service.variants.isNotEmpty)
+                    _DetailLine(
+                      icon: Icons.list_alt_outlined,
+                      text:
+                          '${service.variants.length} '
+                          'item${service.variants.length == 1 ? '' : 's'} inside',
+                    ),
+                ],
+              ),
             ),
           ],
         ),
