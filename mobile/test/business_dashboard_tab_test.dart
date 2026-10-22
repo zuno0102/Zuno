@@ -9,7 +9,7 @@ import 'package:zuno/shared/domain/business_trust.dart';
 
 /// The business home screen must render every section on a phone-sized screen.
 ///
-/// Worth a test of its own because the five stat tiles are laid out in wrapped rows inside a
+/// Worth a test of its own because the stat tiles are laid out in wrapped rows inside a
 /// ListView, where the height is unbounded: a row that tries to stretch into that fails the
 /// whole viewport's layout, and takes the headline card and the trend chart down with it — the
 /// screen goes blank rather than showing one broken tile.
@@ -26,7 +26,6 @@ void main() {
         subCategoryName: 'Wall painting',
         customerName: 'Test Customer',
         scheduledDate: DateTime(2026, 10, 1),
-        completedAt: DateTime(2026, 10, 2),
         price: 3000,
         status: 'Completed',
       ),
@@ -34,6 +33,8 @@ void main() {
     cancelledEvents: 1,
     crewEventsCompleted: 6,
     activeWorkers: 4,
+    activeServices: 7,
+    inactiveServices: 3,
     totalRevenue: 13400,
     byCategory: const [
       CategoryBreakdown(
@@ -71,19 +72,6 @@ void main() {
         month: 9,
         completed: 1,
         revenue: 2500,
-      ),
-    ],
-    completed: [
-      DashboardEvent(
-        id: 'b-1',
-        serviceName: 'Paintings',
-        categoryName: 'Painting',
-        subCategoryName: 'Acrylic painting',
-        customerName: 'Test Customer',
-        scheduledDate: DateTime(2026, 9, 1),
-        completedAt: DateTime(2026, 9, 2),
-        price: 4200,
-        status: 'Completed',
       ),
     ],
     workers: [
@@ -136,16 +124,17 @@ void main() {
     expect(find.text('Customer activity'), findsOneWidget);
   });
 
-  testWidgets('shows all six stat tiles', (tester) async {
+  testWidgets('shows the seven stat tiles', (tester) async {
     await pump(tester, dashboard);
 
     for (final label in [
       'Upcoming',
       'Awaiting payment',
-      'Finished',
       'Cancelled',
       'Crew events',
       'Active workers',
+      'Active services',
+      'Inactive services',
     ]) {
       expect(
         find.text(label),
@@ -155,12 +144,65 @@ void main() {
     }
   });
 
+  testWidgets('Finished is shown once: on the card, with no tile of its own', (
+    tester,
+  ) async {
+    await pump(tester, dashboard);
+
+    expect(find.text('ORDERS FINISHED'), findsOneWidget);
+    expect(find.text('Finished'), findsNothing);
+  });
+
+  testWidgets('the Orders finished card opens the split by category', (
+    tester,
+  ) async {
+    await pump(tester, dashboard);
+
+    await tester.tap(find.text('ORDERS FINISHED'));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Orders finished'), findsOneWidget);
+    expect(find.text('5 finished across 1 category'), findsOneWidget);
+  });
+
   testWidgets('tiles show the counts they were given', (tester) async {
     await pump(tester, dashboard);
 
     expect(find.text('4'), findsOneWidget); // active workers
     expect(find.text('6'), findsOneWidget); // crew events
     expect(find.text('9'), findsOneWidget); // awaiting payment
+    expect(find.text('7'), findsOneWidget); // active services
+    expect(find.text('3'), findsOneWidget); // inactive services
+  });
+
+  testWidgets('both service tiles open the Services tab', (tester) async {
+    tester.view.physicalSize = const Size(720, 1600);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+    var opened = 0;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          businessDashboardProvider.overrideWith((ref) async => dashboard),
+        ],
+        child: MaterialApp(
+          home: Scaffold(
+            body: BusinessDashboardTab(onOpenServices: () => opened++),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    for (final label in ['Active services', 'Inactive services']) {
+      await tester.ensureVisible(find.text(label));
+      await tester.tap(find.text(label));
+      await tester.pump();
+    }
+
+    expect(opened, 2);
   });
 
   testWidgets('Awaiting payment opens the work still owing wages', (
@@ -183,6 +225,8 @@ void main() {
     final model = BusinessDashboardModel.fromJson({
       'upcomingEvents': 3,
       'awaitingPaymentEvents': 7,
+      'activeServices': 5,
+      'inactiveServices': 2,
       'awaitingPayment': [
         {
           'id': 'b-9',
@@ -198,6 +242,8 @@ void main() {
 
     expect(model.upcomingEvents, 3);
     expect(model.awaitingPaymentEvents, 7);
+    expect(model.activeServices, 5);
+    expect(model.inactiveServices, 2);
     expect(model.awaitingPayment.single.id, 'b-9');
   });
 

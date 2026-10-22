@@ -94,15 +94,20 @@ class TrustCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    Text(
-                      rows[i].value,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontWeight: rows[i].muted
-                            ? FontWeight.w500
-                            : FontWeight.w700,
-                        color: rows[i].muted
-                            ? theme.colorScheme.onSurfaceVariant
-                            : rows[i].tone,
+                    // Flexible so a long value wraps under itself instead of pushing the row
+                    // off a narrow phone.
+                    Flexible(
+                      child: Text(
+                        rows[i].value,
+                        textAlign: TextAlign.end,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: rows[i].muted
+                              ? FontWeight.w500
+                              : FontWeight.w700,
+                          color: rows[i].muted
+                              ? theme.colorScheme.onSurfaceVariant
+                              : rows[i].tone,
+                        ),
                       ),
                     ),
                   ],
@@ -180,23 +185,24 @@ class WorkerTrustCard extends StatelessWidget {
         caption: 'nobody hired yet',
         accent: accent,
         rows: const [
-          TrustRow(
-            'Pay record',
-            'Builds after your first hire',
-            muted: true,
-          ),
+          TrustRow('Pay record', 'Builds after your first hire', muted: true),
         ],
       );
     }
 
     return TrustCard(
       title: title,
-      headline: trust.averageSalary == null ? '—' : rupees(trust.averageSalary!),
+      headline: trust.averageSalary == null
+          ? '—'
+          : rupees(trust.averageSalary!),
       caption: 'average paid\n${trust.unitLabel}',
       accent: accent,
       rows: [
         if (trust.salaryRangeLabel.isNotEmpty)
-          TrustRow('Range across ${trust.totalHires} hires', trust.salaryRangeLabel),
+          TrustRow(
+            'Range across ${trust.totalHires} hires',
+            trust.salaryRangeLabel,
+          ),
         TrustRow(
           'Paid what you posted',
           '${trust.paidPostedRateCount} of ${trust.totalHires} jobs',

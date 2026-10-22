@@ -22,8 +22,6 @@ public class DashboardEventDto
 
     public string Status { get; set; } = string.Empty;
 
-    public DateTimeOffset? CompletedAt { get; set; }
-
     public DateTimeOffset? CancelledAt { get; set; }
 
     public string? CancellationReason { get; set; }

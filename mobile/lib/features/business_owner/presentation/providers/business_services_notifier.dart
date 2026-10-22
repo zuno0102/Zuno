@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:zuno/features/business_owner/domain/entities/business_service.dart';
+import 'package:zuno/features/business_owner/presentation/providers/business_dashboard_notifier.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_providers.dart';
 
 part 'business_services_notifier.g.dart';
@@ -36,6 +37,7 @@ class BusinessServicesNotifier extends _$BusinessServicesNotifier {
       districtIds: districtIds,
     );
     await _refresh();
+    _refreshDashboardCounts();
     return created;
   }
 
@@ -67,11 +69,13 @@ class BusinessServicesNotifier extends _$BusinessServicesNotifier {
       districtIds: districtIds,
     );
     await _refresh();
+    _refreshDashboardCounts();
   }
 
   Future<void> deleteService(String id) async {
     await ref.read(businessRepositoryProvider).deleteService(id);
     await _refresh();
+    _refreshDashboardCounts();
   }
 
   /// Replaces the whole set of questions this service asks.
@@ -208,7 +212,12 @@ class BusinessServicesNotifier extends _$BusinessServicesNotifier {
   ) async {
     await ref
         .read(businessRepositoryProvider)
-        .uploadServiceVariantVideo(serviceId, variantId, videoBytes, mimeSubtype);
+        .uploadServiceVariantVideo(
+          serviceId,
+          variantId,
+          videoBytes,
+          mimeSubtype,
+        );
     await _refresh();
   }
 
@@ -221,6 +230,10 @@ class BusinessServicesNotifier extends _$BusinessServicesNotifier {
         .removeServiceVariantVideo(serviceId, variantId);
     await _refresh();
   }
+
+  /// The home screen counts active and inactive services, so adding, switching or deleting one
+  /// must not leave it showing yesterday's numbers.
+  void _refreshDashboardCounts() => ref.invalidate(businessDashboardProvider);
 
   Future<void> _refresh() async {
     state = const AsyncLoading();

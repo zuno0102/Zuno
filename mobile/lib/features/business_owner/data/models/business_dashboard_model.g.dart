@@ -16,6 +16,8 @@ BusinessDashboardModel _$BusinessDashboardModelFromJson(
   totalRevenue: (json['totalRevenue'] as num?)?.toDouble() ?? 0,
   crewEventsCompleted: (json['crewEventsCompleted'] as num?)?.toInt() ?? 0,
   activeWorkers: (json['activeWorkers'] as num?)?.toInt() ?? 0,
+  activeServices: (json['activeServices'] as num?)?.toInt() ?? 0,
+  inactiveServices: (json['inactiveServices'] as num?)?.toInt() ?? 0,
   byCategory:
       (json['byCategory'] as List<dynamic>?)
           ?.map(
@@ -26,11 +28,6 @@ BusinessDashboardModel _$BusinessDashboardModelFromJson(
   trend:
       (json['trend'] as List<dynamic>?)
           ?.map((e) => MonthlyActivityModel.fromJson(e as Map<String, dynamic>))
-          .toList() ??
-      const [],
-  completed:
-      (json['completed'] as List<dynamic>?)
-          ?.map((e) => DashboardEventModel.fromJson(e as Map<String, dynamic>))
           .toList() ??
       const [],
   upcoming:
@@ -123,9 +120,6 @@ DashboardEventModel _$DashboardEventModelFromJson(Map<String, dynamic> json) =>
       subCategoryName: json['subCategoryName'] as String?,
       price: (json['price'] as num?)?.toDouble() ?? 0,
       requiredWorkerCount: (json['requiredWorkerCount'] as num?)?.toInt() ?? 1,
-      completedAt: json['completedAt'] == null
-          ? null
-          : DateTime.parse(json['completedAt'] as String),
       cancelledAt: json['cancelledAt'] == null
           ? null
           : DateTime.parse(json['cancelledAt'] as String),

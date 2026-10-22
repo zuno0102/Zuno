@@ -5,9 +5,9 @@ import 'package:zuno/features/business_owner/domain/entities/business_dashboard.
 import 'package:zuno/shared/widgets/empty_state.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
 
-/// Bookings behind the Upcoming, Awaiting payment, Finished and Cancelled tiles.
+/// Bookings behind the Upcoming, Awaiting payment and Cancelled tiles.
 ///
-/// One screen for all three, because the row is the same booking whichever tile opened it —
+/// One screen for all of them, because the row is the same booking whichever tile opened it —
 /// what changes is which date matters, and what is worth saying about it.
 class BookingListScreen extends StatelessWidget {
   const BookingListScreen({
@@ -34,13 +34,11 @@ class BookingListScreen extends StatelessWidget {
               icon: switch (mode) {
                 BookingListMode.upcoming => Icons.event_available_outlined,
                 BookingListMode.awaitingPayment => Icons.payments_outlined,
-                BookingListMode.completed => Icons.task_alt_outlined,
                 BookingListMode.cancelled => Icons.event_busy_outlined,
               },
               title: switch (mode) {
                 BookingListMode.upcoming => 'Nothing confirmed yet',
                 BookingListMode.awaitingPayment => 'Nobody waiting to be paid',
-                BookingListMode.completed => 'No finished orders yet',
                 BookingListMode.cancelled => 'Nothing cancelled',
               },
               message: switch (mode) {
@@ -48,8 +46,6 @@ class BookingListScreen extends StatelessWidget {
                   'Bookings you have confirmed, with a date still ahead, will appear here.',
                 BookingListMode.awaitingPayment =>
                   'Work you marked complete while a worker is still unpaid will appear here.',
-                BookingListMode.completed =>
-                  'Orders with the event, crew, work and payment all done will appear here.',
                 BookingListMode.cancelled =>
                   'Bookings called off by you or the customer will appear here.',
               },
@@ -68,8 +64,6 @@ class BookingListScreen extends StatelessWidget {
                           '${events.length} confirmed booking$plural still to come',
                         BookingListMode.awaitingPayment =>
                           '${events.length} booking$plural with a wage still owed',
-                        BookingListMode.completed =>
-                          '${events.length} booking$plural finished and paid',
                         BookingListMode.cancelled =>
                           '${events.length} cancelled booking$plural',
                       },
@@ -87,7 +81,7 @@ class BookingListScreen extends StatelessWidget {
   }
 }
 
-enum BookingListMode { upcoming, awaitingPayment, completed, cancelled }
+enum BookingListMode { upcoming, awaitingPayment, cancelled }
 
 class _BookingCard extends StatelessWidget {
   const _BookingCard({required this.event, required this.mode});
@@ -99,7 +93,6 @@ class _BookingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isCancelled = mode == BookingListMode.cancelled;
-    final isCompleted = mode == BookingListMode.completed;
 
     return Card(
       margin: EdgeInsets.zero,
@@ -180,9 +173,7 @@ class _BookingCard extends StatelessWidget {
                       : mode == BookingListMode.awaitingPayment
                       ? StatusTone.progress
                       : switch (event.status) {
-                          'Completed' ||
-                          'Confirmed' ||
-                          'Assigned' => StatusTone.success,
+                          'Confirmed' || 'Assigned' => StatusTone.success,
                           'InProgress' => StatusTone.progress,
                           _ => StatusTone.waiting,
                         },
@@ -190,37 +181,6 @@ class _BookingCard extends StatelessWidget {
                 ),
               ],
             ),
-            // What the business actually earned, and when — the two things worth knowing about
-            // work that is already behind them.
-            if (isCompleted) ...[
-              const SizedBox(height: 10),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(11),
-                decoration: BoxDecoration(
-                  color: AppColors.status(
-                    StatusTone.success,
-                    theme.brightness,
-                  ).withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  switch (event.completedAt) {
-                    final at? =>
-                      'Finished ${formatDate(at)} · ${rupees(event.price)} earned',
-                    // Rows completed before the date was recorded. Still worth the money line.
-                    _ => '${rupees(event.price)} earned',
-                  },
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.status(
-                      StatusTone.success,
-                      theme.brightness,
-                    ),
-                  ),
-                ),
-              ),
-            ],
             // Why it fell through is the whole point of the cancelled list.
             if (isCancelled) ...[
               const SizedBox(height: 10),

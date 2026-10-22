@@ -19,7 +19,11 @@ import 'package:zuno/shared/widgets/trust_cards.dart';
 /// Leads with what the business has actually delivered, and lets that number open up: tap
 /// "orders finished" and it splits by category, then by the kind of work inside each one.
 class BusinessDashboardTab extends ConsumerWidget {
-  const BusinessDashboardTab({super.key});
+  const BusinessDashboardTab({this.onOpenServices, super.key});
+
+  /// Switches the shell to the Services tab. The service tiles open it, since that tab already
+  /// lists every service and marks the inactive ones.
+  final VoidCallback? onOpenServices;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -35,16 +39,17 @@ class BusinessDashboardTab extends ConsumerWidget {
       ),
       data: (dashboard) => RefreshIndicator(
         onRefresh: () => ref.refresh(businessDashboardProvider.future),
-        child: _Body(dashboard: dashboard),
+        child: _Body(dashboard: dashboard, onOpenServices: onOpenServices),
       ),
     );
   }
 }
 
 class _Body extends StatelessWidget {
-  const _Body({required this.dashboard});
+  const _Body({required this.dashboard, this.onOpenServices});
 
   final BusinessDashboard dashboard;
+  final VoidCallback? onOpenServices;
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +59,7 @@ class _Body extends StatelessWidget {
       children: [
         _CompletedCard(dashboard: dashboard),
         const SizedBox(height: 12),
-        _QuickStats(dashboard: dashboard),
+        _QuickStats(dashboard: dashboard, onOpenServices: onOpenServices),
         const SizedBox(height: 12),
         const _ProfileCard(),
         const SizedBox(height: 4),
@@ -108,9 +113,8 @@ class _CompletedCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      // "Orders finished", not "events completed": this counts work done,
-                      // while the profile's completed-jobs figure also requires the crew to
-                      // have been paid. Two honest names beat one word meaning two things.
+                      // The one place Finished is shown: event, crew, work and payment all done.
+                      // Done but still owing a wage counts under Awaiting payment instead.
                       'ORDERS FINISHED',
                       style: theme.textTheme.labelSmall?.copyWith(
                         letterSpacing: 0.9,
@@ -284,12 +288,15 @@ class _ProfileCard extends ConsumerWidget {
 }
 
 class _QuickStats extends StatelessWidget {
-  const _QuickStats({required this.dashboard});
+  const _QuickStats({required this.dashboard, this.onOpenServices});
 
   final BusinessDashboard dashboard;
+  final VoidCallback? onOpenServices;
 
   /// Tiles per row. Three is as many as fits before the labels start truncating on a phone,
-  /// so the fourth and fifth wrap onto a second row rather than squeezing.
+  /// so the rest wrap onto further rows rather than squeezing.
+  ///
+  /// Finished has no tile: the Orders finished card above already shows it.
   static const _perRow = 3;
 
   @override
@@ -323,21 +330,6 @@ class _QuickStats extends StatelessWidget {
               title: 'Awaiting payment',
               events: dashboard.awaitingPayment,
               mode: BookingListMode.awaitingPayment,
-            ),
-          ),
-        ),
-      ),
-      _StatTile(
-        label: 'Finished',
-        value: '${dashboard.eventsCompleted}',
-        icon: Icons.task_alt_outlined,
-        tone: StatusTone.success,
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => BookingListScreen(
-              title: 'Finished orders',
-              events: dashboard.completed,
-              mode: BookingListMode.completed,
             ),
           ),
         ),
@@ -382,6 +374,22 @@ class _QuickStats extends StatelessWidget {
             builder: (_) => ActiveWorkerListScreen(workers: dashboard.workers),
           ),
         ),
+      ),
+      _StatTile(
+        label: 'Active services',
+        value: '${dashboard.activeServices}',
+        icon: Icons.storefront_outlined,
+        tone: dashboard.activeServices > 0
+            ? StatusTone.success
+            : StatusTone.waiting,
+        onTap: onOpenServices,
+      ),
+      _StatTile(
+        label: 'Inactive services',
+        value: '${dashboard.inactiveServices}',
+        icon: Icons.visibility_off_outlined,
+        tone: StatusTone.waiting,
+        onTap: onOpenServices,
       ),
     ];
 
@@ -546,7 +554,7 @@ class _TrendChart extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Events completed per month',
+              'Orders finished per month',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -620,20 +628,20 @@ class CompletedBreakdownScreen extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Events completed')),
+      appBar: AppBar(title: const Text('Orders finished')),
       body: dashboard.byCategory.isEmpty
           ? const EmptyState(
               icon: Icons.category_outlined,
-              title: 'Nothing completed yet',
+              title: 'No finished orders yet',
               message:
-                  'Once you finish a customer booking it will appear here, grouped by the '
-                  'kind of work.',
+                  'Once a customer booking is done and every worker paid, it will appear '
+                  'here, grouped by the kind of work.',
             )
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
               children: [
                 Text(
-                  '${dashboard.eventsCompleted} completed across '
+                  '${dashboard.eventsCompleted} finished across '
                   '${dashboard.byCategory.length} '
                   '${dashboard.byCategory.length == 1 ? 'category' : 'categories'}',
                   style: theme.textTheme.bodyMedium?.copyWith(

@@ -38,7 +38,7 @@ final class BusinessServicesNotifierProvider
 }
 
 String _$businessServicesNotifierHash() =>
-    r'479fa6b6112f7803d3fdc8899c69df8eb69ccaca';
+    r'48cd0d1de08019d276de32f5ae7ea593fec174cf';
 
 abstract class _$BusinessServicesNotifier
     extends $AsyncNotifier<List<BusinessService>> {

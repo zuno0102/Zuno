@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The two new business home tiles: Completed events, and Active workers.
+# Business home counts: the Orders finished card, and the Active workers tile.
 API=http://localhost:5056/api/v1
 PSQL="${PSQL:-psql}"
 : "${PGPASSWORD:?set PGPASSWORD to your Postgres password first}"
@@ -65,16 +65,11 @@ sql "update bookings set booking_status=4, completed_at=now() where id='$D3'" >/
 want_ok "Customer cancels one order" "$(post_ /customer/bookings/$X1/cancel "$CT" '{"cancellationReason":"Changed plans"}')" ""
 
 echo
-echo "==== 1. THE COMPLETED TILE ===="
+echo "==== 1. THE ORDERS FINISHED CARD ===="
 D=$(get_ /business/dashboard "$BT")
-eq "Counts 3 completed"                 "$(num "$D" eventsCompleted)" "3"
+eq "Counts 3 finished"                  "$(num "$D" eventsCompleted)" "3"
 eq "Counts 2 upcoming"                  "$(num "$D" upcomingEvents)"  "2"
 eq "Counts 1 cancelled"                 "$(num "$D" cancelledEvents)" "1"
-eq "Ships 3 rows behind the tile"       "$(rows "$D" completed id)"   "3"
-
-# The point of the list: the most recent job first, not the oldest.
-FIRST=$(echo "$D" | grep -o '"completed":\[[^]]*\]' | head -1 | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
-eq "Newest completed job is listed first" "$FIRST" "$D3"
 
 echo
 echo "==== 2. THE ACTIVE WORKERS TILE ===="

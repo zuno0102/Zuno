@@ -36,11 +36,14 @@ public class BusinessDashboardDto
     /// </summary>
     public int ActiveWorkers { get; set; }
 
+    /// <summary>Services customers can find and book right now.</summary>
+    public int ActiveServices { get; set; }
+
+    /// <summary>Services the business has switched off: kept, but hidden from customers.</summary>
+    public int InactiveServices { get; set; }
+
     /// <summary>Completed work grouped by main category, then by sub-category inside it.</summary>
     public List<CategoryBreakdownDto> ByCategory { get; set; } = [];
-
-    /// <summary>Bookings closed for good, most recently finished first.</summary>
-    public List<DashboardEventDto> Completed { get; set; } = [];
 
     /// <summary>Work done but a wage still owed, most recently finished first.</summary>
     public List<DashboardEventDto> AwaitingPayment { get; set; } = [];

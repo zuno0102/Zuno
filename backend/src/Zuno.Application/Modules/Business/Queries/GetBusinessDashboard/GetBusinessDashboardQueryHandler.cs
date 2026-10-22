@@ -73,8 +73,8 @@ public class GetBusinessDashboardQueryHandler(
             .ToListAsync(cancellationToken);
 
         // Orders closed for good: work done and nobody on the crew still owed. Asked of the
-        // database with the same rule that credits the business's record, so the Finished tile
-        // and the record can never disagree.
+        // database with the same rule that credits the business's record, so the Orders finished
+        // card and the record can never disagree.
         var settledIds = (await dbContext.Bookings
                 .Where(b => b.BusinessOwnerProfileId == business.Id)
                 .Where(BookingWageRules.CountsAsCompleted)
@@ -86,13 +86,12 @@ public class GetBusinessDashboardQueryHandler(
         var byStage = bookings.ToLookup(b =>
             DashboardOrderStages.Of(b.Status, b.ScheduledDate, settledIds.Contains(b.Id), now));
 
-        // Newest first: what a business wants from these lists is the job they just finished, not
+        // Counted, split by category and charted — never listed, so no order is needed.
+        var completed = byStage[DashboardOrderStage.Finished].ToList();
+
+        // Newest first: what a business wants from this list is the job they just finished, not
         // the one they finished two years ago. CompletedAt is null on rows completed before it
         // was recorded, so the scheduled date stands in.
-        var completed = byStage[DashboardOrderStage.Finished]
-            .OrderByDescending(b => b.CompletedAt ?? b.ScheduledDate)
-            .ToList();
-
         var awaitingPayment = byStage[DashboardOrderStage.AwaitingPayment]
             .OrderByDescending(b => b.CompletedAt ?? b.ScheduledDate)
             .ToList();
@@ -107,6 +106,13 @@ public class GetBusinessDashboardQueryHandler(
 
         var workers = await BuildWorkersAsync(business.Id, cancellationToken);
 
+        // Two counts from one grouped query; deleted services are already filtered out.
+        var servicesByActive = await dbContext.BusinessServices
+            .Where(s => s.BusinessOwnerProfileId == business.Id)
+            .GroupBy(s => s.IsActive)
+            .Select(g => new { IsActive = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(g => g.IsActive, g => g.Count, cancellationToken);
+
         return new BusinessDashboardDto
         {
             EventsCompleted = completed.Count,
@@ -118,9 +124,10 @@ public class GetBusinessDashboardQueryHandler(
                 .Where(p => p.BusinessOwnerProfileId == business.Id)
                 .CountAsync(p => p.WorkCompletedAt != null, cancellationToken),
             ActiveWorkers = workers.Count,
+            ActiveServices = servicesByActive.GetValueOrDefault(true),
+            InactiveServices = servicesByActive.GetValueOrDefault(false),
             ByCategory = BuildBreakdown(completed),
             Trend = BuildTrend(completed, now),
-            Completed = completed.Take(DetailLimit).Select(ToDto).ToList(),
             AwaitingPayment = awaitingPayment.Take(DetailLimit).Select(ToDto).ToList(),
             Upcoming = upcoming.Take(DetailLimit).Select(ToDto).ToList(),
             Cancelled = cancelled.Take(DetailLimit).Select(ToDto).ToList(),
@@ -142,7 +149,6 @@ public class GetBusinessDashboardQueryHandler(
         Price = booking.Price,
         RequiredWorkerCount = booking.RequiredWorkerCount,
         Status = booking.Status.ToString(),
-        CompletedAt = booking.CompletedAt,
         CancelledAt = booking.CancelledAt,
         CancellationReason = booking.CancellationReason,
         City = booking.City,

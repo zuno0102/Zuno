@@ -47,6 +47,7 @@ class _BusinessOwnerDashboardShellState
 
   static const _homeTab = 0;
   static const _ordersTab = 1;
+  static const _servicesTab = 2;
   static const _workersTab = 3;
 
   static const _crewSubTab = 0;
@@ -138,7 +139,9 @@ class _BusinessOwnerDashboardShellState
     /// Four destinations, not five: the profile is reached from a card on the home tab, since it
     /// is set up once and rarely returned to — unlike these, which are worked in all day.
     final tabs = <Widget>[
-      const BusinessDashboardTab(),
+      BusinessDashboardTab(
+        onOpenServices: () => setState(() => _index = _servicesTab),
+      ),
       const BusinessOrdersTab(),
       const BusinessServicesTab(),
       BusinessWorkersTab(initialIndex: _workersSubTab),

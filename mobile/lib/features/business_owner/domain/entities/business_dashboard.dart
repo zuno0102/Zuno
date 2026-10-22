@@ -11,9 +11,10 @@ class BusinessDashboard {
     this.totalRevenue = 0,
     this.crewEventsCompleted = 0,
     this.activeWorkers = 0,
+    this.activeServices = 0,
+    this.inactiveServices = 0,
     this.byCategory = const [],
     this.trend = const [],
-    this.completed = const [],
     this.upcoming = const [],
     this.awaitingPayment = const [],
     this.cancelled = const [],
@@ -41,11 +42,15 @@ class BusinessDashboard {
   /// People on the roster who accepted and were never removed — who can be put on a job today.
   final int activeWorkers;
 
+  /// Services customers can find and book right now.
+  final int activeServices;
+
+  /// Services switched off: kept, but hidden from customers.
+  final int inactiveServices;
+
   final List<CategoryBreakdown> byCategory;
   final List<MonthlyActivity> trend;
 
-  /// Bookings closed for good, most recently finished first.
-  final List<DashboardEvent> completed;
   final List<DashboardEvent> upcoming;
 
   /// Work done but a wage still owed, most recently finished first.
@@ -56,8 +61,6 @@ class BusinessDashboard {
   /// The active roster, free workers first.
   final List<DashboardWorker> workers;
   final BusinessTrust trust;
-
-  bool get hasCompletedWork => eventsCompleted > 0;
 
   /// Whether the trend chart has anything worth drawing.
   bool get hasTrend => trend.any((m) => m.completed > 0);
@@ -109,7 +112,6 @@ class DashboardEvent {
     this.subCategoryName,
     this.price = 0,
     this.requiredWorkerCount = 1,
-    this.completedAt,
     this.cancelledAt,
     this.cancellationReason,
     this.city,
@@ -124,7 +126,6 @@ class DashboardEvent {
   final double price;
   final int requiredWorkerCount;
   final String status;
-  final DateTime? completedAt;
   final DateTime? cancelledAt;
   final String? cancellationReason;
   final String? city;

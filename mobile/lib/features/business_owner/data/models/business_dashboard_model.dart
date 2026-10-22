@@ -15,9 +15,10 @@ class BusinessDashboardModel {
     this.totalRevenue = 0,
     this.crewEventsCompleted = 0,
     this.activeWorkers = 0,
+    this.activeServices = 0,
+    this.inactiveServices = 0,
     this.byCategory = const [],
     this.trend = const [],
-    this.completed = const [],
     this.upcoming = const [],
     this.awaitingPayment = const [],
     this.cancelled = const [],
@@ -36,9 +37,10 @@ class BusinessDashboardModel {
   final double totalRevenue;
   final int crewEventsCompleted;
   final int activeWorkers;
+  final int activeServices;
+  final int inactiveServices;
   final List<CategoryBreakdownModel> byCategory;
   final List<MonthlyActivityModel> trend;
-  final List<DashboardEventModel> completed;
   final List<DashboardEventModel> upcoming;
   final List<DashboardEventModel> awaitingPayment;
   final List<DashboardEventModel> cancelled;
@@ -54,9 +56,10 @@ class BusinessDashboardModel {
     totalRevenue: totalRevenue,
     crewEventsCompleted: crewEventsCompleted,
     activeWorkers: activeWorkers,
+    activeServices: activeServices,
+    inactiveServices: inactiveServices,
     byCategory: byCategory.map((c) => c.toEntity()).toList(),
     trend: trend.map((m) => m.toEntity()).toList(),
-    completed: completed.map((e) => e.toEntity()).toList(),
     upcoming: upcoming.map((e) => e.toEntity()).toList(),
     awaitingPayment: awaitingPayment.map((e) => e.toEntity()).toList(),
     cancelled: cancelled.map((e) => e.toEntity()).toList(),
@@ -187,7 +190,6 @@ class DashboardEventModel {
     this.subCategoryName,
     this.price = 0,
     this.requiredWorkerCount = 1,
-    this.completedAt,
     this.cancelledAt,
     this.cancellationReason,
     this.city,
@@ -205,7 +207,6 @@ class DashboardEventModel {
   final double price;
   final int requiredWorkerCount;
   final String status;
-  final DateTime? completedAt;
   final DateTime? cancelledAt;
   final String? cancellationReason;
   final String? city;
@@ -220,7 +221,6 @@ class DashboardEventModel {
     price: price,
     requiredWorkerCount: requiredWorkerCount,
     status: status,
-    completedAt: completedAt?.toLocal(),
     cancelledAt: cancelledAt?.toLocal(),
     cancellationReason: cancellationReason,
     city: city,
