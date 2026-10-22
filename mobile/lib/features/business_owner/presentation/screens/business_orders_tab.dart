@@ -151,6 +151,33 @@ Map<String, int> bookingCountsByStatus(List<Booking> orders, {DateTime? now}) {
   return counts;
 }
 
+/// The groups the Status management tab splits into: where the work itself stands.
+///
+/// No Active or Cancelled — an order not yet accepted, or called off, never reaches that tab.
+const workStatusGroups = [
+  'Confirmed',
+  'In progress',
+  'Awaiting payment',
+  'Completed',
+];
+
+/// Where a customer order's work stands, in [workStatusGroups] words.
+///
+/// Its own status label, which already reads this way once an order is confirmed — the same words
+/// its card shows.
+String orderWorkGroup(Booking order, {DateTime? now}) =>
+    order.orderStatusLabel(now: now);
+
+/// Where one of the business's own events stands, in the same words as an order, so both kinds
+/// of work sit under one set of filters.
+String ownEventWorkGroup(HiringPost post) => switch (post) {
+  _ when post.isFullyComplete => 'Completed',
+  _ when post.isWorkCompleted => 'Awaiting payment',
+  _ when post.isWorkStarted => 'In progress',
+  // Planned and on the books, like a confirmed order.
+  _ => 'Confirmed',
+};
+
 /// "Bookings", with the new orders waiting on the business written after it.
 class _NewOrdersTabLabel extends ConsumerWidget {
   const _NewOrdersTabLabel();
@@ -466,6 +493,7 @@ class _CustomerOrdersTabState extends ConsumerState<_CustomerOrdersTab> {
         return Column(
           children: [
             _StatusFilterBar(
+              groups: bookingStatusGroups,
               total: orders.length,
               counts: counts,
               selected: _group,
@@ -503,15 +531,19 @@ class _CustomerOrdersTabState extends ConsumerState<_CustomerOrdersTab> {
   }
 }
 
-/// All 12 · Active 3 · Confirmed 4 · … — scrolls sideways, since seven chips never fit a phone.
+/// All 12 · Active 3 · Confirmed 4 · … — scrolls sideways, since the chips rarely fit a phone.
 class _StatusFilterBar extends StatelessWidget {
   const _StatusFilterBar({
+    required this.groups,
     required this.total,
     required this.counts,
     required this.selected,
     required this.onSelected,
   });
 
+  /// The chips after All, in order. Each tab passes its own: Bookings has every status, Status
+  /// management only the ones work can be in.
+  final List<String> groups;
   final int total;
   final Map<String, int> counts;
   final String? selected;
@@ -544,7 +576,7 @@ class _StatusFilterBar extends StatelessWidget {
       child: Row(
         children: [
           chip('All', total, null),
-          for (final group in bookingStatusGroups) ...[
+          for (final group in groups) ...[
             const SizedBox(width: 8),
             chip(group, counts[group] ?? 0, group),
           ],
@@ -655,11 +687,23 @@ class _OrderCard extends StatelessWidget {
 /// Covers both kinds of work: customer orders, and the business's own events run through a
 /// standalone hiring post. Leaving the second kind out would strand it — a post with no order
 /// behind it would have nowhere left to be started, finished or paid.
-class _StatusManagementTab extends ConsumerWidget {
+///
+/// Split by status like the Bookings tab — All, then each of [workStatusGroups] — with orders and
+/// own events counted together, since both are work the business is moving along.
+class _StatusManagementTab extends ConsumerStatefulWidget {
   const _StatusManagementTab();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_StatusManagementTab> createState() =>
+      _StatusManagementTabState();
+}
+
+class _StatusManagementTabState extends ConsumerState<_StatusManagementTab> {
+  /// The group being shown, or null for All.
+  String? _group;
+
+  @override
+  Widget build(BuildContext context) {
     final ordersAsync = ref.watch(businessBookingsProvider);
     final postsAsync = ref.watch(businessHiringPostsProvider);
 
@@ -701,40 +745,91 @@ class _StatusManagementTab extends ConsumerWidget {
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: () async {
-        await Future.wait(<Future<void>>[
-          ref.refresh(businessBookingsProvider.future),
-          ref.refresh(businessHiringPostsProvider.future),
-        ]);
-      },
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          for (final order in live) ...[
-            _OrderStepCard(order: order, posts: posts),
-            const SizedBox(height: 10),
-          ],
-          if (ownEvents.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8, left: 2),
-              child: Text(
-                'YOUR OWN EVENTS',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  letterSpacing: 0.8,
-                  fontWeight: FontWeight.w700,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+    final now = DateTime.now();
+    final counts = {for (final group in workStatusGroups) group: 0};
+    for (final group in [
+      ...live.map((o) => orderWorkGroup(o, now: now)),
+      ...ownEvents.map(ownEventWorkGroup),
+    ]) {
+      counts[group] = (counts[group] ?? 0) + 1;
+    }
+
+    final shownOrders = _group == null
+        ? live
+        : live.where((o) => orderWorkGroup(o, now: now) == _group).toList();
+    final shownEvents = _group == null
+        ? ownEvents
+        : ownEvents.where((p) => ownEventWorkGroup(p) == _group).toList();
+
+    return Column(
+      children: [
+        _StatusFilterBar(
+          groups: workStatusGroups,
+          total: live.length + ownEvents.length,
+          counts: counts,
+          selected: _group,
+          onSelected: (group) => setState(() => _group = group),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () async {
+              await Future.wait(<Future<void>>[
+                ref.refresh(businessBookingsProvider.future),
+                ref.refresh(businessHiringPostsProvider.future),
+              ]);
+            },
+            child: shownOrders.isEmpty && shownEvents.isEmpty
+                // Scrollable even when empty, so pull-to-refresh still works here.
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      EmptyState(
+                        icon: Icons.filter_list_off_outlined,
+                        title: 'Nothing ${_group!.toLowerCase()}',
+                        message:
+                            'Work will appear here when it reaches this status.',
+                      ),
+                    ],
+                  )
+                : _workList(context, shownOrders, shownEvents, posts),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _workList(
+    BuildContext context,
+    List<Booking> live,
+    List<HiringPost> ownEvents,
+    List<HiringPost> posts,
+  ) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      children: [
+        for (final order in live) ...[
+          _OrderStepCard(order: order, posts: posts),
+          const SizedBox(height: 10),
+        ],
+        if (ownEvents.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8, left: 2),
+            child: Text(
+              'YOUR OWN EVENTS',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                letterSpacing: 0.8,
+                fontWeight: FontWeight.w700,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
-            for (final post in ownEvents) ...[
-              _OwnEventStepCard(post: post),
-              const SizedBox(height: 10),
-            ],
+          ),
+          for (final post in ownEvents) ...[
+            _OwnEventStepCard(post: post),
+            const SizedBox(height: 10),
           ],
         ],
-      ),
+      ],
     );
   }
 }

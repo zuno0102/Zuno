@@ -376,6 +376,35 @@ void main() {
     });
   });
 
+  group('ownEventWorkGroup', () {
+    test('ownEventWorkGroup_NotStarted_IsConfirmed', () {
+      expect(ownEventWorkGroup(_event('e', when: nextMonth)), 'Confirmed');
+    });
+
+    test('ownEventWorkGroup_WorkStarted_IsInProgress', () {
+      expect(
+        ownEventWorkGroup(
+          _event('e', when: earlierToday, startedAt: earlierToday),
+        ),
+        'In progress',
+      );
+    });
+
+    test('ownEventWorkGroup_WorkDoneButNotPaid_IsAwaitingPayment', () {
+      expect(
+        ownEventWorkGroup(
+          _event(
+            'e',
+            when: earlierToday,
+            startedAt: earlierToday,
+            completedAt: now,
+          ),
+        ),
+        'Awaiting payment',
+      );
+    });
+  });
+
   group('BusinessOrdersTab labels', () {
     // The labels read the real clock, so these build their dates around it.
     final realNow = DateTime.now();
@@ -600,6 +629,65 @@ void main() {
 
         expect(cards(), 0);
         expect(find.text('No in progress bookings'), findsOneWidget);
+      });
+    });
+
+    group('Status management tab split by status', () {
+      Finder chip(String text) => find.widgetWithText(ChoiceChip, text);
+
+      Future<void> openTab(WidgetTester tester) async {
+        await pumpTabs(
+          tester,
+          tall: true,
+          orders: () async => [
+            _order('conf', when: later),
+            _order('going', when: dueNow, status: 'InProgress'),
+            _order('done', when: dueNow, status: 'Completed'),
+            // Never on this tab: not accepted yet, or called off.
+            _order('new', when: later, status: 'Pending'),
+            _order('off', when: later, status: 'Cancelled'),
+          ],
+          posts: [_event('own', when: later)],
+        );
+        // The second tab. Its name is drawn in pieces when a count sits after it.
+        await tester.tap(find.byType(Tab).at(1));
+        await tester.pumpAndSettle();
+      }
+
+      Future<void> pick(WidgetTester tester, String text) async {
+        await tester.ensureVisible(chip(text));
+        await tester.pumpAndSettle();
+        await tester.tap(chip(text));
+        await tester.pumpAndSettle();
+      }
+
+      testWidgets('Filters_CountOrdersAndOwnEventsTogether', (tester) async {
+        await openTab(tester);
+
+        expect(tester.takeException(), isNull);
+        // Four, not six: the order not accepted yet and the cancelled one never reach this tab.
+        expect(chip('All 4'), findsOneWidget);
+        // The confirmed order and the own event not started yet.
+        expect(chip('Confirmed 2'), findsOneWidget);
+        expect(chip('In progress 1'), findsOneWidget);
+        expect(chip('Awaiting payment 0'), findsOneWidget);
+        expect(chip('Completed 1'), findsOneWidget);
+      });
+
+      testWidgets('TappingAGroup_ShowsOnlyItsWork', (tester) async {
+        await openTab(tester);
+        expect(find.text('Catering crew'), findsOneWidget);
+
+        await pick(tester, 'In progress 1');
+        expect(find.text('Catering crew'), findsNothing);
+        expect(find.text('Home wall painting'), findsOneWidget);
+
+        await pick(tester, 'Confirmed 2');
+        expect(find.text('Catering crew'), findsOneWidget);
+        expect(find.text('Home wall painting'), findsOneWidget);
+
+        await pick(tester, 'Awaiting payment 0');
+        expect(find.text('Nothing awaiting payment'), findsOneWidget);
       });
     });
 
