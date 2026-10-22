@@ -194,6 +194,17 @@ class _InviteWorkerDialogState extends ConsumerState<_InviteWorkerDialog> {
                 ),
                 const SizedBox(height: 12),
                 if (_isNewDate) ...[
+                  // Above the fields, not below them. Typing the pay opens the number pad, which
+                  // takes half the screen: anything under that field is then pinned behind the
+                  // dialog's buttons, and the field being typed into is what gets clipped.
+                  Text(
+                    'They can accept or turn this day down, and nobody is assigned '
+                    'until they accept.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   _NewDateField(
                     value: _newDate,
                     onChanged: (picked) => setState(() => _newDate = picked),
@@ -204,6 +215,10 @@ class _InviteWorkerDialogState extends ConsumerState<_InviteWorkerDialog> {
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
+                    // Last in the dialog and the only field with a keyboard, so it is the one
+                    // the scroll view must be able to bring fully into view.
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => _submit(),
                     decoration: const InputDecoration(
                       labelText: 'Pay for the day',
                       prefixText: '₹ ',
@@ -217,15 +232,6 @@ class _InviteWorkerDialogState extends ConsumerState<_InviteWorkerDialog> {
                       }
                       return null;
                     },
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'They are offered this one day and can accept or turn it down. '
-                    'Nobody is assigned until they accept, and you can offer them '
-                    'other dates the same way.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
                   ),
                 ] else if (selected != null)
                   _JobSummary(post: selected)
