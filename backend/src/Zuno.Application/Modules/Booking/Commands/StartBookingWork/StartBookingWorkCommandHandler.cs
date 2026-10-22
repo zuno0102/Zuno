@@ -80,6 +80,10 @@ public class StartBookingWorkCommandHandler(
         booking.BookingStatus = BookingStatus.InProgress;
         booking.WorkStartedAt = now;
 
+        // The crew hired through a post for this order started with it, so the post — what their
+        // job screens and schedules read — says so too.
+        await LinkedHiringPostWork.MarkStartedAsync(dbContext, booking.Id, now, cancellationToken);
+
         await dbContext.SaveChangesAsync(cancellationToken);
 
         await publisher.Publish(

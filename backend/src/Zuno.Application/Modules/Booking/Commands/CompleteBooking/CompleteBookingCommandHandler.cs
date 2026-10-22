@@ -1,5 +1,6 @@
 using MediatR;
 using Zuno.Application.Common.Interfaces;
+using Zuno.Application.Modules.Booking.Common;
 using Zuno.Application.Modules.Booking.DTOs;
 using Zuno.Application.Modules.Booking.Events;
 using Zuno.Application.Modules.Notifications.Common;
@@ -43,6 +44,10 @@ public class CompleteBookingCommandHandler(
         {
             booking.BookingStatus = BookingStatus.Completed;
             booking.CompletedAt = dateTimeProvider.UtcNow;
+
+            // However the order closes, the crew hired through its posts is paid through them.
+            await LinkedHiringPostWork.MarkCompletedAsync(
+                dbContext, booking.Id, booking.WorkStartedAt, booking.CompletedAt.Value, cancellationToken);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);

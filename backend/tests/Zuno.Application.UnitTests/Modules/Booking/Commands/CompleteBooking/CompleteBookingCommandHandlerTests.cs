@@ -19,11 +19,15 @@ public class CompleteBookingCommandHandlerTests
     private readonly Mock<MediatR.IPublisher> _publisherMock = new();
     private readonly DateTimeOffset _now = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
+    /// <summary>Hiring posts in the database, for orders that raised one for their crew.</summary>
+    private readonly List<HiringPost> _posts = [];
+
     private readonly CompleteBookingCommandHandler _sut;
 
     public CompleteBookingCommandHandlerTests()
     {
         _dateTimeProviderMock.Setup(p => p.UtcNow).Returns(_now);
+        _dbContextMock.Setup(d => d.HiringPosts).Returns(() => TestDbSet.From(_posts.ToArray()));
         _sut = new CompleteBookingCommandHandler(
             _currentUserServiceMock.Object,
             _dateTimeProviderMock.Object,
@@ -82,6 +86,42 @@ public class CompleteBookingCommandHandlerTests
         booking.CompletedAt.Should().Be(_now);
         assignment.CompletedAt.Should().Be(_now);
         _publisherMock.Verify(p => p.Publish(It.IsAny<BookingCompletedEvent>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Should_Mark_The_Orders_Hiring_Post_Done_When_The_Order_Closes_So_Its_Crew_Can_Be_Paid()
+    {
+        var workerUserId = Guid.NewGuid();
+        var booking = CreateBooking(BookingStatus.InProgress, CreateAssignment(workerUserId));
+        var started = _now.AddHours(-5);
+        booking.WorkStartedAt = started;
+        var crewPost = new HiringPost { BookingId = booking.Id, Title = "Crew" };
+        var otherOrdersPost = new HiringPost { BookingId = Guid.NewGuid(), Title = "Elsewhere" };
+        _posts.AddRange([crewPost, otherOrdersPost]);
+        _currentUserServiceMock.Setup(c => c.UserId).Returns(workerUserId);
+        _bookingRepositoryMock.Setup(r => r.GetByIdAsync(booking.Id, It.IsAny<CancellationToken>())).ReturnsAsync(booking);
+
+        await _sut.Handle(new CompleteBookingCommand { BookingId = booking.Id }, CancellationToken.None);
+
+        // Paying the crew refuses a post whose work is not marked done.
+        crewPost.WorkCompletedAt.Should().Be(_now);
+        crewPost.WorkStartedAt.Should().Be(started);
+        otherOrdersPost.WorkCompletedAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Should_Leave_The_Hiring_Post_Open_While_The_Order_Is_Still_In_Progress()
+    {
+        var workerUserId = Guid.NewGuid();
+        var booking = CreateBooking(BookingStatus.InProgress, CreateAssignment(workerUserId), CreateAssignment(Guid.NewGuid()));
+        var crewPost = new HiringPost { BookingId = booking.Id, Title = "Crew" };
+        _posts.Add(crewPost);
+        _currentUserServiceMock.Setup(c => c.UserId).Returns(workerUserId);
+        _bookingRepositoryMock.Setup(r => r.GetByIdAsync(booking.Id, It.IsAny<CancellationToken>())).ReturnsAsync(booking);
+
+        await _sut.Handle(new CompleteBookingCommand { BookingId = booking.Id }, CancellationToken.None);
+
+        crewPost.WorkCompletedAt.Should().BeNull();
     }
 
     [Fact]

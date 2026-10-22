@@ -78,6 +78,10 @@ public class CompleteBookingWorkCommandHandler(
         booking.BookingStatus = BookingStatus.Completed;
         booking.CompletedAt = now;
 
+        // The crew hired through a post for this order finished with it — and is paid through it.
+        await LinkedHiringPostWork.MarkCompletedAsync(
+            dbContext, booking.Id, booking.WorkStartedAt, now, cancellationToken);
+
         await dbContext.SaveChangesAsync(cancellationToken);
 
         // After the save, never before: the count is read back out of the database, so it can only
