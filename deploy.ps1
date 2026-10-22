@@ -11,8 +11,13 @@
     4. Pushes Zuno_Dev, then fast-forwards main to it.
     5. Render - if backend/ or render.yaml changed, triggers a deploy through the deploy hook.
     6. Vercel - if mobile/ changed, rebuilds the web app against the live API and deploys it.
+    7. APK    - if the app changed, builds the Android APK against the live API and publishes it
+                as a GitHub release (tag v<version> from mobile/pubspec.yaml), marked Latest. The
+                same file is also uploaded as zuno.apk, so this link always gives the newest:
+                https://github.com/zuno0102/Zuno/releases/latest/download/zuno.apk
 
   Secrets live in .env.deploy next to this script (gitignored). See deploy.env.example.
+  The APK step needs the GitHub CLI signed in as zuno0102 (gh auth status).
 
 .EXAMPLE
   .\deploy.ps1 -Message "Fix logo upload on web"
@@ -22,11 +27,14 @@
   .\deploy.ps1 -Force     # redeploy Render and Vercel even if nothing changed
 .EXAMPLE
   .\deploy.ps1 -SkipMigrations   # only when you know Neon already has every migration
+.EXAMPLE
+  .\deploy.ps1 -SkipApk          # ship the website and API now, the APK another time
 #>
 param(
     [string]$Message,
     [switch]$Force,
-    [switch]$SkipMigrations
+    [switch]$SkipMigrations,
+    [switch]$SkipApk
 )
 
 # Not 'Stop': Windows PowerShell turns any stderr line from git/flutter/vercel - including harmless
@@ -87,9 +95,16 @@ if (-not $changed -and -not $Force) {
 $migrationsChanged = -not $SkipMigrations -and [bool]($changed -match '^backend/src/Zuno\.Infrastructure/Persistence/Migrations/')
 $backendChanged = $Force -or [bool]($changed -match '^(backend/|render\.yaml$)')
 $webChanged = $Force -or [bool]($changed -match '^mobile/(lib|web|assets)/|^mobile/pubspec\.(yaml|lock)$')
+$apkChanged = -not $SkipApk -and ($Force -or [bool]($changed -match '^mobile/(lib|assets|android)/|^mobile/pubspec\.(yaml|lock)$'))
 
-Write-Host ("Changed files: {0}  |  Neon migrations: {1}  |  Render: {2}  |  Vercel: {3}" -f `
-    $changed.Count, $migrationsChanged, $backendChanged, $webChanged)
+Write-Host ("Changed files: {0}  |  Neon migrations: {1}  |  Render: {2}  |  Vercel: {3}  |  APK: {4}" -f `
+    $changed.Count, $migrationsChanged, $backendChanged, $webChanged, $apkChanged)
+
+# Checked before anything is pushed, so a deploy never stops half-way for want of a sign-in.
+if ($apkChanged) {
+    $ghUser = gh api user --jq .login 2>$null
+    if ($ghUser -ne 'zuno0102') { Fail "The APK is published as zuno0102, but the GitHub CLI is signed in as '$ghUser'. Run: gh auth login" }
+}
 
 # ---- 3. Neon (before the API that depends on it) ------------------------------------------------
 if ($migrationsChanged -and -not $Settings.NEON_CONNECTION_STRING) {
@@ -153,6 +168,49 @@ if ($webChanged) {
     } finally {
         Pop-Location
     }
+}
+
+# ---- 7. Android APK ------------------------------------------------------------------------------
+if ($apkChanged) {
+    # "1.2.4+8" -> "1.2.4": one release per version. Shipping again without a version bump replaces
+    # that release's APK rather than making a second release with the same name.
+    $version = (Select-String -Path (Join-Path $Root 'mobile/pubspec.yaml') -Pattern '^version:\s*([0-9.]+)').Matches[0].Groups[1].Value
+    if (-not $version) { Fail 'No version: line in mobile/pubspec.yaml.' }
+    $tag = "v$version"
+    Step "APK: building $tag against $($Settings.API_BASE_URL)"
+    Push-Location (Join-Path $Root 'mobile')
+    try {
+        flutter build apk --release "--dart-define=API_BASE_URL=$($Settings.API_BASE_URL)"; Run 'flutter build apk'
+        $built = Join-Path (Get-Location) 'build/app/outputs/flutter-apk/app-release.apk'
+    } finally {
+        Pop-Location
+    }
+
+    # Two names for the same file: one per version for the record, and zuno.apk so the
+    # releases/latest/download/zuno.apk link never has to change.
+    $outDir = Join-Path ([IO.Path]::GetTempPath()) "zuno-apk-$tag"
+    New-Item -ItemType Directory -Force $outDir | Out-Null
+    $versioned = Join-Path $outDir "zuno-$tag.apk"
+    $stable = Join-Path $outDir 'zuno.apk'
+    Copy-Item $built $versioned -Force
+    Copy-Item $built $stable -Force
+
+    $notes = Join-Path $outDir 'notes.md'
+    $body = (git log -1 --format=%B) -notmatch '^Co-Authored-By:' -join "`n"
+    [IO.File]::WriteAllText($notes, "$body`n`n**Install:** open this page on the phone, download ``zuno.apk`` and open it (allow ""Install unknown apps"" if asked).", (New-Object Text.UTF8Encoding $false))
+
+    gh release view $tag --repo zuno0102/Zuno *> $null
+    if ($LASTEXITCODE -eq 0) {
+        Step "APK: replacing the files on release $tag"
+        gh release upload $tag $versioned $stable --clobber --repo zuno0102/Zuno; Run 'gh release upload'
+        gh release edit $tag --latest --notes-file $notes --repo zuno0102/Zuno | Out-Null; Run 'gh release edit'
+    } else {
+        Step "APK: publishing release $tag"
+        gh release create $tag $versioned $stable --repo zuno0102/Zuno --target $MainBranch `
+            --title "Zuno $tag - Android" --notes-file $notes --latest; Run 'gh release create'
+    }
+    Remove-Item $outDir -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Host "APK: https://github.com/zuno0102/Zuno/releases/latest/download/zuno.apk"
 }
 
 Step "Done. $MainBranch is at $((git rev-parse --short HEAD))."

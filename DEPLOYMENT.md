@@ -9,9 +9,10 @@ Three tiers, three providers:
 | Data | **Neon** | PostgreSQL 16 |
 | API | **Render** | the .NET 9 API, as a Docker service |
 | Web front end | **Vercel** | the Flutter web build, as static files |
+| Android app | **GitHub Releases** | the APK, built against the live API, one release per version |
 
-The Android app is unaffected by all of this — it keeps talking to whatever
-`--dart-define=API_BASE_URL=...` you build it with.
+The APK talks to whatever `--dart-define=API_BASE_URL=...` it was built with; `deploy.ps1` always
+builds it against the live API, the same as the website.
 
 ---
 
@@ -32,6 +33,7 @@ origin  https://github.com/zuno0102/Zuno.git
 | Release branch | `main` — always a fast-forward of `Zuno_Dev`, never committed to directly |
 | API (Render) | service `zuno-api` → https://zuno-api-qon8.onrender.com, deploys branch **`main`** |
 | Web (Vercel) | team `Zuno_team` (`zuno-team1`), project `zuno` → **https://zuno-infinite-service.vercel.app** — the only website (linked from `mobile/build/web` by `deploy.ps1` with `VERCEL_TOKEN`). The old bsundaram site and the zuno-ten-henna address were deleted on 2026-10-21. |
+| Android APK (GitHub) | release `v<version>` on zuno0102/Zuno, marked **Latest**. Always-newest download link: **https://github.com/zuno0102/Zuno/releases/latest/download/zuno.apk** |
 | Commit author | `zuno0102 <342959199+zuno0102@users.noreply.github.com>` (`git config user.name/user.email` in this repo) |
 | Database (Neon) | PostgreSQL; schema changes go out with `dotnet ef database update` |
 
@@ -52,10 +54,28 @@ It does, in this order, and only the parts that are needed:
    migrates itself on start-up);
 4. pushes `Zuno_Dev`, then fast-forwards `main` to it;
 5. **Render** — if `backend/` or `render.yaml` changed, calls the deploy hook;
-6. **Vercel** — if the Flutter app changed, rebuilds the web app against the live API and deploys it.
+6. **Vercel** — if the Flutter app changed, rebuilds the web app against the live API and deploys it;
+7. **APK** — if the Flutter app changed (`mobile/lib`, `assets`, `android`, `pubspec`), builds the
+   release APK against the live API and publishes it on GitHub as release `v<version>` (the version
+   in `mobile/pubspec.yaml`), marked **Latest**, with the commit message as its notes. Two files go
+   up: `zuno-v<version>.apk` and `zuno.apk` — the second is what the always-newest link serves.
 
-With nothing to commit it just deploys whatever `main` is missing; `-Force` redeploys Render and
-Vercel regardless.
+So **every change you commit and push live updates the website and the APK together**: dev branch,
+main branch, live website, live API and the downloadable APK all carry the same code.
+
+With nothing to commit it just deploys whatever `main` is missing; `-Force` redeploys Render,
+Vercel and the APK regardless. `-SkipApk` leaves the APK for another time.
+
+#### Versions and the APK
+
+- **Bump `version:` in `mobile/pubspec.yaml` for every app release** (e.g. `1.2.4+8` → `1.2.5+9`):
+  the part before `+` names the release (`v1.2.5`), the number after `+` must go up or Android
+  refuses to install it over the old one.
+- Shipping again **without** a bump replaces the APK on that same release instead of making a new
+  one — fine for a quick fix, but phones that already installed that version will not see it as
+  an update.
+- Installing: open the link on the phone, download `zuno.apk`, open it, allow "Install unknown
+  apps" if asked. An existing Zuno is updated in place and stays signed in.
 
 ### One-time setup for the script
 
@@ -73,6 +93,12 @@ Vercel regardless.
    git config user.name "zuno0102"
    git config user.email "342959199+zuno0102@users.noreply.github.com"
    ```
+4. GitHub CLI signed in as `zuno0102` (`gh auth login`, check with `gh auth status`) — the APK
+   step publishes releases with it and stops before pushing anything if it is signed in as anyone
+   else.
+5. Android release signing: `mobile/android/key.properties` (gitignored) pointing at the upload
+   keystore. Keep that keystore safe — an APK signed with a different key cannot update the
+   installed app.
 
 ### Render environment variables that must be set
 
