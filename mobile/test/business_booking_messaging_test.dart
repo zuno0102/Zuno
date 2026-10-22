@@ -298,7 +298,7 @@ void main() {
     testWidgets('joins the other two inside Orders', (tester) async {
       await pumpOrders(tester);
 
-      expect(find.text('From customers'), findsOneWidget);
+      expect(find.text('Bookings'), findsOneWidget);
       expect(find.text('Status management'), findsOneWidget);
       expect(find.text('Messages'), findsOneWidget);
     });

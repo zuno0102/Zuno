@@ -11,7 +11,7 @@ import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/business_hiring_posts_notifier.dart';
 import 'package:zuno/features/notifications/presentation/providers/notification_providers.dart';
 
-/// The numbers on the business's Orders tabs: "From customers 1", "Status management 2",
+/// The numbers on the business's Orders tabs: "Bookings 1", "Status management 2",
 /// "Messages 1".
 ///
 /// They used to be one corner badge on Messages, sitting over the end of the word. Each tab now
@@ -344,6 +344,38 @@ void main() {
     });
   });
 
+  group('bookingCountsByStatus', () {
+    test(
+      'bookingCountsByStatus_MixedOrders_CountsEachGroupAndKeepsEmptyOnes',
+      () {
+        final counts = bookingCountsByStatus([
+          _order('a', when: nextMonth, status: 'Pending'),
+          _order('b', when: nextMonth),
+          _order('c', when: nextMonth, status: 'Assigned'),
+          _order('d', when: earlierToday, status: 'InProgress'),
+          _order('e', when: earlierToday, status: 'Cancelled'),
+        ], now: now);
+
+        expect(counts, {
+          'Active': 1,
+          'Confirmed': 2,
+          'In progress': 1,
+          'Awaiting payment': 0,
+          'Completed': 0,
+          'Cancelled': 1,
+        });
+      },
+    );
+
+    test('bookingCountsByStatus_NoOrders_EveryGroupIsZero', () {
+      expect(
+        bookingCountsByStatus(const []).values.every((c) => c == 0),
+        isTrue,
+      );
+      expect(bookingCountsByStatus(const []).keys, bookingStatusGroups);
+    });
+  });
+
   group('BusinessOrdersTab labels', () {
     // The labels read the real clock, so these build their dates around it.
     final realNow = DateTime.now();
@@ -357,9 +389,11 @@ void main() {
       int unread = 0,
       Set<String>? unopened,
       bool settle = true,
+      bool tall = false,
     }) async {
-      // A 360dp-wide phone, the narrowest the app targets.
-      tester.view.physicalSize = const Size(720, 1600);
+      // A 360dp-wide phone, the narrowest the app targets. [tall] gives the list room to build
+      // every card, for tests that count them.
+      tester.view.physicalSize = Size(720, tall ? 4800 : 1600);
       tester.view.devicePixelRatio = 2;
       addTearDown(tester.view.reset);
 
@@ -406,7 +440,7 @@ void main() {
         unopened: {UnreadNotificationTargets.keyFor('booking', 'new')},
       );
 
-      expect(countOn(tester, 'From customers'), '1');
+      expect(countOn(tester, 'Bookings'), '1');
       expect(countOn(tester, 'Status management'), '3');
       expect(countOn(tester, 'Messages'), '1');
       // Three names and three counts fit a 360dp phone without spilling over.
@@ -426,7 +460,7 @@ void main() {
           for (final id in ids) UnreadNotificationTargets.keyFor('booking', id),
         },
       );
-      expect(countOn(tester, 'From customers'), '5');
+      expect(countOn(tester, 'Bookings'), '5');
 
       // What opening the order does: the detail screen marks it seen, which takes it out of the
       // unread set. (markBookingSeen also tells the server; forget is the same change, locally.)
@@ -438,7 +472,7 @@ void main() {
           .forget('Booking', 'n3');
       await tester.pumpAndSettle();
 
-      expect(countOn(tester, 'From customers'), '4');
+      expect(countOn(tester, 'Bookings'), '4');
     });
 
     testWidgets('FromCustomers_LastNewOneOpened_CountDisappears', (
@@ -449,21 +483,21 @@ void main() {
         orders: () async => [_order('only', when: later, status: 'Pending')],
         unopened: {UnreadNotificationTargets.keyFor('booking', 'only')},
       );
-      expect(countOn(tester, 'From customers'), '1');
+      expect(countOn(tester, 'Bookings'), '1');
 
       ProviderScope.containerOf(tester.element(find.byType(BusinessOrdersTab)))
           .read(unreadNotificationTargetsProvider.notifier)
           .forget('Booking', 'only');
       await tester.pumpAndSettle();
 
-      expect(pillOn('From customers'), findsNothing);
-      expect(find.text('From customers'), findsOneWidget);
+      expect(pillOn('Bookings'), findsNothing);
+      expect(find.text('Bookings'), findsOneWidget);
     });
 
     testWidgets('Tabs_NothingWaiting_ShowNamesOnly', (tester) async {
       await pumpTabs(tester);
 
-      for (final tab in ['From customers', 'Status management', 'Messages']) {
+      for (final tab in ['Bookings', 'Status management', 'Messages']) {
         expect(pillOn(tab), findsNothing);
         expect(find.text(tab), findsOneWidget);
       }
@@ -478,8 +512,8 @@ void main() {
       );
       await tester.pump();
 
-      expect(pillOn('From customers'), findsNothing);
-      expect(find.text('From customers'), findsOneWidget);
+      expect(pillOn('Bookings'), findsNothing);
+      expect(find.text('Bookings'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       await tester.pumpAndSettle(const Duration(seconds: 6));
@@ -490,9 +524,9 @@ void main() {
     ) async {
       await pumpTabs(tester, orders: () async => throw Exception('offline'));
 
-      expect(pillOn('From customers'), findsNothing);
+      expect(pillOn('Bookings'), findsNothing);
       expect(pillOn('Status management'), findsNothing);
-      expect(find.text('From customers'), findsOneWidget);
+      expect(find.text('Bookings'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -504,6 +538,69 @@ void main() {
     testWidgets('Tabs_CountOf99_ShowsExactNumber', (tester) async {
       await pumpTabs(tester, unread: 99);
       expect(countOn(tester, 'Messages'), '99');
+    });
+
+    group('Bookings tab split by status', () {
+      List<Booking> mixed() => [
+        _order('new-1', when: later, status: 'Pending'),
+        _order('new-2', when: later, status: 'Pending'),
+        _order('conf-1', when: later),
+        _order('conf-2', when: later, status: 'Assigned'),
+        _order('done-1', when: dueNow, status: 'Completed'),
+        _order('off-1', when: later, status: 'Cancelled'),
+      ];
+
+      Finder chip(String text) => find.widgetWithText(ChoiceChip, text);
+      int cards() => find.byType(Card).evaluate().length;
+
+      testWidgets('Filters_ShowEveryGroupWithItsCount', (tester) async {
+        await pumpTabs(tester, orders: () async => mixed(), tall: true);
+
+        expect(tester.takeException(), isNull);
+        expect(chip('All 6'), findsOneWidget);
+        expect(chip('Active 2'), findsOneWidget);
+        // "Assigned" is an older way of saying confirmed, and counts with it.
+        expect(chip('Confirmed 2'), findsOneWidget);
+        expect(chip('Completed 1'), findsOneWidget);
+        expect(chip('Cancelled 1'), findsOneWidget);
+        // Empty groups stay on the bar so it never jumps about.
+        expect(chip('In progress 0'), findsOneWidget);
+      });
+
+      testWidgets('TappingAGroup_ShowsOnlyItsBookings_AllShowsEveryOne', (
+        tester,
+      ) async {
+        await pumpTabs(tester, orders: () async => mixed(), tall: true);
+        expect(cards(), 6);
+
+        // Scrolled into view first, as a person would: the bar is wider than a phone.
+        Future<void> pick(String text) async {
+          await tester.ensureVisible(chip(text));
+          await tester.pumpAndSettle();
+          await tester.tap(chip(text));
+          await tester.pumpAndSettle();
+        }
+
+        await pick('Active 2');
+        expect(cards(), 2);
+
+        await pick('Cancelled 1');
+        expect(cards(), 1);
+
+        await pick('All 6');
+        expect(cards(), 6);
+      });
+
+      testWidgets('AnEmptyGroup_SaysSo', (tester) async {
+        await pumpTabs(tester, orders: () async => mixed(), tall: true);
+
+        await tester.ensureVisible(chip('In progress 0'));
+        await tester.tap(chip('In progress 0'));
+        await tester.pumpAndSettle();
+
+        expect(cards(), 0);
+        expect(find.text('No in progress bookings'), findsOneWidget);
+      });
     });
 
     testWidgets('Tabs_WithCount_ReadAsOneThingToScreenReaders', (tester) async {

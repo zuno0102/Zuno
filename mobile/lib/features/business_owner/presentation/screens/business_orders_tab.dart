@@ -31,7 +31,7 @@ import 'package:zuno/shared/widgets/status_pill.dart';
 import 'package:zuno/shared/widgets/status_with_actions.dart';
 import 'package:zuno/shared/widgets/status_track.dart';
 
-/// Everything that came in from customers, and everything waiting on the business to act.
+/// Every booking customers have made, and everything waiting on the business to act.
 ///
 /// Two tabs because they answer two different questions. "What have I got on?" is read down a
 /// list; "what do I have to do next?" is worked one job at a time. They used to be the same
@@ -82,7 +82,7 @@ class BusinessOrdersTab extends StatelessWidget {
 /// New orders the business has not opened yet: placed by a customer, still waiting on the
 /// business, and not looked at since.
 ///
-/// Read like unread mail. Five new requests read "From customers 5"; opening one makes it 4. The
+/// Read like unread mail. Five new requests read "Bookings 5"; opening one makes it 4. The
 /// [unread] set is what the business has been told about and not yet opened (the same set the
 /// bell counts), and opening an order takes it out — so the number falls the moment an order is
 /// read, and rises again if the customer does something new on it, such as answering an offer.
@@ -128,7 +128,30 @@ int workStepsReady(
   return orderSteps + eventSteps;
 }
 
-/// "From customers", with the new orders waiting on the business written after it.
+/// The status groups the Bookings tab splits into, in the order a business works through them.
+///
+/// Each is a value of [Booking.orderStatusLabel] — the same words every card's status chip
+/// shows — so a filter and the cards under it can never disagree.
+const bookingStatusGroups = [
+  'Active',
+  'Confirmed',
+  'In progress',
+  'Awaiting payment',
+  'Completed',
+  'Cancelled',
+];
+
+/// How many bookings sit in each of [bookingStatusGroups], every group present even at zero.
+Map<String, int> bookingCountsByStatus(List<Booking> orders, {DateTime? now}) {
+  final counts = {for (final group in bookingStatusGroups) group: 0};
+  for (final order in orders) {
+    final group = order.orderStatusLabel(now: now);
+    counts[group] = (counts[group] ?? 0) + 1;
+  }
+  return counts;
+}
+
+/// "Bookings", with the new orders waiting on the business written after it.
 class _NewOrdersTabLabel extends ConsumerWidget {
   const _NewOrdersTabLabel();
 
@@ -139,7 +162,7 @@ class _NewOrdersTabLabel extends ConsumerWidget {
     final unread =
         ref.watch(unreadNotificationTargetsProvider).value ?? const <String>{};
     return _CountedTabLabel(
-      label: 'From customers',
+      label: 'Bookings',
       count: newOrdersAwaitingBusiness(orders, unread),
     );
   }
@@ -394,12 +417,25 @@ class _CustomerThreads extends StatelessWidget {
 // Tab 1 — what came in
 // ---------------------------------------------------------------------------------------------
 
-/// The orders themselves, newest arrangement first. One status each, and nothing to press.
-class _CustomerOrdersTab extends ConsumerWidget {
+/// The bookings themselves, newest arrangement first, split by status. One status each, and
+/// nothing to press.
+///
+/// A row of filters with counts sits on top — All, then each of [bookingStatusGroups] — because
+/// one mixed list made a business read past every finished and cancelled job to find the new ones.
+class _CustomerOrdersTab extends ConsumerStatefulWidget {
   const _CustomerOrdersTab();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_CustomerOrdersTab> createState() => _CustomerOrdersTabState();
+}
+
+class _CustomerOrdersTabState extends ConsumerState<_CustomerOrdersTab> {
+  /// The group being shown, or null for All. Kept across refreshes; an emptied group stays
+  /// selected and says so, rather than silently jumping back to All.
+  String? _group;
+
+  @override
+  Widget build(BuildContext context) {
     final ordersAsync = ref.watch(businessBookingsProvider);
 
     return ordersAsync.when(
@@ -414,21 +450,106 @@ class _CustomerOrdersTab extends ConsumerWidget {
         if (orders.isEmpty) {
           return const EmptyState(
             icon: Icons.assignment_outlined,
-            title: 'No orders yet',
-            message: 'Orders customers place with you will appear here.',
+            title: 'No bookings yet',
+            message: 'Bookings customers make with you will appear here.',
           );
         }
 
-        return RefreshIndicator(
-          onRefresh: () => ref.refresh(businessBookingsProvider.future),
-          child: ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: orders.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 10),
-            itemBuilder: (context, index) => _OrderCard(order: orders[index]),
-          ),
+        final now = DateTime.now();
+        final counts = bookingCountsByStatus(orders, now: now);
+        final shown = _group == null
+            ? orders
+            : orders
+                  .where((o) => o.orderStatusLabel(now: now) == _group)
+                  .toList();
+
+        return Column(
+          children: [
+            _StatusFilterBar(
+              total: orders.length,
+              counts: counts,
+              selected: _group,
+              onSelected: (group) => setState(() => _group = group),
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () => ref.refresh(businessBookingsProvider.future),
+                child: shown.isEmpty
+                    // Scrollable even when empty, so pull-to-refresh still works here.
+                    ? ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          EmptyState(
+                            icon: Icons.filter_list_off_outlined,
+                            title: 'No ${_group!.toLowerCase()} bookings',
+                            message:
+                                'Bookings will appear here when they reach this status.',
+                          ),
+                        ],
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                        itemCount: shown.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 10),
+                        itemBuilder: (context, index) =>
+                            _OrderCard(order: shown[index]),
+                      ),
+              ),
+            ),
+          ],
         );
       },
+    );
+  }
+}
+
+/// All 12 · Active 3 · Confirmed 4 · … — scrolls sideways, since seven chips never fit a phone.
+class _StatusFilterBar extends StatelessWidget {
+  const _StatusFilterBar({
+    required this.total,
+    required this.counts,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final int total;
+  final Map<String, int> counts;
+  final String? selected;
+  final ValueChanged<String?> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    Widget chip(String label, int count, String? group) {
+      final isSelected = selected == group;
+      return ChoiceChip(
+        label: Text('$label $count'),
+        selected: isSelected,
+        showCheckmark: false,
+        // A group with nothing in it stays on the bar, so the row never jumps about, but reads
+        // quieter than one that has bookings in it.
+        labelStyle: count == 0 && !isSelected
+            ? TextStyle(color: theme.colorScheme.onSurfaceVariant)
+            : null,
+        onSelected: (_) => onSelected(group),
+      );
+    }
+
+    // A scrolling Row, not a ListView: seven chips are cheap, and building them all keeps every
+    // one reachable by a screen reader even while it is scrolled out of view.
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          chip('All', total, null),
+          for (final group in bookingStatusGroups) ...[
+            const SizedBox(width: 8),
+            chip(group, counts[group] ?? 0, group),
+          ],
+        ],
+      ),
     );
   }
 }
