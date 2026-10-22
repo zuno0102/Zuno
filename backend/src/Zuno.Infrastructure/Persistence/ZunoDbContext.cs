@@ -28,6 +28,8 @@ public class ZunoDbContext(
 
     public DbSet<ServiceCategory> ServiceCategories => Set<ServiceCategory>();
 
+    public DbSet<OrderStageDefinition> OrderStages => Set<OrderStageDefinition>();
+
     public DbSet<ServiceSubCategory> ServiceSubCategories => Set<ServiceSubCategory>();
 
     public DbSet<State> States => Set<State>();

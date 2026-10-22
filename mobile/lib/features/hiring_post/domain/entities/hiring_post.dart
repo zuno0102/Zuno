@@ -42,6 +42,7 @@ class HiringPost {
     this.pendingOfferCount = 0,
     this.filledCount = 0,
     required this.status,
+    this.stage = '',
     required this.createdDate,
     this.myApplicationStatus,
     this.myApplicationId,
@@ -158,6 +159,10 @@ class HiringPost {
   /// Workers who have accepted and are actually turning up.
   final int filledCount;
   final String status;
+
+  /// Where this stands as the viewer reads it — an order stage code such as `AwaitingPayment`,
+  /// decided by the server. Its name and colour come from the order stage list.
+  final String stage;
   final DateTime createdDate;
   final String? myApplicationStatus;
   final String? myApplicationId;

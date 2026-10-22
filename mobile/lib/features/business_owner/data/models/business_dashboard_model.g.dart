@@ -117,6 +117,7 @@ DashboardEventModel _$DashboardEventModelFromJson(Map<String, dynamic> json) =>
       customerName: json['customerName'] as String,
       scheduledDate: DateTime.parse(json['scheduledDate'] as String),
       status: json['status'] as String,
+      stage: json['stage'] as String? ?? '',
       subCategoryName: json['subCategoryName'] as String?,
       price: (json['price'] as num?)?.toDouble() ?? 0,
       requiredWorkerCount: (json['requiredWorkerCount'] as num?)?.toInt() ?? 1,

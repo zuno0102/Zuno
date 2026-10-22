@@ -8,6 +8,8 @@ import 'package:zuno/features/business_owner/presentation/providers/business_das
 import 'package:zuno/features/business_owner/presentation/providers/business_services_notifier.dart';
 import 'package:zuno/features/business_owner/presentation/screens/business_dashboard_tab.dart';
 import 'package:zuno/features/business_owner/presentation/screens/dashboard_detail_screens.dart';
+import 'package:zuno/features/catalog/domain/entities/order_stage.dart';
+import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
 import 'package:zuno/shared/domain/business_trust.dart';
 
 /// The business home screen must render every section on a phone-sized screen.
@@ -31,6 +33,7 @@ void main() {
         scheduledDate: DateTime(2026, 10, 1),
         price: 3000,
         status: 'Completed',
+        stage: 'AwaitingPayment',
       ),
     ],
     cancelledEvents: 1,
@@ -107,6 +110,12 @@ void main() {
       ProviderScope(
         overrides: [
           businessDashboardProvider.overrideWith((ref) async => data),
+          // A stage name that is not the live one: the row must show what the server sends.
+          orderStagesProvider.overrideWith(
+            (ref) async => const [
+              OrderStage(code: 'AwaitingPayment', label: 'Pay pending'),
+            ],
+          ),
         ],
         child: const MaterialApp(home: Scaffold(body: BusinessDashboardTab())),
       ),
@@ -239,8 +248,8 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('1 booking with a wage still owed'), findsOneWidget);
     expect(find.text('Wall painting'), findsOneWidget);
-    // The order reads Completed in the database; here it must say what is left to do.
-    expect(find.text('Awaiting payment'), findsWidgets);
+    // The order reads Completed in the database; the row shows the server's stage for it.
+    expect(find.text('Pay pending'), findsOneWidget);
     expect(find.text('Completed'), findsNothing);
   });
 

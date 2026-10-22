@@ -138,6 +138,12 @@ public class HiringPostDto
 
     public string Status { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Where the business's own event stands — an <c>OrderStage</c> name, the same words as an
+    /// order's, so both sit under one set of filters. Looked up in <c>/order-stages</c>.
+    /// </summary>
+    public string Stage { get; set; } = string.Empty;
+
     public DateTimeOffset CreatedDate { get; set; }
 
     public string? MyApplicationStatus { get; set; }

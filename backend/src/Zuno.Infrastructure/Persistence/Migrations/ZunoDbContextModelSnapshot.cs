@@ -8886,6 +8886,156 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                     b.ToTable("notifications", (string)null);
                 });
 
+            modelBuilder.Entity("Zuno.Domain.Entities.OrderStageDefinition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("display_name");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_date");
+
+                    b.Property<bool>("ShowOnBookings")
+                        .HasColumnType("boolean")
+                        .HasColumnName("show_on_bookings");
+
+                    b.Property<bool>("ShowOnWork")
+                        .HasColumnType("boolean")
+                        .HasColumnName("show_on_work");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<short>("Stage")
+                        .HasColumnType("smallint")
+                        .HasColumnName("stage");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Tone")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("tone");
+
+                    b.HasKey("Id")
+                        .HasName("pk_order_stages");
+
+                    b.HasIndex("Stage")
+                        .IsUnique()
+                        .HasDatabaseName("ux_order_stages_stage")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("order_stages", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("b1111111-0000-0000-0000-000000000001"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 22, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayName = "Active",
+                            IsDeleted = false,
+                            ShowOnBookings = true,
+                            ShowOnWork = false,
+                            SortOrder = 1,
+                            Stage = (short)1,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("b1111111-0000-0000-0000-000000000002"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 22, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayName = "Confirmed",
+                            IsDeleted = false,
+                            ShowOnBookings = true,
+                            ShowOnWork = true,
+                            SortOrder = 2,
+                            Stage = (short)2,
+                            Status = (short)1,
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Id = new Guid("b1111111-0000-0000-0000-000000000003"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 22, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayName = "In progress",
+                            IsDeleted = false,
+                            ShowOnBookings = true,
+                            ShowOnWork = true,
+                            SortOrder = 3,
+                            Stage = (short)3,
+                            Status = (short)1,
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Id = new Guid("b1111111-0000-0000-0000-000000000004"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 22, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayName = "Awaiting payment",
+                            IsDeleted = false,
+                            ShowOnBookings = true,
+                            ShowOnWork = true,
+                            SortOrder = 4,
+                            Stage = (short)4,
+                            Status = (short)1,
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Id = new Guid("b1111111-0000-0000-0000-000000000005"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 22, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayName = "Completed",
+                            IsDeleted = false,
+                            ShowOnBookings = true,
+                            ShowOnWork = true,
+                            SortOrder = 5,
+                            Stage = (short)5,
+                            Status = (short)1,
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Id = new Guid("b1111111-0000-0000-0000-000000000006"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 22, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayName = "Cancelled",
+                            IsDeleted = false,
+                            ShowOnBookings = true,
+                            ShowOnWork = false,
+                            SortOrder = 6,
+                            Stage = (short)6,
+                            Status = (short)1,
+                            Tone = "danger"
+                        });
+                });
+
             modelBuilder.Entity("Zuno.Domain.Entities.PayoutBatch", b =>
                 {
                     b.Property<Guid>("Id")

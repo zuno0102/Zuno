@@ -11,6 +11,7 @@ import 'package:zuno/features/business_owner/presentation/screens/business_booki
 import 'package:zuno/features/business_owner/presentation/screens/business_orders_tab.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/business_hiring_posts_notifier.dart';
+import 'package:zuno/shared/widgets/status_pill.dart';
 
 /// The business's side of a booking conversation.
 ///
@@ -242,7 +243,7 @@ void main() {
     ) async {
       await pumpPhone(tester, [order()]);
 
-      final status = tester.getRect(find.text('Confirmed'));
+      final status = tester.getRect(find.byType(StatusPill));
       final message = tester.getRect(button('Message customer'));
       expect(message.top - status.bottom, greaterThanOrEqualTo(12));
       expect(tester.takeException(), isNull);

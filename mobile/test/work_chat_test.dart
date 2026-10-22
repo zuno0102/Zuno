@@ -462,9 +462,9 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('Customers'), findsOneWidget);
-        expect(find.text('Workers (2)'), findsOneWidget);
+        expect(find.text('Workers 2'), findsOneWidget);
 
-        await tester.tap(find.text('Workers (2)'));
+        await tester.tap(find.text('Workers 2'));
         await tester.pumpAndSettle();
         expect(find.text('Ravi Kumar'), findsOneWidget);
         expect(tester.takeException(), isNull);

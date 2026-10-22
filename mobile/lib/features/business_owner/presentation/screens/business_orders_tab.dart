@@ -11,6 +11,8 @@ import 'package:zuno/features/booking/presentation/widgets/booking_crew_list.dar
 import 'package:zuno/features/booking/presentation/widgets/booking_threads_list.dart';
 import 'package:zuno/features/booking/presentation/widgets/booking_tracks.dart';
 import 'package:zuno/features/booking/presentation/widgets/order_code.dart';
+import 'package:zuno/features/catalog/domain/entities/order_stage.dart';
+import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
 import 'package:zuno/features/booking/presentation/providers/booking_message_providers.dart';
 import 'package:zuno/features/business_owner/presentation/screens/business_booking_detail_screen.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/crew_member_sheet.dart';
@@ -128,55 +130,20 @@ int workStepsReady(
   return orderSteps + eventSteps;
 }
 
-/// The status groups the Bookings tab splits into, in the order a business works through them.
+/// How many items sit in each of [filters], keyed by stage code, every filter present even at zero.
 ///
-/// Each is a value of [Booking.orderStatusLabel] — the same words every card's status chip
-/// shows — so a filter and the cards under it can never disagree.
-const bookingStatusGroups = [
-  'Active',
-  'Confirmed',
-  'In progress',
-  'Awaiting payment',
-  'Completed',
-  'Cancelled',
-];
-
-/// How many bookings sit in each of [bookingStatusGroups], every group present even at zero.
-Map<String, int> bookingCountsByStatus(List<Booking> orders, {DateTime? now}) {
-  final counts = {for (final group in bookingStatusGroups) group: 0};
-  for (final order in orders) {
-    final group = order.orderStatusLabel(now: now);
-    counts[group] = (counts[group] ?? 0) + 1;
+/// [stageCodes] is each item's stage as the server decided it — an order's or an own event's
+/// `stage`. Nothing here knows any stage by name: the filters are whatever the server lists.
+Map<String, int> countByStage(
+  Iterable<String> stageCodes,
+  List<OrderStage> filters,
+) {
+  final counts = {for (final stage in filters) stage.code: 0};
+  for (final code in stageCodes) {
+    if (counts.containsKey(code)) counts[code] = counts[code]! + 1;
   }
   return counts;
 }
-
-/// The groups the Status management tab splits into: where the work itself stands.
-///
-/// No Active or Cancelled — an order not yet accepted, or called off, never reaches that tab.
-const workStatusGroups = [
-  'Confirmed',
-  'In progress',
-  'Awaiting payment',
-  'Completed',
-];
-
-/// Where a customer order's work stands, in [workStatusGroups] words.
-///
-/// Its own status label, which already reads this way once an order is confirmed — the same words
-/// its card shows.
-String orderWorkGroup(Booking order, {DateTime? now}) =>
-    order.orderStatusLabel(now: now);
-
-/// Where one of the business's own events stands, in the same words as an order, so both kinds
-/// of work sit under one set of filters.
-String ownEventWorkGroup(HiringPost post) => switch (post) {
-  _ when post.isFullyComplete => 'Completed',
-  _ when post.isWorkCompleted => 'Awaiting payment',
-  _ when post.isWorkStarted => 'In progress',
-  // Planned and on the books, like a confirmed order.
-  _ => 'Confirmed',
-};
 
 /// "Bookings", with the new orders waiting on the business written after it.
 class _NewOrdersTabLabel extends ConsumerWidget {
@@ -366,34 +333,27 @@ class _BusinessMessagesTabState extends ConsumerState<_BusinessMessagesTab> {
     final customerUnread = ref.watch(unreadChatCountProvider);
     final workerUnread = ref.watch(unreadWorkChatCountProvider);
 
+    // Spaced like the status chips a tab away — "Workers 2", not "Workers (2)". A zero is left
+    // off entirely rather than shown dimmed the way an empty booking stage is: nothing unread is
+    // the ordinary resting state here, so "Customers 0" would sit on the bar saying nothing.
     String label(String name, int unread) =>
-        unread > 0 ? '$name ($unread)' : name;
+        unread > 0 ? '$name $unread' : name;
+
+    Widget audienceChip(String name, int unread, _Audience value) => ChoiceChip(
+      label: Text(label(name, unread)),
+      selected: _audience == value,
+      showCheckmark: false,
+      onSelected: (_) => setState(() => _audience = value),
+    );
 
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: SizedBox(
-            width: double.infinity,
-            child: SegmentedButton<_Audience>(
-              key: const Key('businessMessagesAudience'),
-              showSelectedIcon: false,
-              segments: [
-                ButtonSegment(
-                  value: _Audience.customers,
-                  icon: const Icon(Icons.person_outline),
-                  label: Text(label('Customers', customerUnread)),
-                ),
-                ButtonSegment(
-                  value: _Audience.workers,
-                  icon: const Icon(Icons.engineering_outlined),
-                  label: Text(label('Workers', workerUnread)),
-                ),
-              ],
-              selected: {_audience},
-              onSelectionChanged: (s) => setState(() => _audience = s.first),
-            ),
-          ),
+        _FilterChipBar(
+          key: const Key('businessMessagesAudience'),
+          chips: [
+            audienceChip('Customers', customerUnread, _Audience.customers),
+            audienceChip('Workers', workerUnread, _Audience.workers),
+          ],
         ),
         Expanded(
           child: _audience == _Audience.customers
@@ -447,8 +407,9 @@ class _CustomerThreads extends StatelessWidget {
 /// The bookings themselves, newest arrangement first, split by status. One status each, and
 /// nothing to press.
 ///
-/// A row of filters with counts sits on top — All, then each of [bookingStatusGroups] — because
-/// one mixed list made a business read past every finished and cancelled job to find the new ones.
+/// A row of filters with counts sits on top — All, then each stage the server lists for this tab —
+/// because one mixed list made a business read past every finished and cancelled job to find the
+/// new ones.
 class _CustomerOrdersTab extends ConsumerStatefulWidget {
   const _CustomerOrdersTab();
 
@@ -457,13 +418,15 @@ class _CustomerOrdersTab extends ConsumerStatefulWidget {
 }
 
 class _CustomerOrdersTabState extends ConsumerState<_CustomerOrdersTab> {
-  /// The group being shown, or null for All. Kept across refreshes; an emptied group stays
+  /// The stage code being shown, or null for All. Kept across refreshes; an emptied stage stays
   /// selected and says so, rather than silently jumping back to All.
-  String? _group;
+  String? _stageCode;
 
   @override
   Widget build(BuildContext context) {
     final ordersAsync = ref.watch(businessBookingsProvider);
+    final stages = ref.watch(orderStagesProvider).value ?? const <OrderStage>[];
+    final filters = stages.onBookings;
 
     return ordersAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -482,22 +445,19 @@ class _CustomerOrdersTabState extends ConsumerState<_CustomerOrdersTab> {
           );
         }
 
-        final now = DateTime.now();
-        final counts = bookingCountsByStatus(orders, now: now);
-        final shown = _group == null
+        final counts = countByStage(orders.map((o) => o.stage), filters);
+        final shown = _stageCode == null
             ? orders
-            : orders
-                  .where((o) => o.orderStatusLabel(now: now) == _group)
-                  .toList();
+            : orders.where((o) => o.stage == _stageCode).toList();
 
         return Column(
           children: [
             _StatusFilterBar(
-              groups: bookingStatusGroups,
+              filters: filters,
               total: orders.length,
               counts: counts,
-              selected: _group,
-              onSelected: (group) => setState(() => _group = group),
+              selected: _stageCode,
+              onSelected: (code) => setState(() => _stageCode = code),
             ),
             Expanded(
               child: RefreshIndicator(
@@ -509,7 +469,8 @@ class _CustomerOrdersTabState extends ConsumerState<_CustomerOrdersTab> {
                         children: [
                           EmptyState(
                             icon: Icons.filter_list_off_outlined,
-                            title: 'No ${_group!.toLowerCase()} bookings',
+                            title:
+                                'No ${stages.resolve(_stageCode!).label.toLowerCase()} bookings',
                             message:
                                 'Bookings will appear here when they reach this status.',
                           ),
@@ -534,18 +495,22 @@ class _CustomerOrdersTabState extends ConsumerState<_CustomerOrdersTab> {
 /// All 12 · Active 3 · Confirmed 4 · … — scrolls sideways, since the chips rarely fit a phone.
 class _StatusFilterBar extends StatelessWidget {
   const _StatusFilterBar({
-    required this.groups,
+    required this.filters,
     required this.total,
     required this.counts,
     required this.selected,
     required this.onSelected,
   });
 
-  /// The chips after All, in order. Each tab passes its own: Bookings has every status, Status
-  /// management only the ones work can be in.
-  final List<String> groups;
+  /// The chips after All, in the server's order, with the server's names. Each tab passes the
+  /// stages the server marks for it.
+  final List<OrderStage> filters;
   final int total;
+
+  /// Per stage code.
   final Map<String, int> counts;
+
+  /// The selected stage code, or null for All.
   final String? selected;
   final ValueChanged<String?> onSelected;
 
@@ -553,8 +518,8 @@ class _StatusFilterBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    Widget chip(String label, int count, String? group) {
-      final isSelected = selected == group;
+    Widget chip(String label, int count, String? code) {
+      final isSelected = selected == code;
       return ChoiceChip(
         label: Text('$label $count'),
         selected: isSelected,
@@ -564,21 +529,44 @@ class _StatusFilterBar extends StatelessWidget {
         labelStyle: count == 0 && !isSelected
             ? TextStyle(color: theme.colorScheme.onSurfaceVariant)
             : null,
-        onSelected: (_) => onSelected(group),
+        onSelected: (_) => onSelected(code),
       );
     }
 
-    // A scrolling Row, not a ListView: seven chips are cheap, and building them all keeps every
-    // one reachable by a screen reader even while it is scrolled out of view.
+    return _FilterChipBar(
+      chips: [
+        chip('All', total, null),
+        for (final stage in filters)
+          chip(stage.label, counts[stage.code] ?? 0, stage.code),
+      ],
+    );
+  }
+}
+
+/// The row every filter on this screen sits in.
+///
+/// Bookings, Status management and Messages all filter a list one tab apart, so they have to look
+/// the same doing it. They did not: Messages grew a SegmentedButton while the other two used
+/// chips, and the three tabs read as three different screens. Owning the spacing and padding here
+/// is what stops them drifting again — a bar supplies its own chrome, and a caller only says which
+/// chips go in it.
+class _FilterChipBar extends StatelessWidget {
+  const _FilterChipBar({required this.chips, super.key});
+
+  final List<Widget> chips;
+
+  @override
+  Widget build(BuildContext context) {
+    // A scrolling Row, not a ListView: a handful of chips is cheap, and building them all keeps
+    // every one reachable by a screen reader even while it is scrolled out of view.
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          chip('All', total, null),
-          for (final group in groups) ...[
-            const SizedBox(width: 8),
-            chip(group, counts[group] ?? 0, group),
+          for (final (index, chip) in chips.indexed) ...[
+            if (index > 0) const SizedBox(width: 8),
+            chip,
           ],
         ],
       ),
@@ -688,8 +676,8 @@ class _OrderCard extends StatelessWidget {
 /// standalone hiring post. Leaving the second kind out would strand it — a post with no order
 /// behind it would have nowhere left to be started, finished or paid.
 ///
-/// Split by status like the Bookings tab — All, then each of [workStatusGroups] — with orders and
-/// own events counted together, since both are work the business is moving along.
+/// Split by stage like the Bookings tab — All, then each stage the server lists for this tab — with
+/// orders and own events counted together, since both are work the business is moving along.
 class _StatusManagementTab extends ConsumerStatefulWidget {
   const _StatusManagementTab();
 
@@ -699,13 +687,14 @@ class _StatusManagementTab extends ConsumerStatefulWidget {
 }
 
 class _StatusManagementTabState extends ConsumerState<_StatusManagementTab> {
-  /// The group being shown, or null for All.
-  String? _group;
+  /// The stage code being shown, or null for All.
+  String? _stageCode;
 
   @override
   Widget build(BuildContext context) {
     final ordersAsync = ref.watch(businessBookingsProvider);
     final postsAsync = ref.watch(businessHiringPostsProvider);
+    final stages = ref.watch(orderStagesProvider).value ?? const <OrderStage>[];
 
     if (ordersAsync.hasError || postsAsync.hasError) {
       return Center(
@@ -745,30 +734,28 @@ class _StatusManagementTabState extends ConsumerState<_StatusManagementTab> {
       );
     }
 
-    final now = DateTime.now();
-    final counts = {for (final group in workStatusGroups) group: 0};
-    for (final group in [
-      ...live.map((o) => orderWorkGroup(o, now: now)),
-      ...ownEvents.map(ownEventWorkGroup),
-    ]) {
-      counts[group] = (counts[group] ?? 0) + 1;
-    }
+    // Both kinds of work carry a stage the server decided, in the same codes.
+    final filters = stages.onWork;
+    final counts = countByStage([
+      ...live.map((o) => o.stage),
+      ...ownEvents.map((p) => p.stage),
+    ], filters);
 
-    final shownOrders = _group == null
+    final shownOrders = _stageCode == null
         ? live
-        : live.where((o) => orderWorkGroup(o, now: now) == _group).toList();
-    final shownEvents = _group == null
+        : live.where((o) => o.stage == _stageCode).toList();
+    final shownEvents = _stageCode == null
         ? ownEvents
-        : ownEvents.where((p) => ownEventWorkGroup(p) == _group).toList();
+        : ownEvents.where((p) => p.stage == _stageCode).toList();
 
     return Column(
       children: [
         _StatusFilterBar(
-          groups: workStatusGroups,
+          filters: filters,
           total: live.length + ownEvents.length,
           counts: counts,
-          selected: _group,
-          onSelected: (group) => setState(() => _group = group),
+          selected: _stageCode,
+          onSelected: (code) => setState(() => _stageCode = code),
         ),
         Expanded(
           child: RefreshIndicator(
@@ -785,7 +772,8 @@ class _StatusManagementTabState extends ConsumerState<_StatusManagementTab> {
                     children: [
                       EmptyState(
                         icon: Icons.filter_list_off_outlined,
-                        title: 'Nothing ${_group!.toLowerCase()}',
+                        title:
+                            'Nothing ${stages.resolve(_stageCode!).label.toLowerCase()}',
                         message:
                             'Work will appear here when it reaches this status.',
                       ),
@@ -940,7 +928,8 @@ class _OrderStepCardState extends ConsumerState<_OrderStepCard> {
       subtitle: order.customerName,
       code: order.reference.isEmpty ? null : order.reference,
       when: order.scheduledDate,
-      stage: order.orderStatusLabel(),
+      stage: (ref.watch(orderStagesProvider).value ?? const <OrderStage>[])
+          .resolve(order.stage),
       // The tracks say how far the job has got; the crew list says who is on it and what each of
       // them is owed. This is the screen the business works from, so both belong here.
       tracks: Column(
@@ -1071,13 +1060,10 @@ class _OwnEventStepCardState extends ConsumerState<_OwnEventStepCard> {
       subtitle: post.location ?? 'Your own event',
       code: null,
       when: post.eventDate,
-      stage: post.isFullyComplete
-          ? 'Finished and settled'
-          : post.isWorkCompleted
-          ? 'Work done'
-          : post.isWorkStarted
-          ? 'In progress'
-          : '${post.filledCount} of ${post.workersNeeded} hired',
+      // The same stage, and so the same words, as the filter it sits under. How many are hired
+      // is on the Workers line of the tracks below.
+      stage: (ref.watch(orderStagesProvider).value ?? const <OrderStage>[])
+          .resolve(post.stage),
       // The post's own three strands. Same treatment as an order's, because it is the same
       // question — how far has this job got — asked about the business's own event.
       tracks: Column(
@@ -1182,7 +1168,9 @@ class _StepCard extends StatelessWidget {
   final String subtitle;
   final String? code;
   final DateTime when;
-  final String stage;
+
+  /// Where the job stands — its name and colour as the server's stage list gives them.
+  final OrderStage stage;
 
   /// Every strand of this job's progress, in the order each one opens.
   final Widget tracks;
@@ -1242,7 +1230,11 @@ class _StepCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 10),
-                StatusPill(label: stage, tone: tone, compact: true),
+                StatusPill(
+                  label: stage.label,
+                  tone: stage.statusTone,
+                  compact: true,
+                ),
               ],
             ),
             const SizedBox(height: 12),

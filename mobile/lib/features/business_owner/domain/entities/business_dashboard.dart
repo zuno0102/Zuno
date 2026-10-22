@@ -109,6 +109,7 @@ class DashboardEvent {
     required this.customerName,
     required this.scheduledDate,
     required this.status,
+    this.stage = '',
     this.subCategoryName,
     this.price = 0,
     this.requiredWorkerCount = 1,
@@ -126,6 +127,9 @@ class DashboardEvent {
   final double price;
   final int requiredWorkerCount;
   final String status;
+
+  /// The order stage code for the row's chip, named and coloured by the stage list.
+  final String stage;
   final DateTime? cancelledAt;
   final String? cancellationReason;
   final String? city;

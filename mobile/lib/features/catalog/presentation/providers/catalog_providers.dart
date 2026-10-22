@@ -3,6 +3,7 @@ import 'package:zuno/features/auth/presentation/providers/auth_providers.dart';
 import 'package:zuno/features/catalog/data/datasources/catalog_remote_datasource.dart';
 import 'package:zuno/features/catalog/domain/entities/district.dart';
 import 'package:zuno/features/catalog/domain/entities/location_state.dart';
+import 'package:zuno/features/catalog/domain/entities/order_stage.dart';
 import 'package:zuno/features/catalog/domain/entities/service_category.dart';
 
 part 'catalog_providers.g.dart';
@@ -16,6 +17,14 @@ CatalogRemoteDataSource catalogRemoteDataSource(Ref ref) =>
 @Riverpod(keepAlive: true)
 Future<List<ServiceCategory>> serviceCategories(Ref ref) async =>
     (await ref.watch(catalogRemoteDataSourceProvider).getServiceCategories())
+        .map((m) => m.toEntity())
+        .toList();
+
+/// How each order stage is named, coloured and ordered — reference data from the server, kept for
+/// the session like the categories.
+@Riverpod(keepAlive: true)
+Future<List<OrderStage>> orderStages(Ref ref) async =>
+    (await ref.watch(catalogRemoteDataSourceProvider).getOrderStages())
         .map((m) => m.toEntity())
         .toList();
 

@@ -23,6 +23,8 @@ public interface IApplicationDbContext
 
     public DbSet<ServiceCategory> ServiceCategories { get; }
 
+    public DbSet<OrderStageDefinition> OrderStages { get; }
+
     public DbSet<ServiceSubCategory> ServiceSubCategories { get; }
 
     public DbSet<State> States { get; }

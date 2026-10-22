@@ -106,6 +106,53 @@ final class ServiceCategoriesProvider
 
 String _$serviceCategoriesHash() => r'd7924e13f827d82f3538dc9777a33d61bd77813c';
 
+/// How each order stage is named, coloured and ordered — reference data from the server, kept for
+/// the session like the categories.
+
+@ProviderFor(orderStages)
+final orderStagesProvider = OrderStagesProvider._();
+
+/// How each order stage is named, coloured and ordered — reference data from the server, kept for
+/// the session like the categories.
+
+final class OrderStagesProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<OrderStage>>,
+          List<OrderStage>,
+          FutureOr<List<OrderStage>>
+        >
+    with $FutureModifier<List<OrderStage>>, $FutureProvider<List<OrderStage>> {
+  /// How each order stage is named, coloured and ordered — reference data from the server, kept for
+  /// the session like the categories.
+  OrderStagesProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'orderStagesProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$orderStagesHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<OrderStage>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<OrderStage>> create(Ref ref) {
+    return orderStages(ref);
+  }
+}
+
+String _$orderStagesHash() => r'cd19a3c1b661f254d7d19f4877f96dcad1a493b2';
+
 /// India states — reference data, rarely changes within a session.
 
 @ProviderFor(locationStates)

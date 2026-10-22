@@ -54,6 +54,7 @@ HiringPostModel _$HiringPostModelFromJson(Map<String, dynamic> json) =>
       pendingOfferCount: (json['pendingOfferCount'] as num?)?.toInt() ?? 0,
       filledCount: (json['filledCount'] as num?)?.toInt() ?? 0,
       status: json['status'] as String,
+      stage: json['stage'] as String? ?? '',
       createdDate: DateTime.parse(json['createdDate'] as String),
       myApplicationStatus: json['myApplicationStatus'] as String?,
       myApplicationId: json['myApplicationId'] as String?,

@@ -30,6 +30,7 @@ class Booking {
     this.serviceSubCategoryName,
     this.imageUrl,
     required this.status,
+    this.stage = '',
     required this.scheduledDate,
     required this.priceQuoted,
     this.priceType,
@@ -119,6 +120,10 @@ class Booking {
   final double? myWageAmount;
 
   final String status;
+
+  /// Where this stands as the viewer reads it — an order stage code such as `AwaitingPayment`,
+  /// decided by the server. Its name and colour come from the order stage list.
+  final String stage;
   final DateTime scheduledDate;
   final String? notes;
   final double priceQuoted;
@@ -287,39 +292,6 @@ class Booking {
       isConfirmed &&
       hasReachedItsDate(now: now) &&
       assignedWorkers.any((w) => w.isAccepted);
-
-  /// The one status the order list shows — what the customer's order is doing.
-  ///
-  /// A new order is **Active**: live, real, waiting on the business. Accepting it makes it
-  /// **Confirmed**. How the day then unfolds is the four tracks below, and belongs on the screen
-  /// where the business works rather than on the one where it reads.
-  String orderStatusLabel({DateTime? now}) => switch (status) {
-    'Pending' => 'Active',
-    // Pre-split rows meant "confirmed, with crew on it".
-    'Confirmed' || 'Assigned' => 'Confirmed',
-    'InProgress' => 'In progress',
-    'Completed' => _completedLabel,
-    'Cancelled' => 'Cancelled',
-    _ => status,
-  };
-
-  /// What a finished order reads as, which turns on who is asking.
-  ///
-  /// This label used to be `isWageClear ? 'Completed' : 'Awaiting payment'`, and that treated "I was
-  /// not told about wages" as "wages are outstanding". [wageStatus] arrives empty for every viewer
-  /// who is not a business reading its own orders — so a worker's job list and a customer's order list
-  /// marked **every** finished order "Awaiting payment", including ones paid in full weeks earlier.
-  /// It read as money owed on screens whose own data could not know whether any was.
-  ///
-  /// So each viewer is answered from what they actually hold: a worker from their own wage, a business
-  /// from the crew roll-up, and anybody with neither gets the plain fact that the work is done.
-  String get _completedLabel {
-    if (myWageIsOutstanding) return 'Awaiting payment';
-    // Known and settled, or nothing was ever owed on my row — either way, done.
-    if (myPaymentStatus != null) return 'Completed';
-    if (!hasWageInfo) return 'Completed';
-    return isWageClear ? 'Completed' : 'Awaiting payment';
-  }
 
   // ---- The four tracks ---------------------------------------------------------------------
   //

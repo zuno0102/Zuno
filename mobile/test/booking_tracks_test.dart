@@ -54,35 +54,8 @@ void main() {
     assignedWorkers: crew,
   );
 
-  group('the one label the order list shows', () {
-    test('a new order is Active — live, and waiting on the business', () {
-      expect(order(status: 'Pending').orderStatusLabel(now: now), 'Active');
-    });
-
-    test('accepting it makes it Confirmed', () {
-      expect(order().orderStatusLabel(now: now), 'Confirmed');
-    });
-
-    test('finished but unpaid says so, rather than claiming to be done', () {
-      final owing = order(
-        status: 'Completed',
-        completedAt: now,
-        wageStatus: 'Outstanding',
-      );
-      final square = order(
-        status: 'Completed',
-        completedAt: now,
-        wageStatus: 'Settled',
-      );
-
-      expect(owing.orderStatusLabel(now: now), 'Awaiting payment');
-      expect(square.orderStatusLabel(now: now), 'Completed');
-    });
-
-    test('legacy Assigned rows read like Confirmed ones', () {
-      expect(order(status: 'Assigned').orderStatusLabel(now: now), 'Confirmed');
-    });
-  });
+  // The one label the order list shows is the server's stage now — tested in the backend's
+  // OrderStagesTests, and its display in order_stage_test.dart.
 
   group('the cascade — each track opens the next', () {
     test('confirmed, before the day: only the event is open', () {
@@ -103,7 +76,10 @@ void main() {
     });
 
     test('exactly on the scheduled minute counts as arrived', () {
-      expect(order(scheduledDate: now).eventState(now: now), TrackState.inProgress);
+      expect(
+        order(scheduledDate: now).eventState(now: now),
+        TrackState.inProgress,
+      );
     });
 
     test('start work: the work runs, the wages open', () {
@@ -259,11 +235,8 @@ void main() {
 
   group('the whole order', () {
     test('counts only when the work is done AND the wages are square', () {
-      Booking finished(String wages) => order(
-        status: 'Completed',
-        completedAt: now,
-        wageStatus: wages,
-      );
+      Booking finished(String wages) =>
+          order(status: 'Completed', completedAt: now, wageStatus: wages);
 
       expect(finished('Settled').isEntirelyComplete, isTrue);
       expect(finished('NoWagesThroughZuno').isEntirelyComplete, isTrue);
@@ -293,12 +266,17 @@ void main() {
 
     test('names the states a business actually reads', () {
       expect(
-        worker(status: 'Assigned', displayStatus: 'Awaiting').displayStatusLabel,
+        worker(
+          status: 'Assigned',
+          displayStatus: 'Awaiting',
+        ).displayStatusLabel,
         'Awaiting their answer',
       );
       expect(
-        worker(status: 'Completed', displayStatus: 'Completed')
-            .displayStatusLabel,
+        worker(
+          status: 'Completed',
+          displayStatus: 'Completed',
+        ).displayStatusLabel,
         'Completed',
       );
     });

@@ -1,5 +1,6 @@
 using Zuno.Domain.Entities;
 using Zuno.Domain.Enums;
+using Zuno.Domain.Specifications;
 using Zuno.Domain.ValueObjects;
 
 namespace Zuno.Application.Modules.Booking.DTOs;
@@ -108,6 +109,13 @@ public static class BookingMappingExtensions
                 .FirstOrDefault(a => a.WorkerProfileId == viewerWorkerProfileId)
                 ?.AgreedSalaryAmount,
             Status = booking.BookingStatus.ToString(),
+            // Wages only where the business is looking; a worker is answered from their own row.
+            Stage = OrderStages.ForBooking(
+                booking.BookingStatus,
+                viewerWorkerProfileId is null
+                    ? null
+                    : booking.WorkerAssignments.FirstOrDefault(a => a.WorkerProfileId == viewerWorkerProfileId),
+                includeCrew ? wages : null).ToString(),
             ScheduledDate = booking.ScheduledDate,
             Notes = booking.Notes,
             PriceQuoted = booking.PriceQuoted,

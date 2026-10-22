@@ -31,6 +31,9 @@ class ApiConstants {
   static const String serviceCategoriesPath =
       '/api/$apiVersion/service-categories';
   static const String statesPath = '/api/$apiVersion/states';
+
+  /// Names, colours and order of order stages, for status chips and filters.
+  static const String orderStagesPath = '/api/$apiVersion/order-stages';
   static const String districtsPath = '/api/$apiVersion/districts';
 
   /// The app owner's catalogue: the kinds of work the whole product offers.

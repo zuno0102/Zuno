@@ -45,6 +45,7 @@ class HiringPostModel {
     this.pendingOfferCount = 0,
     this.filledCount = 0,
     required this.status,
+    this.stage = '',
     required this.createdDate,
     this.myApplicationStatus,
     this.myApplicationId,
@@ -104,6 +105,7 @@ class HiringPostModel {
   final int pendingOfferCount;
   final int filledCount;
   final String status;
+  final String stage;
   final DateTime createdDate;
   final String? myApplicationStatus;
   final String? myApplicationId;
@@ -152,6 +154,7 @@ class HiringPostModel {
     pendingOfferCount: pendingOfferCount,
     filledCount: filledCount,
     status: status,
+    stage: stage,
     createdDate: createdDate,
     myApplicationStatus: myApplicationStatus,
     myApplicationId: myApplicationId,

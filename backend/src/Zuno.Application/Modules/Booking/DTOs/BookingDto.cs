@@ -102,6 +102,12 @@ public class BookingDto
 
     public string Status { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Where the order stands as the viewer reads it — an <c>OrderStage</c> name such as
+    /// <c>AwaitingPayment</c>. The apps look its name and colour up in <c>/order-stages</c>.
+    /// </summary>
+    public string Stage { get; set; } = string.Empty;
+
     public DateTimeOffset ScheduledDate { get; set; }
 
     public string? Notes { get; set; }

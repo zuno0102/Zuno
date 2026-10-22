@@ -5,6 +5,8 @@ import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/features/business_owner/domain/entities/business_dashboard.dart';
 import 'package:zuno/features/business_owner/domain/entities/business_service.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_services_notifier.dart';
+import 'package:zuno/features/catalog/domain/entities/order_stage.dart';
+import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
 import 'package:zuno/shared/widgets/empty_state.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
@@ -87,16 +89,18 @@ class BookingListScreen extends StatelessWidget {
 
 enum BookingListMode { upcoming, awaitingPayment, cancelled }
 
-class _BookingCard extends StatelessWidget {
+class _BookingCard extends ConsumerWidget {
   const _BookingCard({required this.event, required this.mode});
 
   final DashboardEvent event;
   final BookingListMode mode;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final isCancelled = mode == BookingListMode.cancelled;
+    final stage = (ref.watch(orderStagesProvider).value ?? const <OrderStage>[])
+        .resolve(event.stage);
 
     return Card(
       margin: EdgeInsets.zero,
@@ -166,21 +170,12 @@ class _BookingCard extends StatelessWidget {
             const SizedBox(height: 10),
             Row(
               children: [
+                // The server's stage for this row — on the Awaiting payment list that is
+                // "awaiting payment", not the order's bare Completed — named and coloured by the
+                // stage list.
                 StatusPill(
-                  // The order itself says Completed; what the business needs to read here is
-                  // that the crew still has to be paid.
-                  label: mode == BookingListMode.awaitingPayment
-                      ? 'Awaiting payment'
-                      : event.status,
-                  tone: isCancelled
-                      ? StatusTone.danger
-                      : mode == BookingListMode.awaitingPayment
-                      ? StatusTone.progress
-                      : switch (event.status) {
-                          'Confirmed' || 'Assigned' => StatusTone.success,
-                          'InProgress' => StatusTone.progress,
-                          _ => StatusTone.waiting,
-                        },
+                  label: stage.label,
+                  tone: stage.statusTone,
                   compact: true,
                 ),
               ],

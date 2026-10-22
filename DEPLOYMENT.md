@@ -260,6 +260,28 @@ no hand-written hash to get wrong.
 
 ---
 
+## Changing order stage names, colours and filters — no release needed
+
+The status words on orders ("Active", "Awaiting payment"…) and the filter chips on the business
+Orders tabs come from the `order_stages` table, not from the apps (CODING_STANDARDS §1). Edit the
+rows in Neon and every app picks them up the next time it starts:
+
+```sql
+-- Rename a stage
+update order_stages set display_name = 'Payment due' where stage = 4;
+-- Move it in the filter row (lowest first)
+update order_stages set sort_order = 2 where stage = 4;
+-- Colour family: success | progress | waiting | danger
+update order_stages set tone = 'danger' where stage = 4;
+-- Show or hide it as a filter on the Bookings / Status management tab
+update order_stages set show_on_bookings = true, show_on_work = false where stage = 4;
+```
+
+`stage` is the fixed code the server decides with: 1 Active · 2 Confirmed · 3 In progress ·
+4 Awaiting payment · 5 Completed · 6 Cancelled. Never change or renumber it; change everything else.
+
+---
+
 ## Redeploying
 
 Use `.\deploy.ps1` (see the top of this file). What it automates:

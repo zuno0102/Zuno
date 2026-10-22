@@ -187,6 +187,7 @@ class DashboardEventModel {
     required this.customerName,
     required this.scheduledDate,
     required this.status,
+    this.stage = '',
     this.subCategoryName,
     this.price = 0,
     this.requiredWorkerCount = 1,
@@ -207,6 +208,7 @@ class DashboardEventModel {
   final double price;
   final int requiredWorkerCount;
   final String status;
+  final String stage;
   final DateTime? cancelledAt;
   final String? cancellationReason;
   final String? city;
@@ -221,6 +223,7 @@ class DashboardEventModel {
     price: price,
     requiredWorkerCount: requiredWorkerCount,
     status: status,
+    stage: stage,
     cancelledAt: cancelledAt?.toLocal(),
     cancellationReason: cancellationReason,
     city: city,

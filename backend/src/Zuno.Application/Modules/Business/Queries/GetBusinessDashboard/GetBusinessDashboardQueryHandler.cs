@@ -128,16 +128,18 @@ public class GetBusinessDashboardQueryHandler(
             InactiveServices = servicesByActive.GetValueOrDefault(false),
             ByCategory = BuildBreakdown(completed),
             Trend = BuildTrend(completed, now),
-            AwaitingPayment = awaitingPayment.Take(DetailLimit).Select(ToDto).ToList(),
-            Upcoming = upcoming.Take(DetailLimit).Select(ToDto).ToList(),
-            Cancelled = cancelled.Take(DetailLimit).Select(ToDto).ToList(),
+            // Which list a row is on already settles its stage: being on Awaiting payment means
+            // finished with a wage owed, which the status alone cannot say.
+            AwaitingPayment = awaitingPayment.Take(DetailLimit).Select(b => ToDto(b, OrderStage.AwaitingPayment)).ToList(),
+            Upcoming = upcoming.Take(DetailLimit).Select(b => ToDto(b, OrderStages.ForBooking(b.Status))).ToList(),
+            Cancelled = cancelled.Take(DetailLimit).Select(b => ToDto(b, OrderStage.Cancelled)).ToList(),
             CrewEvents = await BuildCrewEventsAsync(business.Id, cancellationToken),
             Workers = workers,
             Trust = await trustService.GetAsync(business.Id, cancellationToken),
         };
     }
 
-    private static DashboardEventDto ToDto(BookingRow booking) => new()
+    private static DashboardEventDto ToDto(BookingRow booking, OrderStage stage) => new()
     {
         Id = booking.Id,
         ServiceName = booking.ServiceName,
@@ -149,6 +151,7 @@ public class GetBusinessDashboardQueryHandler(
         Price = booking.Price,
         RequiredWorkerCount = booking.RequiredWorkerCount,
         Status = booking.Status.ToString(),
+        Stage = stage.ToString(),
         CancelledAt = booking.CancelledAt,
         CancellationReason = booking.CancellationReason,
         City = booking.City,

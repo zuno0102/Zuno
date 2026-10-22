@@ -22,6 +22,12 @@ public class DashboardEventDto
 
     public string Status { get; set; } = string.Empty;
 
+    /// <summary>
+    /// The row's order stage name (<c>AwaitingPayment</c>), for its chip — named and coloured by
+    /// <c>/order-stages</c>, like every other order.
+    /// </summary>
+    public string Stage { get; set; } = string.Empty;
+
     public DateTimeOffset? CancelledAt { get; set; }
 
     public string? CancellationReason { get; set; }

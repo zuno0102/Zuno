@@ -7,6 +7,8 @@ import 'package:zuno/features/booking/domain/entities/booking_worker_assignment.
 import 'package:zuno/features/booking/presentation/providers/booking_message_providers.dart';
 import 'package:zuno/features/booking/presentation/providers/business_bookings_notifier.dart';
 import 'package:zuno/features/business_owner/presentation/screens/business_orders_tab.dart';
+import 'package:zuno/features/catalog/domain/entities/order_stage.dart';
+import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/business_hiring_posts_notifier.dart';
 import 'package:zuno/features/notifications/presentation/providers/notification_providers.dart';
@@ -52,12 +54,47 @@ class _Threads extends BookingThreads {
   Future<List<BookingThread>> build() async => _threads;
 }
 
+/// Sample stages, standing in for the server's list.
+const _stages = [
+  OrderStage(code: 'S1', label: 'Fresh', sortOrder: 1, showOnBookings: true),
+  OrderStage(
+    code: 'S2',
+    label: 'Agreed',
+    sortOrder: 2,
+    showOnBookings: true,
+    showOnWork: true,
+  ),
+  OrderStage(
+    code: 'S3',
+    label: 'Running',
+    sortOrder: 3,
+    showOnBookings: true,
+    showOnWork: true,
+  ),
+  OrderStage(
+    code: 'S4',
+    label: 'Owed',
+    sortOrder: 4,
+    showOnBookings: true,
+    showOnWork: true,
+  ),
+  OrderStage(
+    code: 'S5',
+    label: 'Closed',
+    sortOrder: 5,
+    showOnBookings: true,
+    showOnWork: true,
+  ),
+  OrderStage(code: 'S6', label: 'Dropped', sortOrder: 6, showOnBookings: true),
+];
+
 // ---- builders ----------------------------------------------------------------------------------
 
 Booking _order(
   String id, {
   required DateTime when,
   String status = 'Confirmed',
+  String stage = '',
   String agreementStatus = 'NotRequired',
   bool acceptedWorker = false,
 }) => Booking(
@@ -70,6 +107,7 @@ Booking _order(
   serviceName: 'Home wall painting',
   serviceCategoryName: 'Painting',
   status: status,
+  stage: stage,
   scheduledDate: when,
   priceQuoted: 5000,
   agreementStatus: agreementStatus,
@@ -90,6 +128,7 @@ HiringPost _event(
   DateTime? completedAt,
   String? bookingId,
   int filled = 1,
+  String stage = '',
 }) => HiringPost(
   id: id,
   businessOwnerProfileId: 'bo-1',
@@ -104,6 +143,7 @@ HiringPost _event(
   confirmedCount: filled,
   filledCount: filled,
   status: 'Open',
+  stage: stage,
   createdDate: when,
 );
 
@@ -344,64 +384,31 @@ void main() {
     });
   });
 
-  group('bookingCountsByStatus', () {
-    test(
-      'bookingCountsByStatus_MixedOrders_CountsEachGroupAndKeepsEmptyOnes',
-      () {
-        final counts = bookingCountsByStatus([
-          _order('a', when: nextMonth, status: 'Pending'),
-          _order('b', when: nextMonth),
-          _order('c', when: nextMonth, status: 'Assigned'),
-          _order('d', when: earlierToday, status: 'InProgress'),
-          _order('e', when: earlierToday, status: 'Cancelled'),
-        ], now: now);
+  group('countByStage', () {
+    test('countByStage_MixedCodes_CountsEachFilterAndKeepsEmptyOnes', () {
+      final counts = countByStage([
+        'S1',
+        'S2',
+        'S2',
+        'S3',
+        'S6',
+      ], _stages.onBookings);
 
-        expect(counts, {
-          'Active': 1,
-          'Confirmed': 2,
-          'In progress': 1,
-          'Awaiting payment': 0,
-          'Completed': 0,
-          'Cancelled': 1,
-        });
-      },
-    );
-
-    test('bookingCountsByStatus_NoOrders_EveryGroupIsZero', () {
-      expect(
-        bookingCountsByStatus(const []).values.every((c) => c == 0),
-        isTrue,
-      );
-      expect(bookingCountsByStatus(const []).keys, bookingStatusGroups);
-    });
-  });
-
-  group('ownEventWorkGroup', () {
-    test('ownEventWorkGroup_NotStarted_IsConfirmed', () {
-      expect(ownEventWorkGroup(_event('e', when: nextMonth)), 'Confirmed');
+      expect(counts, {'S1': 1, 'S2': 2, 'S3': 1, 'S4': 0, 'S5': 0, 'S6': 1});
     });
 
-    test('ownEventWorkGroup_WorkStarted_IsInProgress', () {
-      expect(
-        ownEventWorkGroup(
-          _event('e', when: earlierToday, startedAt: earlierToday),
-        ),
-        'In progress',
-      );
+    test('countByStage_CodeNotAFilterOnThisTab_IsLeftOut', () {
+      // S1 and S6 are not Status management filters, so they are not counted there.
+      expect(countByStage(['S1', 'S6', 'S2'], _stages.onWork), {
+        'S2': 1,
+        'S3': 0,
+        'S4': 0,
+        'S5': 0,
+      });
     });
 
-    test('ownEventWorkGroup_WorkDoneButNotPaid_IsAwaitingPayment', () {
-      expect(
-        ownEventWorkGroup(
-          _event(
-            'e',
-            when: earlierToday,
-            startedAt: earlierToday,
-            completedAt: now,
-          ),
-        ),
-        'Awaiting payment',
-      );
+    test('countByStage_NothingToCount_EveryFilterIsZero', () {
+      expect(countByStage(const [], _stages.onWork).values, everyElement(0));
     });
   });
 
@@ -419,6 +426,7 @@ void main() {
       Set<String>? unopened,
       bool settle = true,
       bool tall = false,
+      List<OrderStage> stages = _stages,
     }) async {
       // A 360dp-wide phone, the narrowest the app targets. [tall] gives the list room to build
       // every card, for tests that count them.
@@ -429,6 +437,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            orderStagesProvider.overrideWith((ref) async => stages),
             businessBookingsProvider.overrideWith(
               () => _Bookings(orders ?? () async => const []),
             ),
@@ -569,70 +578,97 @@ void main() {
       expect(countOn(tester, 'Messages'), '99');
     });
 
-    group('Bookings tab split by status', () {
+    group('Bookings tab split by stage', () {
       List<Booking> mixed() => [
-        _order('new-1', when: later, status: 'Pending'),
-        _order('new-2', when: later, status: 'Pending'),
-        _order('conf-1', when: later),
-        _order('conf-2', when: later, status: 'Assigned'),
-        _order('done-1', when: dueNow, status: 'Completed'),
-        _order('off-1', when: later, status: 'Cancelled'),
+        _order('new-1', when: later, status: 'Pending', stage: 'S1'),
+        _order('new-2', when: later, status: 'Pending', stage: 'S1'),
+        _order('conf-1', when: later, stage: 'S2'),
+        _order('conf-2', when: later, status: 'Assigned', stage: 'S2'),
+        _order('done-1', when: dueNow, status: 'Completed', stage: 'S5'),
+        _order('off-1', when: later, status: 'Cancelled', stage: 'S6'),
       ];
 
       Finder chip(String text) => find.widgetWithText(ChoiceChip, text);
       int cards() => find.byType(Card).evaluate().length;
 
-      testWidgets('Filters_ShowEveryGroupWithItsCount', (tester) async {
+      // Scrolled into view first, as a person would: the bar is wider than a phone.
+      Future<void> pick(WidgetTester tester, String text) async {
+        await tester.ensureVisible(chip(text));
+        await tester.pumpAndSettle();
+        await tester.tap(chip(text));
+        await tester.pumpAndSettle();
+      }
+
+      testWidgets('Filters_AreTheServersStages_InItsOrder_WithCounts', (
+        tester,
+      ) async {
         await pumpTabs(tester, orders: () async => mixed(), tall: true);
 
         expect(tester.takeException(), isNull);
-        expect(chip('All 6'), findsOneWidget);
-        expect(chip('Active 2'), findsOneWidget);
-        // "Assigned" is an older way of saying confirmed, and counts with it.
-        expect(chip('Confirmed 2'), findsOneWidget);
-        expect(chip('Completed 1'), findsOneWidget);
-        expect(chip('Cancelled 1'), findsOneWidget);
-        // Empty groups stay on the bar so it never jumps about.
-        expect(chip('In progress 0'), findsOneWidget);
+        final labels = tester
+            .widgetList<ChoiceChip>(find.byType(ChoiceChip))
+            .map((c) => (c.label as Text).data)
+            .toList();
+        expect(labels, [
+          'All 6',
+          'Fresh 2',
+          'Agreed 2',
+          'Running 0', // empty ones stay, so the row never jumps about
+          'Owed 0',
+          'Closed 1',
+          'Dropped 1',
+        ]);
       });
 
-      testWidgets('TappingAGroup_ShowsOnlyItsBookings_AllShowsEveryOne', (
+      testWidgets('TappingAStage_ShowsOnlyItsBookings_AllShowsEveryOne', (
         tester,
       ) async {
         await pumpTabs(tester, orders: () async => mixed(), tall: true);
         expect(cards(), 6);
 
-        // Scrolled into view first, as a person would: the bar is wider than a phone.
-        Future<void> pick(String text) async {
-          await tester.ensureVisible(chip(text));
-          await tester.pumpAndSettle();
-          await tester.tap(chip(text));
-          await tester.pumpAndSettle();
-        }
-
-        await pick('Active 2');
+        await pick(tester, 'Fresh 2');
         expect(cards(), 2);
 
-        await pick('Cancelled 1');
+        await pick(tester, 'Dropped 1');
         expect(cards(), 1);
 
-        await pick('All 6');
+        await pick(tester, 'All 6');
         expect(cards(), 6);
       });
 
-      testWidgets('AnEmptyGroup_SaysSo', (tester) async {
+      testWidgets('AnEmptyStage_SaysSoInTheServersWords', (tester) async {
         await pumpTabs(tester, orders: () async => mixed(), tall: true);
 
-        await tester.ensureVisible(chip('In progress 0'));
-        await tester.tap(chip('In progress 0'));
-        await tester.pumpAndSettle();
+        await pick(tester, 'Running 0');
 
         expect(cards(), 0);
-        expect(find.text('No in progress bookings'), findsOneWidget);
+        expect(find.text('No running bookings'), findsOneWidget);
+      });
+
+      testWidgets('RenamingAStageOnTheServer_RenamesItsFilter', (tester) async {
+        await pumpTabs(
+          tester,
+          orders: () async => mixed(),
+          tall: true,
+          stages: [
+            for (final s in _stages)
+              s.code == 'S1'
+                  ? const OrderStage(
+                      code: 'S1',
+                      label: 'Just in',
+                      sortOrder: 1,
+                      showOnBookings: true,
+                    )
+                  : s,
+          ],
+        );
+
+        expect(chip('Just in 2'), findsOneWidget);
+        expect(chip('Fresh 2'), findsNothing);
       });
     });
 
-    group('Status management tab split by status', () {
+    group('Status management tab split by stage', () {
       Finder chip(String text) => find.widgetWithText(ChoiceChip, text);
 
       Future<void> openTab(WidgetTester tester) async {
@@ -640,14 +676,14 @@ void main() {
           tester,
           tall: true,
           orders: () async => [
-            _order('conf', when: later),
-            _order('going', when: dueNow, status: 'InProgress'),
-            _order('done', when: dueNow, status: 'Completed'),
+            _order('conf', when: later, stage: 'S2'),
+            _order('going', when: dueNow, status: 'InProgress', stage: 'S3'),
+            _order('done', when: dueNow, status: 'Completed', stage: 'S5'),
             // Never on this tab: not accepted yet, or called off.
-            _order('new', when: later, status: 'Pending'),
-            _order('off', when: later, status: 'Cancelled'),
+            _order('new', when: later, status: 'Pending', stage: 'S1'),
+            _order('off', when: later, status: 'Cancelled', stage: 'S6'),
           ],
-          posts: [_event('own', when: later)],
+          posts: [_event('own', when: later, stage: 'S2')],
         );
         // The second tab. Its name is drawn in pieces when a count sits after it.
         await tester.tap(find.byType(Tab).at(1));
@@ -667,27 +703,27 @@ void main() {
         expect(tester.takeException(), isNull);
         // Four, not six: the order not accepted yet and the cancelled one never reach this tab.
         expect(chip('All 4'), findsOneWidget);
-        // The confirmed order and the own event not started yet.
-        expect(chip('Confirmed 2'), findsOneWidget);
-        expect(chip('In progress 1'), findsOneWidget);
-        expect(chip('Awaiting payment 0'), findsOneWidget);
-        expect(chip('Completed 1'), findsOneWidget);
+        // The confirmed order and the own event, both in S2.
+        expect(chip('Agreed 2'), findsOneWidget);
+        expect(chip('Running 1'), findsOneWidget);
+        expect(chip('Owed 0'), findsOneWidget);
+        expect(chip('Closed 1'), findsOneWidget);
       });
 
-      testWidgets('TappingAGroup_ShowsOnlyItsWork', (tester) async {
+      testWidgets('TappingAStage_ShowsOnlyItsWork', (tester) async {
         await openTab(tester);
         expect(find.text('Catering crew'), findsOneWidget);
 
-        await pick(tester, 'In progress 1');
+        await pick(tester, 'Running 1');
         expect(find.text('Catering crew'), findsNothing);
         expect(find.text('Home wall painting'), findsOneWidget);
 
-        await pick(tester, 'Confirmed 2');
+        await pick(tester, 'Agreed 2');
         expect(find.text('Catering crew'), findsOneWidget);
         expect(find.text('Home wall painting'), findsOneWidget);
 
-        await pick(tester, 'Awaiting payment 0');
-        expect(find.text('Nothing awaiting payment'), findsOneWidget);
+        await pick(tester, 'Owed 0');
+        expect(find.text('Nothing owed'), findsOneWidget);
       });
     });
 

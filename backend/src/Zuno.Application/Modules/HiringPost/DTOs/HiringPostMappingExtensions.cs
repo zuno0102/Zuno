@@ -1,4 +1,5 @@
 using Zuno.Domain.Enums;
+using Zuno.Domain.Specifications;
 
 namespace Zuno.Application.Modules.HiringPost.DTOs;
 
@@ -51,6 +52,7 @@ public static class HiringPostMappingExtensions
         PendingOfferCount = post.PendingOfferCount,
         FilledCount = post.FilledCount,
         Status = post.HiringPostStatus.ToString(),
+        Stage = OrderStages.ForOwnEvent(post).ToString(),
         CreatedDate = post.CreatedDate,
         MyApplicationStatus = viewerWorkerProfileId is null
             ? null

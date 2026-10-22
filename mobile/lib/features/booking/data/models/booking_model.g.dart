@@ -32,6 +32,7 @@ BookingModel _$BookingModelFromJson(Map<String, dynamic> json) => BookingModel(
   serviceSubCategoryName: json['serviceSubCategoryName'] as String?,
   imageUrl: json['imageUrl'] as String?,
   status: json['status'] as String,
+  stage: json['stage'] as String? ?? '',
   scheduledDate: DateTime.parse(json['scheduledDate'] as String),
   priceQuoted: (json['priceQuoted'] as num).toDouble(),
   priceType: json['priceType'] as String?,

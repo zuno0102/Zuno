@@ -32,6 +32,7 @@ class BookingModel {
     this.serviceSubCategoryName,
     this.imageUrl,
     required this.status,
+    this.stage = '',
     required this.scheduledDate,
     required this.priceQuoted,
     this.priceType,
@@ -65,6 +66,7 @@ class BookingModel {
       _$BookingModelFromJson(json);
 
   final String id;
+
   /// The short order code — "#7A3F91C2" — for people to quote and match.
   final String reference;
 
@@ -109,6 +111,7 @@ class BookingModel {
   final double? myWageAmount;
 
   final String status;
+  final String stage;
   final DateTime scheduledDate;
   final String? notes;
   final double priceQuoted;
@@ -162,6 +165,7 @@ class BookingModel {
     myPaymentStatus: myPaymentStatus,
     myWageAmount: myWageAmount,
     status: status,
+    stage: stage,
     scheduledDate: scheduledDate,
     notes: notes,
     priceQuoted: priceQuoted,
