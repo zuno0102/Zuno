@@ -247,6 +247,9 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// Schema first: everything below, and every request after it, assumes the latest migrations.
+await Zuno.Infrastructure.Persistence.DatabaseMigrator.MigrateAsync(app.Services);
+
 // Every environment, not just Development: self-registration can never create a Super Admin, so
 // without this a hosted deployment has no way to get its first one — and with no Super Admin,
 // nobody can verify a business and no customer ever sees a service. It is a no-op once a Super

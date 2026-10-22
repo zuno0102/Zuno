@@ -92,9 +92,13 @@ Write-Host ("Changed files: {0}  |  Neon migrations: {1}  |  Render: {2}  |  Ver
     $changed.Count, $migrationsChanged, $backendChanged, $webChanged)
 
 # ---- 3. Neon (before the API that depends on it) ------------------------------------------------
-if ($migrationsChanged) {
+if ($migrationsChanged -and -not $Settings.NEON_CONNECTION_STRING) {
+    # The API applies pending migrations on start-up (Database:MigrateOnStartup), so this is only
+    # the earlier of two chances, not the only one.
+    Write-Host 'Migrations changed; no NEON_CONNECTION_STRING in .env.deploy - the API will apply them when it starts.' -ForegroundColor Yellow
+}
+elseif ($migrationsChanged) {
     Step 'Neon: applying database migrations'
-    if (-not $Settings.NEON_CONNECTION_STRING) { Fail 'Migrations changed but NEON_CONNECTION_STRING is not set in .env.deploy.' }
     $env:ConnectionStrings__ZunoDatabase = $Settings.NEON_CONNECTION_STRING
     try {
         Push-Location (Join-Path $Root 'backend')

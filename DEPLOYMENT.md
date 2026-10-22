@@ -47,8 +47,9 @@ It does, in this order, and only the parts that are needed:
 
 1. commits uncommitted changes to `Zuno_Dev`;
 2. compares against `origin/main` (what is live) to see what changed;
-3. **Neon** — if `Persistence/Migrations/` changed, runs `dotnet ef database update` against Neon
-   *before* the new API goes out;
+3. **Neon** — if `Persistence/Migrations/` changed and `NEON_CONNECTION_STRING` is set, runs
+   `dotnet ef database update` against Neon *before* the new API goes out (optional: the API also
+   migrates itself on start-up);
 4. pushes `Zuno_Dev`, then fast-forwards `main` to it;
 5. **Render** — if `backend/` or `render.yaml` changed, calls the deploy hook;
 6. **Vercel** — if the Flutter app changed, rebuilds the web app against the live API and deploys it.
@@ -239,9 +240,11 @@ Use `.\deploy.ps1` (see the top of this file). What it automates:
 
 - **API** — pushed to `main`, then the Render deploy hook (or Render's auto-deploy of `main`).
 - **Web** — rebuilt and redeployed, because the API address is baked in.
-- **Schema change** — `dotnet ef database update` against Neon *before* the API deploy that
-  needs it. Nothing migrates on start-up, deliberately: a failed migration during a cold start
-  would take the API down with no clear reason why.
+- **Schema change** — the API applies pending migrations itself on start-up
+  (`Database:MigrateOnStartup`, on by default), using the connection string Render already has,
+  and logs which ones it applied. A failed migration stops the new instance from starting, so
+  Render keeps serving the previous deploy. When `NEON_CONNECTION_STRING` is set, the script also
+  applies them before pushing, which is harmless: the API then finds nothing pending.
 
 ## If something is wrong
 
