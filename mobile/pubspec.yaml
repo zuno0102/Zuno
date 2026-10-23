@@ -1,4 +1,4 @@
-name: zuno
+﻿name: zuno
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.6.1+26
+version: 1.6.2+27
 
 environment:
   sdk: ^3.12.2
@@ -55,14 +55,14 @@ dependencies:
   url_launcher: ^6.3.2
 
   # Remembering the worker's chosen location and distance between sessions. Nothing sensitive
-  # goes here — the coordinates are already coarse — so plain preferences rather than secure storage.
+  # goes here â€” the coordinates are already coarse â€” so plain preferences rather than secure storage.
   shared_preferences: ^2.3.3
   razorpay_flutter: ^1.4.6
 
   # Where the worker is, for showing jobs near them. Coarse accuracy is plenty at these radii.
   geolocator: ^14.0.2
 
-  # Drawing a real Android notification — the one in the shade and on the lock screen, not the
+  # Drawing a real Android notification â€” the one in the shade and on the lock screen, not the
   # bell inside the app.
   #
   # Separate from push on purpose. This is the DISPLAY half, and it is the half that has to exist

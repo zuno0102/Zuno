@@ -159,6 +159,22 @@ public class ConfirmPayoutCollectionCommandHandler(
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
+        // Already paid by another run, so this line is not sent. The idempotency key below is
+        // built from this batch's own key and only stops a worker being paid twice *within* one
+        // run — across runs the keys differ and the provider sees two unrelated instructions.
+        //
+        // That matters because a job can carry several funded batches for the same worker: a
+        // failed run used to be replaced by a new one rather than retried, and each took the
+        // money again. Retrying those now would send the wage once per batch.
+        if (item.HiringPostApplication is { PaymentStatus: PaymentStatus.Paid })
+        {
+            item.PaymentStatus = PaymentStatus.Failed;
+            item.FailureReason =
+                "Already paid on another run, so this was not sent again. The amount collected "
+                + "for it is owed back to you — contact support to have it returned.";
+            return;
+        }
+
         var payoutDetail = item.WorkerProfile?.PayoutDetail;
 
         if (payoutDetail is null || !payoutDetail.CanReceivePayouts)
