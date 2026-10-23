@@ -74,6 +74,24 @@ public class CreatePayoutBatchCommandHandler(
             return existing.ToDto(razorpaySettings.Value.KeyId, razorpaySettings.Value.SimulateCollection);
         }
 
+        // Nothing can be sent to anybody, so nothing is collected from anybody. This is a setting,
+        // not a fact about one worker: payouts are a RazorpayX product and the gateway keys that
+        // collect money cannot disburse it, so with no account number configured every payout on
+        // this deployment fails.
+        //
+        // It was only read inside the provider, during disbursement — after the business had been
+        // through Checkout and paid. A business was charged in full to be told the platform could
+        // not pay anyone, which is the same mistake as charging for an unpayable worker, one level
+        // up. Checked after the early returns above, so a run already funded can still be retried
+        // once payouts are switched on.
+        if (!razorpaySettings.Value.CanDisburse)
+        {
+            throw new DomainException(
+                "Payouts are not switched on for this account yet, so nobody on this job can be "
+                + "paid. Nothing has been charged. Enable RazorpayX payouts and set the payout "
+                + "account number, then try again.");
+        }
+
         var batch = new PayoutBatch
         {
             HiringPostId = post.Id,
