@@ -270,10 +270,11 @@ class _InviteWorkerDialogState extends ConsumerState<_InviteWorkerDialog> {
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
-                    // Last in the dialog and the only field with a keyboard, so it is the one
-                    // the scroll view must be able to bring fully into view.
+                    // Done closes the keyboard and nothing more. It used to send the offer, which
+                    // meant the pay field's own tick fired a job offer at a worker before the
+                    // business had read back the date or the area it had just typed. Sending is
+                    // the button's job alone.
                     textInputAction: TextInputAction.done,
-                    onFieldSubmitted: (_) => _submit(),
                     decoration: const InputDecoration(
                       labelText: 'Pay for the day',
                       prefixText: '₹ ',
