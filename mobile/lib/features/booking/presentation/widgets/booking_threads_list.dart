@@ -23,7 +23,7 @@ import 'package:zuno/shared/widgets/app_messages.dart';
 /// thread reads correctly from either end. The one thing that does differ — what to say when there
 /// is nothing yet, and where to send somebody to start — comes in as [emptyState].
 class BookingThreadsList extends ConsumerWidget {
-  const BookingThreadsList({required this.emptyState, super.key});
+  const BookingThreadsList({required this.emptyState, this.onOpenOrder, super.key});
 
   /// What to show when nobody has written yet.
   ///
@@ -32,6 +32,11 @@ class BookingThreadsList extends ConsumerWidget {
   /// the customer" are one instruction read from opposite ends, and the list must not have to know
   /// which end it is at.
   final Widget emptyState;
+
+  /// Opens the order a thread is about. Injected for the same reason [emptyState] is: which
+  /// screen that means differs by who is reading, and this list must not have to know. Left
+  /// null where a side has no order screen to open.
+  final void Function(BuildContext context, String bookingId)? onOpenOrder;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -57,6 +62,7 @@ class BookingThreadsList extends ConsumerWidget {
             itemBuilder: (context, index) => _ThreadRow(
               thread: threads[index],
               onDelete: () => _confirmDelete(context, ref, threads[index]),
+              onOpenOrder: onOpenOrder,
             ),
           ),
         );
@@ -115,10 +121,15 @@ Future<void> _confirmDelete(
 }
 
 class _ThreadRow extends StatelessWidget {
-  const _ThreadRow({required this.thread, required this.onDelete});
+  const _ThreadRow({
+    required this.thread,
+    required this.onDelete,
+    this.onOpenOrder,
+  });
 
   final BookingThread thread;
   final VoidCallback onDelete;
+  final void Function(BuildContext context, String bookingId)? onOpenOrder;
 
   @override
   Widget build(BuildContext context) {
@@ -231,10 +242,15 @@ class _ThreadRow extends StatelessWidget {
       onLongPress: onDelete,
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => BookingChatScreen(
+          builder: (chatContext) => BookingChatScreen(
             bookingId: thread.bookingId,
             title: thread.title,
             counterpartName: thread.counterpartName,
+            // Bound to the chat's own context rather than this row's. The row is off-screen by
+            // the time anyone taps the heading, and pushing from a dead context throws.
+            onOpenOrder: onOpenOrder == null
+                ? null
+                : () => onOpenOrder!(chatContext, thread.bookingId),
           ),
         ),
       ),

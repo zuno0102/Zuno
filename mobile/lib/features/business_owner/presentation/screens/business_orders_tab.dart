@@ -374,12 +374,38 @@ class _BusinessMessagesTabState extends ConsumerState<_BusinessMessagesTab> {
 }
 
 /// Conversations with customers, one per order.
-class _CustomerThreads extends StatelessWidget {
+class _CustomerThreads extends ConsumerWidget {
   const _CustomerThreads();
 
+  /// Opens the order a conversation is about.
+  ///
+  /// The chat carries only the booking's id, and the order screen wants the whole booking, so it
+  /// is read back out of the list the business already has loaded. A thread can outlive the order
+  /// it belongs to — a cancelled one drops out of that list while its messages stay — so a miss
+  /// says so plainly rather than pushing a screen with nothing on it.
+  void _openOrder(BuildContext context, WidgetRef ref, String bookingId) {
+    final orders = ref.read(businessBookingsProvider).value ?? const <Booking>[];
+    final order = orders.where((o) => o.id == bookingId).firstOrNull;
+
+    if (order == null) {
+      context.showInfoMessage(
+        'That order is no longer in your list, so it cannot be opened.',
+      );
+      return;
+    }
+
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => BusinessBookingDetailScreen(booking: order),
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return BookingThreadsList(
+      onOpenOrder: (chatContext, bookingId) =>
+          _openOrder(chatContext, ref, bookingId),
       emptyState: EmptyState(
         icon: Icons.chat_bubble_outline,
         title: 'No messages yet',

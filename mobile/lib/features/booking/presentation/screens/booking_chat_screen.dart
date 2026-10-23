@@ -16,6 +16,7 @@ class BookingChatScreen extends StatelessWidget {
     required this.bookingId,
     required this.title,
     required this.counterpartName,
+    this.onOpenOrder,
     super.key,
   });
 
@@ -26,10 +27,14 @@ class BookingChatScreen extends StatelessWidget {
 
   final String counterpartName;
 
+  /// Opens the order being discussed. Left null where this side has no screen to open.
+  final VoidCallback? onOpenOrder;
+
   @override
   Widget build(BuildContext context) => ChatScreen(
     title: title,
     counterpartName: counterpartName,
+    onOpenOrder: onOpenOrder,
     messages: bookingConversationProvider(bookingId),
     onSend: (ref, body) =>
         ref.read(bookingConversationProvider(bookingId).notifier).send(body),
@@ -46,6 +51,7 @@ class ChatScreen extends ConsumerStatefulWidget {
     required this.counterpartName,
     required this.messages,
     required this.onSend,
+    this.onOpenOrder,
     super.key,
   });
 
@@ -53,6 +59,10 @@ class ChatScreen extends ConsumerStatefulWidget {
   final String title;
 
   final String counterpartName;
+
+  /// Opens whatever the chat is about. Given one, [title] becomes the way there; given none,
+  /// it stays a plain label — a worker chat is about a person, not something openable.
+  final VoidCallback? onOpenOrder;
 
   /// The conversation, oldest first, kept fresh while the screen is open.
   final ProviderListenable<AsyncValue<List<BookingMessage>>> messages;
@@ -115,26 +125,63 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final theme = Theme.of(context);
     final messagesAsync = ref.watch(widget.messages);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    final heading = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          widget.counterpartName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              widget.counterpartName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            Text(
-              widget.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+            // Shrinks before the chevron does, so a long job name is clipped rather than
+            // pushing the arrow off the end of the bar.
+            Flexible(
+              child: Text(
+                widget.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: widget.onOpenOrder == null
+                      ? theme.colorScheme.onSurfaceVariant
+                      : theme.colorScheme.primary,
+                ),
               ),
             ),
+            if (widget.onOpenOrder != null) ...[
+              const SizedBox(width: 2),
+              Icon(
+                Icons.chevron_right,
+                size: 16,
+                color: theme.colorScheme.primary,
+              ),
+            ],
           ],
         ),
+      ],
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        // The job name doubles as the way back to the job. Three conversations about three
+        // painting jobs read identically otherwise, and the only way to tell which order was
+        // being discussed was to leave the chat and hunt for it.
+        title: widget.onOpenOrder == null
+            ? heading
+            : InkWell(
+                onTap: widget.onOpenOrder,
+                borderRadius: BorderRadius.circular(6),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  child: heading,
+                ),
+              ),
       ),
       body: Column(
         children: [
