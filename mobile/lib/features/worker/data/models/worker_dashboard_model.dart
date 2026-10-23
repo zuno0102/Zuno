@@ -61,6 +61,7 @@ class WorkerJobSummaryModel {
     this.myStatus = '',
     this.workStartedAt,
     this.needsMyAnswer = false,
+    this.myRole,
   });
 
   factory WorkerJobSummaryModel.fromJson(Map<String, dynamic> json) =>
@@ -78,6 +79,10 @@ class WorkerJobSummaryModel {
   final DateTime? workStartedAt;
   final bool needsMyAnswer;
 
+  /// What this worker is on this job — Lead, Supervisor or Support — or null for a plain
+  /// crew member. Only orders carry one.
+  final String? myRole;
+
   WorkerJobSummary toEntity() => WorkerJobSummary(
     id: id,
     source: source,
@@ -92,6 +97,7 @@ class WorkerJobSummaryModel {
     myStatus: myStatus,
     workStartedAt: workStartedAt?.toLocal(),
     needsMyAnswer: needsMyAnswer,
+    myRole: myRole,
   );
 }
 

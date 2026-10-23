@@ -12,6 +12,8 @@ BusinessServiceModel _$BusinessServiceModelFromJson(
   id: json['id'] as String,
   serviceCategoryId: json['serviceCategoryId'] as String,
   serviceCategoryName: json['serviceCategoryName'] as String,
+  serviceSubCategoryId: json['serviceSubCategoryId'] as String?,
+  serviceSubCategoryName: json['serviceSubCategoryName'] as String?,
   name: json['name'] as String,
   priceType: json['priceType'] as String,
   price: (json['price'] as num).toDouble(),

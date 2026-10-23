@@ -6,6 +6,7 @@ using Zuno.Application.Modules.Worker.DTOs;
 using Zuno.Domain.Entities;
 using Zuno.Domain.Enums;
 using Zuno.Domain.Exceptions;
+using Zuno.Domain.ValueObjects;
 
 namespace Zuno.Application.Modules.Worker.Queries.GetWorkerDashboard;
 
@@ -78,7 +79,8 @@ public class GetWorkerDashboardQueryHandler(
                 a.Booking.BookingStatus,
                 a.Booking.WorkStartedAt,
                 a.Booking.CompletedAt,
-                a.PaymentStatus))
+                a.PaymentStatus,
+                a.Role))
             .ToListAsync(cancellationToken);
 
         var postJobs = await dbContext.HiringPostApplications
@@ -291,6 +293,7 @@ public class GetWorkerDashboardQueryHandler(
         MyWage = job.Amount,
         MyWageUnit = job.Unit?.ToString(),
         MyStatus = job.AssignmentStatus.ToString(),
+        MyRole = JobRole.Canonical(job.Role),
         WorkStartedAt = job.WorkStartedAt,
         NeedsMyAnswer = job.AssignmentStatus == BookingWorkerAssignmentStatus.Assigned,
     };
@@ -324,7 +327,10 @@ public class GetWorkerDashboardQueryHandler(
         BookingStatus OrderStatus,
         DateTimeOffset? WorkStartedAt,
         DateTimeOffset? CompletedAt,
-        PaymentStatus Payment);
+        PaymentStatus Payment,
+        /// What they are on this job - Lead, Supervisor or Support - or null for a plain
+        /// crew member. Only orders carry one; a hiring post has no crew to lead.
+        string? Role);
 
     /// <summary>A job reached by taking a hiring post.</summary>
     private sealed record PostJobRow(

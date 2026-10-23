@@ -71,6 +71,7 @@ WorkerJobSummaryModel _$WorkerJobSummaryModelFromJson(
       ? null
       : DateTime.parse(json['workStartedAt'] as String),
   needsMyAnswer: json['needsMyAnswer'] as bool? ?? false,
+  myRole: json['myRole'] as String?,
 );
 
 WorkerPendingPaymentModel _$WorkerPendingPaymentModelFromJson(

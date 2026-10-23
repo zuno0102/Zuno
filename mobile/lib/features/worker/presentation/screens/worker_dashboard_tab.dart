@@ -1,3 +1,4 @@
+import 'package:zuno/features/booking/domain/entities/job_role.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/theme/app_colors.dart';
@@ -281,6 +282,18 @@ class _WorkStats extends StatelessWidget {
 
   final WorkerDashboard dashboard;
 
+  /// Live jobs this worker holds a role on, newest first.
+  ///
+  /// Only work still going: a role ends with its order, so listing finished jobs would be
+  /// telling somebody they lead a job that closed last month.
+  List<WorkerJobSummary> get _roleJobs => [
+    ...dashboard.inProgress,
+    ...dashboard.upcoming,
+  ].where((j) => (j.myRole ?? '').trim().isNotEmpty).toList();
+
+  int get _leadCount =>
+      _roleJobs.where((j) => JobRole.grantsWorkControl(j.myRole)).length;
+
   void _open(
     BuildContext context,
     String title,
@@ -380,6 +393,46 @@ class _WorkStats extends StatelessWidget {
                   ),
                 ),
               ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _StatTile(
+                  // Which jobs made them a Lead, a Supervisor or Support. The role was only ever
+                  // on the job's own screen, so a worker on several jobs had to open each one to
+                  // remember which of them they were running.
+                  label: _roleJobs.isEmpty
+                      ? 'My role'
+                      : _leadCount > 0
+                      ? 'Leading'
+                      : 'My role',
+                  value: '${_roleJobs.length}',
+                  icon: _leadCount > 0
+                      ? Icons.star_outline
+                      : Icons.badge_outlined,
+                  tone: _leadCount > 0
+                      ? StatusTone.progress
+                      : StatusTone.waiting,
+                  onTap: () => _open(
+                    context,
+                    'Jobs you have a role on',
+                    _roleJobs,
+                    'No role on any job yet. A business gives you one when it '
+                        'puts you on an order — Lead runs the work, Supervisor '
+                        'watches it, Support sorts out what it needs.',
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              // Holds the second half of the row empty, so this tile is the same width as the
+              // four above it. Stretched across the row it read as a banner rather than as one
+              // more of the same thing.
+              const Expanded(child: SizedBox.shrink()),
             ],
           ),
         ),

@@ -80,6 +80,7 @@ class WorkerJobSummary {
     this.myStatus = '',
     this.workStartedAt,
     this.needsMyAnswer = false,
+    this.myRole,
   });
 
   /// The booking id, or the post id for standalone work.
@@ -103,6 +104,10 @@ class WorkerJobSummary {
 
   final DateTime? workStartedAt;
   final bool needsMyAnswer;
+
+  /// Lead, Supervisor or Support on this job — null for a plain crew member, and always null
+  /// on a hiring post, which is taken on alone.
+  final String? myRole;
 
   bool get isFromBooking => source == 'Booking';
   bool get hasStarted => workStartedAt != null;

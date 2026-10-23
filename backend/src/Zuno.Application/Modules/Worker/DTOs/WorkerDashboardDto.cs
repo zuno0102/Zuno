@@ -95,6 +95,16 @@ public class WorkerJobSummaryDto
     public DateTimeOffset? WorkStartedAt { get; set; }
 
     /// <summary>Whether the worker still has to say yes or no to this job.</summary>
+    /// <summary>
+    /// What this worker is on this job — Lead, Supervisor or Support — or null for a plain
+    /// crew member.
+    /// </summary>
+    /// <remarks>
+    /// Only an order can carry one: the three describe a place in a crew, and a hiring post is
+    /// taken on alone. Always null on a post rather than invented.
+    /// </remarks>
+    public string? MyRole { get; set; }
+
     public bool NeedsMyAnswer { get; set; }
 }
 

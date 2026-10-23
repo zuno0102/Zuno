@@ -1,3 +1,4 @@
+import 'package:zuno/features/booking/domain/entities/job_role.dart';
 import 'package:flutter/material.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/utils/formatting.dart';
@@ -118,6 +119,22 @@ class _JobRow extends StatelessWidget {
             ),
             if (job.location case final where? when where.isNotEmpty)
               _Line(icon: Icons.place_outlined, text: where),
+            // What they are on this particular job. Said on every row rather than only where a
+            // role grants something, because "Supervisor" is the answer to "what am I here for"
+            // just as much as "Lead" is — and knowing which job made them the Lead was, until
+            // now, a matter of opening each one in turn.
+            if (job.myRole case final role? when role.trim().isNotEmpty)
+              _Line(
+                icon: JobRole.grantsWorkControl(role)
+                    ? Icons.star_outline
+                    : Icons.badge_outlined,
+                text: JobRole.descriptions[role] == null
+                    ? role
+                    : '$role · ${JobRole.descriptions[role]}',
+                tint: JobRole.grantsWorkControl(role)
+                    ? theme.colorScheme.primary
+                    : null,
+              ),
             _Line(
               icon: Icons.payments_outlined,
               // Said either way: "paid outside Zuno" and "wage not recorded" look identical if the
