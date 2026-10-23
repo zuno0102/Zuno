@@ -6,6 +6,7 @@ import 'package:zuno/features/business_owner/presentation/providers/business_wor
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/business_hiring_posts_notifier.dart';
 import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
+import 'package:zuno/features/business_owner/presentation/providers/business_services_notifier.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 
 /// Invites someone by email or phone, suggesting the business's own workers as they type.
@@ -13,9 +14,13 @@ import 'package:zuno/shared/widgets/error_banner.dart';
 /// [post] pins the invite to one job. Passing it is what the crew section on a hiring post
 /// does — the job is already known there, so the picker would only be asking a question that
 /// has already been answered.
+/// A sheet rather than a dialog, because offering a date asks for four fields and two of them
+/// open a keyboard. A centred dialog is squeezed from both ends by that keyboard and leaves a
+/// couple of readable lines; a sheet rises with it and keeps the form reachable.
 Future<void> showInviteWorkerDialog(BuildContext context, {HiringPost? post}) {
-  return showDialog<void>(
+  return showModalBottomSheet<void>(
     context: context,
+    isScrollControlled: true,
     builder: (context) => _InviteWorkerDialog(post: post),
   );
 }
@@ -145,15 +150,31 @@ class _InviteWorkerDialogState extends ConsumerState<_InviteWorkerDialog> {
 
     final pinned = widget.post;
 
-    return AlertDialog(
-      title: Text(pinned == null ? 'Invite a worker' : 'Invite to ${pinned.title}'),
-      content: Form(
+    return Padding(
+      // Lifts the whole sheet clear of the keyboard, so the field being typed into stays in
+      // sight instead of sitting behind it.
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: Form(
         key: _formKey,
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(
+                pinned == null
+                    ? 'Invite a worker'
+                    : 'Invite to ${pinned.title}',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
               if (_errorMessage != null) ...[
                 ErrorBanner(message: _errorMessage!),
                 const SizedBox(height: 12),
@@ -281,30 +302,37 @@ class _InviteWorkerDialogState extends ConsumerState<_InviteWorkerDialog> {
                     ),
                   ),
               ],
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: _isSubmitting
+                        ? null
+                        : () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: _isSubmitting ? null : _submit,
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(
+                            _isPinnedToPost || selectedId != null
+                                ? 'Send job offer'
+                                : 'Send invite',
+                          ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: _isSubmitting ? null : _submit,
-          child: _isSubmitting
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(
-                  _isPinnedToPost || selectedId != null
-                      ? 'Send job offer'
-                      : 'Send invite',
-                ),
-        ),
-      ],
     );
   }
 }
@@ -547,7 +575,12 @@ class _NewDateField extends StatelessWidget {
   }
 }
 
-/// Picks what kind of work the day is for, from the catalogue the whole app shares.
+/// Picks what kind of work the day is for.
+///
+/// Narrowed to the categories this business actually works in, taken from its own services, so a
+/// plumber is not offered "Catering" alongside "Tap & mixer repair". Nothing is listed by name
+/// here: the categories come from the catalogue and the filter from the business's own services,
+/// so adding a service changes this list with no change to this file.
 ///
 /// Flattened to one list of sub-categories with their parent named alongside, rather than two
 /// chained dropdowns. A business offering someone a day knows the trade it wants and should not
@@ -584,8 +617,23 @@ class _WorkKindField extends ConsumerWidget {
       // invite. The field simply steps aside.
       error: (_, _) => const SizedBox.shrink(),
       data: (categories) {
+        // The categories this business has services in. A business with none yet - or whose
+        // services are still loading - sees the whole catalogue rather than an empty field,
+        // since an offer with no kind of work on it is worse than a long list.
+        final ownCategoryIds = ref
+            .watch(businessServicesProvider)
+            .maybeWhen(
+              data: (services) =>
+                  services.map((s) => s.serviceCategoryId).toSet(),
+              orElse: () => const <String>{},
+            );
+
+        final inScope = ownCategoryIds.isEmpty
+            ? categories
+            : categories.where((c) => ownCategoryIds.contains(c.id)).toList();
+
         final kinds = [
-          for (final category in categories)
+          for (final category in inScope)
             for (final sub in category.subCategories) (category, sub),
         ];
 
