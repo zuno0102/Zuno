@@ -5,6 +5,7 @@ import 'package:zuno/features/business_owner/domain/entities/business_worker.dar
 import 'package:zuno/features/business_owner/presentation/providers/business_workers_notifier.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/business_hiring_posts_notifier.dart';
+import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 
 /// Invites someone by email or phone, suggesting the business's own workers as they type.
@@ -45,6 +46,11 @@ class _InviteWorkerDialogState extends ConsumerState<_InviteWorkerDialog> {
   /// Set only while [_newDateOption] is chosen.
   DateTime? _newDate;
   String _newDatePay = '';
+
+  /// What kind of work, and where. Both optional — the offer stands without them — but a worker
+  /// deciding on a day wants to know what they are being asked to do and where to turn up.
+  String? _newCategoryId;
+  String _newArea = '';
 
   bool get _isNewDate => _selectedPostId == _newDateOption;
 
@@ -88,6 +94,8 @@ class _InviteWorkerDialogState extends ConsumerState<_InviteWorkerDialog> {
               workerIdentifier: identifier,
               eventDate: _newDate!,
               salaryAmount: double.parse(_newDatePay.trim()),
+              serviceSubCategoryId: _newCategoryId,
+              location: _newArea.trim().isEmpty ? null : _newArea.trim(),
             );
       } else if (postId == null) {
         await ref.read(businessWorkersProvider.notifier).invite(identifier);
@@ -205,9 +213,35 @@ class _InviteWorkerDialogState extends ConsumerState<_InviteWorkerDialog> {
                     ),
                   ),
                   const SizedBox(height: 12),
+                  _WorkKindField(
+                    value: _newCategoryId,
+                    onChanged: (id) => setState(() => _newCategoryId = id),
+                  ),
+                  const SizedBox(height: 12),
                   _NewDateField(
                     value: _newDate,
                     onChanged: (picked) => setState(() => _newDate = picked),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    initialValue: _newArea,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: const InputDecoration(
+                      labelText: 'Area',
+                      hintText: 'Where they should turn up',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLength: 300,
+                    // The counter is noise on a field nobody will fill to 300 characters; the
+                    // limit is there to match the column, not to be counted down to.
+                    buildCounter:
+                        (
+                          _, {
+                          required currentLength,
+                          required isFocused,
+                          required maxLength,
+                        }) => null,
+                    onChanged: (value) => _newArea = value,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -509,6 +543,78 @@ class _NewDateField extends StatelessWidget {
               : theme.textTheme.bodyMedium,
         ),
       ),
+    );
+  }
+}
+
+/// Picks what kind of work the day is for, from the catalogue the whole app shares.
+///
+/// Flattened to one list of sub-categories with their parent named alongside, rather than two
+/// chained dropdowns. A business offering someone a day knows the trade it wants and should not
+/// have to pick "Home services" before it can reach "Painting".
+class _WorkKindField extends ConsumerWidget {
+  const _WorkKindField({required this.value, required this.onChanged});
+
+  final String? value;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final categoriesAsync = ref.watch(serviceCategoriesProvider);
+
+    return categoriesAsync.when(
+      loading: () => const InputDecorator(
+        decoration: InputDecoration(
+          labelText: 'Kind of work',
+          border: OutlineInputBorder(),
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(width: 10),
+            Text('Loading…'),
+          ],
+        ),
+      ),
+      // The offer stands without it, so a catalogue that will not load must not block the
+      // invite. The field simply steps aside.
+      error: (_, _) => const SizedBox.shrink(),
+      data: (categories) {
+        final kinds = [
+          for (final category in categories)
+            for (final sub in category.subCategories) (category, sub),
+        ];
+
+        if (kinds.isEmpty) return const SizedBox.shrink();
+
+        return DropdownButtonFormField<String?>(
+          initialValue: kinds.any((k) => k.$2.id == value) ? value : null,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            labelText: 'Kind of work',
+            border: OutlineInputBorder(),
+          ),
+          items: [
+            const DropdownMenuItem<String?>(
+              value: null,
+              child: Text('Not saying'),
+            ),
+            for (final (category, sub) in kinds)
+              DropdownMenuItem<String?>(
+                value: sub.id,
+                child: Text(
+                  '${sub.name} · ${category.name}',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+          ],
+          onChanged: onChanged,
+        );
+      },
     );
   }
 }

@@ -39,10 +39,14 @@ class HiringPostRemoteDataSource {
     required String workerIdentifier,
     required DateTime eventDate,
     required double salaryAmount,
+    String? serviceSubCategoryId,
+    String? location,
   }) => _post(ApiConstants.inviteWorkerForDatePath, {
     'workerIdentifier': workerIdentifier,
     'eventDate': eventDate.toUtc().toIso8601String(),
     'salaryAmount': salaryAmount,
+    'serviceSubCategoryId': ?serviceSubCategoryId,
+    'location': ?location,
   });
 
   Future<HiringPostModel> startWork(String id) =>

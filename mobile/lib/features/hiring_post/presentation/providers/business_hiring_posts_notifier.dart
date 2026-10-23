@@ -106,6 +106,8 @@ class BusinessHiringPostsNotifier extends _$BusinessHiringPostsNotifier {
     required String workerIdentifier,
     required DateTime eventDate,
     required double salaryAmount,
+    String? serviceSubCategoryId,
+    String? location,
   }) async {
     await ref
         .read(hiringPostRepositoryProvider)
@@ -113,6 +115,8 @@ class BusinessHiringPostsNotifier extends _$BusinessHiringPostsNotifier {
           workerIdentifier: workerIdentifier,
           eventDate: eventDate,
           salaryAmount: salaryAmount,
+          serviceSubCategoryId: serviceSubCategoryId,
+          location: location,
         );
     await _refresh();
   }

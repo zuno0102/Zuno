@@ -102,9 +102,25 @@ public class InviteWorkerForDateCommandHandler(
                     clash, workerName, workerScheduleService.TravelBufferMinutes, request.EventDate));
         }
 
+        // Checked rather than trusted: an id from another business's catalog, or none at all,
+        // would otherwise be saved and only fail at the foreign key.
+        ServiceSubCategory? subCategory = null;
+        if (request.ServiceSubCategoryId is { } subCategoryId)
+        {
+            subCategory = await dbContext.ServiceSubCategories
+                .FirstOrDefaultAsync(c => c.Id == subCategoryId, cancellationToken)
+                ?? throw new DomainException("That kind of work is no longer listed. Pick another.");
+        }
+
+        // Named for the work when the business said what it is, since "Painting" tells a worker
+        // more at a glance than the date they can already see on the offer.
         var title = string.IsNullOrWhiteSpace(request.Title)
-            ? $"Work on {request.EventDate.ToLocalTime():d MMM yyyy}"
+            ? subCategory?.Name ?? $"Work on {request.EventDate.ToLocalTime():d MMM yyyy}"
             : request.Title.Trim();
+
+        var location = string.IsNullOrWhiteSpace(request.Location)
+            ? null
+            : request.Location.Trim();
 
         var post = new Domain.Entities.HiringPost
         {
@@ -116,6 +132,11 @@ public class InviteWorkerForDateCommandHandler(
             Title = title,
             EventDate = request.EventDate,
             DurationMinutes = request.DurationMinutes,
+            ServiceSubCategoryId = subCategory?.Id,
+            ServiceSubCategory = subCategory,
+            // Typed out, so the post keeps no coordinates and never claims a precision the
+            // business did not give it.
+            Location = location,
             WorkersNeeded = 1,
             SalaryAmount = request.SalaryAmount,
             SalaryUnit = request.SalaryUnit,

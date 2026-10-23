@@ -54,6 +54,8 @@ abstract interface class HiringPostRepository {
     required String workerIdentifier,
     required DateTime eventDate,
     required double salaryAmount,
+    String? serviceSubCategoryId,
+    String? location,
   });
 
   /// Marks the work done, releasing the crew for other jobs.

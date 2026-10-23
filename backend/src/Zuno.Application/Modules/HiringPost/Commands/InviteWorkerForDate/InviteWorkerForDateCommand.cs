@@ -32,10 +32,26 @@ public class InviteWorkerForDateCommand : IRequest<HiringPostDto>
     public SalaryUnit SalaryUnit { get; set; } = SalaryUnit.PerEvent;
 
     /// <summary>
-    /// Optional. Left empty, the post is named for the day it falls on, which is all the business
-    /// gave us and all the worker needs to tell one offer from another.
+    /// Optional. Left empty, the post is named for the kind of work when one was chosen, and for
+    /// the day it falls on otherwise.
     /// </summary>
     public string? Title { get; set; }
+
+    /// <summary>
+    /// What kind of work it is. Optional, but a worker deciding on a day wants to know whether
+    /// they are being asked to paint or to cater.
+    /// </summary>
+    public Guid? ServiceSubCategoryId { get; set; }
+
+    /// <summary>
+    /// Where the work is, written out rather than pinned.
+    /// </summary>
+    /// <remarks>
+    /// Free text on purpose. A business offering a known worker a day already knows they can
+    /// explain where to go, and a map pin is a heavy way to say "the Kakkanad site" — so this is
+    /// typed, and the post carries no coordinates.
+    /// </remarks>
+    public string? Location { get; set; }
 
     /// <summary>How long the work runs. Defaults to the same two hours a hiring post does.</summary>
     public int DurationMinutes { get; set; } = 120;

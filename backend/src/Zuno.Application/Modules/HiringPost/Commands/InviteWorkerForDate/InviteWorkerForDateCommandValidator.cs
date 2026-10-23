@@ -12,6 +12,9 @@ public class InviteWorkerForDateCommandValidator : AbstractValidator<InviteWorke
 
         RuleFor(x => x.Title).MaximumLength(200);
 
+        // Matches the column the post stores it in.
+        RuleFor(x => x.Location).MaximumLength(300);
+
         RuleFor(x => x.DurationMinutes)
             .InclusiveBetween(
                 Domain.Entities.HiringPost.MinDurationMinutes,

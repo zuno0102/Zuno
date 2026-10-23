@@ -105,10 +105,14 @@ class HiringPostRepositoryImpl implements HiringPostRepository {
     required String workerIdentifier,
     required DateTime eventDate,
     required double salaryAmount,
+    String? serviceSubCategoryId,
+    String? location,
   }) async => (await _remoteDataSource.inviteWorkerForDate(
     workerIdentifier: workerIdentifier,
     eventDate: eventDate,
     salaryAmount: salaryAmount,
+    serviceSubCategoryId: serviceSubCategoryId,
+    location: location,
   )).toEntity();
 
   @override
