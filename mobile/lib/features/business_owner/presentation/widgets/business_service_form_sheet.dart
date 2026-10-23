@@ -14,6 +14,7 @@ import 'package:zuno/features/business_owner/domain/entities/business_service.da
 import 'package:zuno/features/business_owner/presentation/providers/business_services_notifier.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/service_area_picker.dart';
 import 'package:zuno/features/catalog/domain/entities/service_category.dart';
+import 'package:zuno/features/catalog/domain/entities/service_sub_category.dart';
 import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
@@ -67,6 +68,12 @@ class _BusinessServiceFormSheetState
   );
 
   String? _selectedCategoryId;
+
+  /// The trade under that category, or null for "any in this category".
+  String? _selectedSubCategoryId;
+
+  /// Sentinel for the "any" row, since popping null only means the sheet was dismissed.
+  static const _clearSubCategory = '__clear__';
   String _priceType = 'Fixed';
   bool _isActive = true;
   bool _isSaving = false;
@@ -135,6 +142,7 @@ class _BusinessServiceFormSheetState
   void initState() {
     super.initState();
     _selectedCategoryId = widget.existing?.serviceCategoryId;
+    _selectedSubCategoryId = widget.existing?.serviceSubCategoryId;
     _priceType = widget.existing?.priceType ?? 'Fixed';
     _isActive = widget.existing?.isActive ?? true;
     _stateIds = (widget.existing?.targetDistricts ?? [])
@@ -636,6 +644,7 @@ class _BusinessServiceFormSheetState
     final hasFieldChanges =
         existing == null ||
         existing.serviceCategoryId != _selectedCategoryId ||
+        existing.serviceSubCategoryId != _selectedSubCategoryId ||
         existing.name != name ||
         existing.itemName != itemName ||
         existing.description != description ||
@@ -669,6 +678,7 @@ class _BusinessServiceFormSheetState
       if (existing == null) {
         final created = await notifier.addService(
           serviceCategoryId: _selectedCategoryId!,
+          serviceSubCategoryId: _selectedSubCategoryId,
           name: name,
           itemName: itemName,
           description: description,
@@ -685,6 +695,7 @@ class _BusinessServiceFormSheetState
           await notifier.editService(
             id: existing.id,
             serviceCategoryId: _selectedCategoryId!,
+            serviceSubCategoryId: _selectedSubCategoryId,
             name: name,
             itemName: itemName,
             description: description,
@@ -782,7 +793,62 @@ class _BusinessServiceFormSheetState
     );
 
     if (selected != null) {
-      setState(() => _selectedCategoryId = selected);
+      setState(() {
+        // Clearing the trade with it. Every kind of work belongs to one category, so one chosen
+        // under the old category would now claim this service does work it no longer offers —
+        // "Plumbing · Bedroom cleaning". The server refuses that pair anyway; clearing it here
+        // means the business re-picks from the new list instead of being told off on save.
+        if (_selectedCategoryId != selected) {
+          _selectedSubCategoryId = null;
+        }
+        _selectedCategoryId = selected;
+      });
+    }
+  }
+
+  /// The trades under the chosen category, and nothing else.
+  List<ServiceSubCategory> _subCategoryOptions(List<ServiceCategory> categories) =>
+      categories
+          .firstWhereOrNull((c) => c.id == _selectedCategoryId)
+          ?.subCategories ??
+      const [];
+
+  Future<void> _showSubCategoryPicker(List<ServiceSubCategory> options) async {
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            // A way back out. The trade is optional, and without this a business that picked
+            // one by mistake could only change it, never undo it.
+            ListTile(
+              title: const Text('Any in this category'),
+              trailing: _selectedSubCategoryId == null
+                  ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
+                  : null,
+              onTap: () => Navigator.of(context).pop(_clearSubCategory),
+            ),
+            ...options.map(
+              (option) => ListTile(
+                title: Text(option.name),
+                trailing: option.id == _selectedSubCategoryId
+                    ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
+                    : null,
+                onTap: () => Navigator.of(context).pop(option.id),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (selected != null) {
+      setState(
+        () => _selectedSubCategoryId = selected == _clearSubCategory
+            ? null
+            : selected,
+      );
     }
   }
 
@@ -969,6 +1035,52 @@ class _BusinessServiceFormSheetState
                       );
                     },
                   ),
+                  // Only once a category is chosen, because its whole content comes from that
+                  // choice. Shown before one is made it would be an empty field asking a
+                  // question it cannot yet offer any answers to.
+                  if (_selectedCategoryId != null) ...[
+                    const SizedBox(height: 14),
+                    categoriesAsync.maybeWhen(
+                      data: (categories) {
+                        final options = _subCategoryOptions(categories);
+                        if (options.isEmpty) return const SizedBox.shrink();
+
+                        final selectedName = options
+                            .where((sub) => sub.id == _selectedSubCategoryId)
+                            .map((sub) => sub.name)
+                            .firstOrNull;
+
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(4),
+                          onTap: () => _showSubCategoryPicker(options),
+                          child: InputDecorator(
+                            decoration: const InputDecoration(
+                              labelText: 'Kind of work',
+                              helperText: 'Optional — narrows the category',
+                              border: OutlineInputBorder(),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  selectedName ?? 'Any in this category',
+                                  style: selectedName == null
+                                      ? TextStyle(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                        )
+                                      : null,
+                                ),
+                                const Icon(Icons.arrow_drop_down),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                      orElse: () => const SizedBox.shrink(),
+                    ),
+                  ],
                   const SizedBox(height: 14),
                   InkWell(
                     borderRadius: BorderRadius.circular(4),

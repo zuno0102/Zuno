@@ -27,5 +27,12 @@ public class BusinessServiceConfiguration : IEntityTypeConfiguration<BusinessSer
             .WithMany(c => c.BusinessServices)
             .HasForeignKey(s => s.ServiceCategoryId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // No inverse collection: nothing ever asks a sub-category which services sit under it,
+        // and a navigation nobody reads is a join waiting to be loaded by accident.
+        builder.HasOne(s => s.ServiceSubCategory)
+            .WithMany()
+            .HasForeignKey(s => s.ServiceSubCategoryId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

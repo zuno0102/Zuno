@@ -878,6 +878,10 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("service_category_id");
 
+                    b.Property<Guid?>("ServiceSubCategoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("service_sub_category_id");
+
                     b.Property<short>("Status")
                         .HasColumnType("smallint")
                         .HasColumnName("status");
@@ -890,6 +894,9 @@ namespace Zuno.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ServiceCategoryId")
                         .HasDatabaseName("ix_business_services_service_category_id");
+
+                    b.HasIndex("ServiceSubCategoryId")
+                        .HasDatabaseName("ix_business_services_service_sub_category_id");
 
                     b.ToTable("business_services", (string)null);
                 });
@@ -11169,9 +11176,17 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_business_services_service_categories_service_category_id");
 
+                    b.HasOne("Zuno.Domain.Entities.ServiceSubCategory", "ServiceSubCategory")
+                        .WithMany()
+                        .HasForeignKey("ServiceSubCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_business_services_service_sub_categories_service_sub_catego");
+
                     b.Navigation("BusinessOwnerProfile");
 
                     b.Navigation("ServiceCategory");
+
+                    b.Navigation("ServiceSubCategory");
                 });
 
             modelBuilder.Entity("Zuno.Domain.Entities.BusinessServiceDistrict", b =>

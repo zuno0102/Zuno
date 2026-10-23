@@ -17,6 +17,7 @@ public class GetServiceDetailQueryHandler(IApplicationDbContext dbContext)
     {
         var service = await dbContext.BusinessServices
             .Include(s => s.ServiceCategory)
+            .Include(s => s.ServiceSubCategory)
             .Include(s => s.Media)
             .Include(s => s.Variants).ThenInclude(v => v.Media)
             .Include(s => s.Variants).ThenInclude(v => v.ServiceSubCategory)
@@ -24,6 +25,7 @@ public class GetServiceDetailQueryHandler(IApplicationDbContext dbContext)
             .Include(s => s.TargetDistricts).ThenInclude(t => t.District).ThenInclude(d => d.State)
             .Include(s => s.BusinessOwnerProfile).ThenInclude(b => b.BusinessAddress)
             .Include(s => s.BusinessOwnerProfile).ThenInclude(b => b.Services).ThenInclude(s => s.ServiceCategory)
+            .Include(s => s.BusinessOwnerProfile).ThenInclude(b => b.Services).ThenInclude(s => s.ServiceSubCategory)
             .FirstOrDefaultAsync(
                 // The same gate the browse list applies. Reaching a service an admin has not
                 // cleared by guessing its id would make the approval step meaningless.

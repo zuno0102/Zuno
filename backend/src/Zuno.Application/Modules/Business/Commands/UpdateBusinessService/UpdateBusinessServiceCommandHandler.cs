@@ -46,6 +46,15 @@ public class UpdateBusinessServiceCommandHandler(
             }
         }
 
+        // Checked against the category being saved, not the one the service had, so moving a
+        // service to another category and re-tagging it in the same save is accepted while the
+        // old category's trade is not.
+        var subCategory = await ServiceTaxonomy.ResolveSubCategoryAsync(
+            dbContext, request.ServiceCategoryId, request.ServiceSubCategoryId, cancellationToken);
+
+        service.ServiceSubCategoryId = subCategory?.Id;
+        service.ServiceSubCategory = subCategory;
+
         service.Name = request.Name;
         service.ItemName = request.ItemName;
         service.Description = request.Description;

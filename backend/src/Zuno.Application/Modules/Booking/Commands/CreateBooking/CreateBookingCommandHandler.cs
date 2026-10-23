@@ -27,6 +27,7 @@ public class CreateBookingCommandHandler(
 
         var service = await dbContext.BusinessServices
             .Include(s => s.ServiceCategory)
+            .Include(s => s.ServiceSubCategory)
             .Include(s => s.Questions)
             .Include(s => s.BusinessOwnerProfile).ThenInclude(bp => bp.User)
             .FirstOrDefaultAsync(

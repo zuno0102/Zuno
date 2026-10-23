@@ -31,6 +31,8 @@ public static class BusinessMappingExtensions
         Id = service.Id,
         ServiceCategoryId = service.ServiceCategoryId,
         ServiceCategoryName = service.ServiceCategory.Name,
+        ServiceSubCategoryId = service.ServiceSubCategoryId,
+        ServiceSubCategoryName = service.ServiceSubCategory?.Name,
         Name = service.Name,
         ItemName = service.ItemName,
         Description = service.Description,

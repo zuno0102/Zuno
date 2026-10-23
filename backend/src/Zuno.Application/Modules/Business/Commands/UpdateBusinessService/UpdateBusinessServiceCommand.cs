@@ -9,6 +9,9 @@ public class UpdateBusinessServiceCommand : IRequest<BusinessServiceDto>
 
     public Guid ServiceCategoryId { get; set; }
 
+    /// <summary>The trade within the category. Optional.</summary>
+    public Guid? ServiceSubCategoryId { get; set; }
+
     public string Name { get; set; } = string.Empty;
 
     public string? ItemName { get; set; }

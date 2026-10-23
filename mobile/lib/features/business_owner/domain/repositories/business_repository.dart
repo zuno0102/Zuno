@@ -32,6 +32,7 @@ abstract interface class BusinessRepository {
 
   Future<BusinessService> createService({
     required String serviceCategoryId,
+    String? serviceSubCategoryId,
     required String name,
     String? itemName,
     String? description,
@@ -45,6 +46,7 @@ abstract interface class BusinessRepository {
   Future<BusinessService> updateService({
     required String id,
     required String serviceCategoryId,
+    String? serviceSubCategoryId,
     required String name,
     String? itemName,
     String? description,

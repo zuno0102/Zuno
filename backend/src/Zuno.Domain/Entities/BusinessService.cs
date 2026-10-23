@@ -13,6 +13,21 @@ public class BusinessService : BaseEntity
 
     public ServiceCategory ServiceCategory { get; set; } = null!;
 
+    /// <summary>
+    /// The trade within the category: "Pipe leak repair" under Plumbing.
+    /// </summary>
+    /// <remarks>
+    /// Optional, and must stay so. Every service created before this existed has none, and a
+    /// business should not be stopped from editing an old service just to answer a question that
+    /// was never asked when it was made.
+    ///
+    /// Always belongs to <see cref="ServiceCategoryId"/>; the commands that set it check that
+    /// rather than trust it, since the two arrive from the client as separate fields.
+    /// </remarks>
+    public Guid? ServiceSubCategoryId { get; set; }
+
+    public ServiceSubCategory? ServiceSubCategory { get; set; }
+
     public string Name { get; set; } = string.Empty;
 
     public string? ItemName { get; set; }

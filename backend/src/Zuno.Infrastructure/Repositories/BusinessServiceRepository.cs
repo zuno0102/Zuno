@@ -10,6 +10,7 @@ public class BusinessServiceRepository(ZunoDbContext dbContext) : IBusinessServi
     public Task<BusinessService?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
         dbContext.BusinessServices
             .Include(s => s.ServiceCategory)
+            .Include(s => s.ServiceSubCategory)
             .Include(s => s.Media)
             .Include(s => s.TargetDistricts).ThenInclude(t => t.District).ThenInclude(d => d.State)
             .Include(s => s.Variants).ThenInclude(v => v.Media)
@@ -20,6 +21,7 @@ public class BusinessServiceRepository(ZunoDbContext dbContext) : IBusinessServi
     public async Task<List<BusinessService>> GetByBusinessIdAsync(Guid businessOwnerProfileId, CancellationToken cancellationToken) =>
         await dbContext.BusinessServices
             .Include(s => s.ServiceCategory)
+            .Include(s => s.ServiceSubCategory)
             .Include(s => s.Media)
             .Include(s => s.TargetDistricts).ThenInclude(t => t.District).ThenInclude(d => d.State)
             .Include(s => s.Variants).ThenInclude(v => v.Media)

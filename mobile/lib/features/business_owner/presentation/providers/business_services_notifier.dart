@@ -15,6 +15,7 @@ class BusinessServicesNotifier extends _$BusinessServicesNotifier {
 
   Future<BusinessService> addService({
     required String serviceCategoryId,
+    String? serviceSubCategoryId,
     required String name,
     String? itemName,
     String? description,
@@ -27,6 +28,7 @@ class BusinessServicesNotifier extends _$BusinessServicesNotifier {
     final repository = ref.read(businessRepositoryProvider);
     final created = await repository.createService(
       serviceCategoryId: serviceCategoryId,
+      serviceSubCategoryId: serviceSubCategoryId,
       name: name,
       itemName: itemName,
       description: description,
@@ -44,6 +46,7 @@ class BusinessServicesNotifier extends _$BusinessServicesNotifier {
   Future<void> editService({
     required String id,
     required String serviceCategoryId,
+    String? serviceSubCategoryId,
     required String name,
     String? itemName,
     String? description,
@@ -58,6 +61,7 @@ class BusinessServicesNotifier extends _$BusinessServicesNotifier {
     await repository.updateService(
       id: id,
       serviceCategoryId: serviceCategoryId,
+      serviceSubCategoryId: serviceSubCategoryId,
       name: name,
       itemName: itemName,
       description: description,

@@ -11,6 +11,7 @@ public class BookingRepository(ZunoDbContext dbContext) : IBookingRepository
         .Include(b => b.CustomerProfile).ThenInclude(cp => cp.User)
         .Include(b => b.BusinessOwnerProfile).ThenInclude(bp => bp.User)
         .Include(b => b.BusinessService).ThenInclude(s => s.ServiceCategory)
+        .Include(b => b.BusinessService).ThenInclude(s => s.ServiceSubCategory)
         .Include(b => b.BusinessService).ThenInclude(s => s.Media)
         .Include(b => b.BusinessServiceVariant).ThenInclude(v => v!.Media)
         .Include(b => b.BusinessServiceVariant).ThenInclude(v => v!.ServiceSubCategory)

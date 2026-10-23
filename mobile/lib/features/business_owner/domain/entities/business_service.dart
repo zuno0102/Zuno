@@ -9,6 +9,8 @@ class BusinessService {
     required this.id,
     required this.serviceCategoryId,
     required this.serviceCategoryName,
+    this.serviceSubCategoryId,
+    this.serviceSubCategoryName,
     required this.name,
     required this.priceType,
     required this.price,
@@ -26,6 +28,10 @@ class BusinessService {
   final String id;
   final String serviceCategoryId;
   final String serviceCategoryName;
+
+  /// The trade within the category. Null on every service made before trades existed.
+  final String? serviceSubCategoryId;
+  final String? serviceSubCategoryName;
   final String name;
   final String? itemName;
   final String? description;

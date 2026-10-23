@@ -14,6 +14,7 @@ public class SearchBusinessesQueryHandler(IApplicationDbContext dbContext)
         var query = dbContext.BusinessOwnerProfiles
             .Include(bp => bp.BusinessAddress)
             .Include(bp => bp.Services).ThenInclude(s => s.ServiceCategory)
+            .Include(bp => bp.Services).ThenInclude(s => s.ServiceSubCategory)
             .Where(bp => bp.VerificationStatus == VerificationStatus.Verified)
             .AsQueryable();
 

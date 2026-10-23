@@ -13,6 +13,8 @@ class BusinessServiceModel {
     required this.id,
     required this.serviceCategoryId,
     required this.serviceCategoryName,
+    this.serviceSubCategoryId,
+    this.serviceSubCategoryName,
     required this.name,
     required this.priceType,
     required this.price,
@@ -33,6 +35,8 @@ class BusinessServiceModel {
   final String id;
   final String serviceCategoryId;
   final String serviceCategoryName;
+  final String? serviceSubCategoryId;
+  final String? serviceSubCategoryName;
   final String name;
   final String? itemName;
   final String? description;
@@ -50,6 +54,8 @@ class BusinessServiceModel {
     id: id,
     serviceCategoryId: serviceCategoryId,
     serviceCategoryName: serviceCategoryName,
+    serviceSubCategoryId: serviceSubCategoryId,
+    serviceSubCategoryName: serviceSubCategoryName,
     name: name,
     itemName: itemName,
     description: description,

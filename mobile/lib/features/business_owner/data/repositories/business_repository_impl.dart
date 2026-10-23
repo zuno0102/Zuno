@@ -62,6 +62,7 @@ class BusinessRepositoryImpl implements BusinessRepository {
   @override
   Future<BusinessService> createService({
     required String serviceCategoryId,
+    String? serviceSubCategoryId,
     required String name,
     String? itemName,
     String? description,
@@ -89,6 +90,7 @@ class BusinessRepositoryImpl implements BusinessRepository {
   Future<BusinessService> updateService({
     required String id,
     required String serviceCategoryId,
+    String? serviceSubCategoryId,
     required String name,
     String? itemName,
     String? description,

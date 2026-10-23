@@ -26,6 +26,9 @@ public class CreateBusinessServiceCommandHandler(
             .FirstOrDefaultAsync(c => c.Id == request.ServiceCategoryId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(ServiceCategory), request.ServiceCategoryId);
 
+        var subCategory = await ServiceTaxonomy.ResolveSubCategoryAsync(
+            dbContext, category.Id, request.ServiceSubCategoryId, cancellationToken);
+
         var districts = await dbContext.Districts
             .Include(d => d.State)
             .Where(d => request.DistrictIds.Contains(d.Id))
@@ -36,6 +39,8 @@ public class CreateBusinessServiceCommandHandler(
             BusinessOwnerProfileId = businessProfile.Id,
             ServiceCategoryId = category.Id,
             ServiceCategory = category,
+            ServiceSubCategoryId = subCategory?.Id,
+            ServiceSubCategory = subCategory,
             Name = request.Name,
             ItemName = request.ItemName,
             Description = request.Description,

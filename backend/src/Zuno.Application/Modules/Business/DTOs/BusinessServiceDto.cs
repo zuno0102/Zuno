@@ -8,6 +8,10 @@ public class BusinessServiceDto
 
     public string ServiceCategoryName { get; set; } = string.Empty;
 
+    public Guid? ServiceSubCategoryId { get; set; }
+
+    public string? ServiceSubCategoryName { get; set; }
+
     public string Name { get; set; } = string.Empty;
 
     public string? ItemName { get; set; }

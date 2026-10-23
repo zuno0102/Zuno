@@ -16,6 +16,7 @@ public class GetBusinessDetailQueryHandler(IApplicationDbContext dbContext)
         var business = await dbContext.BusinessOwnerProfiles
             .Include(bp => bp.BusinessAddress)
             .Include(bp => bp.Services).ThenInclude(s => s.ServiceCategory)
+            .Include(bp => bp.Services).ThenInclude(s => s.ServiceSubCategory)
             .Include(bp => bp.Services).ThenInclude(s => s.Media)
             .Include(bp => bp.Services).ThenInclude(s => s.TargetDistricts).ThenInclude(t => t.District).ThenInclude(d => d.State)
             .Include(bp => bp.Services).ThenInclude(s => s.Variants).ThenInclude(v => v.Media)
