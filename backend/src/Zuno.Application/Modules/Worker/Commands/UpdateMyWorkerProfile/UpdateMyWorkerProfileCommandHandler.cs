@@ -12,7 +12,8 @@ public class UpdateMyWorkerProfileCommandHandler(
     ICurrentUserService currentUserService,
     IUserRepository userRepository,
     IWorkerEarningsService earningsService,
-    IApplicationDbContext dbContext)
+    IApplicationDbContext dbContext,
+    IDateTimeProvider dateTimeProvider)
     : IRequestHandler<UpdateMyWorkerProfileCommand, WorkerProfileDto>
 {
     public async Task<WorkerProfileDto> Handle(
@@ -108,9 +109,29 @@ public class UpdateMyWorkerProfileCommandHandler(
     /// one thing <c>WorkerPayoutDetail.CanReceivePayouts</c> exists to prevent. The provider handle
     /// is cleared for the same reason: it identifies the old destination.
     /// </remarks>
+    /// <summary>
+    /// Records the worker's UPI, ready to be paid to.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Accepted on sight, the same way a business is verified the moment it registers. Nothing in
+    /// this app has ever been able to move payout details out of Pending — no admin screen, no
+    /// provider call, no job — so every worker who saved a UPI sat in "being checked" for good and
+    /// could never be paid. The e2e scripts hid it by writing verification_status straight into
+    /// the database.
+    /// </para>
+    /// <para>
+    /// This is a placeholder for a real check, and deliberately a small one: asking Razorpay
+    /// whether the address exists, through /fund_accounts/validations, is the answer the UI
+    /// already promises the worker ("Checked before the first payment"). Until that is built, a
+    /// wrong address fails at the payout itself with a reason the business can read and act on,
+    /// which is a better place to find out than a status that never changes.
+    /// </para>
+    /// </remarks>
     private void SetUpi(WorkerProfile profile, string upiVpa)
     {
         var payout = profile.PayoutDetail;
+        var now = dateTimeProvider.UtcNow;
 
         if (payout is null)
         {
@@ -121,7 +142,8 @@ public class UpdateMyWorkerProfileCommandHandler(
             {
                 WorkerProfileId = profile.Id,
                 UpiVpa = upiVpa,
-                VerificationStatus = VerificationStatus.Pending,
+                VerificationStatus = VerificationStatus.Verified,
+                VerifiedAt = now,
             });
             return;
         }
@@ -132,8 +154,9 @@ public class UpdateMyWorkerProfileCommandHandler(
         }
 
         payout.UpiVpa = upiVpa;
-        payout.VerificationStatus = VerificationStatus.Pending;
-        payout.VerifiedAt = null;
+        payout.VerificationStatus = VerificationStatus.Verified;
+        payout.VerifiedAt = now;
+        // The old address's handle does not describe the new one.
         payout.ProviderFundAccountId = null;
     }
 }

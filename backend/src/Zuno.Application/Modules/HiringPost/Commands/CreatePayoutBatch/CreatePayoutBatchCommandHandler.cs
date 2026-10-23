@@ -59,11 +59,17 @@ public class CreatePayoutBatchCommandHandler(
             .FirstOrDefaultAsync(
                 b => b.HiringPostId == post.Id
                      && (b.BatchStatus == PayoutBatchStatus.AwaitingCollection
-                         || b.BatchStatus == PayoutBatchStatus.Disbursing),
+                         || b.BatchStatus == PayoutBatchStatus.Disbursing
+                         // A run that paid some and failed others is finished collecting: its
+                         // money is already in. Raising a second order for the same wages is
+                         // how the business ended up charged twice for one worker.
+                         || b.BatchStatus == PayoutBatchStatus.PartiallyFailed),
                 cancellationToken);
 
-        // Money is already moving; that run finishes as it is.
-        if (existing is { BatchStatus: PayoutBatchStatus.Disbursing })
+        // Money is already moving, or already in. Either way that run finishes as it is: a
+        // PartiallyFailed one is retried by confirming it again, which re-sends the failed lines
+        // from money already collected rather than asking the business for it a second time.
+        if (existing is { BatchStatus: PayoutBatchStatus.Disbursing or PayoutBatchStatus.PartiallyFailed })
         {
             return existing.ToDto(razorpaySettings.Value.KeyId, razorpaySettings.Value.SimulateCollection);
         }
@@ -74,6 +80,10 @@ public class CreatePayoutBatchCommandHandler(
             BusinessOwnerProfileId = businessProfile.Id,
             BatchStatus = PayoutBatchStatus.AwaitingCollection,
         };
+
+        // Who was left out, and why, so the sheet can name them instead of the business noticing
+        // a total that is lower than the wages it knows it owes.
+        var excluded = new List<PayoutExclusion>();
 
         // RULE 1 — the total is summed here, from the wages agreed with each worker. Whatever the
         // client believes the figure is plays no part in it.
@@ -95,13 +105,35 @@ public class CreatePayoutBatchCommandHandler(
                     $"{name} has no agreed salary recorded for this job. Set it before paying the crew.");
             }
 
+            var workerName = application.WorkerProfile.User is null
+                ? "Worker"
+                : $"{application.WorkerProfile.User.FirstName} {application.WorkerProfile.User.LastName}".Trim();
+
+            // Nobody is charged for a worker the money cannot reach. The destination used to be
+            // read only at disbursement, long after the business had paid for the whole crew —
+            // so a wage that could never be delivered was collected anyway and, with no refund
+            // anywhere in this system, simply kept.
+            //
+            // Left out of the run rather than added and failed: the application stays Unpaid, so
+            // the job keeps saying Awaiting payment and the business can pay them in a later run
+            // once there is somewhere to send it. Four payable workers at ₹1,000 collect ₹4,000,
+            // and the fifth costs ₹1,000 when they are ready — never ₹5,000 for four.
+            var destination = application.WorkerProfile.PayoutDetail;
+            if (destination is null || !destination.CanReceivePayouts)
+            {
+                excluded.Add(new PayoutExclusion(
+                    workerName,
+                    destination is null || !destination.HasDestination
+                        ? "No UPI ID or bank account on file. Ask them to add one."
+                        : "Their payout details are still being checked."));
+                continue;
+            }
+
             batch.Items.Add(new PayoutBatchItem
             {
                 HiringPostApplicationId = application.Id,
                 WorkerProfileId = application.WorkerProfileId,
-                WorkerName = application.WorkerProfile.User is null
-                    ? "Worker"
-                    : $"{application.WorkerProfile.User.FirstName} {application.WorkerProfile.User.LastName}".Trim(),
+                WorkerName = workerName,
                 Amount = amount,
                 PaymentStatus = PaymentStatus.Unpaid,
             });
@@ -109,14 +141,29 @@ public class CreatePayoutBatchCommandHandler(
 
         if (batch.Items.Count == 0)
         {
-            throw new DomainException("There is nobody left to pay on this job.");
+            // Said in terms of why, not just that there is nobody. "Nobody left to pay" on a job
+            // with five unpaid workers reads as a bug, and the business would keep pressing it.
+            throw new DomainException(
+                excluded.Count == 0
+                    ? "There is nobody left to pay on this job."
+                    : "Nobody on this job can be paid yet. "
+                      + string.Join(" ", excluded.Select(e => $"{e.WorkerName}: {e.Reason}")));
         }
 
         batch.TotalAmount = batch.Items.Sum(i => i.Amount);
 
         // The client's figure is only ever a cross-check. Disagreeing with the server means the
         // two are looking at different crews, and paying either amount would be wrong.
-        if (request.ExpectedTotal is { } claimed && claimed != batch.TotalAmount)
+        // Only a total *higher* than the business expected is a disagreement worth refusing. The
+        // guard used to demand the two match exactly, which stopped being right once a run could
+        // leave someone out: the client sends every wage the job owes, and a run that skips an
+        // unpayable worker collects less than that on purpose. Refusing it would make a job with
+        // one unpaid-able worker impossible to pay at all.
+        //
+        // Lower is always safe — nobody is charged for someone who was not included, and
+        // ExcludedPayees says who and why. Higher still throws, because being charged more than
+        // the screen said is the thing this was written to prevent.
+        if (request.ExpectedTotal is { } claimed && batch.TotalAmount > claimed)
         {
             throw new DomainException(
                 $"Amount mismatch. This job owes {batch.TotalAmount:C0} across {batch.Items.Count} worker(s), "
@@ -147,6 +194,12 @@ public class CreatePayoutBatchCommandHandler(
         dbContext.PayoutBatches.Add(batch);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return batch.ToDto(razorpaySettings.Value.KeyId, razorpaySettings.Value.SimulateCollection);
+        return batch.ToDto(
+            razorpaySettings.Value.KeyId,
+            razorpaySettings.Value.SimulateCollection,
+            [.. excluded.Select(e => new PayoutExclusionDto { WorkerName = e.WorkerName, Reason = e.Reason })]);
     }
 }
+
+/// <summary>A worker a pay run could not include, and the reason.</summary>
+internal sealed record PayoutExclusion(string WorkerName, string Reason);

@@ -82,7 +82,18 @@ public static class BookingMappingExtensions
                     PaymentStatus = a.PaymentStatus.ToString(),
                     // Null-safe: the payout detail is not always loaded, and an unloaded
                     // navigation must read as "unknown, do not promise", never as "ready to pay".
-                    HasPayoutDetails = a.WorkerProfile.PayoutDetail != null,
+                    //
+                    // Payable, not merely present. A row whose details are still being checked
+                    // used to satisfy this, so the crew list showed nothing wrong and the
+                    // business only learnt otherwise after paying for that worker.
+                    // Mirrors CanReceivePayouts, inlined because a computed property cannot be
+                    // translated to SQL: somewhere to send it, and checked.
+                    HasPayoutDetails = a.WorkerProfile.PayoutDetail != null
+                                       && (a.WorkerProfile.PayoutDetail.UpiVpa != null
+                                           || (a.WorkerProfile.PayoutDetail.AccountNumber != null
+                                               && a.WorkerProfile.PayoutDetail.IfscCode != null))
+                                       && a.WorkerProfile.PayoutDetail.VerificationStatus
+                                          == VerificationStatus.Verified,
                 })
                 .ToList()
             : [],

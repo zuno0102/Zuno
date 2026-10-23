@@ -22,6 +22,19 @@ public class PayoutBatchItemDto
     public DateTimeOffset? PaidAt { get; set; }
 }
 
+/// <summary>A worker this run could not include, and why.</summary>
+/// <remarks>
+/// Not a line on the run — nothing was collected for them. They stay unpaid on the job, which
+/// keeps it awaiting payment, and the business pays them in a later run once the money has
+/// somewhere to go.
+/// </remarks>
+public class PayoutExclusionDto
+{
+    public string WorkerName { get; set; } = string.Empty;
+
+    public string Reason { get; set; } = string.Empty;
+}
+
 /// <summary>
 /// A pay run: one amount the business pays, split across the crew.
 /// </summary>
@@ -37,6 +50,9 @@ public class PayoutBatchDto
     public decimal PaidAmount { get; set; }
 
     public PayoutBatchStatus BatchStatus { get; set; }
+
+    /// <summary>Crew this run left out, and why. Nothing was collected for them.</summary>
+    public List<PayoutExclusionDto> ExcludedPayees { get; set; } = [];
 
     /// <summary>Handed to the client to open the payment sheet. Null once collected.</summary>
     public string? ProviderOrderId { get; set; }
@@ -109,8 +125,10 @@ public static class PayoutBatchMappingExtensions
     public static PayoutBatchDto ToDto(
         this PayoutBatch batch,
         string? razorpayKeyId = null,
-        bool nothingToCollect = false) => new()
+        bool nothingToCollect = false,
+        IReadOnlyList<PayoutExclusionDto>? excludedPayees = null) => new()
     {
+        ExcludedPayees = excludedPayees is null ? [] : [.. excludedPayees],
         Id = batch.Id,
         HiringPostId = batch.HiringPostId,
         TotalAmount = batch.TotalAmount,

@@ -20,29 +20,40 @@ PayoutBatchItemModel _$PayoutBatchItemModelFromJson(
       : DateTime.parse(json['paidAt'] as String),
 );
 
-PayoutBatchModel _$PayoutBatchModelFromJson(Map<String, dynamic> json) =>
-    PayoutBatchModel(
-      id: json['id'] as String,
-      hiringPostId: json['hiringPostId'] as String,
-      totalAmount: (json['totalAmount'] as num).toDouble(),
-      paidAmount: (json['paidAmount'] as num?)?.toDouble() ?? 0,
-      batchStatus: json['batchStatus'] as String,
-      providerOrderId: json['providerOrderId'] as String?,
-      providerPaymentId: json['providerPaymentId'] as String?,
-      razorpayKeyId: json['razorpayKeyId'] as String?,
-      nothingToCollect: json['nothingToCollect'] as bool? ?? false,
-      fundedAt: json['fundedAt'] == null
-          ? null
-          : DateTime.parse(json['fundedAt'] as String),
-      completedAt: json['completedAt'] == null
-          ? null
-          : DateTime.parse(json['completedAt'] as String),
-      items:
-          (json['items'] as List<dynamic>?)
-              ?.map(
-                (e) => PayoutBatchItemModel.fromJson(e as Map<String, dynamic>),
-              )
-              .toList() ??
-          const [],
-      isReconciled: json['isReconciled'] as bool? ?? true,
-    );
+PayoutBatchModel _$PayoutBatchModelFromJson(
+  Map<String, dynamic> json,
+) => PayoutBatchModel(
+  id: json['id'] as String,
+  hiringPostId: json['hiringPostId'] as String,
+  totalAmount: (json['totalAmount'] as num).toDouble(),
+  paidAmount: (json['paidAmount'] as num?)?.toDouble() ?? 0,
+  batchStatus: json['batchStatus'] as String,
+  providerOrderId: json['providerOrderId'] as String?,
+  providerPaymentId: json['providerPaymentId'] as String?,
+  razorpayKeyId: json['razorpayKeyId'] as String?,
+  nothingToCollect: json['nothingToCollect'] as bool? ?? false,
+  fundedAt: json['fundedAt'] == null
+      ? null
+      : DateTime.parse(json['fundedAt'] as String),
+  completedAt: json['completedAt'] == null
+      ? null
+      : DateTime.parse(json['completedAt'] as String),
+  items:
+      (json['items'] as List<dynamic>?)
+          ?.map((e) => PayoutBatchItemModel.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const [],
+  isReconciled: json['isReconciled'] as bool? ?? true,
+  excludedPayees:
+      (json['excludedPayees'] as List<dynamic>?)
+          ?.map((e) => PayoutExclusionModel.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const [],
+);
+
+PayoutExclusionModel _$PayoutExclusionModelFromJson(
+  Map<String, dynamic> json,
+) => PayoutExclusionModel(
+  workerName: json['workerName'] as String? ?? '',
+  reason: json['reason'] as String? ?? '',
+);

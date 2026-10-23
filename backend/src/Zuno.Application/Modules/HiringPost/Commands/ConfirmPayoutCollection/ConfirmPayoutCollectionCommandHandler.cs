@@ -48,8 +48,30 @@ public class ConfirmPayoutCollectionCommandHandler(
         // RULE 3 — the same collection confirmed twice funds the batch once. A retried request, a
         // duplicated webhook and a double-tapped button all land here, and only the first does
         // anything; the rest read back the state the first one produced.
+        //
+        // Unless a line failed. The money for it was collected on the first pass and is sitting
+        // with us, so the way to pay it is to send it again — not to charge the business a second
+        // time, which is what happened while this returned for every funded batch. Nothing is
+        // re-collected here: the collection half is already done and skipped below.
         if (batch.FundedAt is not null)
         {
+            var retryable = batch.Items
+                .Where(i => i.PaymentStatus is PaymentStatus.Unpaid or PaymentStatus.Failed)
+                .ToList();
+
+            if (retryable.Count == 0)
+            {
+                return batch.ToDto();
+            }
+
+            var retriedAt = dateTimeProvider.UtcNow;
+
+            foreach (var item in retryable)
+            {
+                await DisburseAsync(item, batch, retriedAt, cancellationToken);
+            }
+
+            await FinishAsync(batch, retryable, retriedAt, cancellationToken);
             return batch.ToDto();
         }
 
@@ -87,6 +109,27 @@ public class ConfirmPayoutCollectionCommandHandler(
             await DisburseAsync(item, batch, now, cancellationToken);
         }
 
+        await FinishAsync(batch, attempted, now, cancellationToken);
+
+        return batch.ToDto();
+    }
+
+    /// <summary>
+    /// Closes a disbursement pass: settles the batch, the job and the business's standing, then
+    /// tells the crew.
+    /// </summary>
+    /// <remarks>
+    /// Shared by the first attempt and by a retry of a batch already funded, so a run that
+    /// finally pays its last worker settles exactly as one that paid everybody first time. Split
+    /// out when retries became reachable — duplicating it is how the two paths would start
+    /// disagreeing about when a job is finished.
+    /// </remarks>
+    private async Task FinishAsync(
+        PayoutBatch batch,
+        IReadOnlyList<PayoutBatchItem> attempted,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
         batch.BatchStatus = batch.AllItemsPaid
             ? PayoutBatchStatus.Completed
             : PayoutBatchStatus.PartiallyFailed;
@@ -102,11 +145,12 @@ public class ConfirmPayoutCollectionCommandHandler(
 
         // Afterwards, so the count sees the wages that just landed. This is where "the entire
         // hiring is finished" is finally decided.
-        await reputationService.RecalculateAndSaveAsync(businessProfile.Id, cancellationToken);
+        await reputationService.RecalculateAndSaveAsync(
+            batch.BusinessOwnerProfileId, cancellationToken);
 
+        // Only this pass. Passing every item would congratulate workers paid in an earlier one
+        // all over again each time a straggler is retried.
         await NotifyPaidWorkersAsync(batch, attempted, cancellationToken);
-
-        return batch.ToDto();
     }
 
     private async Task DisburseAsync(

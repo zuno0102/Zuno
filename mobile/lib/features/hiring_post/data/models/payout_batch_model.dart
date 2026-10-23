@@ -53,6 +53,7 @@ class PayoutBatchModel {
     this.completedAt,
     this.items = const [],
     this.isReconciled = true,
+    this.excludedPayees = const [],
   });
 
   factory PayoutBatchModel.fromJson(Map<String, dynamic> json) =>
@@ -71,6 +72,7 @@ class PayoutBatchModel {
   final DateTime? completedAt;
   final List<PayoutBatchItemModel> items;
   final bool isReconciled;
+  final List<PayoutExclusionModel> excludedPayees;
 
   PayoutBatch toEntity() => PayoutBatch(
     id: id,
@@ -86,5 +88,20 @@ class PayoutBatchModel {
     completedAt: completedAt,
     items: items.map((i) => i.toEntity()).toList(),
     isReconciled: isReconciled,
+    excludedPayees: excludedPayees.map((e) => e.toEntity()).toList(),
   );
+}
+
+@JsonSerializable(createToJson: false)
+class PayoutExclusionModel {
+  const PayoutExclusionModel({this.workerName = '', this.reason = ''});
+
+  factory PayoutExclusionModel.fromJson(Map<String, dynamic> json) =>
+      _$PayoutExclusionModelFromJson(json);
+
+  final String workerName;
+  final String reason;
+
+  PayoutExclusion toEntity() =>
+      PayoutExclusion(workerName: workerName, reason: reason);
 }

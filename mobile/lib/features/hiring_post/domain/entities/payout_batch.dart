@@ -41,10 +41,15 @@ class PayoutBatch {
     this.completedAt,
     this.items = const [],
     this.isReconciled = true,
+    this.excludedPayees = const [],
   });
 
   final String id;
   final String hiringPostId;
+
+  /// Crew this run could not include, and why. Nothing was collected for them, and they stay
+  /// owed — so the job keeps saying Awaiting payment until a later run covers them.
+  final List<PayoutExclusion> excludedPayees;
 
   /// Always the server's own figure. The app never computes or sends this.
   final double totalAmount;
@@ -86,4 +91,12 @@ class PayoutBatch {
 
   List<PayoutBatchItem> get failedItems =>
       items.where((i) => i.isFailed).toList();
+}
+
+/// A worker a pay run left out, and the reason.
+class PayoutExclusion {
+  const PayoutExclusion({required this.workerName, required this.reason});
+
+  final String workerName;
+  final String reason;
 }

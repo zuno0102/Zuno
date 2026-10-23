@@ -35,6 +35,9 @@ enum _Stage { review, paying, done }
 
 class _PayCrewSheetState extends ConsumerState<PayCrewSheet> {
   _Stage _stage = _Stage.review;
+
+  /// Crew the run could not include. Empty on every ordinary run.
+  List<PayoutExclusion> _excluded = const [];
   PayoutBatch? _batch;
   String? _error;
 
@@ -54,6 +57,11 @@ class _PayCrewSheetState extends ConsumerState<PayCrewSheet> {
         postId: widget.post.id,
         expectedTotal: widget.post.outstandingAmount,
       );
+
+      // Kept for the summary at the end. A run that skips somebody collects less than the job
+      // owes, and the business must be able to see who was left out rather than be left working
+      // out why the figure dropped.
+      _excluded = opened.excludedPayees;
 
       var paymentId = opened.providerPaymentId ?? '';
       var signature = '';
@@ -350,6 +358,37 @@ class _PayCrewSheetState extends ConsumerState<PayCrewSheet> {
           ),
         ),
 
+        if (_excluded.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(11),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Not paid in this run — and not charged for',
+                  style: theme.textTheme.labelLarge,
+                ),
+                const SizedBox(height: 4),
+                for (final e in _excluded)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      '${e.workerName} — ${e.reason}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
         if (failed.isNotEmpty) ...[
           const SizedBox(height: 12),
           Container(
@@ -361,7 +400,7 @@ class _PayCrewSheetState extends ConsumerState<PayCrewSheet> {
             ),
             child: Text(
               'This job is not settled until everyone is paid. Fix the details above '
-              'and pay again — nobody already paid will be charged twice.',
+              'and pay again — you are never charged twice for the same worker.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onErrorContainer,
               ),
