@@ -1162,7 +1162,9 @@ class _BusinessServiceFormSheetState
             right: 20,
             child: _MessageBanner(
               message: _successMessage!,
-              color: AppColors.primary,
+              // Read from the theme, not from AppColors: the scheme is seeded per role, so a
+              // constant here came out indigo on a business screen that is purple throughout.
+              color: Theme.of(context).colorScheme.primary,
               icon: Icons.check_circle,
             ),
           ),
