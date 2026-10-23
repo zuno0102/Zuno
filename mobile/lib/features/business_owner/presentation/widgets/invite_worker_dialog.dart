@@ -594,6 +594,31 @@ class _WorkKindField extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final categoriesAsync = ref.watch(serviceCategoriesProvider);
+    final servicesAsync = ref.watch(businessServicesProvider);
+
+    // Waiting on either list, not just the catalogue. The services decide which categories
+    // survive, and treating "not arrived yet" as "none" is what put the whole catalogue on
+    // screen: a business opening this from the Workers tab has never loaded its services, so
+    // the field was built, and could be opened, before they came back.
+    if (categoriesAsync.isLoading || servicesAsync.isLoading) {
+      return const InputDecorator(
+        decoration: InputDecoration(
+          labelText: 'Kind of work',
+          border: OutlineInputBorder(),
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(width: 10),
+            Text('Loading…'),
+          ],
+        ),
+      );
+    }
 
     return categoriesAsync.when(
       loading: () => const InputDecorator(
@@ -617,16 +642,12 @@ class _WorkKindField extends ConsumerWidget {
       // invite. The field simply steps aside.
       error: (_, _) => const SizedBox.shrink(),
       data: (categories) {
-        // The categories this business has services in. A business with none yet - or whose
-        // services are still loading - sees the whole catalogue rather than an empty field,
-        // since an offer with no kind of work on it is worse than a long list.
-        final ownCategoryIds = ref
-            .watch(businessServicesProvider)
-            .maybeWhen(
-              data: (services) =>
-                  services.map((s) => s.serviceCategoryId).toSet(),
-              orElse: () => const <String>{},
-            );
+        // Both lists are in by now. The services that failed to load are the only ones treated
+        // as "no opinion"; an empty list that really did arrive means a business with nothing
+        // set up yet, and it still needs something to pick from.
+        final ownCategoryIds =
+            servicesAsync.value?.map((s) => s.serviceCategoryId).toSet() ??
+            const <String>{};
 
         final inScope = ownCategoryIds.isEmpty
             ? categories
