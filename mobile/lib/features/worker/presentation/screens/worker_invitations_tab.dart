@@ -9,6 +9,7 @@ import 'package:zuno/features/worker/presentation/widgets/job_details_sheet.dart
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/section_header.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 /// Everything waiting on this worker's answer, and the teams they have already joined.
 ///
@@ -351,12 +352,7 @@ class _OfferAnswerState extends ConsumerState<_OfferAnswer> {
 /// a worker needs is the business itself: what it pays, whether it pays on time, and what it has
 /// open. Saying yes to a business that owes three workers money is the mistake this prevents.
 void _openBusiness(BuildContext context, WorkerInvitation invitation) {
-  Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) =>
-          HiringBusinessScreen(businessId: invitation.businessOwnerProfileId),
-    ),
-  );
+  pushScreen(context, HiringBusinessScreen(businessId: invitation.businessOwnerProfileId));
 }
 
 class _TeamInvitationCard extends ConsumerStatefulWidget {

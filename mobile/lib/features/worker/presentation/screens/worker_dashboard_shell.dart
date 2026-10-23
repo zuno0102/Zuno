@@ -21,6 +21,7 @@ import 'package:zuno/features/worker/presentation/screens/worker_jobs_tab.dart';
 import 'package:zuno/shared/widgets/role_header.dart';
 import 'package:zuno/shared/widgets/role_theme.dart';
 import 'package:zuno/core/permissions/startup_permission_primer.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 /// The worker's home, in the worker's green.
 ///
@@ -79,14 +80,10 @@ class _WorkerDashboardShellState extends ConsumerState<WorkerDashboardShell> {
 
       // A message from a business this worker works for. The title is the sender's name.
       case NotificationTarget.workChat:
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => WorkChatScreen(
+        pushScreen(context, WorkChatScreen(
               counterpartId: notification.targetId!,
               counterpartName: notification.title,
-            ),
-          ),
-        );
+            ));
 
       // An offer or an invitation on a hiring post. The post's own details and its answer buttons
       // live on My jobs › Invitations, which is where a worker answers one.
@@ -112,16 +109,12 @@ class _WorkerDashboardShellState extends ConsumerState<WorkerDashboardShell> {
   }
 
   void _openJob(String bookingId) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => AsyncDetailScreen<Booking>(
+    pushScreen(context, AsyncDetailScreen<Booking>(
           title: 'Job',
           fetch: () =>
               ref.read(bookingRepositoryProvider).getJobByIdAsWorker(bookingId),
           builder: (_, booking) => WorkerBookingDetailScreen(booking: booking),
-        ),
-      ),
-    );
+        ));
   }
 
   /// The order's conversation, for a worker who is party to it.
@@ -129,9 +122,7 @@ class _WorkerDashboardShellState extends ConsumerState<WorkerDashboardShell> {
   /// Reached through the worker's own job route, which is the one that decides whether this worker
   /// is on that booking at all.
   void _openChat(String bookingId) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => AsyncDetailScreen<Booking>(
+    pushScreen(context, AsyncDetailScreen<Booking>(
           title: 'Chat',
           fetch: () =>
               ref.read(bookingRepositoryProvider).getJobByIdAsWorker(bookingId),
@@ -140,9 +131,7 @@ class _WorkerDashboardShellState extends ConsumerState<WorkerDashboardShell> {
             title: booking.variantName ?? booking.serviceName,
             counterpartName: booking.businessName,
           ),
-        ),
-      ),
-    );
+        ));
   }
 
   @override
@@ -202,11 +191,7 @@ class _WorkerDashboardShellState extends ConsumerState<WorkerDashboardShell> {
                       color: Colors.white,
                     ),
                     tooltip: 'Scan booking QR',
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const ScanBookingQrScreen(),
-                      ),
-                    ),
+                    onPressed: () => pushScreen(context, const ScanBookingQrScreen()),
                   ),
                   IconButton(
                     icon: const Icon(Icons.logout, color: Colors.white),

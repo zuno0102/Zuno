@@ -14,6 +14,7 @@ import 'package:zuno/shared/widgets/profile_avatar.dart';
 import 'package:zuno/shared/widgets/section_header.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/avatar_crop_screen.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 /// The customer's account page.
 ///
@@ -74,11 +75,7 @@ class CustomerProfileTab extends ConsumerWidget {
               icon: Icons.shield_outlined,
               title: 'App permissions',
               subtitle: 'Location, camera and photos',
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const AppPermissionsScreen(),
-                ),
-              ),
+              onTap: () => pushScreen(context, const AppPermissionsScreen()),
             ),
             _SettingsRow(
               icon: Icons.badge_outlined,

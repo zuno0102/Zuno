@@ -28,7 +28,7 @@ class BookingChatScreen extends StatelessWidget {
   final String counterpartName;
 
   /// Opens the order being discussed. Left null where this side has no screen to open.
-  final VoidCallback? onOpenOrder;
+  final void Function(BuildContext context)? onOpenOrder;
 
   @override
   Widget build(BuildContext context) => ChatScreen(
@@ -62,7 +62,7 @@ class ChatScreen extends ConsumerStatefulWidget {
 
   /// Opens whatever the chat is about. Given one, [title] becomes the way there; given none,
   /// it stays a plain label — a worker chat is about a person, not something openable.
-  final VoidCallback? onOpenOrder;
+  final void Function(BuildContext context)? onOpenOrder;
 
   /// The conversation, oldest first, kept fresh while the screen is open.
   final ProviderListenable<AsyncValue<List<BookingMessage>>> messages;
@@ -172,7 +172,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         title: widget.onOpenOrder == null
             ? heading
             : InkWell(
-                onTap: widget.onOpenOrder,
+                onTap: () => widget.onOpenOrder!(context),
                 borderRadius: BorderRadius.circular(6),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(

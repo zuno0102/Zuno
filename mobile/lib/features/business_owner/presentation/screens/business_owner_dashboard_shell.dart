@@ -21,6 +21,7 @@ import 'package:zuno/shared/widgets/async_detail_screen.dart';
 import 'package:zuno/shared/widgets/role_header.dart';
 import 'package:zuno/shared/widgets/role_theme.dart';
 import 'package:zuno/core/permissions/startup_permission_primer.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 /// The business owner's home.
 ///
@@ -68,14 +69,10 @@ class _BusinessOwnerDashboardShellState
 
       // A message from one of the business's workers. The title is the sender's name.
       case NotificationTarget.workChat:
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => WorkChatScreen(
+        pushScreen(context, WorkChatScreen(
               counterpartId: notification.targetId!,
               counterpartName: notification.title,
-            ),
-          ),
-        );
+            ));
 
       // Hiring: applicants to go through, offers answered, wages to settle. All three live on the
       // hire post list under Workers.
@@ -89,9 +86,7 @@ class _BusinessOwnerDashboardShellState
 
       // A rating changed the stars a customer sees before choosing, which is on the profile.
       case NotificationTarget.profile:
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const BusinessProfileScreen()),
-        );
+        pushScreen(context, const BusinessProfileScreen());
 
       case NotificationTarget.myJobs:
         setState(() => _index = _ordersTab);
@@ -102,24 +97,18 @@ class _BusinessOwnerDashboardShellState
   }
 
   void _openOrder(String bookingId) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => AsyncDetailScreen<Booking>(
+    pushScreen(context, AsyncDetailScreen<Booking>(
           title: 'Order',
           fetch: () => ref
               .read(bookingRepositoryProvider)
               .getBookingByIdAsBusiness(bookingId),
           builder: (_, booking) =>
               BusinessBookingDetailScreen(booking: booking),
-        ),
-      ),
-    );
+        ));
   }
 
   void _openChat(String bookingId) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => AsyncDetailScreen<Booking>(
+    pushScreen(context, AsyncDetailScreen<Booking>(
           title: 'Chat',
           fetch: () => ref
               .read(bookingRepositoryProvider)
@@ -130,9 +119,7 @@ class _BusinessOwnerDashboardShellState
             // The customer, since this is the business reading it.
             counterpartName: booking.customerName,
           ),
-        ),
-      ),
-    );
+        ));
   }
 
   @override

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:zuno/features/customer/presentation/screens/app_permissions_screen.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 /// The way into the App permissions page.
 ///
@@ -30,9 +31,7 @@ class AppPermissionsLink extends StatelessWidget {
           size: 18,
           color: theme.colorScheme.onSurfaceVariant,
         ),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const AppPermissionsScreen()),
-        ),
+        onTap: () => pushScreen(context, const AppPermissionsScreen()),
       ),
     );
   }

@@ -7,6 +7,7 @@ import 'package:zuno/features/work_chat/domain/entities/work_thread.dart';
 import 'package:zuno/features/work_chat/presentation/providers/work_chat_providers.dart';
 import 'package:zuno/features/work_chat/presentation/screens/work_chat_screen.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 /// Every business–worker conversation this person has, one per worker (for a business) or one per
 /// business (for a worker) — drawn like the booking chat list so the two read the same.
@@ -144,14 +145,10 @@ class _WorkThreadRow extends StatelessWidget {
           ],
         ),
       ),
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => WorkChatScreen(
+      onTap: () => pushScreen(context, WorkChatScreen(
             counterpartId: thread.counterpartId,
             counterpartName: thread.counterpartName,
-          ),
-        ),
-      ),
+          )),
     );
   }
 }

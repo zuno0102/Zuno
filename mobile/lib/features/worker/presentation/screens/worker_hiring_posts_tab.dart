@@ -19,6 +19,7 @@ import 'package:zuno/shared/widgets/status_track.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 class WorkerHiringPostsTab extends ConsumerStatefulWidget {
   const WorkerHiringPostsTab({super.key});
@@ -332,16 +333,12 @@ class _PostCardState extends ConsumerState<_PostCard> {
                       // Tappable: before committing a day, a worker can now check what this
                       // business actually pays and whether it pays on time.
                       InkWell(
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => HiringBusinessScreen(
+                        onTap: () => pushScreen(context, HiringBusinessScreen(
                               businessId: post.businessOwnerProfileId,
                               // Opened from this job's card, so the page shows the business's
                               // other jobs rather than repeating the one in front of them.
                               fromPostId: post.id,
-                            ),
-                          ),
-                        ),
+                            )),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [

@@ -9,6 +9,7 @@ import 'package:zuno/shared/widgets/call_icon_button.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/message_icon_button.dart';
 import 'package:zuno/shared/widgets/status_with_actions.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 class CustomerBookingsTab extends ConsumerWidget {
   const CustomerBookingsTab({super.key});
@@ -68,11 +69,7 @@ class _BookingCard extends StatelessWidget {
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => CustomerBookingDetailScreen(booking: booking),
-          ),
-        ),
+        onTap: () => pushScreen(context, CustomerBookingDetailScreen(booking: booking)),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
           child: Row(

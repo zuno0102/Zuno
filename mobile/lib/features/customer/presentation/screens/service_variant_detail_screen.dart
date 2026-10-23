@@ -5,6 +5,7 @@ import 'package:zuno/features/customer/domain/entities/service_variant.dart';
 import 'package:zuno/features/customer/presentation/screens/create_booking_screen.dart';
 import 'package:zuno/features/customer/presentation/widgets/service_gallery_app_bar.dart';
 import 'package:zuno/features/customer/presentation/widgets/share_service.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 /// One of the services listed inside another, opened on its own.
 ///
@@ -124,15 +125,11 @@ class ServiceVariantDetailScreen extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
           child: FilledButton(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => CreateBookingScreen(
+            onPressed: () => pushScreen(context, CreateBookingScreen(
                   businessName: businessName,
                   service: service,
                   variant: variant,
-                ),
-              ),
-            ),
+                )),
             child: Text('Book ${variant.name}'),
           ),
         ),

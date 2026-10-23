@@ -18,6 +18,7 @@ import 'package:zuno/features/booking/presentation/providers/business_bookings_n
 import 'package:zuno/features/business_owner/presentation/widgets/assign_worker_dialog.dart';
 import 'package:zuno/shared/widgets/call_icon_button.dart';
 import 'package:zuno/shared/widgets/job_location_card.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 class BusinessBookingDetailScreen extends ConsumerStatefulWidget {
   const BusinessBookingDetailScreen({required this.booking, super.key});
@@ -267,16 +268,12 @@ class _BusinessBookingDetailScreenState
                 if (booking.canBeMessaged)
                   Expanded(
                     child: FilledButton.tonalIcon(
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => BookingChatScreen(
+                      onPressed: () => pushScreen(context, BookingChatScreen(
                             bookingId: booking.id,
                             title: booking.variantName ?? booking.serviceName,
                             // The customer, since this is the business reading it.
                             counterpartName: booking.customerName,
-                          ),
-                        ),
-                      ),
+                          )),
                       icon: const Icon(Icons.chat_bubble_outline),
                       label: const Text('Message'),
                     ),

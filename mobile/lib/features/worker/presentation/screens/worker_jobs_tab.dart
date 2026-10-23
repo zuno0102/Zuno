@@ -23,6 +23,7 @@ import 'package:zuno/features/hiring_post/presentation/providers/worker_job_offe
 import 'package:zuno/features/worker/domain/entities/worker_invitation.dart';
 import 'package:zuno/features/worker/presentation/providers/worker_invitations_notifier.dart';
 import 'package:zuno/features/worker/presentation/screens/worker_invitations_tab.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 /// A worker's jobs, split into the work they still have to do, the work behind them, and the work
 /// being offered to them.
@@ -654,11 +655,7 @@ class _JobCardState extends ConsumerState<_JobCard> {
     return Card(
       margin: EdgeInsets.zero,
       child: InkWell(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => WorkerBookingDetailScreen(booking: booking),
-          ),
-        ),
+        onTap: () => pushScreen(context, WorkerBookingDetailScreen(booking: booking)),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(

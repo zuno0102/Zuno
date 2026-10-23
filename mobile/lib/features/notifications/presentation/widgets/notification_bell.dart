@@ -7,6 +7,7 @@ import 'package:zuno/features/notifications/domain/entities/app_notification.dar
 import 'package:zuno/features/notifications/presentation/providers/notification_providers.dart';
 import 'package:zuno/features/notifications/presentation/providers/notification_surfacer.dart';
 import 'package:zuno/features/notifications/presentation/screens/notifications_screen.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 /// The bell, with the count of what has not been read.
 ///
@@ -136,11 +137,7 @@ class _NotificationBellState extends ConsumerState<NotificationBell>
         // might have missed, so it must not be a cached copy from an hour ago.
         ref.invalidate(notificationListProvider);
 
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => NotificationsScreen(onOpen: widget.onOpen),
-          ),
-        );
+        pushScreen(context, NotificationsScreen(onOpen: widget.onOpen));
       },
     );
   }

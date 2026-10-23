@@ -8,6 +8,7 @@ import 'package:zuno/features/worker/presentation/providers/worker_job_filter_pr
 import 'package:zuno/features/worker/presentation/widgets/place_search_sheet.dart';
 import 'package:zuno/features/worker/presentation/widgets/worker_location_picker.dart';
 import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 /// Opens one job's location on a map, from wherever the worker is searching.
 ///
@@ -20,16 +21,12 @@ import 'package:zuno/core/theme/app_colors.dart';
 void showJobOnMap(BuildContext context, WidgetRef ref, HiringPost job) {
   final filter = ref.read(workerJobFilterProvider);
 
-  Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) => SingleJobMapScreen(
+  pushScreen(context, SingleJobMapScreen(
         job: job,
         from: filter.hasPosition
             ? LatLng(filter.latitude!, filter.longitude!)
             : null,
-      ),
-    ),
-  );
+      ));
 }
 
 /// Where one job is, and the way there.

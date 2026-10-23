@@ -15,6 +15,7 @@ import 'package:zuno/features/customer/presentation/widgets/share_service.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/section_header.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 /// One service, opened from a card in the feed.
 ///
@@ -214,27 +215,19 @@ class _ServiceDetailBody extends StatelessWidget {
   }
 
   void _openVariant(BuildContext context, ServiceVariant variant) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => ServiceVariantDetailScreen(
+    pushScreen(context, ServiceVariantDetailScreen(
           variant: variant,
           service: detail.service,
           businessName: detail.business.businessName,
-        ),
-      ),
-    );
+        ));
   }
 
   void _book(BuildContext context, {ServiceVariant? variant}) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => CreateBookingScreen(
+    pushScreen(context, CreateBookingScreen(
           businessName: detail.business.businessName,
           service: detail.service,
           variant: variant,
-        ),
-      ),
-    );
+        ));
   }
 
 }

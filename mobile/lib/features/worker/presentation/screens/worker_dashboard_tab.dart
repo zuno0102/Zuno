@@ -12,6 +12,7 @@ import 'package:zuno/features/worker/presentation/widgets/worker_profile_edit_sh
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/section_header.dart';
 import 'package:zuno/shared/widgets/trust_cards.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 /// The worker's home screen.
 ///
@@ -151,9 +152,7 @@ class _AwaitingPaymentCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       color: isOwed ? accent.withValues(alpha: 0.10) : null,
       child: InkWell(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const WorkerPaymentsScreen()),
-        ),
+        onTap: () => pushScreen(context, const WorkerPaymentsScreen()),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(18, 18, 12, 18),
           child: Row(
@@ -288,15 +287,11 @@ class _WorkStats extends StatelessWidget {
     List<WorkerJobSummary> jobs,
     String emptyMessage,
   ) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => WorkerJobListScreen(
+    pushScreen(context, WorkerJobListScreen(
           title: title,
           jobs: jobs,
           emptyMessage: emptyMessage,
-        ),
-      ),
-    );
+        ));
   }
 
   @override
@@ -486,9 +481,7 @@ class _ProfileCard extends StatelessWidget {
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const WorkerProfileScreen()),
-        ),
+        onTap: () => pushScreen(context, const WorkerProfileScreen()),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 14, 10, 14),
           child: Row(

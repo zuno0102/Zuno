@@ -32,6 +32,7 @@ import 'package:zuno/shared/widgets/message_icon_button.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
 import 'package:zuno/shared/widgets/status_with_actions.dart';
 import 'package:zuno/shared/widgets/status_track.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 /// Every booking customers have made, and everything waiting on the business to act.
 ///
@@ -394,11 +395,7 @@ class _CustomerThreads extends ConsumerWidget {
       return;
     }
 
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => BusinessBookingDetailScreen(booking: order),
-      ),
-    );
+    pushScreen(context, BusinessBookingDetailScreen(booking: order));
   }
 
   @override
@@ -620,11 +617,7 @@ class _OrderCard extends StatelessWidget {
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => BusinessBookingDetailScreen(booking: order),
-          ),
-        ),
+        onTap: () => pushScreen(context, BusinessBookingDetailScreen(booking: order)),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
           child: Row(

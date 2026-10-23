@@ -9,6 +9,7 @@ import 'package:zuno/features/customer/domain/entities/service_variant.dart';
 import 'package:zuno/features/customer/presentation/providers/customer_providers.dart';
 import 'package:zuno/features/customer/presentation/screens/create_booking_screen.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 class BusinessDetailScreen extends ConsumerWidget {
   const BusinessDetailScreen({required this.businessId, super.key});
@@ -124,12 +125,7 @@ class _ServiceTile extends StatelessWidget {
 
   Future<void> _open(BuildContext context) async {
     if (service.variants.isEmpty) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) =>
-              CreateBookingScreen(businessName: businessName, service: service),
-        ),
-      );
+      pushScreen(context, CreateBookingScreen(businessName: businessName, service: service));
       return;
     }
 
@@ -140,15 +136,11 @@ class _ServiceTile extends StatelessWidget {
     );
 
     if (selected != null && context.mounted) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => CreateBookingScreen(
+      pushScreen(context, CreateBookingScreen(
             businessName: businessName,
             service: service,
             variant: selected,
-          ),
-        ),
-      );
+          ));
     }
   }
 

@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:zuno/core/router/go_router_refresh_notifier.dart';
@@ -45,6 +46,29 @@ GoRouter appRouter(Ref ref) {
       return null;
     },
     routes: [
+      // Where every screen opened with pushScreen() lands.
+      //
+      // The device's back button only knows about history the router put there, and a screen
+      // pushed straight onto the Navigator leaves none: back then skipped past it to whatever
+      // the router thought was showing, or did nothing at all. Routing those pushes through
+      // here gives each one an entry, so back behaves like the arrow in the corner.
+      //
+      // One path for all of them because they are handed a built widget, not an id. Giving
+      // each its own URL means being able to rebuild it from that URL, which is a different
+      // and much larger job — see the note on reloading below.
+      GoRoute(
+        path: '/screen',
+        redirect: (context, state) {
+          // A reload or a shared link arrives with no widget to show, since extra does not
+          // survive either. Home is a better answer than a blank page.
+          if (state.extra is Widget) return null;
+          final user = ref.read(authProvider).value;
+          return user is AuthAuthenticated
+              ? _homeRouteForRole(user.user.role)
+              : '/login';
+        },
+        builder: (context, state) => state.extra! as Widget,
+      ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
         path: '/register',

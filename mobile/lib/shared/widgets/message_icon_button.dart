@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:zuno/features/booking/presentation/screens/booking_chat_screen.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 /// Opens one booking's conversation from a list row — the small sibling of `CallIconButton`.
 ///
@@ -37,15 +38,11 @@ class MessageIconButton extends StatelessWidget {
       icon: const Icon(Icons.chat_bubble_outline),
       iconSize: iconSize,
       tooltip: tooltip ?? 'Message',
-      onPressed: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => BookingChatScreen(
+      onPressed: () => pushScreen(context, BookingChatScreen(
             bookingId: bookingId,
             title: title,
             counterpartName: counterpartName,
-          ),
-        ),
-      ),
+          )),
     );
   }
 }

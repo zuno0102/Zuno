@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:zuno/features/work_chat/presentation/screens/work_chat_screen.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 /// Opens the business–worker conversation — the same icon as a booking's message button, so the
 /// two read as the same action wherever they appear.
@@ -31,15 +32,11 @@ class WorkMessageButton extends StatelessWidget {
       icon: const Icon(Icons.chat_bubble_outline),
       iconSize: iconSize,
       tooltip: tooltip ?? 'Message',
-      onPressed: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => WorkChatScreen(
+      onPressed: () => pushScreen(context, WorkChatScreen(
             counterpartId: counterpartId,
             counterpartName: counterpartName,
             subtitle: subtitle,
-          ),
-        ),
-      ),
+          )),
     );
   }
 }

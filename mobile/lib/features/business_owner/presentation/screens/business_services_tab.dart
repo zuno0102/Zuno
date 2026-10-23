@@ -8,6 +8,7 @@ import 'package:zuno/features/business_owner/presentation/providers/business_ser
 import 'package:zuno/features/business_owner/presentation/screens/manage_service_variants_screen.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/business_service_form_sheet.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 class BusinessServicesTab extends ConsumerWidget {
   const BusinessServicesTab({super.key});
@@ -175,12 +176,7 @@ class _ServiceCard extends ConsumerWidget {
             if (value == 'edit') {
               showBusinessServiceFormSheet(context, existing: service);
             } else if (value == 'variants') {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) =>
-                      ManageServiceVariantsScreen(serviceId: service.id),
-                ),
-              );
+              pushScreen(context, ManageServiceVariantsScreen(serviceId: service.id));
             } else if (value == 'delete') {
               _confirmDelete(context, ref);
             }

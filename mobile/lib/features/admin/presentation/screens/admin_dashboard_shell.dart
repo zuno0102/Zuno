@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/features/admin/presentation/screens/admin_catalog_screen.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_state.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 /// The app owner's home.
 ///
@@ -53,11 +54,7 @@ class AdminDashboardShell extends ConsumerWidget {
                 'The kinds of work the product offers — add, rename or hide them',
               ),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const AdminCatalogScreen(),
-                ),
-              ),
+              onTap: () => pushScreen(context, const AdminCatalogScreen()),
             ),
           ),
         ],

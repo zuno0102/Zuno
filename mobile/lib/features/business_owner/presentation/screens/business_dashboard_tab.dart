@@ -13,6 +13,7 @@ import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/section_header.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
 import 'package:zuno/shared/widgets/trust_cards.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 /// The business home screen.
 ///
@@ -92,12 +93,7 @@ class _CompletedCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: canOpen
-            ? () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) =>
-                      CompletedBreakdownScreen(dashboard: dashboard),
-                ),
-              )
+            ? () => pushScreen(context, CompletedBreakdownScreen(dashboard: dashboard))
             : null,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
@@ -202,11 +198,7 @@ class _ProfileCard extends ConsumerWidget {
       child: InkWell(
         // Tappable even while the profile is still loading: the page it opens does its own
         // loading, and a card that ignores the first tap feels broken.
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => const BusinessProfileScreen(),
-          ),
-        ),
+        onTap: () => pushScreen(context, const BusinessProfileScreen()),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 14, 10, 14),
           child: Row(
@@ -301,15 +293,11 @@ class _QuickStats extends StatelessWidget {
         value: '${dashboard.upcomingEvents}',
         icon: Icons.event_outlined,
         tone: StatusTone.progress,
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => BookingListScreen(
+        onTap: () => pushScreen(context, BookingListScreen(
               title: 'Upcoming events',
               events: dashboard.upcoming,
               mode: BookingListMode.upcoming,
-            ),
-          ),
-        ),
+            )),
       ),
       _StatTile(
         label: 'Awaiting payment',
@@ -318,15 +306,11 @@ class _QuickStats extends StatelessWidget {
         tone: dashboard.awaitingPaymentEvents > 0
             ? StatusTone.progress
             : StatusTone.waiting,
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => BookingListScreen(
+        onTap: () => pushScreen(context, BookingListScreen(
               title: 'Awaiting payment',
               events: dashboard.awaitingPayment,
               mode: BookingListMode.awaitingPayment,
-            ),
-          ),
-        ),
+            )),
       ),
       _StatTile(
         label: 'Cancelled',
@@ -335,26 +319,18 @@ class _QuickStats extends StatelessWidget {
         tone: dashboard.cancelledEvents > 0
             ? StatusTone.danger
             : StatusTone.waiting,
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => BookingListScreen(
+        onTap: () => pushScreen(context, BookingListScreen(
               title: 'Cancelled events',
               events: dashboard.cancelled,
               mode: BookingListMode.cancelled,
-            ),
-          ),
-        ),
+            )),
       ),
       _StatTile(
         label: 'Crew events',
         value: '${dashboard.crewEventsCompleted}',
         icon: Icons.groups_outlined,
         tone: StatusTone.success,
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => CrewEventListScreen(events: dashboard.crewEvents),
-          ),
-        ),
+        onTap: () => pushScreen(context, CrewEventListScreen(events: dashboard.crewEvents)),
       ),
       _StatTile(
         label: 'Active workers',
@@ -363,11 +339,7 @@ class _QuickStats extends StatelessWidget {
         tone: dashboard.activeWorkers > 0
             ? StatusTone.progress
             : StatusTone.waiting,
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => ActiveWorkerListScreen(workers: dashboard.workers),
-          ),
-        ),
+        onTap: () => pushScreen(context, ActiveWorkerListScreen(workers: dashboard.workers)),
       ),
       _StatTile(
         label: 'Active services',
@@ -379,28 +351,20 @@ class _QuickStats extends StatelessWidget {
         // Its own list, like every other tile on this screen. Both service tiles used to switch to
         // the Services tab, which lists all of them — so two tiles showing different numbers landed
         // on the same page, and the tap said nothing about which one had been pressed.
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => const BusinessServiceListScreen(
+        onTap: () => pushScreen(context, const BusinessServiceListScreen(
               title: 'Active services',
               active: true,
-            ),
-          ),
-        ),
+            )),
       ),
       _StatTile(
         label: 'Inactive services',
         value: '${dashboard.inactiveServices}',
         icon: Icons.visibility_off_outlined,
         tone: StatusTone.waiting,
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => const BusinessServiceListScreen(
+        onTap: () => pushScreen(context, const BusinessServiceListScreen(
               title: 'Inactive services',
               active: false,
-            ),
-          ),
-        ),
+            )),
       ),
     ];
 

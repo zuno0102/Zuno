@@ -16,6 +16,7 @@ import 'package:zuno/shared/widgets/call_icon_button.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 class CustomerBookingDetailScreen extends ConsumerStatefulWidget {
   const CustomerBookingDetailScreen({
@@ -330,15 +331,11 @@ class _CustomerBookingDetailScreenState
               if (booking.canBeMessaged)
                 Expanded(
                   child: FilledButton.tonalIcon(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => BookingChatScreen(
+                    onPressed: () => pushScreen(context, BookingChatScreen(
                           bookingId: booking.id,
                           title: booking.variantName ?? booking.serviceName,
                           counterpartName: booking.businessName,
-                        ),
-                      ),
-                    ),
+                        )),
                     icon: const Icon(Icons.chat_bubble_outline),
                     label: const Text('Message'),
                   ),

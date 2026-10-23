@@ -11,6 +11,7 @@ import 'package:zuno/features/work_chat/presentation/screens/work_chat_screen.da
 import 'package:zuno/shared/widgets/call_icon_button.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/job_location_card.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 class WorkerBookingDetailScreen extends ConsumerStatefulWidget {
   const WorkerBookingDetailScreen({required this.booking, super.key});
@@ -136,15 +137,11 @@ class _WorkerBookingDetailScreenState
               runSpacing: 8,
               children: [
                 OutlinedButton.icon(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => WorkChatScreen(
+                  onPressed: () => pushScreen(context, WorkChatScreen(
                         counterpartId: booking.businessOwnerProfileId,
                         counterpartName: booking.businessName,
                         subtitle: booking.variantName ?? booking.serviceName,
-                      ),
-                    ),
-                  ),
+                      )),
                   icon: const Icon(Icons.chat_bubble_outline),
                   label: const Text('Message business'),
                 ),

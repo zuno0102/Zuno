@@ -17,6 +17,7 @@ import 'package:zuno/features/notifications/presentation/widgets/notification_be
 import 'package:zuno/shared/widgets/async_detail_screen.dart';
 import 'package:zuno/shared/widgets/role_theme.dart';
 import 'package:zuno/core/permissions/startup_permission_primer.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 /// The customer's home, in the customer's blue.
 ///
@@ -105,9 +106,7 @@ class _CustomerDashboardShellState
   /// one order is fresher than finding it in a list loaded minutes ago — which matters when the
   /// notification exists to say that order just changed.
   void _openBooking(String bookingId, {bool openRating = false}) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => AsyncDetailScreen<Booking>(
+    pushScreen(context, AsyncDetailScreen<Booking>(
           title: 'Booking',
           fetch: () => ref
               .read(bookingRepositoryProvider)
@@ -116,9 +115,7 @@ class _CustomerDashboardShellState
             booking: booking,
             openRating: openRating,
           ),
-        ),
-      ),
-    );
+        ));
   }
 
   /// Fetches the order, then opens its conversation.
@@ -127,9 +124,7 @@ class _CustomerDashboardShellState
   /// neither — only the id. Composing them here rather than widening the notification keeps the
   /// stored words a record of the moment rather than a payload the client depends on.
   void _openChat(String bookingId) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => AsyncDetailScreen<Booking>(
+    pushScreen(context, AsyncDetailScreen<Booking>(
           title: 'Chat',
           fetch: () => ref
               .read(bookingRepositoryProvider)
@@ -139,9 +134,7 @@ class _CustomerDashboardShellState
             title: booking.variantName ?? booking.serviceName,
             counterpartName: booking.businessName,
           ),
-        ),
-      ),
-    );
+        ));
   }
 
   @override

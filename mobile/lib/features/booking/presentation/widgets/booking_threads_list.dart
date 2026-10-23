@@ -8,6 +8,7 @@ import 'package:zuno/features/booking/presentation/providers/booking_message_pro
 import 'package:zuno/features/booking/presentation/screens/booking_chat_screen.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 /// Every conversation this person is part of, one per booking.
 ///
@@ -240,20 +241,17 @@ class _ThreadRow extends StatelessWidget {
       ),
       isThreeLine: true,
       onLongPress: onDelete,
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (chatContext) => BookingChatScreen(
+      onTap: () => pushScreen(context, BookingChatScreen(
             bookingId: thread.bookingId,
             title: thread.title,
             counterpartName: thread.counterpartName,
-            // Bound to the chat's own context rather than this row's. The row is off-screen by
-            // the time anyone taps the heading, and pushing from a dead context throws.
+            // The chat hands back its own context when the heading is tapped. This row is long
+            // gone by then — scrolled away, or disposed with the list — and pushing from a dead
+            // context throws.
             onOpenOrder: onOpenOrder == null
                 ? null
-                : () => onOpenOrder!(chatContext, thread.bookingId),
-          ),
-        ),
-      ),
+                : (chatContext) => onOpenOrder!(chatContext, thread.bookingId),
+          )),
     );
   }
 }

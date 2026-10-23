@@ -15,6 +15,7 @@ import 'package:zuno/shared/widgets/call_icon_button.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/worker_job_offers_notifier.dart';
+import 'package:zuno/core/router/push_screen.dart';
 
 /// One job, in full, with the decision at the bottom.
 ///
@@ -238,16 +239,12 @@ class _JobDetailsSheetState extends ConsumerState<_JobDetailsSheet> {
                   OutlinedButton.icon(
                     onPressed: () {
                       final filter = ref.read(workerJobFilterProvider);
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => SingleJobMapScreen(
+                      pushScreen(context, SingleJobMapScreen(
                             job: job,
                             from: filter.hasPosition
                                 ? LatLng(filter.latitude!, filter.longitude!)
                                 : null,
-                          ),
-                        ),
-                      );
+                          ));
                     },
                     icon: const Icon(Icons.map_outlined, size: 18),
                     label: const Text('See it on the map'),
@@ -262,16 +259,12 @@ class _JobDetailsSheetState extends ConsumerState<_JobDetailsSheet> {
                   OutlinedButton.icon(
                     onPressed: () {
                       Navigator.of(context).pop();
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => HiringBusinessScreen(
+                      pushScreen(context, HiringBusinessScreen(
                             businessId: job.businessOwnerProfileId,
                             // This job is the one they are standing in, so the business page shows
                             // what else is open rather than listing it back to them.
                             fromPostId: job.id,
-                          ),
-                        ),
-                      );
+                          ));
                     },
                     icon: const Icon(Icons.storefront_outlined, size: 18),
                     label: Text('About ${job.businessName}'),
@@ -330,15 +323,11 @@ class _JobDetailsSheetState extends ConsumerState<_JobDetailsSheet> {
                     runSpacing: 8,
                     children: [
                       OutlinedButton.icon(
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => WorkChatScreen(
+                        onPressed: () => pushScreen(context, WorkChatScreen(
                               counterpartId: job.businessOwnerProfileId,
                               counterpartName: job.businessName,
                               subtitle: job.title,
-                            ),
-                          ),
-                        ),
+                            )),
                         icon: const Icon(Icons.chat_bubble_outline),
                         label: const Text('Message business'),
                       ),
