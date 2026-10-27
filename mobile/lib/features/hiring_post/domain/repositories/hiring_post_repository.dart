@@ -64,6 +64,18 @@ abstract interface class HiringPostRepository {
   /// Closes the vacancy for good; the business will manage with the crew it has.
   Future<HiringPost> stopHiring(String id);
 
+  /// Gives an own event's crew member a role (Supervisor, Lead or Support); null takes it away.
+  Future<HiringPost> setApplicationRole({
+    required String applicationId,
+    required String? role,
+  });
+
+  /// The Lead on an own event saying the work has begun.
+  Future<HiringPost> leadStartWork(String id);
+
+  /// The Lead on an own event marking the work completed.
+  Future<HiringPost> leadCompleteWork(String id);
+
   Future<HiringPost> uploadPostImage(String id, Uint8List imageBytes);
 
   Future<HiringPost> confirmApplication(String applicationId);

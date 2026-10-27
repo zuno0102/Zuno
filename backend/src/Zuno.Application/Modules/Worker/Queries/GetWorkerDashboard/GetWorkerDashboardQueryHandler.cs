@@ -98,7 +98,9 @@ public class GetWorkerDashboardQueryHandler(
                 a.AgreedSalaryUnit ?? a.HiringPost.SalaryUnit,
                 a.HiringPost.WorkStartedAt,
                 a.HiringPost.WorkCompletedAt,
-                a.PaymentStatus))
+                a.PaymentStatus,
+                // Own events only: a post raised for an order keeps its roles on the order.
+                a.HiringPost.BookingId == null ? a.Role : null))
             .ToListAsync(cancellationToken);
 
         var openPostCount = await dbContext.HiringPosts
@@ -310,6 +312,7 @@ public class GetWorkerDashboardQueryHandler(
         MyWageUnit = job.Unit.ToString(),
         // They accepted the offer to be here at all, so there is never an answer outstanding.
         MyStatus = nameof(HiringPostApplicationStatus.Accepted),
+        MyRole = JobRole.Canonical(job.Role),
         WorkStartedAt = job.WorkStartedAt,
         NeedsMyAnswer = false,
     };
@@ -329,7 +332,7 @@ public class GetWorkerDashboardQueryHandler(
         DateTimeOffset? CompletedAt,
         PaymentStatus Payment,
         /// What they are on this job - Lead, Supervisor or Support - or null for a plain
-        /// crew member. Only orders carry one; a hiring post has no crew to lead.
+        /// crew member.
         string? Role);
 
     /// <summary>A job reached by taking a hiring post.</summary>
@@ -345,5 +348,8 @@ public class GetWorkerDashboardQueryHandler(
         SalaryUnit Unit,
         DateTimeOffset? WorkStartedAt,
         DateTimeOffset? WorkCompletedAt,
-        PaymentStatus Payment);
+        PaymentStatus Payment,
+        /// Their role on one of the business's own events, or null. A post raised for an order
+        /// keeps its roles on the order, which reaches the dashboard as an order job.
+        string? Role);
 }

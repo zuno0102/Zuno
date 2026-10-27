@@ -8734,6 +8734,11 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("responded_at");
 
+                    b.Property<string>("Role")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("role");
+
                     b.Property<short>("Status")
                         .HasColumnType("smallint")
                         .HasColumnName("status");

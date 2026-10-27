@@ -385,7 +385,8 @@ class _CustomerThreads extends ConsumerWidget {
   /// it belongs to — a cancelled one drops out of that list while its messages stay — so a miss
   /// says so plainly rather than pushing a screen with nothing on it.
   void _openOrder(BuildContext context, WidgetRef ref, String bookingId) {
-    final orders = ref.read(businessBookingsProvider).value ?? const <Booking>[];
+    final orders =
+        ref.read(businessBookingsProvider).value ?? const <Booking>[];
     final order = orders.where((o) => o.id == bookingId).firstOrNull;
 
     if (order == null) {
@@ -617,7 +618,8 @@ class _OrderCard extends StatelessWidget {
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => pushScreen(context, BusinessBookingDetailScreen(booking: order)),
+        onTap: () =>
+            pushScreen(context, BusinessBookingDetailScreen(booking: order)),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
           child: Row(
@@ -928,8 +930,7 @@ class _OrderStepCardState extends ConsumerState<_OrderStepCard> {
       name: worker.workerName,
       detail: '${worker.displayStatusLabel} · $wage',
       onRaise: raise,
-      messageCounterpartId:
-          !order.isCancelled && (worker.isAccepted || worker.isCompleted)
+      messageCounterpartId: order.canMessageCrewMember(worker)
           ? worker.workerProfileId
           : null,
       phone: order.canCallCrewMember(worker) ? worker.workerPhone : null,

@@ -78,7 +78,12 @@ void main() {
       tester,
       order(
         crew: [
-          worker(name: 'Ravi', displayStatus: 'Active', role: 'Server', salary: 800),
+          worker(
+            name: 'Ravi',
+            displayStatus: 'Active',
+            role: 'Server',
+            salary: 800,
+          ),
           worker(name: 'Anita', displayStatus: 'Awaiting', status: 'Assigned'),
           worker(name: 'Suresh', displayStatus: 'Completed', salary: 900),
         ],
@@ -98,7 +103,12 @@ void main() {
       order(
         crew: [
           worker(name: 'Ravi', displayStatus: 'Active', salary: 800),
-          worker(name: 'Anita', displayStatus: 'Declined', status: 'Rejected', salary: 800),
+          worker(
+            name: 'Anita',
+            displayStatus: 'Declined',
+            status: 'Rejected',
+            salary: 800,
+          ),
         ],
       ),
     );
@@ -109,12 +119,19 @@ void main() {
   testWidgets('says plainly when someone is paid outside Zuno', (tester) async {
     // "No wage" and "wage not yet entered" look identical if the line is simply left blank, and
     // only one of them is a mistake.
-    await pump(tester, order(crew: [worker(name: 'Ravi', displayStatus: 'Active')]));
+    await pump(
+      tester,
+      order(
+        crew: [worker(name: 'Ravi', displayStatus: 'Active')],
+      ),
+    );
 
     expect(find.textContaining('Paid outside Zuno'), findsOneWidget);
   });
 
-  testWidgets('warns when an owed worker has nowhere to be paid', (tester) async {
+  testWidgets('warns when an owed worker has nowhere to be paid', (
+    tester,
+  ) async {
     // Worth saying before a pay run. Razorpay refuses a payout with no destination, and by then
     // the business has already authorised the money.
     await pump(
@@ -150,7 +167,9 @@ void main() {
       expect(find.text('2 of 5'), findsOneWidget);
     });
 
-    testWidgets('never reads "2 of 0" when the crew is agreed per order', (tester) async {
+    testWidgets('never reads "2 of 0" when the crew is agreed per order', (
+      tester,
+    ) async {
       // 0 means "not fixed — agreed with the customer", not "nobody needed".
       await pump(
         tester,
@@ -187,7 +206,11 @@ void main() {
           requiredWorkerCount: 5,
           crew: [
             worker(name: 'Ravi', displayStatus: 'Active'),
-            worker(name: 'Anita', displayStatus: 'Declined', status: 'Rejected'),
+            worker(
+              name: 'Anita',
+              displayStatus: 'Declined',
+              status: 'Rejected',
+            ),
           ],
         ),
       );
@@ -232,7 +255,9 @@ void main() {
     testWidgets('is there while the order is running', (tester) async {
       await pump(
         tester,
-        order(crew: [worker(name: 'Ravi', displayStatus: 'Active', salary: 800)]),
+        order(
+          crew: [worker(name: 'Ravi', displayStatus: 'Active', salary: 800)],
+        ),
       );
 
       expect(find.byIcon(Icons.call), findsOneWidget);
@@ -257,7 +282,10 @@ void main() {
       expect(find.byIcon(Icons.call), findsNothing);
     });
 
-    testWidgets('stays while a finished order still owes them', (tester) async {
+    // Changed: a finished order shows no call or chat on the crew, even while wages are owed.
+    testWidgets('is gone once the order is finished, even while owed', (
+      tester,
+    ) async {
       await pump(
         tester,
         order(
@@ -273,7 +301,8 @@ void main() {
         ),
       );
 
-      expect(find.byIcon(Icons.call), findsOneWidget);
+      expect(find.byIcon(Icons.call), findsNothing);
+      expect(find.byTooltip('Message worker'), findsNothing);
     });
 
     testWidgets('is gone for a worker paid outside Zuno', (tester) async {

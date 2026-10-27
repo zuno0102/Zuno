@@ -299,10 +299,10 @@ class _CurrentJobs extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
         // An unanswered offer is the only thing here nobody else can do for them.
+        // No hint under it: the Accept and Decline buttons already say what to do.
         _JobSection(
           title: 'Waiting for your answer',
           jobs: sections.needsAnswer,
-          highlight: true,
         ),
         _JobSection(title: 'On the job', jobs: sections.active),
         _JobSection(title: 'Coming up', jobs: sections.upcoming),
@@ -538,25 +538,16 @@ class _PostJobCard extends StatelessWidget {
 }
 
 class _JobSection extends StatelessWidget {
-  const _JobSection({
-    required this.title,
-    required this.jobs,
-    this.highlight = false,
-  });
+  const _JobSection({required this.title, required this.jobs});
 
   final String title;
   final List<Booking> jobs;
-
-  /// Colours the heading, for the one section that is asking something of the worker.
-  final bool highlight;
 
   @override
   Widget build(BuildContext context) {
     // An empty section is left out entirely rather than shown with a zero — four headings with
     // nothing under three of them reads as a broken screen.
     if (jobs.isEmpty) return const SizedBox.shrink();
-
-    final theme = Theme.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -566,16 +557,6 @@ class _JobSection extends StatelessWidget {
           count: jobs.length,
           padding: const EdgeInsets.fromLTRB(0, 14, 0, 8),
         ),
-        if (highlight)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              'Accept or decline so the business can plan.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.error,
-              ),
-            ),
-          ),
         for (final job in jobs)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -655,7 +636,8 @@ class _JobCardState extends ConsumerState<_JobCard> {
     return Card(
       margin: EdgeInsets.zero,
       child: InkWell(
-        onTap: () => pushScreen(context, WorkerBookingDetailScreen(booking: booking)),
+        onTap: () =>
+            pushScreen(context, WorkerBookingDetailScreen(booking: booking)),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(

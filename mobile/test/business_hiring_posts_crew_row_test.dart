@@ -133,7 +133,9 @@ void main() {
     expect(find.byIcon(Icons.call), findsNothing);
   });
 
-  testWidgets('the button survives a finished order that still owes money', (
+  // Changed: once the job is over the crew row offers no call or chat, even while owed. The
+  // row is still listed (a payment problem keeps it on the tab) so the business can settle it.
+  testWidgets('no call or chat once the order is finished, even while owed', (
     tester,
   ) async {
     await pump(
@@ -151,7 +153,9 @@ void main() {
     );
 
     expect(tester.takeException(), isNull);
-    expect(find.byIcon(Icons.call), findsOneWidget);
+    expect(find.text('Ravi Kumar'), findsOneWidget);
+    expect(find.byIcon(Icons.call), findsNothing);
+    expect(find.byTooltip('Message worker'), findsNothing);
   });
 
   testWidgets('the worst case for the width budget still lays out', (

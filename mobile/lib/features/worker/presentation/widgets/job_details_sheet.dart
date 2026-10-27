@@ -5,7 +5,10 @@ import 'package:zuno/core/constants/api_constants.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
+import 'package:zuno/features/hiring_post/presentation/providers/hiring_post_providers.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/worker_hiring_posts_notifier.dart';
+import 'package:zuno/features/hiring_post/presentation/providers/worker_post_jobs_notifier.dart';
+import 'package:zuno/features/worker/presentation/widgets/job_role_banner.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:zuno/features/worker/presentation/providers/worker_job_filter_provider.dart';
 import 'package:zuno/features/worker/presentation/screens/hiring_business_screen.dart';
@@ -239,12 +242,15 @@ class _JobDetailsSheetState extends ConsumerState<_JobDetailsSheet> {
                   OutlinedButton.icon(
                     onPressed: () {
                       final filter = ref.read(workerJobFilterProvider);
-                      pushScreen(context, SingleJobMapScreen(
-                            job: job,
-                            from: filter.hasPosition
-                                ? LatLng(filter.latitude!, filter.longitude!)
-                                : null,
-                          ));
+                      pushScreen(
+                        context,
+                        SingleJobMapScreen(
+                          job: job,
+                          from: filter.hasPosition
+                              ? LatLng(filter.latitude!, filter.longitude!)
+                              : null,
+                        ),
+                      );
                     },
                     icon: const Icon(Icons.map_outlined, size: 18),
                     label: const Text('See it on the map'),
@@ -259,12 +265,15 @@ class _JobDetailsSheetState extends ConsumerState<_JobDetailsSheet> {
                   OutlinedButton.icon(
                     onPressed: () {
                       Navigator.of(context).pop();
-                      pushScreen(context, HiringBusinessScreen(
-                            businessId: job.businessOwnerProfileId,
-                            // This job is the one they are standing in, so the business page shows
-                            // what else is open rather than listing it back to them.
-                            fromPostId: job.id,
-                          ));
+                      pushScreen(
+                        context,
+                        HiringBusinessScreen(
+                          businessId: job.businessOwnerProfileId,
+                          // This job is the one they are standing in, so the business page shows
+                          // what else is open rather than listing it back to them.
+                          fromPostId: job.id,
+                        ),
+                      );
                     },
                     icon: const Icon(Icons.storefront_outlined, size: 18),
                     label: Text('About ${job.businessName}'),
@@ -317,17 +326,36 @@ class _JobDetailsSheetState extends ConsumerState<_JobDetailsSheet> {
               _ when job.myApplicationStatus == 'Accepted' => Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Their role on one of the business's own events, as on an order: a Lead can
+                  // start and finish the work, so they get the button for the next step.
+                  if (job.holdsOwnRoles &&
+                      (job.myRole ?? '').trim().isNotEmpty) ...[
+                    JobRoleBanner(
+                      role: job.myRole!.trim(),
+                      canMoveWork: job.iAmLead && job.canHoldCrewRoles,
+                      isOver: !job.canHoldCrewRoles,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (job.iAmLead &&
+                      (job.canStartWork() || job.canMarkComplete())) ...[
+                    _LeadWorkButton(job: job),
+                    const SizedBox(height: 12),
+                  ],
                   Wrap(
                     alignment: WrapAlignment.center,
                     spacing: 12,
                     runSpacing: 8,
                     children: [
                       OutlinedButton.icon(
-                        onPressed: () => pushScreen(context, WorkChatScreen(
-                              counterpartId: job.businessOwnerProfileId,
-                              counterpartName: job.businessName,
-                              subtitle: job.title,
-                            )),
+                        onPressed: () => pushScreen(
+                          context,
+                          WorkChatScreen(
+                            counterpartId: job.businessOwnerProfileId,
+                            counterpartName: job.businessName,
+                            subtitle: job.title,
+                          ),
+                        ),
                         icon: const Icon(Icons.chat_bubble_outline),
                         label: const Text('Message business'),
                       ),
@@ -382,6 +410,65 @@ class _JobDetailsSheetState extends ConsumerState<_JobDetailsSheet> {
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The Lead's button on one of a business's own events: start the work on the day, then finish it.
+///
+/// It moves the whole job, not just this worker's part, which is why it is said for the job.
+class _LeadWorkButton extends ConsumerStatefulWidget {
+  const _LeadWorkButton({required this.job});
+
+  final HiringPost job;
+
+  @override
+  ConsumerState<_LeadWorkButton> createState() => _LeadWorkButtonState();
+}
+
+class _LeadWorkButtonState extends ConsumerState<_LeadWorkButton> {
+  bool _isBusy = false;
+
+  Future<void> _run({required bool start}) async {
+    setState(() => _isBusy = true);
+
+    // Taken before the await: the job list refreshes underneath this sheet.
+    final navigator = Navigator.of(context);
+    final messenger = AppMessenger.of(context);
+    final container = ProviderScope.containerOf(context, listen: false);
+    final repository = ref.read(hiringPostRepositoryProvider);
+
+    try {
+      if (start) {
+        await repository.leadStartWork(widget.job.id);
+      } else {
+        await repository.leadCompleteWork(widget.job.id);
+      }
+      container.invalidate(workerPostJobsProvider);
+      navigator.pop();
+      messenger.showSuccess(start ? 'Work started.' : 'Work marked completed.');
+    } catch (e) {
+      if (mounted) setState(() => _isBusy = false);
+      messenger.showFailure(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final start = widget.job.canStartWork();
+
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        onPressed: _isBusy ? null : () => _run(start: start),
+        icon: _isBusy
+            ? const SizedBox.square(
+                dimension: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Icon(start ? Icons.play_arrow_rounded : Icons.flag_rounded),
+        label: Text(start ? 'Start this job' : 'Finish this job'),
       ),
     );
   }

@@ -15,6 +15,7 @@ class HiringPostApplicationModel {
     required this.appliedAt,
     this.agreedSalaryAmount,
     this.agreedSalaryUnit,
+    this.role,
     this.workerRespondedAt,
     this.paymentStatus = 'Unpaid',
     this.paidAt,
@@ -33,6 +34,9 @@ class HiringPostApplicationModel {
   final DateTime appliedAt;
   final double? agreedSalaryAmount;
   final String? agreedSalaryUnit;
+
+  /// Supervisor, Lead or Support on one of the business's own events, or null.
+  final String? role;
   final DateTime? workerRespondedAt;
   final String paymentStatus;
   final DateTime? paidAt;
@@ -48,6 +52,7 @@ class HiringPostApplicationModel {
     appliedAt: appliedAt,
     agreedSalaryAmount: agreedSalaryAmount,
     agreedSalaryUnit: agreedSalaryUnit,
+    role: role,
     workerRespondedAt: workerRespondedAt,
     paymentStatus: paymentStatus,
     paidAt: paidAt,

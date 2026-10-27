@@ -22,6 +22,9 @@ public class HiringPostApplicationDto
 
     public string? AgreedSalaryUnit { get; set; }
 
+    /// <summary>Their role on one of the business's own events: Supervisor, Lead or Support, or null.</summary>
+    public string? Role { get; set; }
+
     /// <summary>Every raise applied since confirmation, oldest first — the worker's audit trail.</summary>
     /// <summary>Where this worker's wages have got to. See <c>PaymentStatus</c>.</summary>
     public string PaymentStatus { get; set; } = string.Empty;

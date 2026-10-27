@@ -17,6 +17,7 @@ HiringPostApplicationModel _$HiringPostApplicationModelFromJson(
   appliedAt: DateTime.parse(json['appliedAt'] as String),
   agreedSalaryAmount: (json['agreedSalaryAmount'] as num?)?.toDouble(),
   agreedSalaryUnit: json['agreedSalaryUnit'] as String?,
+  role: json['role'] as String?,
   workerRespondedAt: json['workerRespondedAt'] == null
       ? null
       : DateTime.parse(json['workerRespondedAt'] as String),

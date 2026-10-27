@@ -175,9 +175,9 @@ void main() {
 
   // ---- Hire post crew -------------------------------------------------------------------------
   //
-  // A post raised for an order shares its crew with the order, so the role is the same one
-  // Status management shows, set from here too. The business's own events have no order, so no
-  // role to set.
+  // Changed: roles used to be set from the Hire post tab too. They are now set only in Status
+  // management, where the job is run (above, and own_event_roles_test.dart). Hire post is for
+  // hiring, so its crew rows carry no role icon at all.
 
   group('Hire post crew', () {
     HiringPostApplication hire(String name, {String status = 'Accepted'}) =>
@@ -237,88 +237,29 @@ void main() {
       }
     }
 
-    testWidgets('a post for an order offers the role icon', (tester) async {
-      await pumpHire(
-        tester,
-        post([hire('Ravi'), hire('Anita')], bookingId: 'bk-1'),
-        orders: [
-          order([worker(name: 'Ravi', role: 'Lead'), worker(name: 'Anita')]),
-        ],
-      );
+    for (final (label, bookingId) in [
+      ('a post for an order', 'bk-1'),
+      ('an own event', null),
+    ]) {
+      testWidgets('no role icon on $label', (tester) async {
+        await pumpHire(
+          tester,
+          post([hire('Ravi'), hire('Anita')], bookingId: bookingId),
+          orders: bookingId == null
+              ? const []
+              : [
+                  order([
+                    worker(name: 'Ravi', role: 'Lead'),
+                    worker(name: 'Anita'),
+                  ]),
+                ],
+        );
 
-      expect(tester.takeException(), isNull);
-      expect(find.byTooltip('Change role (Lead)'), findsOneWidget);
-      expect(find.byTooltip('Assign role'), findsOneWidget);
-    });
-
-    testWidgets('tapping it opens the role sheet for that worker', (
-      tester,
-    ) async {
-      await pumpHire(
-        tester,
-        post([hire('Anita')], bookingId: 'bk-1'),
-        orders: [
-          order([worker(name: 'Anita')]),
-        ],
-      );
-
-      await tester.tap(find.byTooltip('Assign role'));
-      await tester.pumpAndSettle();
-
-      expect(find.byType(BottomSheet), findsOneWidget);
-      expect(
-        find.descendant(
-          of: find.byType(BottomSheet),
-          matching: find.text('Anita'),
-        ),
-        findsOneWidget,
-      );
-    });
-
-    testWidgets('own events have no order, so no role icon', (tester) async {
-      await pumpHire(tester, post([hire('Ravi')]));
-
-      expect(find.byTooltip('Assign role'), findsNothing);
-    });
-
-    testWidgets('applicants and pending offers get no role icon', (
-      tester,
-    ) async {
-      await pumpHire(
-        tester,
-        post([
-          hire('Ravi', status: 'Applied'),
-          hire('Anita', status: 'Confirmed'),
-        ], bookingId: 'bk-1'),
-        orders: [
-          order([worker(name: 'Ravi'), worker(name: 'Anita')]),
-        ],
-      );
-
-      expect(find.byTooltip('Assign role'), findsNothing);
-    });
-
-    testWidgets('no role icon once the order is finished', (tester) async {
-      await pumpHire(
-        tester,
-        post([hire('Ravi')], bookingId: 'bk-1'),
-        orders: [
-          order([worker(name: 'Ravi')], status: 'Completed'),
-        ],
-      );
-
-      expect(find.byTooltip('Assign role'), findsNothing);
-    });
-
-    testWidgets('no role icon while orders are still loading', (tester) async {
-      await pumpHire(
-        tester,
-        post([hire('Ravi')], bookingId: 'bk-1'),
-        orders: const [],
-      );
-
-      expect(find.byTooltip('Assign role'), findsNothing);
-    });
+        expect(find.text('Ravi'), findsOneWidget);
+        expect(find.byTooltip('Assign role'), findsNothing);
+        expect(find.byTooltip('Change role (Lead)'), findsNothing);
+      });
+    }
   });
 }
 

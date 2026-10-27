@@ -1,5 +1,6 @@
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post_application.dart';
+import 'package:zuno/shared/domain/job_role.dart';
 import 'package:zuno/shared/domain/track_state.dart';
 
 class HiringPost {
@@ -47,6 +48,7 @@ class HiringPost {
     this.myApplicationStatus,
     this.myApplicationId,
     this.myAgreedSalaryAmount,
+    this.myRole,
     this.myPaymentStatus,
     this.myPaidAt,
     this.myDisputeReason,
@@ -168,6 +170,9 @@ class HiringPost {
   final String? myApplicationId;
   final double? myAgreedSalaryAmount;
 
+  /// The signed-in worker's role on this own event (Supervisor, Lead or Support), or null.
+  final String? myRole;
+
   /// For a worker viewing this post: whether their own wages have been paid. Carried on the post
   /// because [applications] is withheld from workers, so this is the only place they can see it.
   final String? myPaymentStatus;
@@ -275,19 +280,24 @@ class HiringPost {
   bool get isWorkStarted => workStartedAt != null;
   bool get isWorkCompleted => workCompletedAt != null;
 
-  /// Whether the business may still phone this member of the crew.
+  /// Whether the job is over for the crew: the work is marked completed, or its order finished or
+  /// called off. From then on a crew row offers no role, chat or call — only what is left to
+  /// settle, such as a raise before payment.
   ///
-  /// Two halves: the application says *who* may be called, this says *when*. The option lives
-  /// from the moment the worker is confirmed until the job is over -- and then, for as long as
-  /// their money is unsettled, because a failed or disputed payout is precisely what a business
-  /// needs to ring somebody about after the work is done.
-  ///
-  /// Both completion signals are load-bearing. [isWorkCompleted] catches a standalone post, which
-  /// answers to no order and so is never closed by [isOrderClosed]; [isOrderClosed] catches one
-  /// whose booking finished or was called off without the post being marked done.
+  /// Both signals are load-bearing. [isWorkCompleted] catches a standalone post, which answers to
+  /// no order and so is never closed by [isOrderClosed]; [isOrderClosed] catches one whose booking
+  /// finished or was called off without the post being marked done.
+  bool get isCrewJobOver => isWorkCompleted || isOrderClosed;
+
+  /// Whether the business may still phone this member of the crew: the application says *who*
+  /// may be called, this says *when* — from confirmation until the job is over.
   bool canCallCrewMember(HiringPostApplication application) =>
-      application.canBeCalled &&
-      (!(isWorkCompleted || isOrderClosed) || application.hasUnsettledPay);
+      application.canBeCalled && !isCrewJobOver;
+
+  /// Whether the business may message this member of the crew: once they have accepted, until
+  /// the job is over.
+  bool canMessageCrewMember(HiringPostApplication application) =>
+      application.isAccepted && !isCrewJobOver;
 
   /// Whether there are wages still to pay. What puts the "Pay all" button on a card.
   bool get hasOutstandingPayment => outstandingAmount > 0;
@@ -313,6 +323,22 @@ class HiringPost {
   /// The business can close the work off once it has actually started and is not already done.
   /// Marking it complete releases the crew for other jobs before the scheduled end time.
   bool canMarkComplete({DateTime? now}) => isWorkStarted && !isWorkCompleted;
+
+  // ---- Roles on the business's own events --------------------------------------------------
+  //
+  // The same three roles as an order's crew, with the same one power: a Lead can start and finish
+  // the work. Mirrors HiringPostWorkControl on the server.
+
+  /// One of the business's own events, which keeps its crew's roles itself. A post raised for a
+  /// customer order shares its crew with the order, and the roles live there.
+  bool get holdsOwnRoles => bookingId == null;
+
+  /// Whether the business can give this post's crew roles now: an own event not yet finished.
+  bool get canHoldCrewRoles => holdsOwnRoles && !isWorkCompleted;
+
+  /// Whether the signed-in worker leads this own event: accepted, and holding Lead.
+  bool get iAmLead =>
+      holdsOwnRoles && myOfferAccepted && JobRole.grantsWorkControl(myRole);
 
   // ---- The three tracks --------------------------------------------------------------------
   //

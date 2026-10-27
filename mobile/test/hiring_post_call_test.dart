@@ -142,22 +142,24 @@ void main() {
     });
   });
 
-  group('but wages outlive the job', () {
-    // The exception the whole design turns on. A finished order can still owe money, and chasing
-    // that is the one thing after completion a business certainly phones about.
+  // Changed: once the job is over the crew row offers no call or chat, even while wages are
+  // still owed (it used to stay callable). Settling pay is done through Pay all and raises.
+  group('once the job is over', () {
     for (final unsettled in ['Unpaid', 'Processing', 'Failed', 'Disputed']) {
-      test('still callable while pay reads $unsettled', () {
+      test('not callable or messageable, even while pay reads $unsettled', () {
         final p = post(bookingStatus: 'Completed');
-        expect(
-          p.canCallCrewMember(application(paymentStatus: unsettled)),
-          isTrue,
-        );
+        final a = application(paymentStatus: unsettled);
+        expect(p.canCallCrewMember(a), isFalse);
+        expect(p.canMessageCrewMember(a), isFalse);
       });
     }
 
-    test('and on a cancelled order that still owes money', () {
+    test('nor on a cancelled order that still owes money', () {
       final p = post(bookingStatus: 'Cancelled');
-      expect(p.canCallCrewMember(application(paymentStatus: 'Failed')), isTrue);
+      expect(
+        p.canCallCrewMember(application(paymentStatus: 'Failed')),
+        isFalse,
+      );
     });
 
     test('but not to somebody who declined and is owed nothing', () {

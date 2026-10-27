@@ -231,6 +231,24 @@ void main() {
       expect(answer, lessThan(coming));
     });
 
+    testWidgets('an unanswered offer shows Accept and Decline, with no hint', (
+      tester,
+    ) async {
+      await pump(tester, [
+        _job(
+          service: 'Needs answering',
+          status: 'Confirmed',
+          awaitingMyAnswer: true,
+        ),
+      ]);
+
+      expect(find.text('Waiting for your answer'), findsOneWidget);
+      expect(find.text('Accept'), findsOneWidget);
+      expect(find.text('Decline'), findsOneWidget);
+      // The buttons say it; a line repeating "accept or decline" was taken out.
+      expect(find.textContaining('Accept or decline'), findsNothing);
+    });
+
     testWidgets('says so when there is nothing live, without hiding History', (
       tester,
     ) async {

@@ -124,6 +124,23 @@ class HiringPostRepositoryImpl implements HiringPostRepository {
       (await _remoteDataSource.stopHiring(id)).toEntity();
 
   @override
+  Future<HiringPost> setApplicationRole({
+    required String applicationId,
+    required String? role,
+  }) async => (await _remoteDataSource.setApplicationRole(
+    applicationId,
+    role,
+  )).toEntity();
+
+  @override
+  Future<HiringPost> leadStartWork(String id) async =>
+      (await _remoteDataSource.leadStartWork(id)).toEntity();
+
+  @override
+  Future<HiringPost> leadCompleteWork(String id) async =>
+      (await _remoteDataSource.leadCompleteWork(id)).toEntity();
+
+  @override
   Future<HiringPost> uploadPostImage(String id, Uint8List imageBytes) async =>
       (await _remoteDataSource.uploadPostImage(id, imageBytes)).toEntity();
 

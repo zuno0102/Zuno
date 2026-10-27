@@ -10,6 +10,7 @@ class HiringPostApplication {
     required this.appliedAt,
     this.agreedSalaryAmount,
     this.agreedSalaryUnit,
+    this.role,
     this.workerRespondedAt,
     this.paymentStatus = 'Unpaid',
     this.paidAt,
@@ -27,6 +28,10 @@ class HiringPostApplication {
   /// Locked in at confirmation. Null while the application is still pending.
   final double? agreedSalaryAmount;
   final String? agreedSalaryUnit;
+
+  /// Their role on one of the business's own events: Supervisor, Lead or Support, or null.
+  /// On a post raised for a customer order the role lives on the order's crew instead.
+  final String? role;
   final DateTime? workerRespondedAt;
 
   /// Where this worker's wages have got to, independent of the application itself:

@@ -163,6 +163,12 @@ public class HiringPostDto
     public decimal? MyAgreedSalaryAmount { get; set; }
 
     /// <summary>
+    /// For a worker viewing one of a business's own events: their role on it (Supervisor, Lead or
+    /// Support), or null. A Lead may start and finish the work.
+    /// </summary>
+    public string? MyRole { get; set; }
+
+    /// <summary>
     /// For a worker viewing the post: whether <em>their own</em> wages have been paid.
     /// </summary>
     /// <remarks>

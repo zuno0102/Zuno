@@ -230,6 +230,8 @@ class ApiConstants {
       '$businessHiringPostsPath/invite-for-date';
   static String raiseHiringPostSalaryPath(String applicationId) =>
       '$businessHiringPostsPath/applications/$applicationId/salary';
+  static String setHiringPostApplicationRolePath(String applicationId) =>
+      '$businessHiringPostsPath/applications/$applicationId/role';
   static String raiseHiringPostCrewSalaryPath(String id) =>
       '$businessHiringPostsPath/$id/crew/raise-salary';
 
@@ -245,6 +247,12 @@ class ApiConstants {
       '/api/$apiVersion/worker/hiring-posts';
   static String applyToHiringPostPath(String id) =>
       '$workerHiringPostsPath/$id/apply';
+
+  /// The Lead on one of a business's own events starting and finishing its work.
+  static String leadStartHiringPostWorkPath(String id) =>
+      '$workerHiringPostsPath/$id/start-work';
+  static String leadCompleteHiringPostWorkPath(String id) =>
+      '$workerHiringPostsPath/$id/complete-work';
 
   /// Jobs a business invited this worker onto, still waiting on an answer.
   static const String workerJobOffersPath = '$workerHiringPostsPath/offers';

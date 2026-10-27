@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/features/booking/domain/entities/booking_worker_assignment.dart';
-import 'package:zuno/features/booking/domain/entities/job_role.dart';
+import 'package:zuno/shared/domain/job_role.dart';
 import 'package:zuno/features/booking/presentation/providers/business_bookings_notifier.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 
@@ -50,26 +50,55 @@ class CrewRoleButton extends StatelessWidget {
 /// Said on each row rather than left to be discovered, because the owner choosing here is deciding
 /// who can declare the job started while they are not there.
 ///
-/// The role ends with the order. Nothing follows the person to their next job.
+/// The role ends with the job. Nothing follows the person to their next one.
+///
+/// Used for a customer order's crew ([show]) and a business's own event ([open], with the save
+/// that event needs), which hold the same three roles.
 class SetCrewRoleSheet extends ConsumerStatefulWidget {
   const SetCrewRoleSheet({
-    required this.bookingId,
-    required this.worker,
+    required this.workerName,
+    required this.currentRole,
+    required this.onSave,
     super.key,
   });
 
-  final String bookingId;
-  final BookingWorkerAssignment worker;
+  final String workerName;
 
+  /// The role already set, or null.
+  final String? currentRole;
+
+  /// Saves the chosen role; null takes it away.
+  final Future<void> Function(WidgetRef ref, String? role) onSave;
+
+  /// For a worker on a customer order's crew.
   static Future<bool?> show(
     BuildContext context, {
     required String bookingId,
     required BookingWorkerAssignment worker,
+  }) => open(
+    context,
+    workerName: worker.workerName,
+    currentRole: worker.role,
+    onSave: (ref, role) => ref
+        .read(businessBookingsProvider.notifier)
+        .setCrewRole(bookingId, worker.workerProfileId, role: role),
+  );
+
+  /// For any crew, given how to save the role.
+  static Future<bool?> open(
+    BuildContext context, {
+    required String workerName,
+    required String? currentRole,
+    required Future<void> Function(WidgetRef ref, String? role) onSave,
   }) => showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (_) => SetCrewRoleSheet(bookingId: bookingId, worker: worker),
+    builder: (_) => SetCrewRoleSheet(
+      workerName: workerName,
+      currentRole: currentRole,
+      onSave: onSave,
+    ),
   );
 
   @override
@@ -77,9 +106,9 @@ class SetCrewRoleSheet extends ConsumerStatefulWidget {
 }
 
 class _SetCrewRoleSheetState extends ConsumerState<SetCrewRoleSheet> {
-  late String? _chosen = JobRole.isKnown(widget.worker.role)
+  late String? _chosen = JobRole.isKnown(widget.currentRole)
       ? JobRole.all.firstWhere(
-          (r) => r.toLowerCase() == widget.worker.role!.trim().toLowerCase(),
+          (r) => r.toLowerCase() == widget.currentRole!.trim().toLowerCase(),
         )
       // A legacy free-text role starts unselected: it is not one of the three, and the owner is
       // here to replace it.
@@ -87,7 +116,7 @@ class _SetCrewRoleSheetState extends ConsumerState<SetCrewRoleSheet> {
 
   bool _saving = false;
 
-  bool get _hasRole => (widget.worker.role ?? '').trim().isNotEmpty;
+  bool get _hasRole => (widget.currentRole ?? '').trim().isNotEmpty;
 
   Future<void> _save(String? role) async {
     setState(() => _saving = true);
@@ -96,20 +125,14 @@ class _SetCrewRoleSheetState extends ConsumerState<SetCrewRoleSheet> {
     final navigator = Navigator.of(context);
 
     try {
-      await ref
-          .read(businessBookingsProvider.notifier)
-          .setCrewRole(
-            widget.bookingId,
-            widget.worker.workerProfileId,
-            role: role,
-          );
+      await widget.onSave(ref, role);
 
       if (!mounted) return;
 
       messenger.showSuccess(
         role == null
-            ? '${widget.worker.workerName} is a crew member again'
-            : '${widget.worker.workerName} is now $role on this job',
+            ? '${widget.workerName} is a crew member again'
+            : '${widget.workerName} is now $role on this job',
       );
       navigator.pop(true);
     } catch (error) {
@@ -134,7 +157,7 @@ class _SetCrewRoleSheetState extends ConsumerState<SetCrewRoleSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(widget.worker.workerName, style: theme.textTheme.titleMedium),
+          Text(widget.workerName, style: theme.textTheme.titleMedium),
           const SizedBox(height: 2),
           Text(
             'Their role on this job only',

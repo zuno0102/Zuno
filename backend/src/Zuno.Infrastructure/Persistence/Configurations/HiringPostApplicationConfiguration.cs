@@ -15,6 +15,9 @@ public class HiringPostApplicationConfiguration : IEntityTypeConfiguration<Hirin
 
         builder.Property(a => a.AgreedSalaryAmount).HasPrecision(10, 2);
 
+        // The same width as an order assignment's role, which holds the same three values.
+        builder.Property(a => a.Role).HasMaxLength(100);
+
         builder.HasOne(a => a.HiringPost)
             .WithMany(p => p.Applications)
             .HasForeignKey(a => a.HiringPostId)

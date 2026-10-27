@@ -32,6 +32,17 @@ public class HiringPostApplication : BaseEntity
 
     public SalaryUnit? AgreedSalaryUnit { get; set; }
 
+    /// <summary>
+    /// What this worker is on this job — Supervisor, Lead or Support — on one of the business's
+    /// own events. Null when they have none.
+    /// </summary>
+    /// <remarks>
+    /// Only for a post with no order behind it. A post raised for a customer order shares its crew
+    /// with that order, and the role lives on the order's assignment, so there is one place to set
+    /// it and one answer to who leads. See <c>HiringPostWorkControl</c>.
+    /// </remarks>
+    public string? Role { get; set; }
+
     /// <summary>How far this worker.s wage for this job has got. See <see cref="PaymentStatus"/>.</summary>
     public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Unpaid;
 

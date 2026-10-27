@@ -95,11 +95,15 @@ void main() {
     });
   });
 
-  group('but wages outlive the order', () {
+  // Changed: once the job is over the crew row offers no call or chat, even while wages are
+  // still owed (it used to stay callable). Settling pay is done through Pay crew and raises.
+  group('once the order is over', () {
     for (final unsettled in ['Unpaid', 'Processing', 'Failed', 'Disputed']) {
-      test('still callable while pay reads $unsettled', () {
+      test('not callable or messageable, even while pay reads $unsettled', () {
         final o = order(status: 'Completed');
-        expect(o.canCallCrewMember(worker(paymentStatus: unsettled)), isTrue);
+        final w = worker(paymentStatus: unsettled);
+        expect(o.canCallCrewMember(w), isFalse);
+        expect(o.canMessageCrewMember(w), isFalse);
       });
     }
 

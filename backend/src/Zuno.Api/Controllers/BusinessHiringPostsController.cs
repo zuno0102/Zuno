@@ -17,6 +17,7 @@ using Zuno.Application.Modules.HiringPost.Commands.InviteWorkerForDate;
 using Zuno.Application.Modules.HiringPost.Commands.DeleteHiringPost;
 using Zuno.Application.Modules.HiringPost.Commands.InviteWorkerToHiringPost;
 using Zuno.Application.Modules.HiringPost.Commands.RaiseAgreedSalary;
+using Zuno.Application.Modules.HiringPost.Commands.SetHiringPostApplicationRole;
 using Zuno.Application.Modules.HiringPost.Commands.RaisePostCrewSalary;
 using Zuno.Application.Modules.HiringPost.Commands.RejectHiringPostApplication;
 using Zuno.Application.Modules.HiringPost.Commands.SetHiringPostImage;
@@ -234,6 +235,21 @@ public class BusinessHiringPostsController(
     public async Task<IActionResult> RaiseAgreedSalary(
         Guid applicationId,
         RaiseAgreedSalaryCommand command,
+        CancellationToken cancellationToken)
+    {
+        command.ApplicationId = applicationId;
+        var result = await mediator.Send(command, cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Gives an own event's crew member a role (Supervisor, Lead or Support), or takes it away with
+    /// a blank role. A Lead can start and finish that job's work.
+    /// </summary>
+    [HttpPost("applications/{applicationId:guid}/role")]
+    public async Task<IActionResult> SetApplicationRole(
+        Guid applicationId,
+        SetHiringPostApplicationRoleCommand command,
         CancellationToken cancellationToken)
     {
         command.ApplicationId = applicationId;

@@ -5,7 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 using Zuno.Api.Authorization;
 using Zuno.Application.Modules.HiringPost.Commands.ApplyToHiringPost;
 using Zuno.Api.Contracts;
+using Zuno.Application.Modules.HiringPost.Commands.CompleteHiringPostWork;
 using Zuno.Application.Modules.HiringPost.Commands.RespondToHiringPostOffer;
+using Zuno.Application.Modules.HiringPost.Commands.StartHiringPostWork;
 using Zuno.Application.Modules.HiringPost.Commands.RespondToPayment;
 using Zuno.Application.Modules.HiringPost.Queries.GetHiringBusiness;
 using Zuno.Application.Modules.HiringPost.Queries.GetMyJobOffers;
@@ -92,6 +94,26 @@ public class WorkerHiringPostsController(ISender mediator) : ControllerBase
     {
         command.ApplicationId = applicationId;
         var result = await mediator.Send(command, cancellationToken);
+        return Ok(result);
+    }
+
+    // The Lead on one of a business's own events moving its work on. Here, not on the business
+    // controller, because that one is closed to the BusinessOwner role and a Lead is a worker.
+    // The handlers refuse anybody who is not that job's Lead (HiringPostWorkControl).
+
+    /// <summary>The own event's Lead saying the work has begun.</summary>
+    [HttpPost("{id:guid}/start-work")]
+    public async Task<IActionResult> StartWork(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(new StartHiringPostWorkCommand { HiringPostId = id }, cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>The own event's Lead marking the work completed.</summary>
+    [HttpPost("{id:guid}/complete-work")]
+    public async Task<IActionResult> CompleteWork(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(new CompleteHiringPostWorkCommand { HiringPostId = id }, cancellationToken);
         return Ok(result);
     }
 

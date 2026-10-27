@@ -59,6 +59,7 @@ HiringPostModel _$HiringPostModelFromJson(Map<String, dynamic> json) =>
       myApplicationStatus: json['myApplicationStatus'] as String?,
       myApplicationId: json['myApplicationId'] as String?,
       myAgreedSalaryAmount: (json['myAgreedSalaryAmount'] as num?)?.toDouble(),
+      myRole: json['myRole'] as String?,
       myPaymentStatus: json['myPaymentStatus'] as String?,
       myPaidAt: json['myPaidAt'] == null
           ? null

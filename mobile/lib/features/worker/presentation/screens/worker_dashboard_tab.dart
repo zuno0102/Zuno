@@ -1,4 +1,4 @@
-import 'package:zuno/features/booking/domain/entities/job_role.dart';
+import 'package:zuno/shared/domain/job_role.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/theme/app_colors.dart';
@@ -91,7 +91,10 @@ class _Body extends StatelessWidget {
             title: 'Your last six months',
             padding: EdgeInsets.fromLTRB(0, 22, 0, 8),
           ),
-          _TrendChart(trend: dashboard.trend, busiest: dashboard.busiestMonthCount),
+          _TrendChart(
+            trend: dashboard.trend,
+            busiest: dashboard.busiestMonthCount,
+          ),
         ],
 
         if (profile != null && dashboard.hasWorkRecord) ...[
@@ -107,10 +110,15 @@ class _Body extends StatelessWidget {
               TrustRow('Total earned', rupees(profile.totalEarned)),
               if (profile.averageSalary != null)
                 TrustRow('Average per job', rupees(profile.averageSalary!)),
-              TrustRow('Businesses worked for', '${profile.businessesWorkedFor}'),
+              TrustRow(
+                'Businesses worked for',
+                '${profile.businessesWorkedFor}',
+              ),
               TrustRow(
                 'Offers declined',
-                profile.offersDeclined == 0 ? 'None' : '${profile.offersDeclined}',
+                profile.offersDeclined == 0
+                    ? 'None'
+                    : '${profile.offersDeclined}',
                 muted: profile.offersDeclined == 0,
               ),
               if (profile.openDisputes > 0)
@@ -180,7 +188,9 @@ class _AwaitingPaymentCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      isOwed ? rupees(dashboard.pendingPaymentTotal) : 'Nothing waiting',
+                      isOwed
+                          ? rupees(dashboard.pendingPaymentTotal)
+                          : 'Nothing waiting',
                       style: isOwed
                           ? theme.textTheme.headlineSmall?.copyWith(
                               fontWeight: FontWeight.w700,
@@ -300,11 +310,10 @@ class _WorkStats extends StatelessWidget {
     List<WorkerJobSummary> jobs,
     String emptyMessage,
   ) {
-    pushScreen(context, WorkerJobListScreen(
-          title: title,
-          jobs: jobs,
-          emptyMessage: emptyMessage,
-        ));
+    pushScreen(
+      context,
+      WorkerJobListScreen(title: title, jobs: jobs, emptyMessage: emptyMessage),
+    );
   }
 
   @override
@@ -382,15 +391,10 @@ class _WorkStats extends StatelessWidget {
                   tone: dashboard.needsMyAnswerCount > 0
                       ? StatusTone.danger
                       : StatusTone.success,
-                  onTap: () => _open(
-                    context,
-                    'Waiting for your answer',
-                    [
-                      ...dashboard.upcoming.where((j) => j.needsMyAnswer),
-                      ...dashboard.inProgress.where((j) => j.needsMyAnswer),
-                    ],
-                    'Nothing waiting on you.',
-                  ),
+                  onTap: () => _open(context, 'Waiting for your answer', [
+                    ...dashboard.upcoming.where((j) => j.needsMyAnswer),
+                    ...dashboard.inProgress.where((j) => j.needsMyAnswer),
+                  ], 'Nothing waiting on you.'),
                 ),
               ),
             ],
@@ -688,7 +692,9 @@ class _TrendChart extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             Text(
-                              month.jobsCompleted == 0 ? '' : '${month.jobsCompleted}',
+                              month.jobsCompleted == 0
+                                  ? ''
+                                  : '${month.jobsCompleted}',
                               style: theme.textTheme.labelSmall?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),

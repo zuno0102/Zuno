@@ -137,44 +137,77 @@ void main() {
     }
   });
 
-  // ---- Hiring tab crew row ----------------------------------------------------------------
+  // ---- Status management crew row: where raises are made ----------------------------------
+  //
+  // Changed: raises used to be offered on the Hire post tab too. They are now only in Status
+  // management, where the job is run; the dialog checks below moved here unchanged.
 
-  Future<_FakePosts> pumpHiringTab(
+  Future<_FakePosts> pumpStatusCrew(
     WidgetTester tester,
     List<HiringPostApplication> crew,
   ) async {
     phoneSize(tester);
-    final fake = _FakePosts([post(crew)]);
+    final data = post(crew);
+    final fake = _FakePosts([data]);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [businessHiringPostsProvider.overrideWith(() => fake)],
+        child: MaterialApp(
+          home: Scaffold(body: PostCrewWageList(post: data)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Crew'));
+    await tester.pumpAndSettle();
+    return fake;
+  }
+
+  testWidgets('Hire post tab: no Raise salary there', (tester) async {
+    phoneSize(tester);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          businessHiringPostsProvider.overrideWith(
+            () => _FakePosts([
+              post([hire('1')]),
+            ]),
+          ),
+        ],
         child: const MaterialApp(
           home: Scaffold(body: BusinessHiringPostsTab()),
         ),
       ),
     );
     await tester.pumpAndSettle();
-    if (find.text(crew.first.workerName).evaluate().isEmpty) {
+    if (find.text('Worker 1').evaluate().isEmpty) {
       await tester.tap(find.text('Crew'));
       await tester.pumpAndSettle();
     }
-    return fake;
-  }
 
-  testWidgets('Hiring tab: each unpaid crew member has Raise salary', (
+    expect(find.text('Worker 1'), findsOneWidget);
+    expect(find.byTooltip(_raiseTooltip), findsNothing);
+
+    // Nor behind the worker's name.
+    await tester.tap(find.text('Worker 1'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(FilledButton, 'Raise salary'), findsNothing);
+  });
+
+  testWidgets('Status management: each unpaid crew member has Raise salary', (
     tester,
   ) async {
-    await pumpHiringTab(tester, [for (var i = 1; i <= 5; i++) hire('$i')]);
+    await pumpStatusCrew(tester, [for (var i = 1; i <= 5; i++) hire('$i')]);
 
     expect(tester.takeException(), isNull);
     expect(find.byTooltip(_raiseTooltip), findsNWidgets(5));
     expect(find.byTooltip('Call worker'), findsNWidgets(5));
   });
 
-  testWidgets('Hiring tab: no Raise salary once a worker is paid', (
+  testWidgets('Status management: no Raise salary once a worker is paid', (
     tester,
   ) async {
-    await pumpHiringTab(tester, [
+    await pumpStatusCrew(tester, [
       hire('1', paymentStatus: 'Paid'),
       hire('2', paymentStatus: 'Processing'),
       hire('3'),
@@ -186,7 +219,7 @@ void main() {
   testWidgets(
     '₹300 extra on one of five ₹1,000 workers shows ₹1,300 and ₹5,300',
     (tester) async {
-      final fake = await pumpHiringTab(tester, [
+      final fake = await pumpStatusCrew(tester, [
         for (var i = 1; i <= 5; i++) hire('$i'),
       ]);
 
@@ -215,7 +248,7 @@ void main() {
   );
 
   testWidgets('the dialog refuses no extra pay', (tester) async {
-    final fake = await pumpHiringTab(tester, [hire('1')]);
+    final fake = await pumpStatusCrew(tester, [hire('1')]);
 
     await tester.tap(find.byTooltip(_raiseTooltip));
     await tester.pumpAndSettle();
@@ -234,7 +267,7 @@ void main() {
   testWidgets(
     'typing 200 as extra pay: ₹1,000 becomes ₹1,200, no shortcut buttons',
     (tester) async {
-      final fake = await pumpHiringTab(tester, [hire('1')]);
+      final fake = await pumpStatusCrew(tester, [hire('1')]);
 
       await tester.tap(find.byTooltip(_raiseTooltip));
       await tester.pumpAndSettle();

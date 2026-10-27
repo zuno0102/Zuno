@@ -58,6 +58,22 @@ class HiringPostRemoteDataSource {
   Future<HiringPostModel> stopHiring(String id) =>
       _post(ApiConstants.stopHiringPostPath(id), const {});
 
+  /// Sets an own event crew member's role; a null [role] takes it away.
+  Future<HiringPostModel> setApplicationRole(
+    String applicationId,
+    String? role,
+  ) => _post(ApiConstants.setHiringPostApplicationRolePath(applicationId), {
+    'role': role,
+  });
+
+  /// The Lead starting the work on an own event.
+  Future<HiringPostModel> leadStartWork(String id) =>
+      _post(ApiConstants.leadStartHiringPostWorkPath(id), const {});
+
+  /// The Lead marking an own event's work completed.
+  Future<HiringPostModel> leadCompleteWork(String id) =>
+      _post(ApiConstants.leadCompleteHiringPostWorkPath(id), const {});
+
   /// The worker's answer on whether their wages arrived.
   Future<void> respondToPayment(
     String applicationId, {

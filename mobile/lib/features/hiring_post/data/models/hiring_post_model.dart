@@ -50,6 +50,7 @@ class HiringPostModel {
     this.myApplicationStatus,
     this.myApplicationId,
     this.myAgreedSalaryAmount,
+    this.myRole,
     this.myPaymentStatus,
     this.myPaidAt,
     this.myDisputeReason,
@@ -110,6 +111,9 @@ class HiringPostModel {
   final String? myApplicationStatus;
   final String? myApplicationId;
   final double? myAgreedSalaryAmount;
+
+  /// The signed-in worker's role on this own event, or null.
+  final String? myRole;
   final String? myPaymentStatus;
   final DateTime? myPaidAt;
   final String? myDisputeReason;
@@ -159,6 +163,7 @@ class HiringPostModel {
     myApplicationStatus: myApplicationStatus,
     myApplicationId: myApplicationId,
     myAgreedSalaryAmount: myAgreedSalaryAmount,
+    myRole: myRole,
     myPaymentStatus: myPaymentStatus,
     myPaidAt: myPaidAt,
     myDisputeReason: myDisputeReason,

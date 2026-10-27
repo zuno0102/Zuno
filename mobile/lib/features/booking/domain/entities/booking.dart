@@ -2,7 +2,7 @@ import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/booking/domain/entities/booking_service_answer.dart';
 import 'package:zuno/features/booking/domain/entities/booking_terms_proposal.dart';
 import 'package:zuno/features/booking/domain/entities/booking_worker_assignment.dart';
-import 'package:zuno/features/booking/domain/entities/job_role.dart';
+import 'package:zuno/shared/domain/job_role.dart';
 import 'package:zuno/features/booking/domain/entities/rating.dart';
 import 'package:zuno/shared/domain/track_state.dart';
 
@@ -265,19 +265,26 @@ class Booking {
   /// The server enforces all of this. This only decides whether the button is offered.
   bool get canBeMessaged => canBeCalled && !(isCompleted && rating != null);
 
+  /// Whether the job is over for the crew: the work is finished or the order called off. From then
+  /// on a crew row offers no role, chat or call — only what is left to settle, such as a raise
+  /// before payment.
+  bool get isCrewJobOver => isCompleted || isCancelled;
+
   /// Whether the business may still phone this member of the crew.
   ///
-  /// Two halves: the assignment says *who* may be called, this says *when*. The option lives from
-  /// the moment the worker is put on the job until the order is over -- and then, for as long as
-  /// their money is unsettled, because a failed or disputed payout is precisely what a business
-  /// needs to ring somebody about after the work is done.
+  /// Two halves: the assignment says *who* may be called, this says *when* — from the moment the
+  /// worker is put on the job until it is over.
   ///
   /// Deliberately narrower than [canBeCalled], which governs calls between the business and the
   /// customer and stays true on a finished order: the two parties to a booking may have things to
   /// settle long afterwards, whereas the crew's involvement ends with the job.
   bool canCallCrewMember(BookingWorkerAssignment worker) =>
-      worker.canBeCalled &&
-      (!(isCompleted || isCancelled) || worker.hasUnsettledPay);
+      worker.canBeCalled && !isCrewJobOver;
+
+  /// Whether the business may message this member of the crew: once they have said yes, until
+  /// the job is over.
+  bool canMessageCrewMember(BookingWorkerAssignment worker) =>
+      !isCrewJobOver && (worker.isAccepted || worker.isCompleted);
 
   /// Whether the day has come. The order reads as under way from this moment whether or not
   /// anyone has pressed anything — the event is happening; the *work* is a separate question.

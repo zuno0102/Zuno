@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/booking/domain/entities/booking.dart';
 import 'package:zuno/features/booking/domain/entities/booking_worker_assignment.dart';
-import 'package:zuno/features/booking/domain/entities/job_role.dart';
+import 'package:zuno/shared/domain/job_role.dart';
 import 'package:zuno/features/booking/presentation/widgets/set_crew_role_sheet.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post_application.dart';
 import 'package:zuno/features/work_chat/presentation/widgets/work_message_button.dart';
@@ -131,9 +131,7 @@ class BookingCrewList extends StatelessWidget {
               canCall: booking.canCallCrewMember(worker),
               // Message the worker once they have taken the job on, while the order is live. The
               // business is the go-between: workers and customers never contact each other.
-              canMessage:
-                  !booking.isCancelled &&
-                  (worker.isAccepted || worker.isCompleted),
+              canMessage: booking.canMessageCrewMember(worker),
               // Only once they have said yes. A role is what lets somebody declare this job
               // started, so offering it to a worker who has not answered would be handing that
               // power to somebody who might still decline — and the server refuses it anyway.

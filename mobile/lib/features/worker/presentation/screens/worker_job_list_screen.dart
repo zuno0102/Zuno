@@ -1,4 +1,4 @@
-import 'package:zuno/features/booking/domain/entities/job_role.dart';
+import 'package:zuno/shared/domain/job_role.dart';
 import 'package:flutter/material.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/utils/formatting.dart';
@@ -114,7 +114,8 @@ class _JobRow extends StatelessWidget {
             const SizedBox(height: 8),
             _Line(
               icon: Icons.event_outlined,
-              text: '${formatDate(job.scheduledDate)} · '
+              text:
+                  '${formatDate(job.scheduledDate)} · '
                   '${formatTime(job.scheduledDate)}',
             ),
             if (job.location case final where? when where.isNotEmpty)

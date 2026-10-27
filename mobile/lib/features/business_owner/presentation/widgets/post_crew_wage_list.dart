@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:zuno/core/utils/formatting.dart';
+import 'package:zuno/features/booking/presentation/widgets/set_crew_role_sheet.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/crew_member_sheet.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/raise_salary_dialog.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post_application.dart';
+import 'package:zuno/features/hiring_post/presentation/providers/business_hiring_posts_notifier.dart';
 import 'package:zuno/features/work_chat/presentation/widgets/work_message_button.dart';
 import 'package:zuno/shared/widgets/call_icon_button.dart';
 import 'package:zuno/shared/widgets/status_with_actions.dart';
@@ -65,7 +67,9 @@ class PostCrewWageList extends StatelessWidget {
             _CrewWageRow(
               hire: hire,
               canCall: post.canCallCrewMember(hire),
+              canMessage: post.canMessageCrewMember(hire),
               crewTotal: post.outstandingAmount,
+              canHoldRoles: post.canHoldCrewRoles,
             ),
           if (crew.where((h) => h.canRaiseSalary).length case final count
               when count > 0)
@@ -97,16 +101,25 @@ class _CrewWageRow extends StatelessWidget {
     required this.hire,
     required this.canCall,
     required this.crewTotal,
+    this.canMessage = false,
+    this.canHoldRoles = false,
   });
 
   final HiringPostApplication hire;
   final bool canCall;
+
+  /// Whether the business can message this worker: until the job is over.
+  final bool canMessage;
   final double crewTotal;
+
+  /// Whether this own event's crew can be given roles now (not yet finished).
+  final bool canHoldRoles;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final detail = [
+      if (hire.role case final role? when role.trim().isNotEmpty) role.trim(),
       if (hire.hasAgreedSalary)
         '${rupees(hire.agreedSalaryAmount!)} '
             '${salaryUnitWords(hire.agreedSalaryUnit ?? SalaryUnit.perEvent)}'
@@ -127,7 +140,7 @@ class _CrewWageRow extends StatelessWidget {
                 crewTotal: crewTotal,
               )
             : null,
-        messageCounterpartId: hire.workerProfileId,
+        messageCounterpartId: canMessage ? hire.workerProfileId : null,
         phone: canCall ? hire.workerPhone : null,
       ),
       child: Padding(
@@ -156,13 +169,30 @@ class _CrewWageRow extends StatelessWidget {
             ),
             CardActions(
               actions: [
+                // Supervisor, Lead or Support on this own event; a Lead can start and finish it.
+                if (canHoldRoles)
+                  CrewRoleButton(
+                    role: hire.role,
+                    onPressed: () => SetCrewRoleSheet.open(
+                      context,
+                      workerName: hire.workerName,
+                      currentRole: hire.role,
+                      onSave: (ref, role) => ref
+                          .read(businessHiringPostsProvider.notifier)
+                          .setApplicationRole(
+                            applicationId: hire.id,
+                            role: role,
+                          ),
+                    ),
+                  ),
                 if (hire.canRaiseSalary)
                   RaiseSalaryButton(application: hire, crewTotal: crewTotal),
-                WorkMessageButton(
-                  counterpartId: hire.workerProfileId,
-                  counterpartName: hire.workerName,
-                  tooltip: 'Message worker',
-                ),
+                if (canMessage)
+                  WorkMessageButton(
+                    counterpartId: hire.workerProfileId,
+                    counterpartName: hire.workerName,
+                    tooltip: 'Message worker',
+                  ),
                 if (canCall)
                   CallIconButton(
                     phoneNumber: hire.workerPhone!,

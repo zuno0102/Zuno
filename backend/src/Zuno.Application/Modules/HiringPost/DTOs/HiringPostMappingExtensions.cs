@@ -69,6 +69,11 @@ public static class HiringPostMappingExtensions
             : post.Applications
                 .FirstOrDefault(a => a.WorkerProfileId == viewerWorkerProfileId)
                 ?.AgreedSalaryAmount,
+        MyRole = viewerWorkerProfileId is null
+            ? null
+            : post.Applications
+                .FirstOrDefault(a => a.WorkerProfileId == viewerWorkerProfileId)
+                ?.Role,
         MyPaymentStatus = viewerWorkerProfileId is null
             ? null
             : post.Applications
@@ -101,6 +106,7 @@ public static class HiringPostMappingExtensions
                 WorkerRespondedAt = a.WorkerRespondedAt,
                 AgreedSalaryAmount = a.AgreedSalaryAmount,
                 AgreedSalaryUnit = a.AgreedSalaryUnit?.ToString(),
+                Role = a.Role,
                 PaymentStatus = a.PaymentStatus.ToString(),
                 PaidAt = a.PaidAt,
                 DisputeReason = a.DisputeReason,

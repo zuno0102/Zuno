@@ -1,17 +1,12 @@
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:zuno/features/booking/domain/entities/booking_worker_assignment.dart';
-import 'package:zuno/features/booking/presentation/providers/business_bookings_notifier.dart';
-import 'package:zuno/features/booking/presentation/widgets/set_crew_role_sheet.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/core/constants/api_constants.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/create_hiring_post_sheet.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/invite_worker_dialog.dart';
-import 'package:zuno/features/business_owner/presentation/widgets/raise_salary_dialog.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post_application.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/business_hiring_posts_notifier.dart';
@@ -633,8 +628,7 @@ class _CrewSection extends StatelessWidget {
               application: application,
               isPostFull: !post.canOfferAnotherWorker,
               canCall: post.canCallCrewMember(application),
-              crewTotal: post.outstandingAmount,
-              bookingId: post.bookingId,
+              canMessage: post.canMessageCrewMember(application),
             ),
           ),
           if (canInvite)
@@ -660,20 +654,16 @@ class _ApplicationRow extends ConsumerStatefulWidget {
     required this.application,
     required this.isPostFull,
     required this.canCall,
-    required this.crewTotal,
-    this.bookingId,
+    this.canMessage = false,
   });
 
   final HiringPostApplication application;
 
-  /// The order this post was raised for, if any. A role lives on the order's crew.
-  final String? bookingId;
-
-  /// What the whole crew is owed, so a raise can show what the job will cost with it.
-  final double crewTotal;
-
   /// Worked out by the post, which is the only thing that knows whether the job is over.
   final bool canCall;
+
+  /// Whether the business can message this worker: accepted, and the job not over.
+  final bool canMessage;
 
   /// When the post has all the workers it needs the server refuses further
   /// confirmations, so the action is disabled here rather than failing on tap.
@@ -755,11 +745,7 @@ class _ApplicationRowState extends ConsumerState<_ApplicationRow> {
                   : () => Navigator.of(context).pop('confirm'),
               child: Text(widget.isPostFull ? 'Post is full' : 'Confirm'),
             ),
-          ] else if (application.canRaiseSalary)
-            FilledButton.tonal(
-              onPressed: () => Navigator.of(context).pop('raise'),
-              child: const Text('Raise salary'),
-            ),
+          ],
         ],
       ),
     );
@@ -771,41 +757,13 @@ class _ApplicationRowState extends ConsumerState<_ApplicationRow> {
         await _respond(confirm: true);
       case 'reject':
         await _respond(confirm: false);
-      case 'raise':
-        await showRaiseSalaryDialog(
-          context,
-          application: application,
-          crewTotal: widget.crewTotal,
-        );
     }
-  }
-
-  /// This worker on the order the post was raised for, which is where a role is kept. Null for
-  /// the business's own events (no order), and wherever the server would refuse a role: the
-  /// order is not live, or the worker has not taken the job.
-  BookingWorkerAssignment? _orderCrewMember() {
-    final bookingId = widget.bookingId;
-    if (bookingId == null || !widget.application.isAccepted) return null;
-
-    final booking = ref.watch(
-      businessBookingsProvider.select(
-        (orders) => orders.value?.firstWhereOrNull((b) => b.id == bookingId),
-      ),
-    );
-    if (booking == null || !booking.canHoldCrewRoles) return null;
-
-    return booking.assignedWorkers.firstWhereOrNull(
-      (w) =>
-          w.workerProfileId == widget.application.workerProfileId &&
-          (w.isAccepted || w.isCompleted),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final application = widget.application;
-    final crewMember = _orderCrewMember();
 
     return InkWell(
       onTap: _showDetails,
@@ -882,27 +840,10 @@ class _ApplicationRowState extends ConsumerState<_ApplicationRow> {
             // Beside the pills, not beneath them: in the isApplied branch above the actions sit
             // flush right, and stacking a 48dp button under two pills would treble the height of
             // every crew row.
-            // The same role as on the order's crew in Status management, set from here too.
-            if (crewMember != null)
-              CrewRoleButton(
-                role: crewMember.role,
-                iconSize: 18,
-                onPressed: () => SetCrewRoleSheet.show(
-                  context,
-                  bookingId: widget.bookingId!,
-                  worker: crewMember,
-                ),
-              ),
-            // Extra work on the day: raise this worker's wage before the crew is paid. Hides
-            // itself once payment has started.
-            RaiseSalaryButton(
-              application: application,
-              crewTotal: widget.crewTotal,
-              iconSize: 18,
-            ),
+            // Hiring only: raises and roles are set where the job is run, in Status management.
             // Message once the worker has agreed (the business accepted them, they accepted the
-            // job) — the business is the go-between, so this is the worker's line to it.
-            if (application.isAccepted)
+            // job), until the job is over — the business is the go-between.
+            if (widget.canMessage)
               WorkMessageButton(
                 counterpartId: application.workerProfileId,
                 counterpartName: application.workerName,

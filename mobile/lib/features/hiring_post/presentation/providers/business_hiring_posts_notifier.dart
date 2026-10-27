@@ -136,6 +136,17 @@ class BusinessHiringPostsNotifier extends _$BusinessHiringPostsNotifier {
     await _refresh();
   }
 
+  /// Gives an own event's crew member a role (Supervisor, Lead or Support); null takes it away.
+  Future<void> setApplicationRole({
+    required String applicationId,
+    required String? role,
+  }) async {
+    await ref
+        .read(hiringPostRepositoryProvider)
+        .setApplicationRole(applicationId: applicationId, role: role);
+    await _refresh();
+  }
+
   /// Opens a pay run without paying anything, so the crew and total can be reviewed first.
   ///
   /// [expectedTotal] is the figure the card is showing. Sending it lets the server refuse
