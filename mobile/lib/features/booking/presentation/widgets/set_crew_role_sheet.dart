@@ -5,7 +5,41 @@ import 'package:zuno/features/booking/domain/entities/job_role.dart';
 import 'package:zuno/features/booking/presentation/providers/business_bookings_notifier.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 
-/// What one person is on one job — opened by holding their name on the crew list.
+/// The role icon on a crew row: outlined to assign a role, filled once one is set, so who has a
+/// role shows across a crew at a glance. The one way into [SetCrewRoleSheet] that people find —
+/// holding the row was the only way before, and nobody did.
+///
+/// Used on an order's crew and on the crew of a hiring post raised for an order.
+class CrewRoleButton extends StatelessWidget {
+  const CrewRoleButton({
+    required this.role,
+    required this.onPressed,
+    this.iconSize,
+    super.key,
+  });
+
+  /// The role already set, or null.
+  final String? role;
+  final VoidCallback onPressed;
+  final double? iconSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final role = this.role;
+    final hasRole = role != null && role.isNotEmpty;
+
+    return IconButton(
+      onPressed: onPressed,
+      tooltip: hasRole ? 'Change role ($role)' : 'Assign role',
+      iconSize: iconSize,
+      icon: Icon(hasRole ? Icons.badge : Icons.badge_outlined),
+      color: hasRole ? Theme.of(context).colorScheme.primary : null,
+    );
+  }
+}
+
+/// What one person is on one job — opened from the role icon on the crew list, or by holding
+/// their name.
 ///
 /// Three roles, picked from a list rather than typed. Free text only ever produced trades —
 /// "Painter", "Chef" — which say what somebody does for a living, not what they are doing on this

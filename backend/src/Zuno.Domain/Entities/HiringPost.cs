@@ -203,6 +203,16 @@ public class HiringPost : BaseEntity
     public bool IsFullyStaffed => FilledCount >= WorkersNeeded;
 
     /// <summary>
+    /// The crew size every screen shows. Once the business stops hiring with people on board, the
+    /// job is for the crew it has: 4 of 5 hired becomes a job for 4, and the place never filled
+    /// is not shown as missing to the business or the workers. <see cref="WorkersNeeded"/> keeps
+    /// the original target for the record. With nobody hired the target stays rather than reading
+    /// "0 of 0"; such a post shows as "Nobody was hired". Requires <see cref="Applications"/> to be
+    /// loaded.
+    /// </summary>
+    public int CrewSize => HiringStoppedAt is not null && FilledCount > 0 ? FilledCount : WorkersNeeded;
+
+    /// <summary>
     /// Whether another worker can be offered a place.
     /// </summary>
     /// <remarks>

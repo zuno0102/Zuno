@@ -202,6 +202,90 @@ public class HiringWindowTests
         await act.Should().ThrowAsync<EntityNotFoundException>();
     }
 
+    // ---- Crew size after stopping ------------------------------------------------------------
+    //
+    // Stopping with 4 of 5 hired turns the job into a job for 4. The place never filled is not
+    // shown as missing — not to the business, not to the workers.
+
+    [Fact]
+    public async Task StopHiring_WithFourOfFiveHired_ReportsACrewOfFour()
+    {
+        var post = Post(Now.AddDays(1), needed: 5);
+        for (var i = 0; i < 4; i++)
+        {
+            post.Applications.Add(Hired(post));
+        }
+
+        var dto = await StopHandler(OwnerOf(post), Db(post))
+            .Handle(new StopHiringPostCommand { HiringPostId = post.Id }, CancellationToken.None);
+
+        dto.WorkersNeeded.Should().Be(4);
+        dto.FilledCount.Should().Be(4);
+        post.WorkersNeeded.Should().Be(5, "the original target is kept for the record");
+    }
+
+    [Fact]
+    public void CrewSize_WhileStillHiring_IsTheTarget()
+    {
+        var post = Post(Now.AddDays(1), needed: 5);
+        post.Applications.Add(Hired(post));
+
+        post.CrewSize.Should().Be(5);
+    }
+
+    [Theory]
+    [InlineData(5, 1, 1)]
+    [InlineData(5, 4, 4)]
+    [InlineData(4, 4, 4)]
+    public void CrewSize_AfterStopping_IsTheHiredCount(int needed, int hired, int expected)
+    {
+        var post = Post(Now.AddDays(1), needed: needed);
+        for (var i = 0; i < hired; i++)
+        {
+            post.Applications.Add(Hired(post));
+        }
+
+        post.HiringStoppedAt = Now;
+
+        post.CrewSize.Should().Be(expected);
+    }
+
+    [Fact]
+    public void CrewSize_StoppedWithNobodyHired_KeepsTheTarget()
+    {
+        var post = Post(Now.AddDays(1), needed: 1);
+        post.HiringStoppedAt = Now;
+
+        // Not "0 of 0". The app shows such a post as "Nobody was hired".
+        post.CrewSize.Should().Be(1);
+    }
+
+    [Fact]
+    public void CrewSize_StoppedWithOffersStillWaiting_CountsOnlyAccepted()
+    {
+        var post = Post(Now.AddDays(1), needed: 5);
+        post.Applications.Add(Hired(post));
+        post.Applications.Add(new HiringPostApplication
+        {
+            HiringPostId = post.Id,
+            WorkerProfileId = Guid.NewGuid(),
+            ApplicationStatus = HiringPostApplicationStatus.Confirmed,
+        });
+        post.HiringStoppedAt = Now;
+
+        post.CrewSize.Should().Be(1);
+    }
+
+    private static HiringPostApplication Hired(HiringPost post) => new()
+    {
+        Id = Guid.NewGuid(),
+        HiringPostId = post.Id,
+        WorkerProfileId = Guid.NewGuid(),
+        WorkerProfile = new WorkerProfile { User = new User { FirstName = "Ravi", LastName = "Kumar" } },
+        ApplicationStatus = HiringPostApplicationStatus.Accepted,
+        AgreedSalaryAmount = 700m,
+    };
+
     // ---- Cleanup -----------------------------------------------------------------------------
 
     [Fact]

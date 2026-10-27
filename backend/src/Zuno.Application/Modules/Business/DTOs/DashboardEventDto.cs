@@ -49,6 +49,7 @@ public class CrewEventDto
 
     public string? Location { get; set; }
 
+    /// <summary>The crew size; the hired count once hiring was stopped (see HiringPost.CrewSize).</summary>
     public int WorkersNeeded { get; set; }
 
     public int WorkersHired { get; set; }

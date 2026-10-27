@@ -387,10 +387,8 @@ class HiringPost {
     TrackState.completed => '$filledCount worked this job',
     TrackState.inProgress => '$filledCount on the job',
     TrackState.lapsed => 'Nobody was hired',
-    // Hiring is still worth reporting while the track itself is dormant — it is the one thing
-    // the business can act on before the day arrives.
-    _ when isHiringStopped && filledCount < workersNeeded =>
-      '$filledCount of $workersNeeded · hiring stopped',
+    // Once hiring is stopped the server reports the crew it has as the crew size, so a job
+    // stopped at 4 of 5 reads "4 of 4 hired" and the unfilled place is not shown as missing.
     _ => '$filledCount of $workersNeeded hired',
   };
 

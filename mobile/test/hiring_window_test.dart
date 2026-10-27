@@ -16,6 +16,7 @@ void main() {
 
   HiringPost post({
     int filledCount = 2,
+    int workersNeeded = 3,
     DateTime? workStartedAt,
     DateTime? workCompletedAt,
     DateTime? hiringStoppedAt,
@@ -28,7 +29,7 @@ void main() {
     title: 'Wedding catering',
     eventDate: start,
     durationMinutes: 240,
-    workersNeeded: 3,
+    workersNeeded: workersNeeded,
     salaryAmount: 800,
     confirmedCount: filledCount,
     filledCount: filledCount,
@@ -119,11 +120,18 @@ void main() {
   });
 
   group('The Workers line', () {
-    test('says hiring stopped when short-handed', () {
-      expect(
-        post(hiringStoppedAt: before).workersDetail(now: before),
-        '2 of 3 · hiring stopped',
-      );
+    // Stopping at 2 of 3 makes it a job for 2: the server then sends a crew size of 2, and the
+    // place never filled is not shown as missing. (It used to read "2 of 3 · hiring stopped".)
+    test('shows the crew it has once hiring is stopped short', () {
+      final p = post(hiringStoppedAt: before, workersNeeded: 2);
+      expect(p.workersDetail(now: before), '2 of 2 hired');
+      expect(p.isFullyStaffed, isTrue);
+      expect(p.canOfferAnotherWorker, isFalse);
+    });
+
+    test('a job stopped with nobody hired says so', () {
+      final p = post(filledCount: 0, hiringStoppedAt: before);
+      expect(p.workersDetail(now: before), 'Nobody was hired');
     });
 
     test('is not "nobody hired" while an empty job is still hiring', () {

@@ -1,7 +1,11 @@
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zuno/features/booking/domain/entities/booking_worker_assignment.dart';
+import 'package:zuno/features/booking/presentation/providers/business_bookings_notifier.dart';
+import 'package:zuno/features/booking/presentation/widgets/set_crew_role_sheet.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/core/constants/api_constants.dart';
 import 'package:zuno/core/theme/app_colors.dart';
@@ -79,6 +83,7 @@ class _PostCard extends ConsumerStatefulWidget {
 
 class _PostCardState extends ConsumerState<_PostCard> {
   bool _isDeleting = false;
+  bool _isStopping = false;
 
   HiringPost get post => widget.post;
 
@@ -153,26 +158,45 @@ class _PostCardState extends ConsumerState<_PostCard> {
     }
   }
 
+  /// What stopping does to this post, said for its actual situation. Stopping is permanent on
+  /// the server, so the business is told exactly who it affects before agreeing.
+  String _stopHiringMessage() {
+    final pending = post.pendingOfferCount;
+    final offers = pending == 0
+        ? ''
+        : ' The $pending offer${pending == 1 ? '' : 's'} still awaiting a reply can no '
+              'longer be accepted.';
+
+    if (post.filledCount == 0) {
+      return 'Nobody is hired for this job yet. Workers will no longer see this post or be '
+          'able to apply.$offers With nobody hired, the post is removed once its time is over.';
+    }
+    if (post.canOfferAnotherWorker) {
+      return 'You have ${post.filledCount} of ${post.workersNeeded} workers. Workers will no '
+          'longer see this post.$offers Run the job with ${post.filledCount} and pay the crew '
+          'from Orders.';
+    }
+    return 'Everyone you need is hired. Workers will no longer see this post.$offers Run the '
+        'job and pay the crew from Orders.';
+  }
+
   Future<void> _confirmAndStopHiring() async {
-    final short = post.canOfferAnotherWorker;
     final shouldStop = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        icon: const Icon(Icons.front_hand_outlined),
         title: const Text('Stop hiring?'),
-        content: Text(
-          short
-              ? 'You have ${post.filledCount} of ${post.workersNeeded} workers. Stop hiring '
-                    'and manage with ${post.filledCount}? Workers will no longer see this '
-                    'post. Run the job and pay the crew from Orders.'
-              : 'Everyone you need is hired. Workers will no longer see this post. Run '
-                    'the job and pay the crew from Orders.',
-        ),
+        content: Text('${_stopHiringMessage()}\n\nThis cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: const Text('Keep hiring'),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Stop hiring'),
           ),
@@ -182,16 +206,19 @@ class _PostCardState extends ConsumerState<_PostCard> {
 
     if (shouldStop != true || !mounted) return;
 
-    setState(() => _isDeleting = true);
+    // Taken before the await: a stopped post leaves this list, so this card is gone by the time
+    // the call returns, and the confirmation must not depend on it.
+    final messenger = AppMessenger.of(context);
+    final title = post.title;
+
+    setState(() => _isStopping = true);
     try {
       await ref.read(businessHiringPostsProvider.notifier).stopHiring(post.id);
+      messenger.showSuccess('Hiring stopped for $title.');
     } catch (e) {
-      if (mounted) {
-        context.showFailureMessage(
-          e.toString().replaceFirst('Exception: ', ''),
-        );
-        setState(() => _isDeleting = false);
-      }
+      messenger.showFailure(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _isStopping = false);
     }
   }
 
@@ -416,17 +443,46 @@ class _PostCardState extends ConsumerState<_PostCard> {
 
             // The way out of hiring: manage with the crew already on board. The post then
             // leaves this tab and every worker's feed.
+            // A bordered button in the warning colour, set apart from the hiring details above.
+            // As a bare text link it read as a label, and nobody could tell it was the way to
+            // close hiring. What it does sits behind the ⓘ beside it, shown on tap.
             if (post.canStopHiring() && !_isDeleting)
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: _confirmAndStopHiring,
-                  icon: const Icon(Icons.block, size: 18),
-                  label: const Text('Stop hiring'),
-                  style: TextButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                  ),
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _isStopping ? null : _confirmAndStopHiring,
+                      icon: _isStopping
+                          ? const SizedBox.square(
+                              dimension: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.front_hand_outlined, size: 18),
+                      label: Text(_isStopping ? 'Stopping…' : 'Stop hiring'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: theme.colorScheme.error,
+                        side: BorderSide(
+                          color: theme.colorScheme.error.withValues(alpha: 0.5),
+                        ),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                    Tooltip(
+                      message: 'Close this post to new workers',
+                      triggerMode: TooltipTriggerMode.tap,
+                      showDuration: const Duration(seconds: 4),
+                      child: Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Icon(
+                          Icons.info_outline,
+                          size: 20,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
@@ -578,6 +634,7 @@ class _CrewSection extends StatelessWidget {
               isPostFull: !post.canOfferAnotherWorker,
               canCall: post.canCallCrewMember(application),
               crewTotal: post.outstandingAmount,
+              bookingId: post.bookingId,
             ),
           ),
           if (canInvite)
@@ -604,9 +661,13 @@ class _ApplicationRow extends ConsumerStatefulWidget {
     required this.isPostFull,
     required this.canCall,
     required this.crewTotal,
+    this.bookingId,
   });
 
   final HiringPostApplication application;
+
+  /// The order this post was raised for, if any. A role lives on the order's crew.
+  final String? bookingId;
 
   /// What the whole crew is owed, so a raise can show what the job will cost with it.
   final double crewTotal;
@@ -719,10 +780,32 @@ class _ApplicationRowState extends ConsumerState<_ApplicationRow> {
     }
   }
 
+  /// This worker on the order the post was raised for, which is where a role is kept. Null for
+  /// the business's own events (no order), and wherever the server would refuse a role: the
+  /// order is not live, or the worker has not taken the job.
+  BookingWorkerAssignment? _orderCrewMember() {
+    final bookingId = widget.bookingId;
+    if (bookingId == null || !widget.application.isAccepted) return null;
+
+    final booking = ref.watch(
+      businessBookingsProvider.select(
+        (orders) => orders.value?.firstWhereOrNull((b) => b.id == bookingId),
+      ),
+    );
+    if (booking == null || !booking.canHoldCrewRoles) return null;
+
+    return booking.assignedWorkers.firstWhereOrNull(
+      (w) =>
+          w.workerProfileId == widget.application.workerProfileId &&
+          (w.isAccepted || w.isCompleted),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final application = widget.application;
+    final crewMember = _orderCrewMember();
 
     return InkWell(
       onTap: _showDetails,
@@ -777,10 +860,8 @@ class _ApplicationRowState extends ConsumerState<_ApplicationRow> {
               // them plus the call button can want more than a 360dp card has, and the pill
               // text ellipsises rather than pushing the button off the edge.
               Flexible(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+                child: StatusPillStack(
+                  pills: [
                     StatusPill(
                       label: application.statusLabel,
                       tone: _statusTone(application),
@@ -789,20 +870,29 @@ class _ApplicationRowState extends ConsumerState<_ApplicationRow> {
                     // Where this worker's own wages have got to. Only the crew-wide figure was
                     // shown before, so a single failed payout was invisible against three
                     // successful ones.
-                    if (application.paymentLabel != null) ...[
-                      const SizedBox(height: 4),
+                    if (application.paymentLabel case final label?)
                       StatusPill(
-                        label: application.paymentLabel!,
+                        label: label,
                         tone: _paymentTone(application),
                         compact: true,
                       ),
-                    ],
                   ],
                 ),
               ),
             // Beside the pills, not beneath them: in the isApplied branch above the actions sit
             // flush right, and stacking a 48dp button under two pills would treble the height of
             // every crew row.
+            // The same role as on the order's crew in Status management, set from here too.
+            if (crewMember != null)
+              CrewRoleButton(
+                role: crewMember.role,
+                iconSize: 18,
+                onPressed: () => SetCrewRoleSheet.show(
+                  context,
+                  bookingId: widget.bookingId!,
+                  worker: crewMember,
+                ),
+              ),
             // Extra work on the day: raise this worker's wage before the crew is paid. Hides
             // itself once payment has started.
             RaiseSalaryButton(

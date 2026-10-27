@@ -122,6 +122,10 @@ public class HiringPostDto
     /// <summary>Its name, so a worker can judge the job without opening it.</summary>
     public string? ServiceSubCategoryName { get; set; }
 
+    /// <summary>
+    /// The crew size: the target while hiring, the hired count once hiring was stopped with
+    /// people on board (see <see cref="Domain.Entities.HiringPost.CrewSize"/>).
+    /// </summary>
     public int WorkersNeeded { get; set; }
 
     public decimal SalaryAmount { get; set; }

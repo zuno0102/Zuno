@@ -106,6 +106,39 @@ if (booking.DistanceKm > maxKm) ...
   request sized thumbnails from the server.
 - Measure before optimising complex code; keep the simple version unless profiling shows a problem.
 
+### 3.1 Reuse before you write — keep the app light
+
+**Rule:** before writing a widget, helper, service or package import, look for one that already
+does the job and use it. Extend an existing piece before adding a new one.
+
+Where to look first:
+
+| Need | Look in | Examples |
+|---|---|---|
+| UI building block (mobile) | `lib/shared/widgets/` | `StatusPill`, `StatusPillStack`, `StatusWithActions`, `CardActions`, `CallIconButton`, `EmptyState`, `ErrorBanner` |
+| Formatting, units, money (mobile) | `lib/core/utils/` | `rupees()`, `salaryUnitWords()`, `formatDuration()` |
+| Colours, status tones (mobile) | `lib/core/theme/` | `AppColors.status(...)`, `StatusTone` |
+| A feature's own action reused on several screens | that feature's `presentation/widgets/` | `RaiseSalaryButton`, `WorkMessageButton` |
+| Business rules (backend) | `Zuno.Domain` entity methods | `HiringPostApplication.RaiseSalary`, `PayoutBatch.PaysSameWagesAs` |
+| Cross-cutting backend work | `Zuno.Application/Common/Services` | `BookingWageService`, `WorkerEarningsService` |
+
+- **Same look, same widget.** When two screens show the same thing (a status, a crew row's actions,
+  a wage), they use one shared widget. A fix or a spacing change is then made once and lands everywhere.
+- **Spacing and sizes are named once.** A gap or size that must match across screens is a named
+  constant on the widget that owns it (`StatusPillStack.gap`, `StatusWithActions.actionGap`),
+  never a number repeated in each screen.
+- **A rule lives in one place.** The condition for showing an action matches the server's rule and is
+  written once, on the entity (`HiringPostApplication.canRaiseSalary`), not re-typed in every widget.
+- **Promote on the second use.** Code that is private to one screen moves to `shared/` (or the feature's
+  `widgets/`) the moment a second screen needs it, and the copy is deleted.
+- **New packages are the last resort.** Every pub or NuGet package adds download size, start-up
+  time and upgrade work. Add one only when nothing in Flutter/.NET or this repo does the job, and say
+  why in the PR. Importing one of our own files (`package:zuno/...`) adds no weight — Dart compiles
+  the app once and drops anything unused.
+- **Small and flexible.** Shared widgets take data and callbacks, not providers or another feature's
+  types where a parameter will do (e.g. `BookingCrewList.raiseSalaryAction`), so they work in more
+  places and stay cheap to rebuild (`const` constructors wherever possible).
+
 ---
 
 ## 4. High-performance coding
@@ -552,6 +585,7 @@ Copy into every PR description and tick each item.
 ```
 - [ ] No hard-coded values; new settings are in a table or config (section 1)
 - [ ] No dead, duplicate, commented-out or debug code (section 2)
+- [ ] Existing shared widgets, helpers and services reused; no new package without a reason (section 3.1)
 - [ ] Queries projected, no N+1, paginated, AsNoTracking for reads (sections 3–4)
 - [ ] Endpoints authorised; ownership checked; user id taken from the token (section 5)
 - [ ] Depends on interfaces; registered through DI; testable (section 6)

@@ -178,7 +178,7 @@ public class GetBusinessDashboardQueryHandler(
             Title = p.Title,
             EventDate = p.EventDate,
             Location = p.Location,
-            WorkersNeeded = p.WorkersNeeded,
+            WorkersNeeded = p.CrewSize,
             WorkersHired = p.FilledCount,
             WorkCompletedAt = p.WorkCompletedAt,
             IsFullySettled = p.IsFullySettled,

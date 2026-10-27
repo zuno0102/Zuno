@@ -5,6 +5,7 @@ import 'package:zuno/features/business_owner/presentation/screens/business_hirin
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post_application.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/business_hiring_posts_notifier.dart';
+import 'package:zuno/shared/widgets/status_pill.dart';
 
 /// The crew row, drawn at phone width with a call button in it.
 ///
@@ -174,5 +175,35 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.byIcon(Icons.call), findsOneWidget);
     expect(find.text('Awaiting confirmation'), findsOneWidget);
+  });
+
+  testWidgets('the status and payment pills sit a clear gap apart', (
+    tester,
+  ) async {
+    // Reported from a phone: "Accepted" and "Payment failed" stacked 4px apart read as one block.
+    await pump(
+      tester,
+      post(
+        applications: [
+          application(
+            id: '1',
+            workerName: 'grape grape',
+            paymentStatus: 'Failed',
+          ),
+        ],
+      ),
+    );
+
+    Rect pill(String label) => tester.getRect(
+      find.ancestor(of: find.text(label), matching: find.byType(StatusPill)),
+    );
+    final status = pill('Accepted');
+    final payment = pill('Payment failed');
+
+    expect(tester.takeException(), isNull);
+    // Stacked, right-aligned, and not touching.
+    expect(payment.top, greaterThan(status.bottom));
+    expect(payment.right, closeTo(status.right, 0.5));
+    expect(payment.top - status.bottom, closeTo(StatusPillStack.gap, 0.5));
   });
 }

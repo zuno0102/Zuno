@@ -71,8 +71,11 @@ class StatusPill extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: (compact ? theme.textTheme.labelSmall : theme.textTheme.labelMedium)
-                  ?.copyWith(color: color, fontWeight: FontWeight.w700),
+              style:
+                  (compact
+                          ? theme.textTheme.labelSmall
+                          : theme.textTheme.labelMedium)
+                      ?.copyWith(color: color, fontWeight: FontWeight.w700),
             ),
           ),
           if (detail != null && !compact) ...[
@@ -92,6 +95,36 @@ class StatusPill extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// Status pills stacked one above the other — for example "Accepted" over "Payment failed" on a
+/// crew row — right-aligned, with the same gap wherever pills are stacked.
+///
+/// At 4px apart two pills read as one block, so the gap lives here rather than in each screen.
+/// Null entries are skipped, so a pill that only sometimes applies is passed inline.
+class StatusPillStack extends StatelessWidget {
+  const StatusPillStack({required this.pills, super.key});
+
+  final List<StatusPill?> pills;
+
+  /// Between two stacked pills.
+  static const gap = 8.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = pills.nonNulls.toList(growable: false);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final (i, pill) in shown.indexed) ...[
+          if (i > 0) const SizedBox(height: gap),
+          pill,
+        ],
+      ],
     );
   }
 }

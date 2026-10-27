@@ -241,7 +241,8 @@ class _CrewRow extends StatelessWidget {
   /// Whether the business can message this worker from here.
   final bool canMessage;
 
-  /// Hold the row to set or remove this person's role. Null where that is not the viewer's to do.
+  /// Sets or removes this person's role, from the role icon on the row (or holding the row).
+  /// Null where that is not the viewer's to do.
   final VoidCallback? onSetRole;
 
   @override
@@ -257,6 +258,11 @@ class _CrewRow extends StatelessWidget {
         worker,
       ),
       _ => null,
+    };
+
+    final roleAction = switch (onSetRole) {
+      final setRole? => CrewRoleButton(role: worker.role, onPressed: setRole),
+      null => null,
     };
 
     final (icon, colour) = switch (worker.displayStatus) {
@@ -341,9 +347,13 @@ class _CrewRow extends StatelessWidget {
                 ],
               ),
             ),
-            if (canMessage || canCall || raiseAction != null)
+            if (canMessage ||
+                canCall ||
+                raiseAction != null ||
+                roleAction != null)
               CardActions(
                 actions: [
+                  ?roleAction,
                   ?raiseAction,
                   if (canMessage)
                     WorkMessageButton(

@@ -45,7 +45,7 @@ public static class HiringPostMappingExtensions
         DistanceKm = null,
         ServiceSubCategoryId = post.ServiceSubCategoryId,
         ServiceSubCategoryName = post.ServiceSubCategory?.Name,
-        WorkersNeeded = post.WorkersNeeded,
+        WorkersNeeded = post.CrewSize,
         SalaryAmount = post.SalaryAmount,
         SalaryUnit = post.SalaryUnit.ToString(),
         ConfirmedCount = post.ConfirmedCount,
