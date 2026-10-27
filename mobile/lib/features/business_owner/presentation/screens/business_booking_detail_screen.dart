@@ -268,12 +268,15 @@ class _BusinessBookingDetailScreenState
                 if (booking.canBeMessaged)
                   Expanded(
                     child: FilledButton.tonalIcon(
-                      onPressed: () => pushScreen(context, BookingChatScreen(
-                            bookingId: booking.id,
-                            title: booking.variantName ?? booking.serviceName,
-                            // The customer, since this is the business reading it.
-                            counterpartName: booking.customerName,
-                          )),
+                      onPressed: () => pushScreen(
+                        context,
+                        BookingChatScreen(
+                          bookingId: booking.id,
+                          title: booking.variantName ?? booking.serviceName,
+                          // The customer, since this is the business reading it.
+                          counterpartName: booking.customerName,
+                        ),
+                      ),
                       icon: const Icon(Icons.chat_bubble_outline),
                       label: const Text('Message'),
                     ),
@@ -335,11 +338,9 @@ class _BusinessBookingDetailScreenState
           // The rule below is about the CUSTOMER's view of the crew — this screen is the
           // business's own, and until this list existed it could not see its own crew at all:
           // add three workers and nothing on screen changed.
-          BookingCrewList(
-            booking: booking,
-            canSetRoles: true,
-            initiallyExpanded: true,
-          ),
+          // Starts closed, as on every other screen: the heading already says who and how many,
+          // and the crew opens on a tap.
+          BookingCrewList(booking: booking, canSetRoles: true),
 
           // No crew count in the header. The customer booked a service; how many people the
           // business puts on it is the business's own call, made when it hires.

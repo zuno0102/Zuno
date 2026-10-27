@@ -1,3 +1,4 @@
+import 'package:zuno/shared/domain/payment_status.dart';
 import 'package:zuno/core/utils/formatting.dart';
 
 class BookingWorkerAssignment {
@@ -66,6 +67,11 @@ class BookingWorkerAssignment {
   bool get isPayee => agreedSalaryAmount != null;
 
   bool get isPaid => paymentStatus == 'Paid';
+
+  /// How this worker's wage state reads on screen ("Payment failed", "Sending", "Paid"), or null
+  /// when there is nothing to say — no wage through Zuno, or nothing tried yet.
+  String? get paymentLabel =>
+      isPayee ? paymentStatusLabel(paymentStatus) : null;
 
   /// Whether the business may phone this worker about the job.
   ///

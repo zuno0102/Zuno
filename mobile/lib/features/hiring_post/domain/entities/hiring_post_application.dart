@@ -1,3 +1,4 @@
+import 'package:zuno/shared/domain/payment_status.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post_salary_adjustment.dart';
 
 class HiringPostApplication {
@@ -49,14 +50,7 @@ class HiringPostApplication {
   bool get isPaymentDisputed => paymentStatus == 'Disputed';
 
   /// How the wage state reads on screen, or null while there is nothing to say.
-  String? get paymentLabel => switch (paymentStatus) {
-    'Paid' => 'Paid',
-    'Failed' => 'Payment failed',
-    'Disputed' => 'Disputed',
-    'Processing' => 'Sending',
-    'AwaitingWorkerConfirmation' => 'Awaiting confirmation',
-    _ => null,
-  };
+  String? get paymentLabel => paymentStatusLabel(paymentStatus);
 
   bool get isApplied => status == 'Applied';
 

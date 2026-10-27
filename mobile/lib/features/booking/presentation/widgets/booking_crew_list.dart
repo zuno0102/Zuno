@@ -58,7 +58,7 @@ class BookingCrewList extends StatelessWidget {
   ///
   /// Shut by default. In a list of orders each card unfurling its crew turns a scannable column of
   /// jobs into a wall, and the count in the heading already answers the question most of them are
-  /// opened for. A screen dedicated to one order is the exception and passes true.
+  /// opened for. The order's own details screen starts it shut too, at the business's request.
   final bool initiallyExpanded;
 
   final Booking booking;
@@ -231,7 +231,12 @@ class _CrewRow extends StatelessWidget {
         '${hire.hasBeenRaised ? ' (raised)' : ''}';
   }
 
-  bool get _isPaid => worker.isPaid || (hire?.isPaid ?? false);
+  /// Where their pay stands — "Payment failed", "Sending", "Paid" — from the hiring post when that
+  /// is how they came on, else from the order. Shown so a missing Raise salary explains itself.
+  String? get _paymentLabel => switch (hire) {
+    final hire? => hire.paymentLabel,
+    null => worker.paymentLabel,
+  };
 
   /// Worked out by the order, which is the only thing that knows whether the job is over.
   final bool canCall;
@@ -315,7 +320,7 @@ class _CrewRow extends StatelessWidget {
                       // Said plainly rather than left blank: "no wage" and "wage not yet entered"
                       // look identical otherwise, and only one of them is a mistake.
                       _wageLabel ?? 'Paid outside Zuno',
-                      if (_isPaid) 'Paid',
+                      ?_paymentLabel,
                     ].join(' · '),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,

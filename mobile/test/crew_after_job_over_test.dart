@@ -115,7 +115,10 @@ void main() {
       await tester.tap(find.text('apple one'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Add extra pay before the crew is paid'), findsOneWidget);
+      expect(
+        find.text('Add extra pay before the crew is paid'),
+        findsOneWidget,
+      );
       expect(find.text('Message'), findsNothing);
       expect(find.text('Call'), findsNothing);
     });
@@ -223,6 +226,107 @@ void main() {
       expect(find.byTooltip('Change role (Lead)'), findsNothing);
       expect(find.byTooltip(_message), findsNothing);
       expect(find.byTooltip(_call), findsNothing);
+    });
+  });
+
+  // ---- Why Raise salary is missing: the payment state on the crew row ----------------------
+  //
+  // Reported from a phone: an order "not paid yet" with no Raise salary. The worker's payout had
+  // been tried and failed, which locks the wage — but nothing on the row said so.
+
+  group('Order crew shows where each wage stands', () {
+    for (final (status, label) in [
+      ('Failed', 'Payment failed'),
+      ('Processing', 'Sending'),
+      ('AwaitingWorkerConfirmation', 'Awaiting confirmation'),
+      ('Disputed', 'Disputed'),
+      ('Paid', 'Paid'),
+    ]) {
+      testWidgets('$status reads "$label", with no Raise salary', (
+        tester,
+      ) async {
+        await pumpOrder(tester, order(status: 'Completed', payment: status));
+
+        expect(find.textContaining('· $label'), findsOneWidget);
+        expect(find.byTooltip(_raise), findsNothing);
+      });
+    }
+
+    testWidgets('Unpaid says nothing, and Raise salary is offered', (
+      tester,
+    ) async {
+      await pumpOrder(tester, order(status: 'Completed'));
+
+      expect(find.textContaining('Payment failed'), findsNothing);
+      expect(find.textContaining('· Paid'), findsNothing);
+      expect(find.byTooltip(_raise), findsOneWidget);
+    });
+
+    testWidgets("a post hire shows the post's payment state", (tester) async {
+      // The order's own row for a post hire carries no wage; the wage and its state are on the
+      // post — as on #4C828BC0, where the payout to grape grape failed.
+      phone(tester);
+      final mirror = BookingWorkerAssignment(
+        workerProfileId: 'w-1',
+        workerName: 'grape grape',
+        role: 'Lead',
+        status: 'Completed',
+        displayStatus: 'Completed',
+        paymentStatus: 'Unpaid',
+      );
+      final booking = Booking(
+        id: 'bk-1',
+        businessOwnerProfileId: 'b-1',
+        businessName: 'shajil shajil',
+        customerProfileId: 'c-1',
+        customerName: 'orange orange',
+        businessServiceId: 's-1',
+        serviceName: 'House cleaning',
+        serviceCategoryName: 'Cleaning',
+        status: 'Completed',
+        scheduledDate: DateTime(2026, 10, 23, 10),
+        priceQuoted: 0,
+        requiredWorkerCount: 1,
+        assignedWorkers: [mirror],
+      );
+      final failedHire = HiringPostApplication(
+        id: 'a-1',
+        workerProfileId: 'w-1',
+        workerName: 'grape grape',
+        status: 'Accepted',
+        appliedAt: DateTime(2026, 10, 1),
+        agreedSalaryAmount: 700,
+        agreedSalaryUnit: 'PerEvent',
+        paymentStatus: 'Failed',
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: BookingCrewList(
+                  booking: booking,
+                  canSetRoles: true,
+                  initiallyExpanded: true,
+                  postHires: {'w-1': failedHire},
+                  raiseSalaryAction: (h) => IconButton(
+                    onPressed: () {},
+                    tooltip: _raise,
+                    icon: const Icon(Icons.trending_up_rounded),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Lead · Completed · ₹700 per event · Payment failed'),
+        findsOneWidget,
+      );
+      expect(find.byTooltip(_raise), findsNothing);
     });
   });
 }
