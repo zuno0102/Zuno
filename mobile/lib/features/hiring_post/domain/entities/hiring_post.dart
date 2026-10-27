@@ -265,9 +265,19 @@ class HiringPost {
       !isHiringOver(now: now) &&
       canOfferAnotherWorker;
 
-  /// The business can stop hiring at any point before the job is over and manage with the
-  /// crew it has.
-  bool canStopHiring({DateTime? now}) => !isHiringOver(now: now);
+  /// Applications nobody has answered yet: still waiting on the business.
+  int get waitingApplicantCount =>
+      applications.where((a) => a.isApplied).length;
+
+  /// Whether Stop hiring has anything to stop: hiring is not over and places are still open.
+  ///
+  /// Only accepted workers fill a place, so 1 accepted of 3 is "1/3" however many applied. Once
+  /// the post is full it is already closed to workers, an accepted worker cannot be taken off it,
+  /// and the server refuses any offer or applicant still waiting ("all places filled") — so
+  /// stopping would change nothing. It only opens again if the business raises the number of
+  /// workers needed, and then the button is back. After the work is completed hiring is over.
+  bool canStopHiring({DateTime? now}) =>
+      !isHiringOver(now: now) && canOfferAnotherWorker;
 
   /// Deleting an upcoming post with a hired crew pulls the ground out from under them,
   /// so the confirmation dialog warns harder in that case — it does not block it.

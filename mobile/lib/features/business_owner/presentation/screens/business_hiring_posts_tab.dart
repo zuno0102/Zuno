@@ -157,22 +157,24 @@ class _PostCardState extends ConsumerState<_PostCard> {
   /// the server, so the business is told exactly who it affects before agreeing.
   String _stopHiringMessage() {
     final pending = post.pendingOfferCount;
-    final offers = pending == 0
-        ? ''
-        : ' The $pending offer${pending == 1 ? '' : 's'} still awaiting a reply can no '
-              'longer be accepted.';
+    final applicants = post.waitingApplicantCount;
+    final waiting = [
+      if (pending > 0)
+        ' The $pending offer${pending == 1 ? '' : 's'} still awaiting a reply can no '
+            'longer be accepted.',
+      if (applicants > 0)
+        ' The $applicants ${applicants == 1 ? 'person who applied' : 'people who applied'} '
+            'will not be taken on.',
+    ].join();
 
     if (post.filledCount == 0) {
       return 'Nobody is hired for this job yet. Workers will no longer see this post or be '
-          'able to apply.$offers With nobody hired, the post is removed once its time is over.';
+          'able to apply.$waiting With nobody hired, the post is removed once its time is over.';
     }
-    if (post.canOfferAnotherWorker) {
-      return 'You have ${post.filledCount} of ${post.workersNeeded} workers. Workers will no '
-          'longer see this post.$offers Run the job with ${post.filledCount} and pay the crew '
-          'from Orders.';
-    }
-    return 'Everyone you need is hired. Workers will no longer see this post.$offers Run the '
-        'job and pay the crew from Orders.';
+    // Only offered while places are open (canStopHiring), so the post is always short here.
+    return 'You have ${post.filledCount} of ${post.workersNeeded} workers. Workers will no '
+        'longer see this post.$waiting Run the job with ${post.filledCount} and pay the crew '
+        'from Orders.';
   }
 
   Future<void> _confirmAndStopHiring() async {

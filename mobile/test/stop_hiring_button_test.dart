@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zuno/features/business_owner/presentation/screens/business_hiring_posts_tab.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
+import 'package:zuno/features/hiring_post/domain/entities/hiring_post_application.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/business_hiring_posts_notifier.dart';
 
 /// Stop hiring on a hire post card.
@@ -40,6 +41,7 @@ void main() {
     int filled = 0,
     int needed = 1,
     int pendingOffers = 0,
+    int applicants = 0,
     DateTime? hiringStoppedAt,
   }) => HiringPost(
     id: 'p-1',
@@ -55,6 +57,16 @@ void main() {
     hiringStoppedAt: hiringStoppedAt,
     status: 'Open',
     createdDate: DateTime(2026, 10, 1),
+    applications: [
+      for (var i = 0; i < applicants; i++)
+        HiringPostApplication(
+          id: 'ap-$i',
+          workerProfileId: 'w-$i',
+          workerName: 'Applicant $i',
+          status: 'Applied',
+          appliedAt: DateTime(2026, 10, 1),
+        ),
+    ],
   );
 
   Future<_FakePosts> pump(
@@ -167,13 +179,87 @@ void main() {
     expect(text, contains('Run the job with 1'));
   });
 
-  testWidgets('fully staffed, no offers: no offer sentence', (tester) async {
-    await pump(tester, post(filled: 2, needed: 2));
+  // Changed: a full post with nobody waiting used to offer Stop hiring too, though stopping it
+  // changed nothing. The button is now only there when there is something to stop.
+  for (final (filled, needed) in [(1, 1), (4, 4)]) {
+    testWidgets('$filled/$needed hired, nobody waiting: no Stop hiring', (
+      tester,
+    ) async {
+      await pump(tester, post(filled: filled, needed: needed));
+
+      expect(find.text('Work on 30 Oct 2026'), findsOneWidget);
+      expect(stopButton, findsNothing);
+      expect(find.byIcon(Icons.info_outline), findsNothing);
+    });
+  }
+
+  // A full post with somebody still waiting: the server refuses that offer or applicant
+  // ("all places filled"), so stopping would change nothing either.
+  for (final (label, full) in [
+    (
+      '2/2 hired, an offer still unanswered',
+      post(filled: 2, needed: 2, pendingOffers: 1),
+    ),
+    ('3/3 hired, 2 people applied', post(filled: 3, needed: 3, applicants: 2)),
+  ]) {
+    testWidgets('$label: no Stop hiring', (tester) async {
+      await pump(tester, full);
+
+      expect(stopButton, findsNothing);
+    });
+  }
+
+  // The example from the business: 3 needed, 1 accepted, 2 applied but not yet confirmed.
+  testWidgets('1 accepted + 2 only applied reads 1/3, with Stop hiring', (
+    tester,
+  ) async {
+    await pump(tester, post(filled: 1, needed: 3, applicants: 2));
+
+    expect(find.textContaining('1/3 hired'), findsOneWidget);
+    expect(stopButton, findsOneWidget);
+  });
+
+  testWidgets('after the 2 are confirmed and accept: 3/3, no Stop hiring', (
+    tester,
+  ) async {
+    await pump(tester, post(filled: 3, needed: 3));
+
+    expect(find.textContaining('3/3 hired'), findsOneWidget);
+    expect(stopButton, findsNothing);
+  });
+
+  testWidgets('1/2 hired, one applicant: both sentences of what stops', (
+    tester,
+  ) async {
+    await pump(tester, post(filled: 1, needed: 2, applicants: 1));
     await openDialog(tester);
 
     final text = dialogText(tester);
-    expect(text, contains('Everyone you need is hired.'));
-    expect(text, isNot(contains('awaiting a reply')));
+    expect(text, contains('You have 1 of 2 workers.'));
+    expect(text, contains('The 1 person who applied will not be taken on.'));
+  });
+
+  group('canStopHiring', () {
+    for (final (label, p, expected) in [
+      ('1/1, nobody waiting', post(filled: 1, needed: 1), false),
+      ('1/2', post(filled: 1, needed: 2), true),
+      ('0/1, one offer waiting', post(needed: 1, pendingOffers: 1), true),
+      // Full: the server refuses whoever is still waiting, so nothing is left to stop.
+      (
+        '2/2, one offer waiting',
+        post(filled: 2, needed: 2, pendingOffers: 1),
+        false,
+      ),
+      ('3/3, two applicants', post(filled: 3, needed: 3, applicants: 2), false),
+      ('1/3, two applicants', post(filled: 1, needed: 3, applicants: 2), true),
+      (
+        '1/2 but already stopped',
+        post(filled: 1, needed: 2, hiringStoppedAt: DateTime(2026, 10, 2)),
+        false,
+      ),
+    ]) {
+      test('$label -> $expected', () => expect(p.canStopHiring(), expected));
+    }
   });
 
   testWidgets('Keep hiring leaves the post alone', (tester) async {
