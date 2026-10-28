@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Zuno.Api.Uploads;
 using Zuno.Api.Authorization;
 using Zuno.Api.Common;
 using Zuno.Application.Common.Interfaces;
@@ -29,13 +30,6 @@ public class WorkerPhotoController(
     IFileStorageService fileStorageService,
     IOptions<FileStorageSettings> fileStorageSettings) : ControllerBase
 {
-    private static readonly HashSet<string> AllowedImageContentTypes =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            "image/jpeg",
-            "image/png",
-            "image/webp",
-        };
 
     /// <summary>Uploads or replaces the signed-in worker's picture.</summary>
     [HttpPut]
@@ -53,16 +47,13 @@ public class WorkerPhotoController(
                 HttpContext.TraceIdentifier));
         }
 
-        if (!AllowedImageContentTypes.Contains(file.ContentType))
+        // Judged by the file's first bytes; the stored extension comes from what it really is.
+        var extension = await MediaUpload.ImageExtensionAsync(file, cancellationToken);
+        if (extension is null)
         {
-            return BadRequest(ApiResponse.Fail(
-                "Image must be a JPEG, PNG, or WebP file.",
-                HttpContext.TraceIdentifier));
+            return BadRequest(ApiResponse.Fail(MediaUpload.ImageRule, HttpContext.TraceIdentifier));
         }
 
-        // Taken from the content type just validated, never from the uploaded file name: the name is
-        // the client's to choose and it ends up in a file path.
-        var extension = ExtensionForImageContentType(file.ContentType);
 
         // Stored under the worker's own profile id, read from the token — there is no id in the route
         // for a caller to swap for somebody else's.
@@ -82,11 +73,4 @@ public class WorkerPhotoController(
         return Ok(result);
     }
 
-    private static string ExtensionForImageContentType(string contentType) =>
-        contentType.ToLowerInvariant() switch
-        {
-            "image/png" => ".png",
-            "image/webp" => ".webp",
-            _ => ".jpg",
-        };
 }

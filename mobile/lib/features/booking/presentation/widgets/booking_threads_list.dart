@@ -9,6 +9,7 @@ import 'package:zuno/features/booking/presentation/screens/booking_chat_screen.d
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/core/router/push_screen.dart';
+import 'package:zuno/shared/widgets/confirm_dialog.dart';
 
 /// Every conversation this person is part of, one per booking.
 ///
@@ -24,7 +25,11 @@ import 'package:zuno/core/router/push_screen.dart';
 /// thread reads correctly from either end. The one thing that does differ — what to say when there
 /// is nothing yet, and where to send somebody to start — comes in as [emptyState].
 class BookingThreadsList extends ConsumerWidget {
-  const BookingThreadsList({required this.emptyState, this.onOpenOrder, super.key});
+  const BookingThreadsList({
+    required this.emptyState,
+    this.onOpenOrder,
+    super.key,
+  });
 
   /// What to show when nobody has written yet.
   ///
@@ -83,31 +88,18 @@ Future<void> _confirmDelete(
   WidgetRef ref,
   BookingThread thread,
 ) async {
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: const Text('Clear this conversation?'),
-      content: Text(
+  final confirmed = await showConfirmDialog(
+    context,
+    title: 'Clear this conversation?',
+    message:
         'It will be removed from your chats. ${thread.counterpartName} keeps '
         'their copy, and the conversation comes back if either of you writes again.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Keep'),
-        ),
-        FilledButton(
-          style: FilledButton.styleFrom(
-            backgroundColor: Theme.of(dialogContext).colorScheme.error,
-          ),
-          onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text('Clear'),
-        ),
-      ],
-    ),
+    confirmLabel: 'Clear',
+    cancelLabel: 'Keep',
+    destructive: true,
   );
 
-  if (confirmed != true || !context.mounted) return;
+  if (!confirmed || !context.mounted) return;
 
   // Captured before the await: the list rebuilds underneath this once the thread is gone.
   final messenger = AppMessenger.of(context);
@@ -241,17 +233,20 @@ class _ThreadRow extends StatelessWidget {
       ),
       isThreeLine: true,
       onLongPress: onDelete,
-      onTap: () => pushScreen(context, BookingChatScreen(
-            bookingId: thread.bookingId,
-            title: thread.title,
-            counterpartName: thread.counterpartName,
-            // The chat hands back its own context when the heading is tapped. This row is long
-            // gone by then — scrolled away, or disposed with the list — and pushing from a dead
-            // context throws.
-            onOpenOrder: onOpenOrder == null
-                ? null
-                : (chatContext) => onOpenOrder!(chatContext, thread.bookingId),
-          )),
+      onTap: () => pushScreen(
+        context,
+        BookingChatScreen(
+          bookingId: thread.bookingId,
+          title: thread.title,
+          counterpartName: thread.counterpartName,
+          // The chat hands back its own context when the heading is tapped. This row is long
+          // gone by then — scrolled away, or disposed with the list — and pushing from a dead
+          // context throws.
+          onOpenOrder: onOpenOrder == null
+              ? null
+              : (chatContext) => onOpenOrder!(chatContext, thread.bookingId),
+        ),
+      ),
     );
   }
 }

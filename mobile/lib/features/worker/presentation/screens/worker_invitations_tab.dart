@@ -10,6 +10,7 @@ import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/section_header.dart';
 import 'package:zuno/core/router/push_screen.dart';
+import 'package:zuno/shared/widgets/confirm_dialog.dart';
 
 /// Everything waiting on this worker's answer, and the teams they have already joined.
 ///
@@ -201,10 +202,7 @@ class _JobOfferCard extends ConsumerWidget {
 
               _Fact(icon: Icons.event_outlined, text: offer.scheduleLabel),
               if (whereParts.isNotEmpty)
-                _Fact(
-                  icon: Icons.place_outlined,
-                  text: whereParts.join(' · '),
-                ),
+                _Fact(icon: Icons.place_outlined, text: whereParts.join(' · ')),
               _Fact(
                 icon: Icons.groups_outlined,
                 text: offer.workersNeeded == 1
@@ -274,30 +272,17 @@ class _OfferAnswerState extends ConsumerState<_OfferAnswer> {
     if (applicationId == null) return;
 
     if (!accept) {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Decline this job?'),
-          content: const Text(
+      final confirmed = await showConfirmDialog(
+        context,
+        title: 'Decline this job?',
+        message:
             'The business will be told and your place goes back to other applicants. '
             'You cannot take it back afterwards.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Keep deciding'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error,
-              ),
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Decline'),
-            ),
-          ],
-        ),
+        confirmLabel: 'Decline',
+        cancelLabel: 'Keep deciding',
+        destructive: true,
       );
-      if (confirmed != true || !mounted) return;
+      if (!confirmed || !mounted) return;
     }
 
     setState(() => _isResponding = true);
@@ -352,7 +337,10 @@ class _OfferAnswerState extends ConsumerState<_OfferAnswer> {
 /// a worker needs is the business itself: what it pays, whether it pays on time, and what it has
 /// open. Saying yes to a business that owes three workers money is the mistake this prevents.
 void _openBusiness(BuildContext context, WorkerInvitation invitation) {
-  pushScreen(context, HiringBusinessScreen(businessId: invitation.businessOwnerProfileId));
+  pushScreen(
+    context,
+    HiringBusinessScreen(businessId: invitation.businessOwnerProfileId),
+  );
 }
 
 class _TeamInvitationCard extends ConsumerStatefulWidget {

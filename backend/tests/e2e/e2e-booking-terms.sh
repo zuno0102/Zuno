@@ -15,7 +15,7 @@
 #   * the agreed crew and price land on the order in the same save that confirms it
 #   * no offers once confirmed or cancelled
 #   * the agreed count does NOT cap the roster — the business can still send more
-API=http://localhost:5056/api/v1
+API=${API:-http://localhost:5056/api/v1}
 PSQL="${PSQL:-psql}"
 : "${PGPASSWORD:?set PGPASSWORD to your Postgres password first}"
 S=$(date +%s)

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:zuno/core/constants/app_constants.dart';
 import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/core/ui_config/ui_config.dart';
 import 'package:zuno/features/business_owner/domain/entities/business_profile.dart';
 import 'package:zuno/core/constants/api_constants.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
@@ -160,7 +161,22 @@ class _BusinessProfileFormState extends ConsumerState<_BusinessProfileForm> {
               // to see how they are doing; this screen is for what the business *is*.
               _ProfileSummary(profile: widget.profile),
               const SizedBox(height: 14),
-              _VerificationBadge(status: widget.profile.verificationStatus),
+              // The shared pill, so this reads like every other state badge. Words, tone and
+              // icon all come from the server's labels: Verified is the success green, anything
+              // else is still waiting, in the "in progress" amber.
+              StatusPill(
+                label:
+                    'Verification: '
+                    '${UiConfig.current.label('BusinessVerification', widget.profile.verificationStatus)}',
+                tone: UiConfig.current.tone(
+                  'BusinessVerification.Badge',
+                  widget.profile.verificationStatus,
+                ),
+                icon: UiConfig.current.icon(
+                  'BusinessVerification.Badge',
+                  widget.profile.verificationStatus,
+                ),
+              ),
               const SizedBox(height: 16),
               if (_errorMessage != null) ...[
                 ErrorBanner(message: _errorMessage!),
@@ -280,51 +296,6 @@ class _FieldLabel extends StatelessWidget {
     padding: const EdgeInsets.only(bottom: 6),
     child: Text(text, style: Theme.of(context).textTheme.labelLarge),
   );
-}
-
-class _VerificationBadge extends StatelessWidget {
-  const _VerificationBadge({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final isVerified = status == 'Verified';
-    // Verified is the same success green every other badge uses; anything else is still waiting,
-    // which is the amber the status palette already has a name for.
-    final color = AppColors.status(
-      isVerified ? StatusTone.success : StatusTone.progress,
-      Theme.of(context).brightness,
-    );
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isVerified ? Icons.verified_outlined : Icons.hourglass_top_outlined,
-            size: 16,
-            color: color,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            'Verification: $status',
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 /// The business's picture, and the control for changing it.

@@ -36,4 +36,29 @@ class SystemShare {
       return ShareOutcome.unavailable;
     }
   }
+
+  /// Opens [bytes] in the phone's own viewer — a PDF reader, the gallery. The file is written to
+  /// the app's cache and replaces whatever document was opened before, so ID copies never pile up.
+  static Future<ShareOutcome> openFile({
+    required Uint8List bytes,
+    required String fileName,
+    required String mimeType,
+  }) async {
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      return ShareOutcome.unavailable;
+    }
+
+    try {
+      await _channel.invokeMethod<void>('openFile', {
+        'bytes': bytes,
+        'fileName': fileName,
+        'mimeType': mimeType,
+      });
+      return ShareOutcome.shared;
+    } on PlatformException {
+      return ShareOutcome.unavailable;
+    } on MissingPluginException {
+      return ShareOutcome.unavailable;
+    }
+  }
 }

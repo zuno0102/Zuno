@@ -12,7 +12,7 @@
 #     since the edit form posts back whatever copy it loaded
 #   * removing clears the URL and deletes the file
 #   * the obvious refusals: empty, oversized, and wrong content type
-API=http://localhost:5056/api/v1
+API=${API:-http://localhost:5056/api/v1}
 PSQL="${PSQL:-psql}"
 : "${PGPASSWORD:?set PGPASSWORD to your Postgres password first}"
 S=$(date +%s)
@@ -50,7 +50,7 @@ logo_of() { sql "select coalesce(logo_url,'') from business_owner_profiles where
 # Asks for a file as a signed-in caller. An anonymous request for a path that matches nothing is
 # answered 401 by the deny-by-default policy, not 404 — it covers unmatched requests as well as
 # endpoints — so "is the file gone?" has to be asked with a token or the answer is ambiguous.
-served() { curl -s -o /dev/null -w '%{http_code}' "http://localhost:5056$1" -H "Authorization: Bearer $BT"; }
+served() { curl -s -o /dev/null -w '%{http_code}' "${API%/api/v1}$1" -H "Authorization: Bearer $BT"; }
 
 # A real 1x1 JPEG and a real 1x1 PNG, so the served bytes are genuinely an image.
 printf '%s' '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==' | base64 -d > "$WORK/logo.jpg"
@@ -75,8 +75,8 @@ case "$URL" in
   *) bad "URL is root-relative and owned" "got '$URL'";;
 esac
 eq "Stored on the profile" "$(logo_of)" "$URL"
-eq "And the file is actually served" "$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:5056$URL")" "200"
-eq "...as an image"                  "$(curl -s -o /dev/null -w '%{content_type}' "http://localhost:5056$URL")" "image/jpeg"
+eq "And the file is actually served" "$(curl -s -o /dev/null -w '%{http_code}' "${API%/api/v1}$URL")" "200"
+eq "...as an image"                  "$(curl -s -o /dev/null -w '%{content_type}' "${API%/api/v1}$URL")" "image/jpeg"
 
 echo
 echo "==== 2. REPLACING IT ===="

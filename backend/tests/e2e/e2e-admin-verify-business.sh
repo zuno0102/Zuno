@@ -13,7 +13,7 @@
 #   * rejecting keeps it hidden, and a rejected business can still be approved later
 #   * nobody but the app owner can reach any of it — not the business itself, not a customer
 #   * approving something that does not exist is a 404, not a surprise
-API=http://localhost:5056/api/v1
+API=${API:-http://localhost:5056/api/v1}
 PSQL="${PSQL:-psql}"
 : "${PGPASSWORD:?set PGPASSWORD to your Postgres password first}"
 S=$(date +%s)

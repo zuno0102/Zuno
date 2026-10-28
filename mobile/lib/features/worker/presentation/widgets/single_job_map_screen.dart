@@ -21,12 +21,15 @@ import 'package:zuno/core/router/push_screen.dart';
 void showJobOnMap(BuildContext context, WidgetRef ref, HiringPost job) {
   final filter = ref.read(workerJobFilterProvider);
 
-  pushScreen(context, SingleJobMapScreen(
-        job: job,
-        from: filter.hasPosition
-            ? LatLng(filter.latitude!, filter.longitude!)
-            : null,
-      ));
+  pushScreen(
+    context,
+    SingleJobMapScreen(
+      job: job,
+      from: filter.hasPosition
+          ? LatLng(filter.latitude!, filter.longitude!)
+          : null,
+    ),
+  );
 }
 
 /// Where one job is, and the way there.
@@ -260,7 +263,7 @@ class _SingleJobMapScreenState extends ConsumerState<SingleJobMapScreen> {
                                   .map((p) => LatLng(p.$1, p.$2))
                                   .toList(),
                               strokeWidth: 9,
-                              color: Colors.white.withValues(alpha: 0.75),
+                              color: AppColors.onMedia.withValues(alpha: 0.75),
                             ),
                             Polyline(
                               points: route.points
@@ -303,7 +306,7 @@ class _SingleJobMapScreenState extends ConsumerState<SingleJobMapScreen> {
                             Icons.location_on,
                             size: 40,
                             color: theme.colorScheme.tertiary,
-                            shadows: const [
+                            shadows: [
                               Shadow(
                                 blurRadius: 4,
                                 color: AppColors.shadowStrong,
@@ -336,7 +339,7 @@ class _SingleJobMapScreenState extends ConsumerState<SingleJobMapScreen> {
                         decoration: BoxDecoration(
                           color: theme.colorScheme.surface,
                           borderRadius: BorderRadius.circular(20),
-                          boxShadow: const [
+                          boxShadow: [
                             BoxShadow(
                               blurRadius: 4,
                               color: AppColors.shadowSoft,
@@ -529,13 +532,13 @@ class _EndPoint extends StatelessWidget {
     decoration: BoxDecoration(
       color: colour,
       shape: BoxShape.circle,
-      border: Border.all(color: Colors.white, width: 3),
-      boxShadow: const [BoxShadow(blurRadius: 4, color: AppColors.shadowSoft)],
+      border: Border.all(color: AppColors.onMedia, width: 3),
+      boxShadow: [BoxShadow(blurRadius: 4, color: AppColors.shadowSoft)],
     ),
     child: Text(
       label,
-      style: const TextStyle(
-        color: Colors.white,
+      style: TextStyle(
+        color: AppColors.onMedia,
         fontSize: 11,
         fontWeight: FontWeight.w700,
       ),

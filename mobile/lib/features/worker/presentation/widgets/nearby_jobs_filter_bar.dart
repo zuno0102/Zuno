@@ -47,7 +47,10 @@ class _NearbyJobsFilterBarState extends ConsumerState<NearbyJobsFilterBar> {
 
   Future<void> _pickDistance() async {
     final filter = ref.read(workerJobFilterProvider);
-    final chosen = await showDistanceSheet(context, selectedKm: filter.radiusKm);
+    final chosen = await showDistanceSheet(
+      context,
+      selectedKm: filter.radiusKm,
+    );
 
     if (chosen == null || !mounted) return;
 
@@ -74,12 +77,12 @@ class _NearbyJobsFilterBarState extends ConsumerState<NearbyJobsFilterBar> {
               child: FilledButton.icon(
                 onPressed: _isLocating ? null : _useCurrentLocation,
                 icon: _isLocating
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onPrimary,
                         ),
                       )
                     : const Icon(Icons.near_me, size: 18),
@@ -96,9 +99,7 @@ class _NearbyJobsFilterBarState extends ConsumerState<NearbyJobsFilterBar> {
               onPressed: _setLocation,
               icon: const Icon(Icons.edit_location_alt_outlined, size: 18),
               label: const Text('Enter'),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(72, 46),
-              ),
+              style: OutlinedButton.styleFrom(minimumSize: const Size(72, 46)),
             ),
           ],
         ),

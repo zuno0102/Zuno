@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Zuno.Api.Uploads;
 using Zuno.Api.Authorization;
 using Zuno.Api.Common;
 using Zuno.Api.Contracts;
@@ -36,12 +37,6 @@ public class BusinessHiringPostsController(
     ISender mediator,
     IOptions<FileStorageSettings> fileStorageSettings) : ControllerBase
 {
-    private static readonly HashSet<string> AllowedImageContentTypes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-    };
 
     [HttpGet]
     public async Task<IActionResult> GetMyPosts(CancellationToken cancellationToken)
@@ -182,12 +177,13 @@ public class BusinessHiringPostsController(
                 HttpContext.TraceIdentifier));
         }
 
-        if (!AllowedImageContentTypes.Contains(file.ContentType))
+        // Judged by the file's first bytes; the stored extension comes from what it really is.
+        var extension = await MediaUpload.ImageExtensionAsync(file, cancellationToken);
+        if (extension is null)
         {
-            return BadRequest(ApiResponse.Fail("Image must be a JPEG, PNG, or WebP file.", HttpContext.TraceIdentifier));
+            return BadRequest(ApiResponse.Fail(MediaUpload.ImageRule, HttpContext.TraceIdentifier));
         }
 
-        var extension = Path.GetExtension(file.FileName) is { Length: > 0 } ext ? ext : ".jpg";
 
         // Handed to the command rather than saved here, so nothing is written until the post is
         // known to be the caller's — see SetBusinessServiceImageCommand.

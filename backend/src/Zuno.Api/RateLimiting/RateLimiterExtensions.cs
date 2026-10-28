@@ -16,10 +16,17 @@ public static class RateLimiterExtensions
     /// </summary>
     public const string PlaceSearchPolicy = "PlaceSearchPolicy";
 
+    /// <summary>
+    /// Guards endpoints that take personal documents. Each request writes files to disk, so the
+    /// limit is far below the global one.
+    /// </summary>
+    public const string DocumentUploadPolicy = "DocumentUploadPolicy";
+
     // The real limits, and the defaults wherever configuration says nothing.
     private const int DefaultGlobalPermits = 100;
     private const int DefaultAuthPermits = 5;
     private const int DefaultPlaceSearchPermits = 15;
+    private const int DefaultDocumentUploadPermits = 10;
     private const int DefaultWindowMinutes = 1;
 
     /// <summary>
@@ -84,6 +91,11 @@ public static class RateLimiterExtensions
                 RateLimitPartition.GetFixedWindowLimiter(
                     partitionKey: GetPartitionKey(context),
                     factory: _ => Window(context, o => o.PlaceSearch, DefaultPlaceSearchPermits)));
+
+            options.AddPolicy(DocumentUploadPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetPartitionKey(context),
+                    factory: _ => Window(context, o => o.DocumentUpload, DefaultDocumentUploadPermits)));
         });
 
         return services;

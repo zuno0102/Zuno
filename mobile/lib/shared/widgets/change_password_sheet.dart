@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_providers.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 
@@ -10,12 +11,13 @@ import 'package:zuno/shared/widgets/app_messages.dart';
 ///
 /// The current password is required by the server, which is the point of it — a phone left unlocked
 /// on a table should not be enough to lock its owner out of their own account.
-Future<void> showChangePasswordSheet(BuildContext context) => showModalBottomSheet<void>(
-  context: context,
-  isScrollControlled: true,
-  useSafeArea: true,
-  builder: (_) => const _ChangePasswordSheet(),
-);
+Future<void> showChangePasswordSheet(BuildContext context) =>
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => const _ChangePasswordSheet(),
+    );
 
 class _ChangePasswordSheet extends ConsumerStatefulWidget {
   const _ChangePasswordSheet();
@@ -52,6 +54,8 @@ class _ChangePasswordSheetState extends ConsumerState<_ChangePasswordSheet> {
     });
 
     final messenger = AppMessenger.of(context);
+    // Read before the sheet closes: its ref is gone once it is popped.
+    final auth = ref.read(authProvider.notifier);
 
     try {
       await ref
@@ -63,7 +67,12 @@ class _ChangePasswordSheetState extends ConsumerState<_ChangePasswordSheet> {
 
       if (!mounted) return;
       Navigator.of(context).pop();
-      messenger.showSuccess('Your password is changed.');
+      // The server ends every session when a password changes, so a stolen session cannot outlive
+      // it. Sign out here at once rather than fail on the next token refresh.
+      messenger.showSuccess(
+        'Your password is changed. Sign in again with your new password.',
+      );
+      await auth.logout();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -114,8 +123,9 @@ class _ChangePasswordSheetState extends ConsumerState<_ChangePasswordSheet> {
                       tooltip: _obscure ? 'Show passwords' : 'Hide passwords',
                     ),
                   ),
-                  validator: (value) =>
-                      (value ?? '').isEmpty ? 'Enter your current password.' : null,
+                  validator: (value) => (value ?? '').isEmpty
+                      ? 'Enter your current password.'
+                      : null,
                 ),
                 const SizedBox(height: 12),
 
@@ -124,7 +134,8 @@ class _ChangePasswordSheetState extends ConsumerState<_ChangePasswordSheet> {
                   obscureText: _obscure,
                   decoration: const InputDecoration(
                     labelText: 'New password',
-                    helperText: 'At least 8 characters, with a capital, a number and a symbol',
+                    helperText:
+                        'At least 8 characters, with a capital, a number and a symbol',
                     border: OutlineInputBorder(),
                   ),
                   validator: (value) {
@@ -172,12 +183,12 @@ class _ChangePasswordSheetState extends ConsumerState<_ChangePasswordSheet> {
                   child: FilledButton(
                     onPressed: _isSaving ? null : _save,
                     child: _isSaving
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              color: Theme.of(context).colorScheme.onPrimary,
                             ),
                           )
                         : const Text('Change password'),

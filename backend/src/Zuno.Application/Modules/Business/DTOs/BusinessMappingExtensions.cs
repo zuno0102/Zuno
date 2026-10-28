@@ -1,11 +1,12 @@
 using Zuno.Domain.Entities;
+using Zuno.Domain.Enums;
 using Zuno.Domain.ValueObjects;
 
 namespace Zuno.Application.Modules.Business.DTOs;
 
 public static class BusinessMappingExtensions
 {
-    public static BusinessProfileDto ToDto(this BusinessOwnerProfile profile) => new()
+    public static BusinessProfileDto ToDto(this BusinessOwnerProfile profile, LevelLadder levels) => new()
     {
         Id = profile.Id,
         BusinessName = profile.BusinessName,
@@ -23,7 +24,7 @@ public static class BusinessMappingExtensions
         Latitude = profile.BusinessAddress?.Latitude,
         Longitude = profile.BusinessAddress?.Longitude,
         Level = profile.Level,
-        LevelName = BusinessLevel.Name(profile.Level),
+        LevelName = levels.Name(profile.Level),
     };
 
     public static BusinessServiceDto ToDto(this BusinessService service) => new()
@@ -91,18 +92,33 @@ public static class BusinessMappingExtensions
             .ToList(),
     };
 
-    public static BusinessWorkerDto ToDto(this BusinessWorker businessWorker, string availabilityStatus = "Active") => new()
+    /// <remarks>
+    /// A worker's full name, email and phone are shown only once they have joined. An invitation is
+    /// made by typing a phone number or email, so showing the full record straight away turned the
+    /// invite box into a lookup: type any number, learn whose it is and their email. Until they
+    /// accept, the business sees enough to know it reached someone ("Ravi K."), nothing to contact
+    /// them outside the app with.
+    /// </remarks>
+    public static BusinessWorkerDto ToDto(this BusinessWorker businessWorker, string availabilityStatus = "Active")
     {
-        Id = businessWorker.Id,
-        WorkerProfileId = businessWorker.WorkerProfileId,
-        WorkerName = $"{businessWorker.WorkerProfile.User.FirstName} {businessWorker.WorkerProfile.User.LastName}",
-        WorkerEmail = businessWorker.WorkerProfile.User.Email,
-        WorkerPhone = businessWorker.WorkerProfile.User.PhoneNumber,
-        Status = businessWorker.AssignmentStatus.ToString(),
-        AvailabilityStatus = availabilityStatus,
-        InvitedAt = businessWorker.InvitedAt,
-        RespondedAt = businessWorker.RespondedAt,
-    };
+        var user = businessWorker.WorkerProfile.User;
+        var joined = businessWorker.AssignmentStatus == BusinessWorkerStatus.Active;
+
+        return new BusinessWorkerDto
+        {
+            Id = businessWorker.Id,
+            WorkerProfileId = businessWorker.WorkerProfileId,
+            WorkerName = joined
+            ? $"{user.FirstName} {user.LastName}"
+            : $"{user.FirstName} {(string.IsNullOrEmpty(user.LastName) ? string.Empty : user.LastName[..1] + ".")}".Trim(),
+            WorkerEmail = joined ? user.Email : null,
+            WorkerPhone = joined ? user.PhoneNumber : null,
+            Status = businessWorker.AssignmentStatus.ToString(),
+            AvailabilityStatus = availabilityStatus,
+            InvitedAt = businessWorker.InvitedAt,
+            RespondedAt = businessWorker.RespondedAt,
+        };
+    }
 
     public static WorkerInvitationDto ToInvitationDto(this BusinessWorker businessWorker) => new()
     {

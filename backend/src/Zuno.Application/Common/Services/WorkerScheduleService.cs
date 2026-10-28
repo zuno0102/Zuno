@@ -7,16 +7,17 @@ namespace Zuno.Application.Common.Services;
 /// <summary>
 /// Finds clashes in a worker's diary across both hiring posts and bookings.
 /// </summary>
-public class WorkerScheduleService(IApplicationDbContext dbContext) : IWorkerScheduleService
+public class WorkerScheduleService(IApplicationDbContext dbContext, IPlatformSettings platformSettings)
+    : IWorkerScheduleService
 {
-    /// <summary>
-    /// Used when a booking's service carries no estimate. Two hours is the same assumption a
-    /// hiring post starts from, so an unspecified job still occupies a believable block rather
-    /// than an instant that clashes with nothing.
-    /// </summary>
-    private const int DefaultJobMinutes = 120;
+    /// <summary>The gap a worker needs between two jobs — a platform setting.</summary>
+    public int TravelBufferMinutes => platformSettings.Current.TravelBufferMinutes;
 
-    public int TravelBufferMinutes => 30;
+    /// <summary>
+    /// Used when a booking's service carries no estimate, so an unspecified job still occupies a
+    /// believable block rather than an instant that clashes with nothing. A platform setting.
+    /// </summary>
+    private int DefaultJobMinutes => platformSettings.Current.DefaultJobMinutes;
 
     /// <summary>A job as it sits in a worker's day, whichever module it came from.</summary>
     /// <remarks>

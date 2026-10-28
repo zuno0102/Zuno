@@ -1,3 +1,5 @@
+import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/core/ui_config/ui_config.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/worker/domain/entities/worker_profile.dart';
 
@@ -48,11 +50,13 @@ class WorkerDashboard {
   bool get hasTrend => trend.any((m) => m.jobsCompleted > 0 || m.earned > 0);
 
   /// The tallest bar, so the chart can scale to it. 0 when there is nothing.
-  int get busiestMonthCount =>
-      trend.isEmpty ? 0 : trend.map((m) => m.jobsCompleted).reduce((a, b) => a > b ? a : b);
+  int get busiestMonthCount => trend.isEmpty
+      ? 0
+      : trend.map((m) => m.jobsCompleted).reduce((a, b) => a > b ? a : b);
 
-  double get mostEarnedInAMonth =>
-      trend.isEmpty ? 0 : trend.map((m) => m.earned).reduce((a, b) => a > b ? a : b);
+  double get mostEarnedInAMonth => trend.isEmpty
+      ? 0
+      : trend.map((m) => m.earned).reduce((a, b) => a > b ? a : b);
 
   /// Nothing has been earned and nothing done, so a first-job message beats a row of ₹0.
   bool get hasWorkRecord =>
@@ -145,13 +149,16 @@ class WorkerPendingPayment {
   final DateTime? workCompletedAt;
 
   /// How the wait reads on screen. Each says who the ball is with.
-  String get stateLabel => switch (paymentStatus) {
-    'Unpaid' => 'Not sent yet',
-    'Processing' => 'On its way',
-    'Failed' => 'Payment failed',
-    'AwaitingWorkerConfirmation' => 'Confirm you received it',
-    _ => paymentStatus,
-  };
+  /// A state the table does not name reads as the server's own word for it.
+  String get stateLabel =>
+      UiConfig.current.labels[_payoutGroup]?[paymentStatus]?.label ??
+      paymentStatus;
+
+  /// The colour family of [stateLabel].
+  StatusTone get stateTone =>
+      UiConfig.current.tone(_payoutGroup, paymentStatus);
+
+  static const _payoutGroup = 'WorkerPayout';
 
   /// The one state the worker can act on, rather than only wait through.
   bool get needsMyConfirmation => paymentStatus == 'AwaitingWorkerConfirmation';

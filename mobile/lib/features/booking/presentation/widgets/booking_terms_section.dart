@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:zuno/core/ui_config/ui_config.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/booking/domain/entities/booking.dart';
 import 'package:zuno/features/booking/domain/entities/booking_terms_proposal.dart';
@@ -116,7 +117,9 @@ class BookingTermsSection extends StatelessWidget {
                   ),
                 ],
               )
-            else if (booking.isPending && open == null && !booking.termsAreAgreed)
+            else if (booking.isPending &&
+                open == null &&
+                !booking.termsAreAgreed)
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -168,32 +171,26 @@ class _StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final (label, background, foreground) = switch (booking.agreementStatus) {
-      'Agreed' => (
-        'Agreed',
-        theme.colorScheme.primaryContainer,
-        theme.colorScheme.onPrimaryContainer,
-      ),
-      'Closed' => (
-        'Closed',
-        theme.colorScheme.surfaceContainerHighest,
-        theme.colorScheme.onSurfaceVariant,
-      ),
+    final code = switch (booking.agreementStatus) {
       // The wire says who is waited on; the chip says whether that is you.
       'AwaitingBusiness' || 'AwaitingCustomer' =>
         booking.needsMyReply(viewerIsBusiness: viewerIsBusiness)
-            ? (
-                'Waiting for you',
-                theme.colorScheme.tertiaryContainer,
-                theme.colorScheme.onTertiaryContainer,
-              )
-            : (
-                'Waiting for them',
-                theme.colorScheme.surfaceContainerHighest,
-                theme.colorScheme.onSurfaceVariant,
-              ),
+            ? 'WaitingForYou'
+            : 'WaitingForThem',
+      final status => status,
+    };
+    final label = UiConfig.current.label('BookingAgreement.Chip', code);
+
+    final (background, foreground) = switch (code) {
+      'Agreed' => (
+        theme.colorScheme.primaryContainer,
+        theme.colorScheme.onPrimaryContainer,
+      ),
+      'WaitingForYou' => (
+        theme.colorScheme.tertiaryContainer,
+        theme.colorScheme.onTertiaryContainer,
+      ),
       _ => (
-        'Not agreed yet',
         theme.colorScheme.surfaceContainerHighest,
         theme.colorScheme.onSurfaceVariant,
       ),

@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Zuno.Application.Common.Interfaces;
 using Zuno.Application.Modules.Business.DTOs;
+using Zuno.Application.Modules.HiringPost.Common;
 using Zuno.Domain.Entities;
 using Zuno.Domain.Enums;
 using Zuno.Domain.Exceptions;
@@ -15,18 +16,19 @@ public class GetBusinessDashboardQueryHandler(
     IDateTimeProvider dateTimeProvider,
     IApplicationDbContext dbContext,
     IWorkerScheduleService workerScheduleService,
-    IBusinessTrustService trustService)
+    IBusinessTrustService trustService,
+    IPlatformSettings platformSettings)
     : IRequestHandler<GetBusinessDashboardQuery, BusinessDashboardDto>
 {
-    /// <summary>Months of history on the trend chart.</summary>
-    private const int TrendMonths = 6;
+    /// <summary>Months of history on the trend chart. A platform setting.</summary>
+    private int TrendMonths => platformSettings.Current.BusinessDashboardTrendMonths;
 
     /// <summary>
     /// Rows returned behind each tile. The counts above them are always the true totals — this
     /// only caps how much detail travels, so a long-running business does not ship a thousand
-    /// rows to draw one screen.
+    /// rows to draw one screen. A platform setting.
     /// </summary>
-    private const int DetailLimit = 50;
+    private int DetailLimit => platformSettings.Current.BusinessDashboardDetailLimit;
 
     public async Task<BusinessDashboardDto> Handle(
         GetBusinessDashboardQuery request,
@@ -127,7 +129,7 @@ public class GetBusinessDashboardQueryHandler(
             ActiveServices = servicesByActive.GetValueOrDefault(true),
             InactiveServices = servicesByActive.GetValueOrDefault(false),
             ByCategory = BuildBreakdown(completed),
-            Trend = BuildTrend(completed, now),
+            Trend = BuildTrend(completed, now, TrendMonths),
             // Which list a row is on already settles its stage: being on Awaiting payment means
             // finished with a wage owed, which the status alone cannot say.
             AwaitingPayment = awaitingPayment.Take(DetailLimit).Select(b => ToDto(b, OrderStage.AwaitingPayment)).ToList(),
@@ -165,12 +167,13 @@ public class GetBusinessDashboardQueryHandler(
         Guid businessId,
         CancellationToken cancellationToken)
     {
-        var posts = await dbContext.HiringPosts
-            .Include(p => p.Applications)
-            .Where(p => p.BusinessOwnerProfileId == businessId)
-            .OrderByDescending(p => p.EventDate)
-            .Take(DetailLimit)
-            .ToListAsync(cancellationToken);
+        var posts = await dbContext.LoadHiringPostsAsync(
+            dbContext.HiringPosts
+                .Where(p => p.BusinessOwnerProfileId == businessId)
+                .OrderByDescending(p => p.EventDate)
+                .Take(DetailLimit),
+            cancellationToken,
+            HiringPostCrewDetail.ApplicationsOnly);
 
         return posts.Select(p => new CrewEventDto
         {
@@ -309,11 +312,11 @@ public class GetBusinessDashboardQueryHandler(
     /// Every month in the window, including the empty ones — a chart that silently skips quiet
     /// months makes a business look busier than it was.
     /// </summary>
-    private static List<MonthlyActivityDto> BuildTrend(List<BookingRow> completed, DateTimeOffset now)
+    private static List<MonthlyActivityDto> BuildTrend(List<BookingRow> completed, DateTimeOffset now, int trendMonths)
     {
         var months = new List<MonthlyActivityDto>();
 
-        for (var offset = TrendMonths - 1; offset >= 0; offset--)
+        for (var offset = trendMonths - 1; offset >= 0; offset--)
         {
             var point = now.AddMonths(-offset);
             var inMonth = completed

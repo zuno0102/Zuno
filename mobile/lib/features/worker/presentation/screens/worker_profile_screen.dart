@@ -1,9 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:zuno/shared/widgets/detail_row.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:zuno/core/constants/api_constants.dart';
 import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/core/ui_config/ui_config.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/worker/domain/entities/worker_profile.dart';
 import 'package:zuno/features/worker/presentation/providers/worker_dashboard_notifier.dart';
@@ -143,26 +145,28 @@ class _DetailsCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
-            _DetailRow(
+            DetailRow.inline(
               label: 'Phone',
               // Said plainly rather than left blank: without a number no business can reach this
               // worker about a job, and they are the only person who can fix it.
-              value: profile.phoneNumber ?? 'Not added — businesses cannot call you',
+              value:
+                  profile.phoneNumber ??
+                  'Not added — businesses cannot call you',
               isMissing: profile.phoneNumber == null,
             ),
-            _DetailRow(
+            DetailRow.inline(
               label: 'UPI',
               value: profile.maskedUpi ?? 'Not added — you cannot be paid yet',
               isMissing: !profile.hasPayoutDestination,
             ),
-            _DetailRow(
+            DetailRow.inline(
               label: 'Hourly rate',
               value: profile.hourlyRate == null
                   ? 'Not set'
                   : rupees(profile.hourlyRate!),
               isMissing: profile.hourlyRate == null,
             ),
-            _DetailRow(
+            DetailRow.inline(
               label: 'Experience',
               value: profile.experienceLabel,
               isMissing: profile.experienceYears == null,
@@ -173,10 +177,8 @@ class _DetailsCard extends StatelessWidget {
               runSpacing: 6,
               children: [
                 StatusPill(
-                  label: profile.availabilityStatus,
-                  tone: profile.isAvailable
-                      ? StatusTone.success
-                      : StatusTone.waiting,
+                  label: profile.availabilityLabel,
+                  tone: profile.availabilityTone,
                   compact: true,
                 ),
                 StatusPill(
@@ -216,26 +218,19 @@ class _PayoutCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final (icon, title, detail, tone) = switch (profile) {
-      _ when !profile.hasPayoutDestination => (
-        Icons.error_outline,
-        'No payout address',
-        'Add your UPI so wages have somewhere to go.',
-        StatusTone.danger,
-      ),
-      _ when !profile.canReceivePayouts => (
-        Icons.hourglass_top,
-        'Your UPI is being checked',
-        'Nothing for you to do. Wages can be sent once it is verified.',
-        StatusTone.waiting,
-      ),
-      _ => (
-        Icons.verified_outlined,
-        'Ready to be paid',
-        'Wages go straight to ${profile.maskedUpi}.',
-        StatusTone.success,
-      ),
+    final state = switch (profile) {
+      _ when !profile.hasPayoutDestination => 'NoAddress',
+      _ when !profile.canReceivePayouts => 'Checking',
+      _ => 'Ready',
     };
+    final entry = UiConfig.current.entry('WorkerPayoutReadiness', state);
+    final icon = entry.iconData;
+    final title = entry.label;
+    final detail = (entry.detail ?? '').replaceAll(
+      '{upi}',
+      '${profile.maskedUpi}',
+    );
+    final tone = entry.statusTone;
 
     return Card(
       margin: EdgeInsets.zero,
@@ -279,49 +274,6 @@ class _PayoutCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({
-    required this.label,
-    required this.value,
-    this.isMissing = false,
-  });
-
-  final String label;
-  final String value;
-  final bool isMissing;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 92,
-            child: Text(
-              label,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: isMissing ? theme.colorScheme.error : null,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -372,14 +324,12 @@ class _ProfilePhotoState extends ConsumerState<_ProfilePhoto> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final photoUrl = ref.watch(workerDashboardProvider).maybeWhen(
-      data: (d) => d.profile?.photoUrl,
-      orElse: () => null,
-    );
+    final photoUrl = ref
+        .watch(workerDashboardProvider)
+        .maybeWhen(data: (d) => d.profile?.photoUrl, orElse: () => null);
 
     return GestureDetector(
       onTap: _isUploading ? null : _pick,
@@ -397,12 +347,12 @@ class _ProfilePhotoState extends ConsumerState<_ProfilePhoto> {
                 border: Border.all(color: theme.colorScheme.surface, width: 2),
               ),
               child: _isUploading
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 11,
                       height: 11,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.white,
+                        color: theme.colorScheme.onPrimary,
                       ),
                     )
                   : Icon(
@@ -457,7 +407,11 @@ class WorkerAvatar extends StatelessWidget {
 /// Names experience, never quality. There are no worker ratings in the app yet, so a badge reading
 /// "Trusted" or "Top rated" would be claiming something nobody has said.
 class WorkerLevelBadge extends StatelessWidget {
-  const WorkerLevelBadge({required this.profile, this.showNextStep = true, super.key});
+  const WorkerLevelBadge({
+    required this.profile,
+    this.showNextStep = true,
+    super.key,
+  });
 
   final WorkerProfile profile;
 

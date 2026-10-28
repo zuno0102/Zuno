@@ -10,7 +10,8 @@ namespace Zuno.Application.Modules.Worker.Commands.SetWorkerPhoto;
 public class SetWorkerPhotoCommandHandler(
     ICurrentUserService currentUserService,
     IWorkerEarningsService earningsService,
-    IApplicationDbContext dbContext) : IRequestHandler<SetWorkerPhotoCommand, WorkerProfileDto>
+    IApplicationDbContext dbContext,
+    IPlatformSettings platformSettings) : IRequestHandler<SetWorkerPhotoCommand, WorkerProfileDto>
 {
     public async Task<WorkerProfileDto> Handle(
         SetWorkerPhotoCommand request,
@@ -30,6 +31,6 @@ public class SetWorkerPhotoCommandHandler(
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var earnings = await earningsService.GetAsync(profile.Id, cancellationToken);
-        return profile.ToDto(earnings);
+        return profile.ToDto(earnings, platformSettings.Current.WorkerLevels);
     }
 }

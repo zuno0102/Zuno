@@ -14,6 +14,12 @@ enum NotificationTarget {
   bookingChat,
   hiringPost,
   hiringPostApplicants,
+
+  /// A full-time vacancy's applicants, for the business; the id is the vacancy.
+  vacancyApplicants,
+
+  /// The worker's own full-time job applications.
+  myVacancyApplications,
   invitations,
   findWork,
   myJobs,
@@ -33,6 +39,8 @@ enum NotificationTarget {
     'BookingChat' => bookingChat,
     'HiringPost' => hiringPost,
     'HiringPostApplicants' => hiringPostApplicants,
+    'VacancyApplicants' => vacancyApplicants,
+    'MyVacancyApplications' => myVacancyApplications,
     'Invitations' => invitations,
     'FindWork' => findWork,
     'MyJobs' => myJobs,
@@ -46,7 +54,8 @@ enum NotificationTarget {
   /// Whether this target needs an id to open anything.
   bool get needsId => switch (this) {
     booking || bookingRating || bookingChat => true,
-    hiringPost || hiringPostApplicants || payouts || workChat => true,
+    hiringPost || hiringPostApplicants || vacancyApplicants => true,
+    payouts || workChat => true,
     _ => false,
   };
 }

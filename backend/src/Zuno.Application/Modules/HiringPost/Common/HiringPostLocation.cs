@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Zuno.Application.Common;
 using Zuno.Application.Common.Interfaces;
+using Zuno.Application.Common.Settings;
 using Zuno.Domain.Enums;
 
 namespace Zuno.Application.Modules.HiringPost.Common;
@@ -15,12 +16,6 @@ namespace Zuno.Application.Modules.HiringPost.Common;
 /// </remarks>
 public static class HiringPostLocation
 {
-    /// <summary>
-    /// A district centre further than this from the point is not "the district it is in" — the point
-    /// is somewhere the seed data does not cover, and leaving the district empty is more honest.
-    /// </summary>
-    private const double MaxDistrictDistanceKm = 150;
-
     /// <summary>The precision a client may claim for a point it sends. Anything else is treated as pinned.</summary>
     public static HiringPostLocationPrecision ParsePrecision(string? value) =>
         string.Equals(value, nameof(HiringPostLocationPrecision.Geocoded), StringComparison.OrdinalIgnoreCase)
@@ -32,19 +27,26 @@ public static class HiringPostLocation
         decimal latitude,
         decimal longitude,
         HiringPostLocationPrecision precision,
+        PlatformRules rules,
         IApplicationDbContext dbContext,
         CancellationToken cancellationToken)
     {
         post.Latitude = Math.Round(latitude, 6);
         post.Longitude = Math.Round(longitude, 6);
         post.LocationPrecision = precision;
-        post.DistrictId = await NearestDistrictIdAsync(latitude, longitude, dbContext, cancellationToken);
+        post.DistrictId = await NearestDistrictIdAsync(
+            latitude, longitude, rules.DistrictMatchMaxDistanceKm, dbContext, cancellationToken);
     }
 
     /// <summary>The district whose centre is closest to the point, or null if none is close enough.</summary>
+    /// <param name="maxDistanceKm">
+    /// A district centre further than this is not "the district it is in" — the point is somewhere the
+    /// seed data does not cover, and leaving the district empty is more honest. A platform setting.
+    /// </param>
     public static async Task<Guid?> NearestDistrictIdAsync(
         decimal latitude,
         decimal longitude,
+        double maxDistanceKm,
         IApplicationDbContext dbContext,
         CancellationToken cancellationToken)
     {
@@ -64,6 +66,6 @@ public static class HiringPostLocation
             .OrderBy(c => c.Km)
             .FirstOrDefault();
 
-        return nearest is not null && nearest.Km <= MaxDistrictDistanceKm ? nearest.Id : null;
+        return nearest is not null && nearest.Km <= maxDistanceKm ? nearest.Id : null;
     }
 }

@@ -1,5 +1,6 @@
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:flutter/material.dart';
+import 'package:zuno/shared/widgets/detail_row.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/features/worker/domain/entities/worker_profile.dart';
@@ -110,29 +111,33 @@ class _WorkerProfileBody extends StatelessWidget {
             ),
           ),
 
-        const SectionHeader(title: 'Skills & rate', padding: EdgeInsets.fromLTRB(0, 8, 0, 8)),
+        const SectionHeader(
+          title: 'Skills & rate',
+          padding: EdgeInsets.fromLTRB(0, 8, 0, 8),
+        ),
         Card(
           margin: EdgeInsets.zero,
           child: Column(
             children: [
-              _InfoRow(label: 'Experience', value: profile.experienceLabel),
-              _InfoRow(
+              DetailRow.tile(
+                label: 'Experience',
+                value: profile.experienceLabel,
+              ),
+              DetailRow.tile(
                 label: 'Hourly rate',
                 value: profile.hourlyRate == null
                     ? 'Not set'
                     : rupees(profile.hourlyRate!),
               ),
-              _InfoRow(
+              DetailRow.tile(
                 label: 'Availability',
                 trailing: StatusPill(
-                  label: profile.availabilityStatus,
-                  tone: profile.isAvailable
-                      ? StatusTone.success
-                      : StatusTone.waiting,
+                  label: profile.availabilityLabel,
+                  tone: profile.availabilityTone,
                   compact: true,
                 ),
               ),
-              _InfoRow(
+              DetailRow.tile(
                 label: 'Verification',
                 trailing: StatusPill(
                   label: profile.verificationStatus,
@@ -144,14 +149,20 @@ class _WorkerProfileBody extends StatelessWidget {
           ),
         ),
 
-        const SectionHeader(title: 'Account', padding: EdgeInsets.fromLTRB(0, 20, 0, 8)),
+        const SectionHeader(
+          title: 'Account',
+          padding: EdgeInsets.fromLTRB(0, 20, 0, 8),
+        ),
         Card(
           margin: EdgeInsets.zero,
           child: Column(
             children: [
-              _InfoRow(label: 'Name', value: profile.fullName),
-              _InfoRow(label: 'Email', value: profile.email),
-              _InfoRow(label: 'Phone', value: profile.phoneNumber ?? 'Not set'),
+              DetailRow.tile(label: 'Name', value: profile.fullName),
+              DetailRow.tile(label: 'Email', value: profile.email),
+              DetailRow.tile(
+                label: 'Phone',
+                value: profile.phoneNumber ?? 'Not set',
+              ),
             ],
           ),
         ),
@@ -199,32 +210,6 @@ class _PayoutWarning extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, this.value, this.trailing});
-
-  final String label;
-  final String? value;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return ListTile(
-      dense: true,
-      title: Text(label, style: theme.textTheme.bodyMedium),
-      trailing:
-          trailing ??
-          Text(
-            value ?? '',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
     );
   }
 }

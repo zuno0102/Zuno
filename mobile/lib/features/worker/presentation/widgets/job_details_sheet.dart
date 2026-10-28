@@ -1,8 +1,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:zuno/shared/widgets/detail_row.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/constants/api_constants.dart';
-import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/core/ui_config/ui_config.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/hiring_post_providers.dart';
@@ -19,6 +20,7 @@ import 'package:zuno/shared/widgets/status_pill.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/worker_job_offers_notifier.dart';
 import 'package:zuno/core/router/push_screen.dart';
+import 'package:zuno/shared/widgets/confirm_dialog.dart';
 
 /// One job, in full, with the decision at the bottom.
 ///
@@ -184,12 +186,12 @@ class _JobDetailsSheetState extends ConsumerState<_JobDetailsSheet> {
 
                 const SizedBox(height: 16),
 
-                _Line(
+                DetailRow.icon(
                   icon: Icons.event_outlined,
                   label: 'When',
                   value: '${formatDate(job.eventDate)} · ${job.scheduleLabel}',
                 ),
-                _Line(
+                DetailRow.icon(
                   icon: Icons.place_outlined,
                   label: 'Where',
                   value: [
@@ -204,13 +206,13 @@ class _JobDetailsSheetState extends ConsumerState<_JobDetailsSheet> {
                       : null,
                 ),
                 if (job.distanceLabel case final distance?)
-                  _Line(
+                  DetailRow.icon(
                     icon: Icons.social_distance,
                     label: 'Distance',
                     value: distance,
                     detail: 'In a straight line. The road is usually further.',
                   ),
-                _Line(
+                DetailRow.icon(
                   icon: Icons.groups_outlined,
                   label: 'Crew wanted',
                   value: job.workersNeeded == 1
@@ -369,28 +371,11 @@ class _JobDetailsSheetState extends ConsumerState<_JobDetailsSheet> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  const StatusPill(
-                    label: 'You took this job',
-                    tone: StatusTone.success,
-                  ),
+                  _applicationPill(job.myApplicationStatus),
                 ],
               ),
               _ when job.hasApplied => Center(
-                child: StatusPill(
-                  label: switch (job.myApplicationStatus) {
-                    'Applied' => 'You have applied',
-                    'Accepted' => 'You took this job',
-                    'Declined' => 'You turned this down',
-                    'Rejected' => 'Not taken forward',
-                    _ => job.myApplicationStatus ?? '',
-                  },
-                  tone: switch (job.myApplicationStatus) {
-                    'Accepted' => StatusTone.success,
-                    'Confirmed' => StatusTone.progress,
-                    'Rejected' || 'Declined' => StatusTone.waiting,
-                    _ => StatusTone.waiting,
-                  },
-                ),
+                child: _applicationPill(job.myApplicationStatus),
               ),
               _ when job.isOpenToWorkers() => FilledButton(
                 onPressed: _apply,
@@ -413,6 +398,16 @@ class _JobDetailsSheetState extends ConsumerState<_JobDetailsSheet> {
       ),
     );
   }
+}
+
+/// Where the worker's application stands, in this sheet's words. A state the table does not name
+/// reads as the server's own word for it.
+StatusPill _applicationPill(String? status) {
+  const group = 'HiringPostApplication.WorkerDetail';
+  return StatusPill(
+    label: UiConfig.current.labels[group]?[status]?.label ?? status ?? '',
+    tone: UiConfig.current.tone(group, status),
+  );
 }
 
 /// The Lead's button on one of a business's own events: start the work on the day, then finish it.
@@ -474,62 +469,6 @@ class _LeadWorkButtonState extends ConsumerState<_LeadWorkButton> {
   }
 }
 
-class _Line extends StatelessWidget {
-  const _Line({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.detail,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final String? detail;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    if (value.trim().isEmpty && detail == null) {
-      return const SizedBox.shrink();
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                if (value.trim().isNotEmpty)
-                  Text(value, style: theme.textTheme.bodyMedium),
-                if (detail case final extra?)
-                  Text(
-                    extra,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// Accept or decline a job this worker was picked for, from inside the details.
 ///
 /// The business has chosen them; nothing is settled and no place is taken until this is answered.
@@ -552,30 +491,17 @@ class _OfferAnswerState extends ConsumerState<_OfferAnswer> {
 
   Future<void> _respond(bool accept) async {
     if (!accept) {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Decline this job?'),
-          content: const Text(
+      final confirmed = await showConfirmDialog(
+        context,
+        title: 'Decline this job?',
+        message:
             'The business will be told and your place goes back to other applicants. '
             'You cannot take it back afterwards.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Keep deciding'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error,
-              ),
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Decline'),
-            ),
-          ],
-        ),
+        confirmLabel: 'Decline',
+        cancelLabel: 'Keep deciding',
+        destructive: true,
       );
-      if (confirmed != true || !mounted) return;
+      if (!confirmed || !mounted) return;
     }
 
     setState(() => _isResponding = true);

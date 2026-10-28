@@ -41,13 +41,22 @@ public class HiringPost : BaseEntity
     /// time, and two jobs at 3pm and 4pm on the same day look like no clash at all — so this is
     /// what makes double-booking detectable.
     /// </summary>
-    public int DurationMinutes { get; set; } = 120;
+    /// <remarks>
+    /// Set from the request, or from the platform's default post length. The shortest and longest a
+    /// business may choose are platform settings too.
+    /// </remarks>
+    public int DurationMinutes { get; set; }
 
-    /// <summary>Shortest job a post may describe.</summary>
-    public const int MinDurationMinutes = 15;
-
-    /// <summary>Longest job a post may describe: one day. Queries rely on it as a bound.</summary>
-    public const int MaxDurationMinutes = 1440;
+    /// <summary>
+    /// The longest any post can ever run: seven days, the top of the range the platform's maximum-length
+    /// setting may be given.
+    /// </summary>
+    /// <remarks>
+    /// A technical ceiling, not the business rule — that is the setting. Live-post queries bound their
+    /// index scan by this rather than by the current setting, so lowering the setting later can never
+    /// hide a longer post created while the limit was higher.
+    /// </remarks>
+    public const int LongestSupportedDurationMinutes = 10080;
 
     /// <summary>
     /// When the crew actually started. Null until the business says so on the day.
@@ -92,11 +101,11 @@ public class HiringPost : BaseEntity
     /// <summary>
     /// <see cref="IsHiringOver"/> negated, in a form the database can run. The first date test is
     /// redundant on its own but lets the (status, event_date) index range-scan: nothing that started
-    /// more than <see cref="MaxDurationMinutes"/> ago can still be running.
+    /// more than <see cref="LongestSupportedDurationMinutes"/> ago can still be running.
     /// </summary>
     public static Expression<Func<HiringPost, bool>> StillHiringAt(DateTimeOffset now)
     {
-        var earliestLiveStart = now.AddMinutes(-MaxDurationMinutes);
+        var earliestLiveStart = now.AddMinutes(-LongestSupportedDurationMinutes);
         return p => p.HiringStoppedAt == null
             && p.WorkCompletedAt == null
             && p.EventDate > earliestLiveStart

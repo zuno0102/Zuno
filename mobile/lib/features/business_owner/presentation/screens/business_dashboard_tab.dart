@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/constants/api_constants.dart';
 import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/core/ui_config/ui_config.dart';
 import 'package:zuno/features/business_owner/domain/entities/business_dashboard.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_dashboard_notifier.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_profile_notifier.dart';
@@ -14,6 +15,11 @@ import 'package:zuno/shared/widgets/section_header.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
 import 'package:zuno/shared/widgets/trust_cards.dart';
 import 'package:zuno/core/router/push_screen.dart';
+import 'package:zuno/features/vacancy/domain/entities/vacancy_summary.dart';
+import 'package:zuno/features/vacancy/presentation/providers/vacancy_providers.dart';
+import 'package:zuno/features/vacancy/domain/entities/vacancy.dart';
+import 'package:zuno/features/vacancy/presentation/screens/business_vacancies_tab.dart';
+import 'package:zuno/features/vacancy/presentation/screens/vacancy_applicants_screen.dart';
 
 /// The business home screen.
 ///
@@ -35,7 +41,10 @@ class BusinessDashboardTab extends ConsumerWidget {
         ),
       ),
       data: (dashboard) => RefreshIndicator(
-        onRefresh: () => ref.refresh(businessDashboardProvider.future),
+        onRefresh: () {
+          ref.invalidate(vacancySummaryProvider);
+          return ref.refresh(businessDashboardProvider.future);
+        },
         child: _Body(dashboard: dashboard),
       ),
     );
@@ -53,9 +62,20 @@ class _Body extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
+        // Named like the Full-time jobs section below, so each group of tiles says which kind of
+        // work it counts.
+        const SectionHeader(
+          title: 'Service jobs',
+          padding: EdgeInsets.fromLTRB(0, 0, 0, 8),
+        ),
         _CompletedCard(dashboard: dashboard),
         const SizedBox(height: 12),
         _QuickStats(dashboard: dashboard),
+        const SectionHeader(
+          title: 'Full-time jobs',
+          padding: EdgeInsets.fromLTRB(0, 18, 0, 8),
+        ),
+        const _FullTimeJobsStats(),
         const SizedBox(height: 12),
         const _ProfileCard(),
         const SizedBox(height: 4),
@@ -93,7 +113,10 @@ class _CompletedCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: canOpen
-            ? () => pushScreen(context, CompletedBreakdownScreen(dashboard: dashboard))
+            ? () => pushScreen(
+                context,
+                CompletedBreakdownScreen(dashboard: dashboard),
+              )
             : null,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
@@ -183,7 +206,6 @@ class _ProfileCard extends ConsumerWidget {
     // Null while it loads or if it fails: the card still draws, and the page behind it reports
     // any error properly rather than this card trying to.
     final profile = profileAsync.maybeWhen(data: (p) => p, orElse: () => null);
-    final isVerified = profile?.verificationStatus == 'Verified';
 
     // Only the parts that were actually filled in, so a half-finished address does not read
     // as "Thrissur, , ".
@@ -258,8 +280,14 @@ class _ProfileCard extends ConsumerWidget {
               const SizedBox(width: 8),
               if (profile != null)
                 StatusPill(
-                  label: isVerified ? 'Verified' : profile.verificationStatus,
-                  tone: isVerified ? StatusTone.success : StatusTone.waiting,
+                  label: UiConfig.current.label(
+                    'BusinessVerification',
+                    profile.verificationStatus,
+                  ),
+                  tone: UiConfig.current.tone(
+                    'BusinessVerification',
+                    profile.verificationStatus,
+                  ),
                   compact: true,
                 ),
               Icon(
@@ -279,11 +307,7 @@ class _QuickStats extends StatelessWidget {
 
   final BusinessDashboard dashboard;
 
-  /// Tiles per row. Three is as many as fits before the labels start truncating on a phone,
-  /// so the rest wrap onto further rows rather than squeezing.
-  ///
-  /// Finished has no tile: the Orders finished card above already shows it.
-  static const _perRow = 3;
+  // Finished has no tile: the Orders finished card above already shows it.
 
   @override
   Widget build(BuildContext context) {
@@ -293,11 +317,14 @@ class _QuickStats extends StatelessWidget {
         value: '${dashboard.upcomingEvents}',
         icon: Icons.event_outlined,
         tone: StatusTone.progress,
-        onTap: () => pushScreen(context, BookingListScreen(
-              title: 'Upcoming events',
-              events: dashboard.upcoming,
-              mode: BookingListMode.upcoming,
-            )),
+        onTap: () => pushScreen(
+          context,
+          BookingListScreen(
+            title: 'Upcoming events',
+            events: dashboard.upcoming,
+            mode: BookingListMode.upcoming,
+          ),
+        ),
       ),
       _StatTile(
         label: 'Awaiting payment',
@@ -306,11 +333,14 @@ class _QuickStats extends StatelessWidget {
         tone: dashboard.awaitingPaymentEvents > 0
             ? StatusTone.progress
             : StatusTone.waiting,
-        onTap: () => pushScreen(context, BookingListScreen(
-              title: 'Awaiting payment',
-              events: dashboard.awaitingPayment,
-              mode: BookingListMode.awaitingPayment,
-            )),
+        onTap: () => pushScreen(
+          context,
+          BookingListScreen(
+            title: 'Awaiting payment',
+            events: dashboard.awaitingPayment,
+            mode: BookingListMode.awaitingPayment,
+          ),
+        ),
       ),
       _StatTile(
         label: 'Cancelled',
@@ -319,18 +349,24 @@ class _QuickStats extends StatelessWidget {
         tone: dashboard.cancelledEvents > 0
             ? StatusTone.danger
             : StatusTone.waiting,
-        onTap: () => pushScreen(context, BookingListScreen(
-              title: 'Cancelled events',
-              events: dashboard.cancelled,
-              mode: BookingListMode.cancelled,
-            )),
+        onTap: () => pushScreen(
+          context,
+          BookingListScreen(
+            title: 'Cancelled events',
+            events: dashboard.cancelled,
+            mode: BookingListMode.cancelled,
+          ),
+        ),
       ),
       _StatTile(
         label: 'Crew events',
         value: '${dashboard.crewEventsCompleted}',
         icon: Icons.groups_outlined,
         tone: StatusTone.success,
-        onTap: () => pushScreen(context, CrewEventListScreen(events: dashboard.crewEvents)),
+        onTap: () => pushScreen(
+          context,
+          CrewEventListScreen(events: dashboard.crewEvents),
+        ),
       ),
       _StatTile(
         label: 'Active workers',
@@ -339,7 +375,10 @@ class _QuickStats extends StatelessWidget {
         tone: dashboard.activeWorkers > 0
             ? StatusTone.progress
             : StatusTone.waiting,
-        onTap: () => pushScreen(context, ActiveWorkerListScreen(workers: dashboard.workers)),
+        onTap: () => pushScreen(
+          context,
+          ActiveWorkerListScreen(workers: dashboard.workers),
+        ),
       ),
       _StatTile(
         label: 'Active services',
@@ -351,23 +390,45 @@ class _QuickStats extends StatelessWidget {
         // Its own list, like every other tile on this screen. Both service tiles used to switch to
         // the Services tab, which lists all of them — so two tiles showing different numbers landed
         // on the same page, and the tap said nothing about which one had been pressed.
-        onTap: () => pushScreen(context, const BusinessServiceListScreen(
-              title: 'Active services',
-              active: true,
-            )),
+        onTap: () => pushScreen(
+          context,
+          const BusinessServiceListScreen(
+            title: 'Active services',
+            active: true,
+          ),
+        ),
       ),
       _StatTile(
         label: 'Inactive services',
         value: '${dashboard.inactiveServices}',
         icon: Icons.visibility_off_outlined,
         tone: StatusTone.waiting,
-        onTap: () => pushScreen(context, const BusinessServiceListScreen(
-              title: 'Inactive services',
-              active: false,
-            )),
+        onTap: () => pushScreen(
+          context,
+          const BusinessServiceListScreen(
+            title: 'Inactive services',
+            active: false,
+          ),
+        ),
       ),
     ];
 
+    return _TileGrid(tiles: tiles);
+  }
+}
+
+/// Stat tiles in rows of three. Shared by every tile section on this screen, so they line up.
+class _TileGrid extends StatelessWidget {
+  const _TileGrid({required this.tiles});
+
+  final List<Widget> tiles;
+
+  /// Tiles per row. Three is as many as fits before the labels start truncating on a phone,
+  /// so the rest wrap onto further rows rather than squeezing.
+  static const _perRow = 3;
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       children: [
         for (var start = 0; start < tiles.length; start += _perRow) ...[
@@ -391,6 +452,79 @@ class _QuickStats extends StatelessWidget {
             ),
           ),
         ],
+      ],
+    );
+  }
+}
+
+/// Full-time hiring at a glance: live posts, and applicants by the list they sit in. Kept apart
+/// from the order tiles above, because it is a different kind of work.
+class _FullTimeJobsStats extends ConsumerWidget {
+  const _FullTimeJobsStats();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final summaryAsync = ref.watch(vacancySummaryProvider);
+
+    if (summaryAsync.hasError && !summaryAsync.hasValue) {
+      return ErrorBanner(message: summaryAsync.error.toString());
+    }
+
+    final s = summaryAsync.value;
+    // A dash while loading rather than a spinner, so the section keeps its shape.
+    String count(int Function(VacancySummary) of) =>
+        s == null ? '–' : '${of(s)}';
+    void openJobs() => pushScreen(context, const BusinessVacanciesScreen());
+    // Every job's applicants together, opened on the tab of the tile that was tapped.
+    void openList(String status) =>
+        pushScreen(context, VacancyApplicantsScreen(initialStatus: status));
+
+    return _TileGrid(
+      tiles: [
+        _StatTile(
+          label: 'Active posts',
+          value: count((s) => s.activePosts),
+          icon: Icons.campaign_outlined,
+          tone: (s?.activePosts ?? 0) > 0
+              ? StatusTone.success
+              : StatusTone.waiting,
+          onTap: openJobs,
+        ),
+        _StatTile(
+          label: 'New applicants',
+          value: count((s) => s.newCount),
+          icon: Icons.mark_email_unread_outlined,
+          // The one that asks for action: someone applied and nobody has looked yet.
+          tone: (s?.newCount ?? 0) > 0 ? StatusTone.danger : StatusTone.waiting,
+          onTap: () => openList(VacancyApplicationStatus.applied),
+        ),
+        _StatTile(
+          label: 'Waiting',
+          value: count((s) => s.waitingCount),
+          icon: Icons.hourglass_top_outlined,
+          tone: (s?.waitingCount ?? 0) > 0
+              ? StatusTone.progress
+              : StatusTone.waiting,
+          onTap: () => openList(VacancyApplicationStatus.viewed),
+        ),
+        _StatTile(
+          label: 'Shortlisted',
+          value: count((s) => s.shortlistedCount),
+          icon: Icons.star_outline,
+          tone: (s?.shortlistedCount ?? 0) > 0
+              ? StatusTone.progress
+              : StatusTone.waiting,
+          onTap: () => openList(VacancyApplicationStatus.shortlisted),
+        ),
+        _StatTile(
+          label: 'Hired',
+          value: count((s) => s.hiredCount),
+          icon: Icons.verified_outlined,
+          tone: (s?.hiredCount ?? 0) > 0
+              ? StatusTone.success
+              : StatusTone.waiting,
+          onTap: () => openList(VacancyApplicationStatus.hired),
+        ),
       ],
     );
   }

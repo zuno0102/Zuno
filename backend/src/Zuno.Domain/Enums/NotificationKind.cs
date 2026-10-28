@@ -31,6 +31,9 @@ public enum NotificationKind : short
     JobCancelled = 26,
     ApplicationRejected = 27,
 
+    /// <summary>The worker's payout UPI was changed — so they hear of it if it was not them.</summary>
+    PayoutDestinationChanged = 28,
+
     // 28 was StaffRoleChanged, for a business-wide Supervisor or Manager title. That idea is gone:
     // a role now belongs to one job, and the worker is told about the job rather than the title.
     // The number is left unused rather than reassigned — values are persisted, and some phone may
@@ -57,6 +60,12 @@ public enum NotificationKind : short
 
     // 48 was StaffAction — a supervisor or manager moving the owner's order along. Nobody but the
     // owner moves an order now, so there is no such actor to report. Left unused, as above.
+
+    /// <summary>Someone applied to one of the business's full-time vacancies.</summary>
+    VacancyApplicationReceived = 49,
+
+    /// <summary>A business moved a worker's vacancy application — shortlisted, hired or not selected.</summary>
+    VacancyApplicationUpdated = 50,
 
     // ---- Either side ----
     ChatMessage = 60,

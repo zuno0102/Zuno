@@ -15,6 +15,7 @@ import 'package:zuno/shared/widgets/section_header.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/avatar_crop_screen.dart';
 import 'package:zuno/core/router/push_screen.dart';
+import 'package:zuno/shared/widgets/confirm_dialog.dart';
 
 /// The customer's account page.
 ///
@@ -113,28 +114,16 @@ class CustomerProfileTab extends ConsumerWidget {
   /// Logging out is one tap from the bottom of a page people scroll through, and signing back in
   /// means finding a password. Cheap to confirm, annoying to undo.
   Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Log out?'),
-        content: const Text('You will need your password to sign back in.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Stay'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(dialogContext).colorScheme.error,
-            ),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Log out'),
-          ),
-        ],
-      ),
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Log out?',
+      message: 'You will need your password to sign back in.',
+      confirmLabel: 'Log out',
+      cancelLabel: 'Stay',
+      destructive: true,
     );
 
-    if (confirmed == true) {
+    if (confirmed) {
       await ref.read(authProvider.notifier).logout();
     }
   }
@@ -185,14 +174,17 @@ class _ProfileHeader extends ConsumerWidget {
                 // Said plainly when it is missing: without a number a business cannot ring about a
                 // booking, and the customer is the only person who can fix that.
                 Text(
-                  user?.phoneNumber ?? 'No mobile number — add one so businesses can call',
+                  user?.phoneNumber ??
+                      'No mobile number — add one so businesses can call',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: user?.phoneNumber == null
                         ? theme.colorScheme.error
                         : theme.colorScheme.onSurfaceVariant,
-                    fontWeight: user?.phoneNumber == null ? FontWeight.w600 : null,
+                    fontWeight: user?.phoneNumber == null
+                        ? FontWeight.w600
+                        : null,
                   ),
                 ),
               ],
@@ -226,7 +218,9 @@ class _ActivitySummary extends ConsumerWidget {
     if (bookings.isEmpty) return const SizedBox.shrink();
 
     final completed = bookings.where((b) => b.isCompleted).length;
-    final active = bookings.where((b) => !b.isCompleted && !b.isCancelled).length;
+    final active = bookings
+        .where((b) => !b.isCompleted && !b.isCancelled)
+        .length;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
@@ -272,7 +266,9 @@ class _Stat extends StatelessWidget {
               ? null
               : Border(
                   right: BorderSide(
-                    color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                    color: theme.colorScheme.outlineVariant.withValues(
+                      alpha: 0.5,
+                    ),
                   ),
                 ),
         ),
@@ -516,7 +512,6 @@ class _ProfilePhotoState extends ConsumerState<_ProfilePhoto> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -539,12 +534,12 @@ class _ProfilePhotoState extends ConsumerState<_ProfilePhoto> {
                 border: Border.all(color: theme.colorScheme.surface, width: 2),
               ),
               child: _isUploading
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 11,
                       height: 11,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.white,
+                        color: theme.colorScheme.onPrimary,
                       ),
                     )
                   : Icon(

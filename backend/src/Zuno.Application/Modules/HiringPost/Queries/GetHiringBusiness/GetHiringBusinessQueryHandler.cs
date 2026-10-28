@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Zuno.Application.Common;
 using Zuno.Application.Common.Interfaces;
+using Zuno.Application.Modules.HiringPost.Common;
 using Zuno.Application.Modules.HiringPost.DTOs;
 using Zuno.Domain.Entities;
 using Zuno.Domain.Enums;
@@ -14,7 +15,8 @@ public class GetHiringBusinessQueryHandler(
     ICurrentUserService currentUserService,
     IDateTimeProvider dateTimeProvider,
     IApplicationDbContext dbContext,
-    IBusinessTrustService trustService) : IRequestHandler<GetHiringBusinessQuery, HiringBusinessDto>
+    IBusinessTrustService trustService,
+    IPlatformSettings platformSettings) : IRequestHandler<GetHiringBusinessQuery, HiringBusinessDto>
 {
     public async Task<HiringBusinessDto> Handle(
         GetHiringBusinessQuery request,
@@ -36,16 +38,15 @@ public class GetHiringBusinessQueryHandler(
         var now = dateTimeProvider.UtcNow;
 
         // The same visibility rule the worker feed uses: still hiring, and the event has not gone.
-        var openPosts = await dbContext.HiringPosts
-            .Include(p => p.BusinessOwnerProfile)
-            .Include(p => p.ServiceSubCategory)
-            .Include(p => p.Applications).ThenInclude(a => a.WorkerProfile).ThenInclude(wp => wp.User)
-            .Include(p => p.Applications).ThenInclude(a => a.SalaryAdjustments)
-            .Where(p => p.BusinessOwnerProfileId == business.Id)
-            .Where(p => p.HiringPostStatus == HiringPostStatus.Open)
-            .Where(Domain.Entities.HiringPost.StillHiringAt(now))
-            .OrderBy(p => p.EventDate)
-            .ToListAsync(cancellationToken);
+        var openPosts = await dbContext.LoadHiringPostsAsync(
+            dbContext.HiringPosts
+                .Include(p => p.BusinessOwnerProfile)
+                .Include(p => p.ServiceSubCategory)
+                .Where(p => p.BusinessOwnerProfileId == business.Id)
+                .Where(p => p.HiringPostStatus == HiringPostStatus.Open)
+                .Where(Domain.Entities.HiringPost.StillHiringAt(now))
+                .OrderBy(p => p.EventDate),
+            cancellationToken);
 
         var trust = await trustService.GetAsync(business.Id, cancellationToken);
 
@@ -79,7 +80,7 @@ public class GetHiringBusinessQueryHandler(
             City = business.BusinessAddress?.City,
             State = business.BusinessAddress?.State,
             Level = business.Level,
-            LevelName = BusinessLevel.Name(business.Level),
+            LevelName = platformSettings.Current.BusinessLevels.Name(business.Level),
             IsVerified = business.VerificationStatus == VerificationStatus.Verified,
             // Only the pay half. A worker is not deciding whether the food was any good.
             Pay = trust.Workers,

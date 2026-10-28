@@ -7,7 +7,7 @@ using Zuno.Domain.ValueObjects;
 
 namespace Zuno.Application.Modules.Customer.Queries.SearchServices;
 
-public class SearchServicesQueryHandler(IApplicationDbContext dbContext)
+public class SearchServicesQueryHandler(IApplicationDbContext dbContext, IPlatformSettings platformSettings)
     : IRequestHandler<SearchServicesQuery, List<ServiceListingDto>>
 {
     public async Task<List<ServiceListingDto>> Handle(
@@ -44,7 +44,8 @@ public class SearchServicesQueryHandler(IApplicationDbContext dbContext)
             .OrderByDescending(s => s.BusinessOwnerProfile.CustomerRatingAverage ?? 0)
             .ThenByDescending(s => s.BusinessOwnerProfile.CompletedJobCount)
             .ThenBy(s => s.Price)
-            .Take(request.Take)
+            // Held inside the configured bounds: an uncapped take let one request pull the whole catalogue.
+            .Take(platformSettings.Current.ServiceSearchPageSize(request.Take))
             .Select(s => new ServiceListingDto
             {
                 Id = s.Id,
@@ -68,12 +69,13 @@ public class SearchServicesQueryHandler(IApplicationDbContext dbContext)
             })
             .ToListAsync(cancellationToken);
 
-        // Applied after materialising: BusinessLevel.Name is C# and the projection above runs as
+        // Applied after materialising: the level names are platform settings and the projection above runs as
         // SQL. Doing it here keeps the wording of a level on the server, rather than duplicated
         // into a switch statement in every client.
+        var levels = platformSettings.Current.BusinessLevels;
         foreach (var listing in listings)
         {
-            listing.LevelName = BusinessLevel.Name(listing.Level);
+            listing.LevelName = levels.Name(listing.Level);
         }
 
         return listings;

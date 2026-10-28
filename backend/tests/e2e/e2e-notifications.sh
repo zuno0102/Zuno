@@ -14,7 +14,7 @@
 # Each person's inbox is fetched ONCE per section and parsed from a variable. Asserting three things
 # used to mean three GETs, which ran this script into the API's own 100-per-minute limit and
 # reported the feature as broken when it was the harness that was too hot.
-API=http://localhost:5056/api/v1
+API=${API:-http://localhost:5056/api/v1}
 PSQL="${PSQL:-psql}"
 : "${PGPASSWORD:?set PGPASSWORD to your Postgres password first}"
 S=$(date +%s)
@@ -313,11 +313,11 @@ OTHER_WEEK=$(date -u -d '+16 days 10:00' +%Y-%m-%dT%H:%M:%SZ)
 P2=$(post_ /business/hiring-posts "$BT" "{\"title\":\"Kovalam beach servers\",\"eventDate\":\"$OTHER_WEEK\",\"durationMinutes\":120,\"workersNeeded\":1,\"salaryAmount\":800,\"salaryUnit\":\"PerEvent\",\"location\":\"Kovalam\"}" | j id)
 want_ok "Worker applies"  "$(post_ /worker/hiring-posts/$P2/apply "$W2" '{}')" ""
 P2A=$(sql "select a.id from hiring_post_applications a where a.hiring_post_id='$P2' and a.worker_profile_id='$WP2' and a.is_deleted=false limit 1")
-want_ok "Business picks them" "$(post_ /business/hiring-posts/applications/$P2A/confirm "$BT")" ""
+want_ok "Business hires them" "$(post_ /business/hiring-posts/applications/$P2A/confirm "$BT")" ""
 load "$W2"
 eq  "Worker was told once" "$(k JobOfferConfirmed)" "1"
-has "Says they were picked" "$(t JobOfferConfirmed)" "Boss T picked you for Kovalam beach servers"
-eq  "Opens that post"       "$(g JobOfferConfirmed)" "HiringPost/$P2"
+has "Says they were hired" "$(t JobOfferConfirmed)" "Boss T hired you for Kovalam beach servers"
+eq  "Opens My jobs, where the job now is" "$(g JobOfferConfirmed)" "MyJobs/null"
 
 cool
 

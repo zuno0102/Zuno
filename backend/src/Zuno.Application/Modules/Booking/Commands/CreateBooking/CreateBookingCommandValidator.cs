@@ -8,7 +8,10 @@ namespace Zuno.Application.Modules.Booking.Commands.CreateBooking;
 
 public class CreateBookingCommandValidator : AbstractValidator<CreateBookingCommand>
 {
-    public CreateBookingCommandValidator(IApplicationDbContext dbContext, IDateTimeProvider dateTimeProvider)
+    public CreateBookingCommandValidator(
+        IApplicationDbContext dbContext,
+        IDateTimeProvider dateTimeProvider,
+        IPlatformSettings platformSettings)
     {
         RuleFor(x => x.BusinessServiceId)
             .MustAsync((id, cancellationToken) => dbContext.BusinessServices
@@ -25,6 +28,10 @@ public class CreateBookingCommandValidator : AbstractValidator<CreateBookingComm
         RuleFor(x => x.ScheduledDate)
             .Must((command, scheduledDate) => scheduledDate > dateTimeProvider.UtcNow)
             .WithMessage("ScheduledDate must be in the future.");
+        RuleFor(x => x.ScheduledDate)
+            .Must(scheduledDate => scheduledDate
+                <= dateTimeProvider.UtcNow.AddDays(platformSettings.Current.CustomerBookingMaxDaysAhead))
+            .WithMessage(_ => $"Bookings can be made up to {platformSettings.Current.CustomerBookingMaxDaysAhead} days ahead.");
 
         RuleFor(x => x.Notes).MaximumLength(1000);
 
@@ -92,6 +99,7 @@ public class CreateBookingCommandValidator : AbstractValidator<CreateBookingComm
                     command.BusinessServiceId,
                     command.Latitude!.Value,
                     command.Longitude!.Value,
+                    platformSettings.Current,
                     dbContext,
                     cancellationToken);
 

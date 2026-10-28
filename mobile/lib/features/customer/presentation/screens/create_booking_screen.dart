@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/booking/presentation/providers/customer_bookings_notifier.dart';
 import 'package:zuno/features/customer/domain/entities/customer_service.dart';
@@ -102,7 +103,11 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
       context: context,
       initialDate: now.add(const Duration(days: 1)),
       firstDate: now,
-      lastDate: now.add(const Duration(days: 90)),
+      lastDate: now.add(
+        Duration(
+          days: ref.read(currentAppOptionsProvider).customerBookingMaxDaysAhead,
+        ),
+      ),
     );
     if (date == null || !mounted) {
       return;

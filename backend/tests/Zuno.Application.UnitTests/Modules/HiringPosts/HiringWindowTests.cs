@@ -89,8 +89,11 @@ public class HiringWindowTests
     [Fact]
     public void StillHiringAt_ForLongestAllowedJob_KeepsItOpenUntilItsEnd()
     {
-        // The index bound must never cut off a legitimate job still running.
-        var post = Post(Now.AddMinutes(-HiringPost.MaxDurationMinutes + 1), minutes: HiringPost.MaxDurationMinutes);
+        // The index bound must never cut off a legitimate job still running — even one as long as the
+        // longest the platform could ever be set to allow.
+        var post = Post(
+            Now.AddMinutes(-HiringPost.LongestSupportedDurationMinutes + 1),
+            minutes: HiringPost.LongestSupportedDurationMinutes);
 
         Domain.Entities.HiringPost.StillHiringAt(Now).Compile()(post).Should().BeTrue();
     }
@@ -356,6 +359,7 @@ public class HiringWindowTests
     {
         var db = new Mock<IApplicationDbContext>();
         db.Setup(d => d.HiringPosts).Returns(TestDbSet.From(post));
+        db.Setup(d => d.HiringPostApplications).Returns(TestDbSet.From(post.Applications.ToArray()));
         db.Setup(d => d.WorkerProfiles).Returns(worker is null ? TestDbSet.From<WorkerProfile>() : TestDbSet.From(worker));
         return db;
     }

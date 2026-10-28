@@ -1,22 +1,20 @@
 using FluentValidation;
+using Zuno.Application.Common.Interfaces;
 
 namespace Zuno.Application.Modules.Business.Commands.SetBusinessServiceQuestions;
 
 public class SetBusinessServiceQuestionsCommandValidator
     : AbstractValidator<SetBusinessServiceQuestionsCommand>
 {
-    /// <summary>
-    /// Enough for any real job, and few enough that the booking form stays fillable on a phone.
-    /// </summary>
-    private const int MaxQuestions = 15;
-
-    public SetBusinessServiceQuestionsCommandValidator()
+    public SetBusinessServiceQuestionsCommandValidator(IPlatformSettings platformSettings)
     {
         RuleFor(x => x.ServiceId).NotEmpty();
 
+        // A platform setting: enough for any real job, few enough that the booking form stays
+        // fillable on a phone.
         RuleFor(x => x.Questions)
-            .Must(questions => questions.Count <= MaxQuestions)
-            .WithMessage($"A service can ask at most {MaxQuestions} questions.");
+            .Must(questions => questions.Count <= platformSettings.Current.ServiceMaxQuestions)
+            .WithMessage(_ => $"A service can ask at most {platformSettings.Current.ServiceMaxQuestions} questions.");
 
         // A question with an id repeated twice would be edited twice and end up with whichever
         // came last, silently discarding one of the two the business typed.

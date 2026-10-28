@@ -1,3 +1,5 @@
+import 'package:zuno/core/ui_config/ui_config.dart';
+import 'package:zuno/core/utils/ui_lookup.dart';
 import 'package:zuno/shared/domain/payment_status.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post_salary_adjustment.dart';
 
@@ -85,14 +87,9 @@ class HiringPostApplication {
   bool get hasUnsettledPay => hasAgreedSalary && !isPaid;
 
   /// How this application reads on screen, since "Confirmed" now means something narrower.
-  String get statusLabel => switch (status) {
-    'Applied' => 'Applied',
-    'Confirmed' => 'Awaiting worker',
-    'Accepted' => 'Accepted',
-    'Rejected' => 'Rejected',
-    'Declined' => 'Declined by worker',
-    _ => status,
-  };
+  String get statusLabel =>
+      UiConfig.current.own('HiringPostApplication.Business', status)?.label ??
+      status;
 
   bool get hasAgreedSalary => agreedSalaryAmount != null;
   bool get hasBeenRaised => salaryAdjustments.isNotEmpty;

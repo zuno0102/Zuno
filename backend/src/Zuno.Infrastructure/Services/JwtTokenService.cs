@@ -17,6 +17,13 @@ public class JwtTokenService(
     private const string PasswordResetPurposeClaim = "purpose";
     private const string PasswordResetPurposeValue = "password_reset";
     private static readonly TimeSpan PasswordResetTokenExpiry = TimeSpan.FromMinutes(30);
+    private const string PasswordStampClaim = "pwd";
+
+    /// <summary>
+    /// Reset tokens are issued for their own audience, so the bearer handler — which accepts only the
+    /// sign-in audience — can never take one as a sign-in token on an [Authorize] endpoint.
+    /// </summary>
+    private string PasswordResetAudience => _settings.Audience + ".password-reset";
 
     private readonly JwtSettings _settings = jwtSettings.Value;
 
@@ -55,28 +62,29 @@ public class JwtTokenService(
         return Convert.ToHexString(bytes);
     }
 
-    public string GeneratePasswordResetToken(Guid userId)
+    public string GeneratePasswordResetToken(Guid userId, string currentPasswordHash)
     {
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, userId.ToString()),
             new(PasswordResetPurposeClaim, PasswordResetPurposeValue),
+            new(PasswordStampClaim, PasswordStamp(currentPasswordHash)),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
 
-        var token = CreateToken(claims, PasswordResetTokenExpiry);
+        var token = CreateToken(claims, PasswordResetTokenExpiry, PasswordResetAudience);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    public Guid? ValidatePasswordResetToken(string token)
+    public PasswordResetClaims? ValidatePasswordResetToken(string token)
     {
         var validationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
             ValidIssuer = _settings.Issuer,
             ValidateAudience = true,
-            ValidAudience = _settings.Audience,
+            ValidAudience = PasswordResetAudience,
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.SigningKey)),
             ValidateLifetime = true,
@@ -99,7 +107,10 @@ public class JwtTokenService(
             var subject = principal.FindFirstValue(JwtRegisteredClaimNames.Sub)
                 ?? principal.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            return Guid.TryParse(subject, out var userId) ? userId : null;
+            var stamp = principal.FindFirstValue(PasswordStampClaim);
+            return Guid.TryParse(subject, out var userId) && !string.IsNullOrEmpty(stamp)
+                ? new PasswordResetClaims(userId, stamp)
+                : null;
         }
         catch (Exception exception) when (exception is SecurityTokenException or ArgumentException)
         {
@@ -111,7 +122,20 @@ public class JwtTokenService(
         }
     }
 
-    private JwtSecurityToken CreateToken(List<Claim> claims, TimeSpan expiry)
+    /// <inheritdoc />
+    /// <remarks>
+    /// A keyed hash, not the password hash itself: the token is readable by whoever holds it, and must
+    /// say nothing about the password. It changes whenever the password does, which is what makes a
+    /// reset link work once.
+    /// </remarks>
+    public string PasswordStamp(string passwordHash)
+    {
+        var mac = HMACSHA256.HashData(
+            Encoding.UTF8.GetBytes(_settings.SigningKey), Encoding.UTF8.GetBytes(passwordHash));
+        return Convert.ToBase64String(mac, 0, 16).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+    }
+
+    private JwtSecurityToken CreateToken(List<Claim> claims, TimeSpan expiry, string? audience = null)
     {
         var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.SigningKey));
         var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
@@ -122,7 +146,7 @@ public class JwtTokenService(
         // "expires in 15 minutes" was a setting nobody had checked was honoured.
         return new JwtSecurityToken(
             issuer: _settings.Issuer,
-            audience: _settings.Audience,
+            audience: audience ?? _settings.Audience,
             claims: claims,
             expires: dateTimeProvider.UtcNow.UtcDateTime.Add(expiry),
             signingCredentials: credentials);

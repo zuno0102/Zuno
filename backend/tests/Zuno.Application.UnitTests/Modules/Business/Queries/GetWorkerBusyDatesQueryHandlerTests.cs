@@ -3,6 +3,7 @@ using Moq;
 using Zuno.Application.Common.Interfaces;
 using Zuno.Application.Modules.Business.Queries.GetWorkerBusyDates;
 using Zuno.Domain.Entities;
+using Zuno.Domain.Enums;
 using Zuno.Domain.Exceptions;
 
 namespace Zuno.Application.UnitTests.Modules.Business.Queries;
@@ -58,7 +59,7 @@ public class GetWorkerBusyDatesQueryHandlerTests
             _schedule.Object);
     }
 
-    private void OnMyTeam(bool yes) =>
+    private void OnMyTeam(bool yes, BusinessWorkerStatus status = BusinessWorkerStatus.Active) =>
         _teams
             .Setup(t => t.GetByBusinessAndWorkerAsync(
                 _businessId, _workerProfileId, It.IsAny<CancellationToken>()))
@@ -67,8 +68,23 @@ public class GetWorkerBusyDatesQueryHandlerTests
                 {
                     BusinessOwnerProfileId = _businessId,
                     WorkerProfileId = _workerProfileId,
+                    AssignmentStatus = status,
                 }
                 : null);
+
+    [Theory]
+    [InlineData(BusinessWorkerStatus.Invited)]
+    [InlineData(BusinessWorkerStatus.Rejected)]
+    [InlineData(BusinessWorkerStatus.Removed)]
+    public async Task An_invitation_alone_does_not_open_a_workers_diary(BusinessWorkerStatus status)
+    {
+        // Inviting is one-sided: anyone can invite any number. Only a worker who joined is crew.
+        OnMyTeam(true, status);
+
+        var act = () => _sut.Handle(new GetWorkerBusyDatesQuery { WorkerProfileId = _workerProfileId }, default);
+
+        await act.Should().ThrowAsync<EntityNotFoundException>();
+    }
 
     [Fact]
     public async Task A_business_can_read_its_own_crews_diary()

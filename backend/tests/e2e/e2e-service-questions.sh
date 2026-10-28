@@ -13,7 +13,7 @@
 #   * the wording is FROZEN onto the answer, so rewording or retiring a question later never
 #     changes what an old order says it was told
 #   * a service with no questions books exactly as it always did
-API=http://localhost:5056/api/v1
+API=${API:-http://localhost:5056/api/v1}
 PSQL="${PSQL:-psql}"
 : "${PGPASSWORD:?set PGPASSWORD to your Postgres password first}"
 S=$(date +%s)

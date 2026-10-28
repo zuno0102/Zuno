@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/core/ui_config/ui_config.dart';
 
 /// What colour an identity check deserves.
 ///
@@ -9,13 +10,10 @@ import 'package:zuno/core/theme/app_colors.dart';
 /// somebody is checking right now, which is a state in motion, not an idle one.
 ///
 /// Amber, never green: green is reserved for a check that has actually passed, and on a worker's
-/// green pages a greenish pending badge reads as approval at a glance.
-StatusTone verificationTone(String status) => switch (status) {
-  'Verified' => StatusTone.success,
-  // Said in red, because a rejected check is the one state a worker has to act on.
-  'Rejected' => StatusTone.danger,
-  _ => StatusTone.progress,
-};
+/// green pages a greenish pending badge reads as approval at a glance. Rejected is red, because a
+/// rejected check is the one state a worker has to act on. From the `VerificationStatus` labels.
+StatusTone verificationTone(String status) =>
+    UiConfig.current.tone('VerificationStatus', status);
 
 /// A compact labelled badge: icon, a short state word, and an optional detail.
 ///

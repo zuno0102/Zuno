@@ -1,10 +1,12 @@
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:zuno/shared/widgets/detail_row.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/core/constants/api_constants.dart';
 import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/core/ui_config/ui_config.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/create_hiring_post_sheet.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/invite_worker_dialog.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
@@ -685,6 +687,12 @@ class _ApplicationRowState extends ConsumerState<_ApplicationRow> {
         await ref
             .read(businessHiringPostsProvider.notifier)
             .confirmApplication(widget.application.id);
+        // They applied, so accepting them hires them: there is no offer left for them to answer.
+        if (mounted) {
+          context.showSuccessMessage(
+            '${widget.application.workerName} is hired and on the crew.',
+          );
+        }
       } else {
         await ref
             .read(businessHiringPostsProvider.notifier)
@@ -714,18 +722,24 @@ class _ApplicationRowState extends ConsumerState<_ApplicationRow> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _DetailLine(
+              DetailRow(
                 label: 'Phone',
                 value: application.workerPhone ?? 'No phone number on file',
+                spacing: 8,
               ),
-              _DetailLine(
+              DetailRow(
                 label: 'Applied on',
                 value: application.appliedAt.toLocal().toString().substring(
                   0,
                   16,
                 ),
+                spacing: 8,
               ),
-              _DetailLine(label: 'Status', value: application.statusLabel),
+              DetailRow(
+                label: 'Status',
+                value: application.statusLabel,
+                spacing: 8,
+              ),
               if (application.hasAgreedSalary)
                 _AgreedSalarySection(application: application),
             ],
@@ -745,7 +759,7 @@ class _ApplicationRowState extends ConsumerState<_ApplicationRow> {
               onPressed: widget.isPostFull
                   ? null
                   : () => Navigator.of(context).pop('confirm'),
-              child: Text(widget.isPostFull ? 'Post is full' : 'Confirm'),
+              child: Text(widget.isPostFull ? 'Post is full' : 'Hire'),
             ),
           ],
         ],
@@ -810,7 +824,7 @@ class _ApplicationRowState extends ConsumerState<_ApplicationRow> {
                 icon: const Icon(Icons.check_circle_outline, size: 18),
                 tooltip: widget.isPostFull
                     ? 'Post is already fully staffed'
-                    : 'Confirm',
+                    : 'Hire',
                 onPressed: widget.isPostFull
                     ? null
                     : () => _respond(confirm: true),
@@ -824,7 +838,10 @@ class _ApplicationRowState extends ConsumerState<_ApplicationRow> {
                   pills: [
                     StatusPill(
                       label: application.statusLabel,
-                      tone: _statusTone(application),
+                      tone: UiConfig.current.tone(
+                        'HiringPostApplication.BusinessTone',
+                        application.status,
+                      ),
                       compact: true,
                     ),
                     // Where this worker's own wages have got to. Only the crew-wide figure was
@@ -833,7 +850,10 @@ class _ApplicationRowState extends ConsumerState<_ApplicationRow> {
                     if (application.paymentLabel case final label?)
                       StatusPill(
                         label: label,
-                        tone: _paymentTone(application),
+                        tone: UiConfig.current.tone(
+                          'PaymentStatus.BusinessTone',
+                          application.paymentStatus,
+                        ),
                         compact: true,
                       ),
                   ],
@@ -915,42 +935,4 @@ class _AgreedSalarySection extends StatelessWidget {
       ],
     );
   }
-}
-
-class _DetailLine extends StatelessWidget {
-  const _DetailLine({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.labelMedium),
-          Text(value),
-        ],
-      ),
-    );
-  }
-}
-
-/// Tone per application state. "Awaiting worker" is deliberately the in-flight tone rather than
-/// the danger one — a pending offer is neither a win nor a loss, it is simply unresolved.
-StatusTone _statusTone(HiringPostApplication application) {
-  if (application.isAccepted) return StatusTone.success;
-  if (application.isOfferPending) return StatusTone.progress;
-  if (application.isApplied) return StatusTone.waiting;
-  return StatusTone.danger;
-}
-
-StatusTone _paymentTone(HiringPostApplication application) {
-  if (application.isPaid) return StatusTone.success;
-  if (application.isPaymentFailed || application.isPaymentDisputed) {
-    return StatusTone.danger;
-  }
-  return StatusTone.progress;
 }

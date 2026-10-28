@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Zuno.Application.Common.Interfaces;
+using Zuno.Application.Modules.HiringPost.Common;
 using Zuno.Application.Modules.HiringPost.DTOs;
 using Zuno.Domain.Entities;
 using Zuno.Domain.Enums;
@@ -26,24 +27,23 @@ public class GetMyJobOffersQueryHandler(
 
         var now = dateTimeProvider.UtcNow;
 
-        var posts = await dbContext.HiringPosts
-            .Include(p => p.BusinessOwnerProfile)
-            .Include(p => p.ServiceSubCategory)
-            .Include(p => p.District)
-            .Include(p => p.Applications).ThenInclude(a => a.WorkerProfile).ThenInclude(wp => wp.User)
-            .Include(p => p.Applications).ThenInclude(a => a.SalaryAdjustments)
-            // Confirmed is the offer state: the business has picked this worker and nothing is
-            // settled until they answer. Applied is their own doing and Accepted is already decided,
-            // so neither belongs on a list of things waiting on them.
-            .Where(p => p.Applications.Any(a =>
-                a.WorkerProfileId == workerProfile.Id
-                && a.ApplicationStatus == HiringPostApplicationStatus.Confirmed))
-            // A job whose hiring has ended cannot be accepted, and an offer nobody can act on is noise
-            // on a screen whose whole purpose is things that need answering.
-            .Where(Domain.Entities.HiringPost.StillHiringAt(now))
-            // Soonest first: the offer that expires first is the one to answer first.
-            .OrderBy(p => p.EventDate)
-            .ToListAsync(cancellationToken);
+        var posts = await dbContext.LoadHiringPostsAsync(
+            dbContext.HiringPosts
+                .Include(p => p.BusinessOwnerProfile)
+                .Include(p => p.ServiceSubCategory)
+                .Include(p => p.District)
+                // Confirmed is the offer state: the business has picked this worker and nothing is
+                // settled until they answer. Applied is their own doing and Accepted is already
+                // decided, so neither belongs on a list of things waiting on them.
+                .Where(p => p.Applications.Any(a =>
+                    a.WorkerProfileId == workerProfile.Id
+                    && a.ApplicationStatus == HiringPostApplicationStatus.Confirmed))
+                // A job whose hiring has ended cannot be accepted, and an offer nobody can act on is
+                // noise on a screen whose whole purpose is things that need answering.
+                .Where(Domain.Entities.HiringPost.StillHiringAt(now))
+                // Soonest first: the offer that expires first is the one to answer first.
+                .OrderBy(p => p.EventDate),
+            cancellationToken);
 
         return posts.Select(p => p.ToDto(workerProfile.Id)).ToList();
     }

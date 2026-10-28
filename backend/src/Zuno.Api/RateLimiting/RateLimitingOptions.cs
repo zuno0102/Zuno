@@ -21,7 +21,10 @@ public sealed class RateLimitingOptions
     /// <summary>The endpoint that calls out to a third-party geocoder on user-supplied text.</summary>
     public PolicyLimit PlaceSearch { get; set; } = new();
 
-    /// <summary>How long each window lasts. Shared by all three limits.</summary>
+    /// <summary>Endpoints that take personal documents, such as a job application.</summary>
+    public PolicyLimit DocumentUpload { get; set; } = new();
+
+    /// <summary>How long each window lasts. Shared by every limit.</summary>
     public int WindowMinutes { get; set; }
 
     public sealed class PolicyLimit

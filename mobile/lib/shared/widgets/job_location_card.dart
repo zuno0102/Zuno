@@ -115,7 +115,7 @@ class JobLocationCard extends StatelessWidget {
                               Icons.location_on,
                               size: 40,
                               color: theme.colorScheme.error,
-                              shadows: const [
+                              shadows: [
                                 Shadow(
                                   blurRadius: 4,
                                   color: AppColors.shadowStrong,

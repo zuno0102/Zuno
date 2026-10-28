@@ -38,6 +38,12 @@ public enum NotificationTarget : short
     /// <summary>A hiring post's applicants, for the business — id is the post.</summary>
     HiringPostApplicants = 11,
 
+    /// <summary>A full-time vacancy's applicants, for the business — id is the vacancy.</summary>
+    VacancyApplicants = 12,
+
+    /// <summary>The worker's own full-time job applications. No id.</summary>
+    MyVacancyApplications = 13,
+
     /// <summary>The worker's Invitations tab. No id.</summary>
     Invitations = 20,
 

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Zuno.Application.Common.Interfaces;
 using Zuno.Application.Common.Settings;
+using Zuno.Application.Modules.HiringPost.Common;
 using Zuno.Application.Modules.HiringPost.DTOs;
 using Zuno.Domain.Entities;
 using Zuno.Domain.Enums;
@@ -29,10 +30,9 @@ public class CreatePayoutBatchCommandHandler(
         var businessProfile = await businessOwnerProfileRepository.GetByUserIdAsync(userId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(BusinessOwnerProfile), userId);
 
-        var post = await dbContext.HiringPosts
-            .Include(p => p.Applications).ThenInclude(a => a.WorkerProfile).ThenInclude(w => w.User)
-            .Include(p => p.Applications).ThenInclude(a => a.WorkerProfile).ThenInclude(w => w.PayoutDetail)
-            .FirstOrDefaultAsync(p => p.Id == request.HiringPostId, cancellationToken)
+        var post = await dbContext.LoadHiringPostAsync(
+            dbContext.HiringPosts.Where(p => p.Id == request.HiringPostId),
+            cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Domain.Entities.HiringPost), request.HiringPostId);
 
         if (post.BusinessOwnerProfileId != businessProfile.Id)
@@ -142,8 +142,8 @@ public class CreatePayoutBatchCommandHandler(
                 excluded.Add(new PayoutExclusion(
                     workerName,
                     destination is null || !destination.HasDestination
-                        ? "No UPI ID or bank account on file. Ask them to add one."
-                        : "Their payout details are still being checked."));
+                        ? "No UPI ID on file — ask the worker to add one."
+                        : "UPI is not verified — check with the worker."));
                 continue;
             }
 

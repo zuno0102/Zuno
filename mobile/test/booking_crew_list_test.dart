@@ -18,6 +18,7 @@ void main() {
     double? salary,
     String paymentStatus = 'Unpaid',
     bool hasPayoutDetails = true,
+    String payoutState = '',
   }) => BookingWorkerAssignment(
     workerProfileId: name,
     workerName: name,
@@ -29,6 +30,7 @@ void main() {
     agreedSalaryUnit: salary == null ? null : 'PerEvent',
     paymentStatus: paymentStatus,
     hasPayoutDetails: hasPayoutDetails,
+    payoutState: payoutState,
   );
 
   Booking order({
@@ -148,7 +150,36 @@ void main() {
       ),
     );
 
-    expect(find.text('No payout details on file'), findsOneWidget);
+    expect(
+      find.text('No UPI ID on file — ask the worker to add one'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('says to check with a worker whose UPI is not verified', (
+    tester,
+  ) async {
+    // A UPI on file but not verified (it changed, or failed the check): the business should ask
+    // the worker, not wait for a payout that will be refused.
+    await pump(
+      tester,
+      order(
+        crew: [
+          worker(
+            name: 'Ravi',
+            displayStatus: 'Active',
+            salary: 800,
+            hasPayoutDetails: false,
+            payoutState: 'NotVerified',
+          ),
+        ],
+      ),
+    );
+
+    expect(
+      find.text('UPI is not verified — check with the worker'),
+      findsOneWidget,
+    );
   });
 
   group('the count in the heading', () {

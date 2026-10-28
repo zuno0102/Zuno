@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:zuno/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/core/constants/api_constants.dart';
@@ -9,6 +10,7 @@ import 'package:zuno/features/business_owner/presentation/screens/manage_service
 import 'package:zuno/features/business_owner/presentation/widgets/business_service_form_sheet.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/core/router/push_screen.dart';
+import 'package:zuno/shared/widgets/confirm_dialog.dart';
 
 class BusinessServicesTab extends ConsumerWidget {
   const BusinessServicesTab({super.key});
@@ -65,27 +67,14 @@ class _ServiceCard extends ConsumerWidget {
   final BusinessService service;
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Remove service?'),
-        content: Text(
-          '"${service.name}" will no longer be visible to customers.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.tonal(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Remove'),
-          ),
-        ],
-      ),
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Remove service?',
+      message: '"${service.name}" will no longer be visible to customers.',
+      confirmLabel: 'Remove',
     );
 
-    if (confirmed == true) {
+    if (confirmed) {
       await ref
           .read(businessServicesProvider.notifier)
           .deleteService(service.id);
@@ -123,14 +112,14 @@ class _ServiceCard extends ConsumerWidget {
                       child: const Icon(Icons.design_services_outlined),
                     ),
               if (service.video != null)
-                const Positioned(
+                Positioned(
                   right: 2,
                   bottom: 2,
                   child: Icon(
                     Icons.videocam,
                     size: 14,
-                    color: Colors.white,
-                    shadows: [Shadow(blurRadius: 3)],
+                    color: AppColors.onMedia,
+                    shadows: const [Shadow(blurRadius: 3)],
                   ),
                 ),
             ],
@@ -176,7 +165,10 @@ class _ServiceCard extends ConsumerWidget {
             if (value == 'edit') {
               showBusinessServiceFormSheet(context, existing: service);
             } else if (value == 'variants') {
-              pushScreen(context, ManageServiceVariantsScreen(serviceId: service.id));
+              pushScreen(
+                context,
+                ManageServiceVariantsScreen(serviceId: service.id),
+              );
             } else if (value == 'delete') {
               _confirmDelete(context, ref);
             }

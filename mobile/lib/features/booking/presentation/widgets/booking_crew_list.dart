@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:zuno/core/ui_config/ui_config.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/booking/domain/entities/booking.dart';
 import 'package:zuno/features/booking/domain/entities/booking_worker_assignment.dart';
@@ -268,12 +269,16 @@ class _CrewRow extends StatelessWidget {
       null => null,
     };
 
-    final (icon, colour) = switch (worker.displayStatus) {
-      'Completed' => (Icons.check_circle, theme.colorScheme.primary),
-      'InProgress' => (Icons.play_circle_fill, theme.colorScheme.tertiary),
-      'Active' => (Icons.check_circle_outline, theme.colorScheme.primary),
-      'Declined' => (Icons.cancel_outlined, theme.colorScheme.error),
-      _ => (Icons.schedule, theme.colorScheme.outline),
+    final icon = UiConfig.current.icon(
+      'BookingWorkerAssignment.Crew',
+      worker.displayStatus,
+    );
+    // Theme roles rather than status tones, so they stay with the code.
+    final colour = switch (worker.displayStatus) {
+      'Completed' || 'Active' => theme.colorScheme.primary,
+      'InProgress' => theme.colorScheme.tertiary,
+      'Declined' => theme.colorScheme.error,
+      _ => theme.colorScheme.outline,
     };
 
     return InkWell(
@@ -338,7 +343,14 @@ class _CrewRow extends StatelessWidget {
                         const SizedBox(width: 4),
                         Flexible(
                           child: Text(
-                            'No payout details on file',
+                            // Which of the two problems, so the business knows whether to ask
+                            // for a UPI ID or to check the one they gave.
+                            UiConfig.current.label(
+                              'PayoutState',
+                              worker.payoutState.isEmpty
+                                  ? 'None'
+                                  : worker.payoutState,
+                            ),
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.error,
                             ),

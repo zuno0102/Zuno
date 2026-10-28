@@ -84,7 +84,7 @@ class ServiceCard extends StatelessWidget {
                   Row(
                     children: [
                       if (service.hasRating) ...[
-                        const Icon(Icons.star_rounded, size: 14, color: AppColors.ratingStar),
+                        Icon(Icons.star_rounded, size: 14, color: AppColors.ratingStar),
                         const SizedBox(width: 2),
                         Text(
                           service.ratingAverage!.toStringAsFixed(1),

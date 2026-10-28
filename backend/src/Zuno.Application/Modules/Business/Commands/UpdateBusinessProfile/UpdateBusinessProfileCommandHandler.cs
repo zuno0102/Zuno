@@ -9,7 +9,8 @@ namespace Zuno.Application.Modules.Business.Commands.UpdateBusinessProfile;
 public class UpdateBusinessProfileCommandHandler(
     ICurrentUserService currentUserService,
     IBusinessOwnerProfileRepository businessOwnerProfileRepository,
-    IApplicationDbContext dbContext) : IRequestHandler<UpdateBusinessProfileCommand, BusinessProfileDto>
+    IApplicationDbContext dbContext,
+    IPlatformSettings platformSettings) : IRequestHandler<UpdateBusinessProfileCommand, BusinessProfileDto>
 {
     public async Task<BusinessProfileDto> Handle(UpdateBusinessProfileCommand request, CancellationToken cancellationToken)
     {
@@ -56,6 +57,6 @@ public class UpdateBusinessProfileCommandHandler(
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return profile.ToDto();
+        return profile.ToDto(platformSettings.Current.BusinessLevels);
     }
 }

@@ -11,6 +11,22 @@ import 'package:zuno/features/business_owner/presentation/screens/dashboard_deta
 import 'package:zuno/features/catalog/domain/entities/order_stage.dart';
 import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
 import 'package:zuno/shared/domain/business_trust.dart';
+import 'package:zuno/features/vacancy/domain/entities/vacancy.dart';
+import 'package:zuno/features/vacancy/domain/entities/vacancy_payment.dart';
+import 'package:zuno/features/vacancy/domain/entities/vacancy_summary.dart';
+import 'package:zuno/features/vacancy/presentation/providers/vacancy_providers.dart';
+import 'package:zuno/features/vacancy/presentation/screens/business_vacancies_tab.dart';
+import 'package:zuno/features/vacancy/presentation/screens/vacancy_applicants_screen.dart';
+
+import 'features/vacancy/vacancy_fixtures.dart';
+
+const _summary = VacancySummary(
+  activePosts: 21,
+  newCount: 22,
+  waitingCount: 23,
+  shortlistedCount: 24,
+  hiredCount: 25,
+);
 
 /// The business home screen must render every section on a phone-sized screen.
 ///
@@ -101,8 +117,9 @@ void main() {
   );
 
   Future<void> pump(WidgetTester tester, BusinessDashboard data) async {
-    // A narrow phone, where five tiles across would never have fitted.
-    tester.view.physicalSize = const Size(720, 1600);
+    // A narrow phone, where five tiles across would never have fitted. Tall enough that every
+    // section is built: the list is lazy, and the Full-time jobs section pushed the last ones down.
+    tester.view.physicalSize = const Size(720, 3200);
     tester.view.devicePixelRatio = 2;
     addTearDown(tester.view.reset);
 
@@ -110,6 +127,7 @@ void main() {
       ProviderScope(
         overrides: [
           businessDashboardProvider.overrideWith((ref) async => data),
+          vacancySummaryProvider.overrideWith((ref) async => _summary),
           // A stage name that is not the live one: the row must show what the server sends.
           orderStagesProvider.overrideWith(
             (ref) async => const [
@@ -207,6 +225,7 @@ void main() {
       ProviderScope(
         overrides: [
           businessDashboardProvider.overrideWith((ref) async => dashboard),
+          vacancySummaryProvider.overrideWith((ref) async => _summary),
           businessServicesProvider.overrideWith(_NoServices.new),
         ],
         child: const MaterialApp(home: Scaffold(body: BusinessDashboardTab())),
@@ -316,6 +335,77 @@ void main() {
       expect(find.text('Tap to add your details'), findsOneWidget);
     });
   });
+
+  // Full-time hiring is its own section, apart from the order tiles, and each tile leads to the jobs.
+  testWidgets(
+    'the Full-time jobs section shows its counts and opens the jobs',
+    (tester) async {
+      tester.view.physicalSize = const Size(720, 2400);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+      final repo = FakeVacancyRepository()
+        ..myVacancies = () async => const VacancyPage<Vacancy>(items: []);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            businessDashboardProvider.overrideWith((ref) async => dashboard),
+            businessServicesProvider.overrideWith(_NoServices.new),
+            vacancySummaryProvider.overrideWith((ref) async => _summary),
+            vacancyRepositoryProvider.overrideWithValue(repo),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(body: BusinessDashboardTab()),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Service jobs'), findsOneWidget);
+      expect(find.text('Full-time jobs'), findsOneWidget);
+      for (final (label, value) in const [
+        ('Active posts', '21'),
+        ('New applicants', '22'),
+        ('Waiting', '23'),
+        ('Shortlisted', '24'),
+        ('Hired', '25'),
+      ]) {
+        final tile = find.ancestor(
+          of: find.text(label),
+          matching: find.byType(Card),
+        );
+        expect(
+          find.descendant(of: tile, matching: find.text(value)),
+          findsOneWidget,
+          reason: label,
+        );
+      }
+
+      // A count tile opens every job's applicants, on that tile's own tab.
+      await tester.ensureVisible(find.text('Shortlisted'));
+      await tester.tap(find.text('Shortlisted'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(VacancyApplicantsScreen), findsOneWidget);
+      expect(find.text('All applicants'), findsOneWidget);
+      final tabs = tester.widget<TabBar>(find.byType(TabBar));
+      expect(
+        DefaultTabController.of(tester.element(find.byWidget(tabs))).index,
+        2,
+        reason: 'Shortlisted is the third list',
+      );
+      expect(find.text('Shortlisted (24)'), findsOneWidget);
+
+      // Active posts opens the jobs themselves.
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Active posts'));
+      await tester.tap(find.text('Active posts'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BusinessVacanciesScreen), findsOneWidget);
+    },
+  );
 }
 
 /// The service list the tiles open fetches for itself, so a test that only cares about the

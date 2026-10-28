@@ -19,7 +19,9 @@ import 'package:zuno/shared/widgets/status_track.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/core/ui_config/ui_config.dart';
 import 'package:zuno/core/router/push_screen.dart';
+import 'package:zuno/shared/widgets/confirm_dialog.dart';
 
 class WorkerHiringPostsTab extends ConsumerStatefulWidget {
   const WorkerHiringPostsTab({super.key});
@@ -333,12 +335,15 @@ class _PostCardState extends ConsumerState<_PostCard> {
                       // Tappable: before committing a day, a worker can now check what this
                       // business actually pays and whether it pays on time.
                       InkWell(
-                        onTap: () => pushScreen(context, HiringBusinessScreen(
-                              businessId: post.businessOwnerProfileId,
-                              // Opened from this job's card, so the page shows the business's
-                              // other jobs rather than repeating the one in front of them.
-                              fromPostId: post.id,
-                            )),
+                        onTap: () => pushScreen(
+                          context,
+                          HiringBusinessScreen(
+                            businessId: post.businessOwnerProfileId,
+                            // Opened from this job's card, so the page shows the business's
+                            // other jobs rather than repeating the one in front of them.
+                            fromPostId: post.id,
+                          ),
+                        ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -467,13 +472,15 @@ class _PostCardState extends ConsumerState<_PostCard> {
               Align(
                 alignment: Alignment.centerRight,
                 child: Chip(
-                  label: Text(switch (post.myApplicationStatus) {
-                    'Applied' => 'Applied — awaiting the business',
-                    'Accepted' => 'You accepted this job',
-                    'Declined' => 'You declined this offer',
-                    'Rejected' => 'Not selected',
-                    final other => 'Applied: $other',
-                  }, style: const TextStyle(fontSize: 11)),
+                  label: Text(
+                    UiConfig
+                            .current
+                            .labels['HiringPostApplication.WorkerFeed']?[post
+                                .myApplicationStatus]
+                            ?.label ??
+                        'Applied: ${post.myApplicationStatus}',
+                    style: const TextStyle(fontSize: 11),
+                  ),
                   visualDensity: VisualDensity.compact,
                   backgroundColor: post.myOfferAccepted
                       ? AppColors.status(
@@ -519,30 +526,17 @@ class _OfferDecisionState extends ConsumerState<_OfferDecision> {
     if (applicationId == null) return;
 
     if (!accept) {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Decline this job?'),
-          content: const Text(
+      final confirmed = await showConfirmDialog(
+        context,
+        title: 'Decline this job?',
+        message:
             'The business will be told and your place goes back to other applicants. '
             'You cannot take it back afterwards.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Keep deciding'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error,
-              ),
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Decline'),
-            ),
-          ],
-        ),
+        confirmLabel: 'Decline',
+        cancelLabel: 'Keep deciding',
+        destructive: true,
       );
-      if (confirmed != true || !mounted) return;
+      if (!confirmed || !mounted) return;
     }
 
     setState(() => _isResponding = true);

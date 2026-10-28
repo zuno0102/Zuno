@@ -81,6 +81,26 @@ public class ZunoDbContext(
 
     public DbSet<Notification> Notifications => Set<Notification>();
 
+    public DbSet<VacancyJobType> VacancyJobTypes => Set<VacancyJobType>();
+
+    public DbSet<VacancyFeePlan> VacancyFeePlans => Set<VacancyFeePlan>();
+
+    public DbSet<Vacancy> Vacancies => Set<Vacancy>();
+
+    public DbSet<VacancyRequirement> VacancyRequirements => Set<VacancyRequirement>();
+
+    public DbSet<VacancyApplication> VacancyApplications => Set<VacancyApplication>();
+
+    public DbSet<VacancyApplicationAnswer> VacancyApplicationAnswers => Set<VacancyApplicationAnswer>();
+
+    public DbSet<PlatformSetting> PlatformSettings => Set<PlatformSetting>();
+
+    public DbSet<LevelDefinition> LevelDefinitions => Set<LevelDefinition>();
+
+    public DbSet<DisplayLabel> DisplayLabels => Set<DisplayLabel>();
+
+    public DbSet<ThemeColor> ThemeColors => Set<ThemeColor>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ZunoDbContext).Assembly);

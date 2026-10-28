@@ -27,59 +27,27 @@ namespace Zuno.Application.Modules.Customer.Queries.GetHomeSections;
 /// </remarks>
 public class GetHomeSectionsQueryHandler(
     IApplicationDbContext dbContext,
-    IDateTimeProvider dateTimeProvider)
+    IDateTimeProvider dateTimeProvider,
+    IPlatformSettings platformSettings,
+    IReadCache readCache)
     : IRequestHandler<GetHomeSectionsQuery, HomeServiceSectionsDto>
 {
-    /// <summary>Seven rows of two. The first grid is a taste of the catalogue, not the catalogue.</summary>
-    public const int ForYouCount = 14;
-    public const int MostBookedCount = 7;
-    public const int MoreCount = 10;
-    public const int TopRatedCount = 5;
-    public const int AllCount = 40;
-
-    /// <summary>
-    /// A rating means little from one review, so the top-rated strip asks for a few.
-    /// </summary>
-    private const int MinReviewsForTopRated = 1;
-
     public async Task<HomeServiceSectionsDto> Handle(
         GetHomeSectionsQuery request,
         CancellationToken cancellationToken)
     {
-        var rows = await dbContext.BusinessServices
-            .Where(s => s.IsActive)
-            .Where(s => s.BusinessOwnerProfile.VerificationStatus == VerificationStatus.Verified)
-            .Select(s => new Candidate(
-                new ServiceListingDto
-                {
-                    Id = s.Id,
-                    Name = s.Name,
-                    Description = s.Description,
-                    ServiceCategoryName = s.ServiceCategory.Name,
-                    ServiceCategoryId = s.ServiceCategoryId,
-                    Price = s.Price,
-                    PriceType = s.PriceType.ToString(),
-                    ImageUrl = s.Media
-                        .OrderBy(m => m.SortOrder)
-                        .Select(m => m.Url)
-                        .FirstOrDefault(),
-                    BusinessOwnerProfileId = s.BusinessOwnerProfileId,
-                    BusinessName = s.BusinessOwnerProfile.BusinessName,
-                    BusinessLogoUrl = s.BusinessOwnerProfile.LogoUrl,
-                    City = s.BusinessOwnerProfile.BusinessAddress!.City,
-                    Level = s.BusinessOwnerProfile.Level,
-                    RatingAverage = s.BusinessOwnerProfile.CustomerRatingAverage,
-                    ReviewCount = s.BusinessOwnerProfile.CustomerReviewCount,
-                },
-                dbContext.Bookings.Count(b =>
-                    b.BusinessServiceId == s.Id
-                    && b.BookingStatus != BookingStatus.Cancelled)))
-            .ToListAsync(cancellationToken);
+        var rules = platformSettings.Current;
 
-        foreach (var row in rows)
-        {
-            row.Listing.LevelName = BusinessLevel.Name(row.Listing.Level);
-        }
+        // The catalogue and its booking counts are the same for every customer, so they are read once per
+        // cache window, not once per request: on a million orders that read takes seconds. Only the
+        // shuffle below is per request.
+        var rows = rules.CustomerHomeCacheSeconds > 0
+            ? await readCache.GetOrCreateAsync(
+                "customer-home:candidates",
+                TimeSpan.FromSeconds(rules.CustomerHomeCacheSeconds),
+                LoadCandidatesAsync,
+                cancellationToken)
+            : await LoadCandidatesAsync(cancellationToken);
 
         var random = new Random(
             request.Seed ?? DateOnly.FromDateTime(dateTimeProvider.UtcNow.UtcDateTime).DayNumber);
@@ -166,19 +134,19 @@ public class GetHomeSectionsQueryHandler(
         // candidates already taken. The scarcer section goes first.
         var topRated = PickVaried(
             shuffled
-                .Where(r => r.Listing.ReviewCount >= MinReviewsForTopRated
+                .Where(r => r.Listing.ReviewCount >= rules.CustomerHomeMinReviewsForTopRated
                     && r.Listing.RatingAverage is not null)
                 .OrderByDescending(r => r.Listing.RatingAverage)
                 .ThenByDescending(r => r.Listing.ReviewCount),
-            TopRatedCount);
+            rules.CustomerHomeTopRatedCount);
 
         var mostBooked = PickVaried(
             shuffled.OrderByDescending(r => r.BookingCount)
                 .ThenByDescending(r => r.Listing.RatingAverage ?? 0),
-            MostBookedCount);
+            rules.CustomerHomeMostBookedCount);
 
-        var forYou = Pick(shuffled, ForYouCount);
-        var more = Pick(shuffled, MoreCount);
+        var forYou = Pick(shuffled, rules.CustomerHomeForYouCount);
+        var more = Pick(shuffled, rules.CustomerHomeMoreCount);
 
         // The long list at the bottom is the catalogue itself, so it repeats what the sections above
         // picked — somebody scrolling this far is looking for everything, not for what is left. Still
@@ -186,7 +154,7 @@ public class GetHomeSectionsQueryHandler(
         var all = shuffled
             .GroupBy(r => r.Listing.Name.Trim(), StringComparer.OrdinalIgnoreCase)
             .Select(g => g.First().Listing)
-            .Take(AllCount)
+            .Take(rules.CustomerHomeAllCount)
             .ToList();
 
         return new HomeServiceSectionsDto
@@ -200,5 +168,51 @@ public class GetHomeSectionsQueryHandler(
     }
 
     /// <summary>A service with the one fact the sections rank on that the DTO does not carry.</summary>
+    /// <summary>Every bookable service with how often it has been booked — the pool each section picks from.</summary>
+    private async Task<List<Candidate>> LoadCandidatesAsync(CancellationToken cancellationToken)
+    {
+        var services = await dbContext.BusinessServices
+            .Where(s => s.IsActive)
+            .Where(s => s.BusinessOwnerProfile.VerificationStatus == VerificationStatus.Verified)
+            .Select(s => new ServiceListingDto
+            {
+                Id = s.Id,
+                Name = s.Name,
+                Description = s.Description,
+                ServiceCategoryName = s.ServiceCategory.Name,
+                ServiceCategoryId = s.ServiceCategoryId,
+                Price = s.Price,
+                PriceType = s.PriceType.ToString(),
+                ImageUrl = s.Media
+                        .OrderBy(m => m.SortOrder)
+                        .Select(m => m.Url)
+                        .FirstOrDefault(),
+                BusinessOwnerProfileId = s.BusinessOwnerProfileId,
+                BusinessName = s.BusinessOwnerProfile.BusinessName,
+                BusinessLogoUrl = s.BusinessOwnerProfile.LogoUrl,
+                City = s.BusinessOwnerProfile.BusinessAddress!.City,
+                Level = s.BusinessOwnerProfile.Level,
+                RatingAverage = s.BusinessOwnerProfile.CustomerRatingAverage,
+                ReviewCount = s.BusinessOwnerProfile.CustomerReviewCount,
+            })
+        .ToListAsync(cancellationToken);
+
+        // One grouped count over the orders, instead of a count per service inside the query above.
+        var bookingCounts = await dbContext.Bookings
+            .Where(b => b.BookingStatus != BookingStatus.Cancelled)
+            .GroupBy(b => b.BusinessServiceId)
+            .Select(g => new { ServiceId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(g => g.ServiceId, g => g.Count, cancellationToken);
+
+        var levels = platformSettings.Current.BusinessLevels;
+        foreach (var listing in services)
+        {
+            listing.LevelName = levels.Name(listing.Level);
+        }
+
+        return [.. services.Select(s => new Candidate(s, bookingCounts.GetValueOrDefault(s.Id)))];
+    }
+
+
     private sealed record Candidate(ServiceListingDto Listing, int BookingCount);
 }

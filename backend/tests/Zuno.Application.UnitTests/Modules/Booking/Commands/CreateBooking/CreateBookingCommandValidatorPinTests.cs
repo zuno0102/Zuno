@@ -24,7 +24,7 @@ public class CreateBookingCommandValidatorPinTests
         var clock = new Mock<IDateTimeProvider>();
         clock.Setup(c => c.UtcNow).Returns(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
 
-        _sut = new CreateBookingCommandValidator(dbContext.Object, clock.Object);
+        _sut = new CreateBookingCommandValidator(dbContext.Object, clock.Object, new TestPlatformSettings());
     }
 
     private static CreateBookingCommand Command(decimal? latitude, decimal? longitude) => new()

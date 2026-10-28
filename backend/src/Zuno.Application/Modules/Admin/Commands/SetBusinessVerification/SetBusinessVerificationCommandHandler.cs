@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Zuno.Application.Common.Interfaces;
 using Zuno.Application.Modules.Admin.DTOs;
+using Zuno.Application.Modules.Business.Common;
 using Zuno.Domain.Entities;
 using Zuno.Domain.Enums;
 using Zuno.Domain.Exceptions;
@@ -9,7 +10,7 @@ using Zuno.Domain.Exceptions;
 namespace Zuno.Application.Modules.Admin.Commands.SetBusinessVerification;
 
 public class SetBusinessVerificationCommandHandler(
-    IDateTimeProvider dateTimeProvider,
+    BusinessApproval businessApproval,
     IApplicationDbContext dbContext)
     : IRequestHandler<SetBusinessVerificationCommand, BusinessReviewDto>
 {
@@ -25,13 +26,14 @@ public class SetBusinessVerificationCommandHandler(
             ?? throw new EntityNotFoundException(
                 nameof(BusinessOwnerProfile), request.BusinessOwnerProfileId);
 
-        profile.VerificationStatus = request.Approve
-            ? VerificationStatus.Verified
-            : VerificationStatus.Rejected;
-
-        // Stamped only on approval. A rejection is not a verification date, and keeping the
-        // field meaning one thing is what lets "verified since" be shown later without lying.
-        profile.VerifiedAt = request.Approve ? dateTimeProvider.UtcNow : null;
+        // Approval goes through the same validation as auto-approval; it is refused, with the reasons,
+        // while the business still has something to fix. A rejection is always allowed.
+        var problems = await businessApproval.DecideAsync(profile, request.Approve, cancellationToken);
+        if (problems.Count > 0)
+        {
+            throw new DomainException(
+                "This business cannot be approved yet: " + string.Join("; ", problems));
+        }
 
         await dbContext.SaveChangesAsync(cancellationToken);
 

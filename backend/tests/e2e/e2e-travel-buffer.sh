@@ -5,7 +5,7 @@
 # from 15:31, and 15:30 is refused. The old comparison allowed 15:30, and nothing in the suite
 # ever tested the boundary itself — 15 minutes and 60 minutes were checked, so flipping the
 # operator either way went unnoticed.
-API=http://localhost:5056/api/v1
+API=${API:-http://localhost:5056/api/v1}
 PSQL="${PSQL:-psql}"
 : "${PGPASSWORD:?set PGPASSWORD to your Postgres password first}"
 S=$(date +%s)

@@ -13,9 +13,10 @@ import 'package:flutter_test/flutter_test.dart';
 /// This fails on a raw colour written into a widget, so the next one is caught when it is added
 /// rather than found later by eye.
 void main() {
-  /// `Colors.white`, `Colors.black` and `Colors.transparent` are allowed: they are absolutes, not
-  /// palette choices, and naming them would say less than they already say.
-  final allowed = RegExp(r'(?<![A-Za-z])Colors\.(white|black|transparent)\b');
+  /// Only `Colors.transparent` is allowed: it is the absence of a colour, not a choice of one. White
+  /// and black are choices too — text on a photo, the backdrop of a QR code — and each has a named
+  /// colour in the table, so a change of mind is a row, not a hunt through the code.
+  final allowed = RegExp(r'(?<![A-Za-z])Colors\.transparent\b');
 
   final hexLiteral = RegExp(r'Color\(0x[0-9a-fA-F]{6,8}\)');
 
@@ -23,8 +24,12 @@ void main() {
   /// mistaken for `Colors.green`.
   final namedMaterial = RegExp(r'(?<![A-Za-z])Colors\.[a-z]+');
 
-  /// Where colours are allowed to be written down.
+  /// Where colours are named. The values themselves live in the server's theme_colors table, with
+  /// the built-in copy in assets/ui_config/colors.json.
   const palette = 'lib/core/theme/app_colors.dart';
+
+  /// The code that turns the table into colours, which needs a last-resort value of its own.
+  const engine = 'lib/core/ui_config/';
 
   test('no colour is written into a widget', () {
     final offenders = <String>[];
@@ -33,12 +38,17 @@ void main() {
       if (file is! File || !file.path.endsWith('.dart')) continue;
 
       final path = file.path.replaceAll(r'\', '/');
-      if (path.endsWith(palette) || path.endsWith('.g.dart')) continue;
+      if (path.endsWith(palette) ||
+          path.contains(engine) ||
+          path.endsWith('.g.dart')) {
+        continue;
+      }
 
       final lines = file.readAsLinesSync();
       for (var i = 0; i < lines.length; i++) {
         final line = lines[i];
-        if (line.trimLeft().startsWith('//') || line.trimLeft().startsWith('///')) {
+        if (line.trimLeft().startsWith('//') ||
+            line.trimLeft().startsWith('///')) {
           continue;
         }
 

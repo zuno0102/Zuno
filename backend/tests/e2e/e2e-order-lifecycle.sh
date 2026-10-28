@@ -9,7 +9,7 @@
 #
 # The two that matter most: the order reads In progress from the DATE without anything being
 # tapped, and the count does NOT rise while a wage is outstanding.
-API=http://localhost:5056/api/v1
+API=${API:-http://localhost:5056/api/v1}
 PSQL="${PSQL:-psql}"
 : "${PGPASSWORD:?set PGPASSWORD to your Postgres password first}"
 S=$(date +%s)

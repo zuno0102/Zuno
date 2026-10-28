@@ -6,6 +6,9 @@
 /// reported by a customer rather than by a test.
 library;
 
+import 'package:zuno/core/ui_config/ui_config.dart';
+import 'package:zuno/core/utils/ui_lookup.dart';
+
 const _months = [
   'Jan',
   'Feb',
@@ -112,20 +115,12 @@ class PriceType {
 bool isPerPersonPrice(String? priceType) => priceType == PriceType.perPerson;
 
 /// "/hr" — the short suffix beside a figure.
-String priceUnitSuffix(String priceType) => switch (priceType) {
-  PriceType.hourly => '/hr',
-  PriceType.daily => '/day',
-  PriceType.perPerson => ' per person',
-  _ => '',
-};
+String priceUnitSuffix(String priceType) =>
+    UiConfig.current.own('PriceType', priceType)?.shortLabel ?? '';
 
 /// "per hour" — the spelled-out form, for a line of its own under a figure.
-String priceUnitWords(String priceType) => switch (priceType) {
-  PriceType.hourly => 'per hour',
-  PriceType.daily => 'per day',
-  PriceType.perPerson => 'per person',
-  _ => '',
-};
+String priceUnitWords(String priceType) =>
+    UiConfig.current.own('PriceType', priceType)?.label ?? '';
 
 /// "₹500/hr" — a price with its unit attached.
 String priceLabel(double price, String priceType) =>
@@ -140,22 +135,15 @@ String perPersonTotalLabel(double rate, int workerCount) =>
     '$workerCount × ${rupees(rate)} = ${rupees(rate * workerCount)}';
 
 /// "Rate per hour (INR)" — the form-field label that matches the chosen price type.
-String rateFieldLabel(String priceType) => switch (priceType) {
-  PriceType.hourly => 'Rate per hour (INR)',
-  PriceType.daily => 'Rate per day (INR)',
-  PriceType.perPerson => 'Rate per person (INR)',
-  _ => 'Price (INR)',
-};
+String rateFieldLabel(String priceType) =>
+    UiConfig.current.label('PriceType.RateField', priceType);
 
 /// "Typical duration (hours)" — the duration field's label follows the same choice.
 ///
 /// Per person is priced by headcount, not by time, so its duration is entered in plain minutes
 /// like a fixed-price job.
-String durationFieldLabel(String priceType) => switch (priceType) {
-  PriceType.hourly => 'Typical duration (hours)',
-  PriceType.daily => 'Typical duration (days)',
-  _ => 'Duration (mins)',
-};
+String durationFieldLabel(String priceType) =>
+    UiConfig.current.label('PriceType.DurationField', priceType);
 
 /// How a wage is quoted on a hiring post: `PerEvent`, `PerDay`, `PerHour`.
 class SalaryUnit {
@@ -167,11 +155,8 @@ class SalaryUnit {
 }
 
 /// "per event" — a wage's unit, spelled out.
-String salaryUnitWords(String salaryUnit) => switch (salaryUnit) {
-  SalaryUnit.perHour => 'per hour',
-  SalaryUnit.perDay => 'per day',
-  _ => 'per event',
-};
+String salaryUnitWords(String salaryUnit) =>
+    UiConfig.current.entry('SalaryUnit', salaryUnit).shortLabel;
 
 /// "45 min" / "2 hr" / "1 hr 30 min".
 String formatDuration(int minutes) {

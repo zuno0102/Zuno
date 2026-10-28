@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:zuno/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/core/constants/api_constants.dart';
@@ -125,7 +126,10 @@ class _ServiceTile extends StatelessWidget {
 
   Future<void> _open(BuildContext context) async {
     if (service.variants.isEmpty) {
-      pushScreen(context, CreateBookingScreen(businessName: businessName, service: service));
+      pushScreen(
+        context,
+        CreateBookingScreen(businessName: businessName, service: service),
+      );
       return;
     }
 
@@ -136,11 +140,14 @@ class _ServiceTile extends StatelessWidget {
     );
 
     if (selected != null && context.mounted) {
-      pushScreen(context, CreateBookingScreen(
-            businessName: businessName,
-            service: service,
-            variant: selected,
-          ));
+      pushScreen(
+        context,
+        CreateBookingScreen(
+          businessName: businessName,
+          service: service,
+          variant: selected,
+        ),
+      );
     }
   }
 
@@ -177,14 +184,14 @@ class _ServiceTile extends StatelessWidget {
                       child: const Icon(Icons.design_services_outlined),
                     ),
               if (service.video != null)
-                const Positioned(
+                Positioned(
                   right: 2,
                   bottom: 2,
                   child: Icon(
                     Icons.videocam,
                     size: 14,
-                    color: Colors.white,
-                    shadows: [Shadow(blurRadius: 3)],
+                    color: AppColors.onMedia,
+                    shadows: const [Shadow(blurRadius: 3)],
                   ),
                 ),
             ],
@@ -231,7 +238,10 @@ class _VariantPickerSheet extends StatelessWidget {
               itemCount: service.variants.length,
               itemBuilder: (context, index) {
                 final variant = service.variants[index];
-                final variantLabel = priceLabel(variant.price, variant.priceType);
+                final variantLabel = priceLabel(
+                  variant.price,
+                  variant.priceType,
+                );
 
                 return ListTile(
                   leading: ClipRRect(

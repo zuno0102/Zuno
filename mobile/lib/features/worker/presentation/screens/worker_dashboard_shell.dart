@@ -16,8 +16,9 @@ import 'package:zuno/features/worker/presentation/screens/worker_payments_screen
 import 'package:zuno/shared/widgets/async_detail_screen.dart';
 import 'package:zuno/features/worker/presentation/screens/scan_booking_qr_screen.dart';
 import 'package:zuno/features/worker/presentation/screens/worker_dashboard_tab.dart';
-import 'package:zuno/features/worker/presentation/screens/worker_hiring_posts_tab.dart';
+import 'package:zuno/features/worker/presentation/screens/worker_find_work_tab.dart';
 import 'package:zuno/features/worker/presentation/screens/worker_jobs_tab.dart';
+import 'package:zuno/features/worker/presentation/screens/worker_my_jobs_tab.dart';
 import 'package:zuno/shared/widgets/role_header.dart';
 import 'package:zuno/shared/widgets/role_theme.dart';
 import 'package:zuno/core/permissions/startup_permission_primer.dart';
@@ -46,21 +47,27 @@ class _WorkerDashboardShellState extends ConsumerState<WorkerDashboardShell> {
   /// one opens My jobs on that tab rather than on Current.
   int _myJobsStartTab = WorkerJobsTab.currentTab;
 
+  /// Which half of My jobs opens: service jobs, or full-time applications.
+  int _myJobsSection = WorkerMyJobsTab.serviceSection;
+
   /// Bumped to rebuild My jobs on [_myJobsStartTab] even when it is already the tab on screen.
   int _myJobsOpenCount = 0;
 
-  void _openMyJobs(int tab) => setState(() {
-    _index = _myJobsTab;
-    _myJobsStartTab = tab;
-    _myJobsOpenCount++;
-  });
+  void _openMyJobs(int tab, {int section = WorkerMyJobsTab.serviceSection}) =>
+      setState(() {
+        _index = _myJobsTab;
+        _myJobsStartTab = tab;
+        _myJobsSection = section;
+        _myJobsOpenCount++;
+      });
 
   Widget _tab(int index) => switch (index) {
-    _myJobsTab => WorkerJobsTab(
+    _myJobsTab => WorkerMyJobsTab(
       key: ValueKey(_myJobsOpenCount),
-      initialTab: _myJobsStartTab,
+      initialSection: _myJobsSection,
+      serviceStartTab: _myJobsStartTab,
     ),
-    _findWorkTab => const WorkerHiringPostsTab(),
+    _findWorkTab => const WorkerFindWorkTab(),
     _ => const WorkerDashboardTab(),
   };
 
@@ -80,10 +87,13 @@ class _WorkerDashboardShellState extends ConsumerState<WorkerDashboardShell> {
 
       // A message from a business this worker works for. The title is the sender's name.
       case NotificationTarget.workChat:
-        pushScreen(context, WorkChatScreen(
-              counterpartId: notification.targetId!,
-              counterpartName: notification.title,
-            ));
+        pushScreen(
+          context,
+          WorkChatScreen(
+            counterpartId: notification.targetId!,
+            counterpartName: notification.title,
+          ),
+        );
 
       // An offer or an invitation on a hiring post. The post's own details and its answer buttons
       // live on My jobs › Invitations, which is where a worker answers one.
@@ -98,6 +108,13 @@ class _WorkerDashboardShellState extends ConsumerState<WorkerDashboardShell> {
       case NotificationTarget.findWork:
         setState(() => _index = _findWorkTab);
 
+      // A full-time application was moved along: show it under My jobs › My applications.
+      case NotificationTarget.myVacancyApplications:
+        _openMyJobs(
+          WorkerJobsTab.currentTab,
+          section: WorkerMyJobsTab.applicationsSection,
+        );
+
       case NotificationTarget.payments:
         Navigator.of(
           context,
@@ -109,12 +126,15 @@ class _WorkerDashboardShellState extends ConsumerState<WorkerDashboardShell> {
   }
 
   void _openJob(String bookingId) {
-    pushScreen(context, AsyncDetailScreen<Booking>(
-          title: 'Job',
-          fetch: () =>
-              ref.read(bookingRepositoryProvider).getJobByIdAsWorker(bookingId),
-          builder: (_, booking) => WorkerBookingDetailScreen(booking: booking),
-        ));
+    pushScreen(
+      context,
+      AsyncDetailScreen<Booking>(
+        title: 'Job',
+        fetch: () =>
+            ref.read(bookingRepositoryProvider).getJobByIdAsWorker(bookingId),
+        builder: (_, booking) => WorkerBookingDetailScreen(booking: booking),
+      ),
+    );
   }
 
   /// The order's conversation, for a worker who is party to it.
@@ -122,16 +142,19 @@ class _WorkerDashboardShellState extends ConsumerState<WorkerDashboardShell> {
   /// Reached through the worker's own job route, which is the one that decides whether this worker
   /// is on that booking at all.
   void _openChat(String bookingId) {
-    pushScreen(context, AsyncDetailScreen<Booking>(
-          title: 'Chat',
-          fetch: () =>
-              ref.read(bookingRepositoryProvider).getJobByIdAsWorker(bookingId),
-          builder: (_, booking) => BookingChatScreen(
-            bookingId: booking.id,
-            title: booking.variantName ?? booking.serviceName,
-            counterpartName: booking.businessName,
-          ),
-        ));
+    pushScreen(
+      context,
+      AsyncDetailScreen<Booking>(
+        title: 'Chat',
+        fetch: () =>
+            ref.read(bookingRepositoryProvider).getJobByIdAsWorker(bookingId),
+        builder: (_, booking) => BookingChatScreen(
+          bookingId: booking.id,
+          title: booking.variantName ?? booking.serviceName,
+          counterpartName: booking.businessName,
+        ),
+      ),
+    );
   }
 
   @override
@@ -183,18 +206,16 @@ class _WorkerDashboardShellState extends ConsumerState<WorkerDashboardShell> {
                 actions: [
                   NotificationBell(
                     onOpen: _openNotification,
-                    color: Colors.white,
+                    color: AppColors.onMedia,
                   ),
                   IconButton(
-                    icon: const Icon(
-                      Icons.qr_code_scanner,
-                      color: Colors.white,
-                    ),
+                    icon: Icon(Icons.qr_code_scanner, color: AppColors.onMedia),
                     tooltip: 'Scan booking QR',
-                    onPressed: () => pushScreen(context, const ScanBookingQrScreen()),
+                    onPressed: () =>
+                        pushScreen(context, const ScanBookingQrScreen()),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.logout, color: Colors.white),
+                    icon: Icon(Icons.logout, color: AppColors.onMedia),
                     tooltip: 'Log out',
                     onPressed: () => ref.read(authProvider.notifier).logout(),
                   ),

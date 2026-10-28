@@ -9,8 +9,8 @@
 #
 # Also pinned: the slot range, the type and size refusals, that replacing does not accumulate
 # files, and that removing clears both the row and the file.
-API=http://localhost:5056/api/v1
-HOST=http://localhost:5056
+API=${API:-http://localhost:5056/api/v1}
+HOST=${API%/api/v1}
 PSQL="${PSQL:-psql}"
 : "${PGPASSWORD:?set PGPASSWORD to your Postgres password first}"
 UPLOADS="/c/Beaulin Shajil/Projects/MobileApps/Zuno/backend/src/Zuno.Api/wwwroot/uploads"
@@ -44,9 +44,11 @@ up() { (cd "$WORK" && curl -s -X POST "$API$1" -H "Authorization: Bearer $2" -F 
 # deny-by-default policy rather than 404, so "is it gone?" needs a token to be answerable.
 served() { curl -s -o /dev/null -w '%{http_code}' "$HOST$1" -H "Authorization: Bearer $2"; }
 
-printf 'pic' > "$WORK/a.jpg"
-printf 'PIC' > "$WORK/b.png"
-printf 'vid' > "$WORK/c.mp4"
+# Real, tiny files: the server judges an upload by its first bytes, so a text file named .jpg is
+# refused (that is what fake.jpg below checks).
+printf '%s' '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==' | base64 -d > "$WORK/a.jpg"
+printf '%s' 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==' | base64 -d > "$WORK/b.png"
+printf '%s' 'AAAAGGZ0eXBtcDQyAAAAAG1wNDJpc29t' | base64 -d > "$WORK/c.mp4"
 printf 'pdf' > "$WORK/fake.jpg"
 : > "$WORK/empty.jpg"
 head -c 6000000 /dev/urandom > "$WORK/huge.jpg"

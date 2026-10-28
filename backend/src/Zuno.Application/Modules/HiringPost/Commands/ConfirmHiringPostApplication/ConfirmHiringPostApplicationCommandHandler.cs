@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Zuno.Application.Common.Interfaces;
 using Zuno.Application.Common.Services;
+using Zuno.Application.Modules.HiringPost.Common;
 using Zuno.Application.Modules.HiringPost.DTOs;
 using Zuno.Application.Modules.HiringPost.Events;
 using Zuno.Domain.Entities;
@@ -11,14 +12,15 @@ using Zuno.Domain.Exceptions;
 namespace Zuno.Application.Modules.HiringPost.Commands.ConfirmHiringPostApplication;
 
 /// <summary>
-/// The business's half of the hiring handshake: approving an applicant makes them an offer.
-/// It does not fill the vacancy and does not put them on the worker roster — both wait until
-/// the worker accepts in RespondToHiringPostOfferCommand.
+/// The business accepting someone who applied. The worker asked first, so this is the second yes:
+/// they are hired on the spot — assigned, on the roster, on the order — with nothing more for them
+/// to confirm. (Only an invitation, where the business asked first, waits on the worker.)
 /// </summary>
 public class ConfirmHiringPostApplicationCommandHandler(
     ICurrentUserService currentUserService,
     IDateTimeProvider dateTimeProvider,
     IBusinessOwnerProfileRepository businessOwnerProfileRepository,
+    IBusinessWorkerRepository businessWorkerRepository,
     IWorkerScheduleService workerScheduleService,
     IApplicationDbContext dbContext,
     IPublisher publisher) : IRequestHandler<ConfirmHiringPostApplicationCommand, HiringPostDto>
@@ -31,13 +33,13 @@ public class ConfirmHiringPostApplicationCommandHandler(
         var businessProfile = await businessOwnerProfileRepository.GetByUserIdAsync(userId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(BusinessOwnerProfile), userId);
 
-        var application = await dbContext.HiringPostApplications
-            .Include(a => a.HiringPost).ThenInclude(p => p.BusinessOwnerProfile)
-            .Include(a => a.HiringPost).ThenInclude(p => p.ServiceSubCategory)
-            .Include(a => a.HiringPost).ThenInclude(p => p.Applications).ThenInclude(a => a.WorkerProfile).ThenInclude(wp => wp.User)
-            .Include(a => a.HiringPost).ThenInclude(p => p.Applications).ThenInclude(a => a.SalaryAdjustments)
-            .Include(a => a.WorkerProfile).ThenInclude(wp => wp.User)
-            .FirstOrDefaultAsync(a => a.Id == request.ApplicationId, cancellationToken)
+        var application = await dbContext.LoadHiringPostApplicationAsync(
+            dbContext.HiringPostApplications
+                .Include(a => a.HiringPost).ThenInclude(p => p.BusinessOwnerProfile)
+                .Include(a => a.HiringPost).ThenInclude(p => p.ServiceSubCategory)
+                .Include(a => a.WorkerProfile).ThenInclude(wp => wp.User)
+                .Where(a => a.Id == request.ApplicationId),
+            cancellationToken)
             ?? throw new EntityNotFoundException(nameof(HiringPostApplication), request.ApplicationId);
 
         if (application.HiringPost.BusinessOwnerProfileId != businessProfile.Id)
@@ -63,8 +65,8 @@ public class ConfirmHiringPostApplicationCommandHandler(
                 "Increase the workers needed to take on more.");
         }
 
-        // Checked again when the worker accepts, but doing it here too stops the business wasting
-        // an offer — and a place in the head count — on someone who is already working elsewhere.
+        // The only clash check this hire gets, so it is the real one: a worker can be in one place at
+        // a time, and their diary may have filled up since they applied.
         var conflictingJob = await workerScheduleService.FindConflictAsync(
             application.WorkerProfileId,
             application.HiringPost.EventDate,
@@ -81,22 +83,22 @@ public class ConfirmHiringPostApplicationCommandHandler(
                     application.HiringPost.EventDate));
         }
 
-        application.ApplicationStatus = HiringPostApplicationStatus.Confirmed;
-        application.RespondedAt = dateTimeProvider.UtcNow;
+        var now = dateTimeProvider.UtcNow;
+        application.RespondedAt = now;
 
-        // The salary the worker is being offered, captured as it stands now so they decide on a
-        // figure that cannot move under them. It becomes binding the moment they accept.
+        // The salary the worker applied for, captured as it stands now. It is binding from this
+        // moment: the worker already said yes to it by applying.
         application.AgreedSalaryAmount = application.HiringPost.SalaryAmount;
         application.AgreedSalaryUnit = application.HiringPost.SalaryUnit;
 
-        // Deliberately not closing the post here: the slot is not taken until the worker
-        // accepts, so the vacancy stays open and visible in the meantime.
-        application.HiringPost.SyncStatusToStaffing();
+        // The worker applied, so this is the second yes: hired now, not offered.
+        await HiringPostHire.CompleteAsync(
+            application, businessWorkerRepository, dbContext, now, cancellationToken);
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
         await publisher.Publish(
-            new HiringPostApplicationConfirmedEvent(
+            new HiringPostApplicantHiredEvent(
                 application.HiringPostId,
                 application.WorkerProfile.UserId,
                 application.HiringPost.BusinessOwnerProfile.BusinessName,

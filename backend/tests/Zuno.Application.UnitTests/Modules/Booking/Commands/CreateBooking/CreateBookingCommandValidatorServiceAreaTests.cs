@@ -12,22 +12,30 @@ public class CreateBookingCommandValidatorServiceAreaTests
 {
     private static readonly District Kanyakumari = new()
     {
-        Name = "Kanyakumari", CentreLatitude = 8.1833m, CentreLongitude = 77.4119m,
+        Name = "Kanyakumari",
+        CentreLatitude = 8.1833m,
+        CentreLongitude = 77.4119m,
     };
 
     private static readonly District Thiruvananthapuram = new()
     {
-        Name = "Thiruvananthapuram", CentreLatitude = 8.5241m, CentreLongitude = 76.9366m,
+        Name = "Thiruvananthapuram",
+        CentreLatitude = 8.5241m,
+        CentreLongitude = 76.9366m,
     };
 
     private static readonly District Tirunelveli = new()
     {
-        Name = "Tirunelveli", CentreLatitude = 8.7139m, CentreLongitude = 77.7567m,
+        Name = "Tirunelveli",
+        CentreLatitude = 8.7139m,
+        CentreLongitude = 77.7567m,
     };
 
     private static readonly District BengaluruUrban = new()
     {
-        Name = "Bengaluru Urban", CentreLatitude = 12.9716m, CentreLongitude = 77.5946m,
+        Name = "Bengaluru Urban",
+        CentreLatitude = 12.9716m,
+        CentreLongitude = 77.5946m,
     };
 
     private readonly Guid _serviceId = Guid.NewGuid();
@@ -43,13 +51,15 @@ public class CreateBookingCommandValidatorServiceAreaTests
         dbContext.Setup(d => d.BusinessServiceDistricts).Returns(TestDbSet.From(
             served.Select(d => new BusinessServiceDistrict
             {
-                BusinessServiceId = _serviceId, DistrictId = d.Id, District = d,
+                BusinessServiceId = _serviceId,
+                DistrictId = d.Id,
+                District = d,
             }).ToArray()));
 
         var clock = new Mock<IDateTimeProvider>();
         clock.Setup(c => c.UtcNow).Returns(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
 
-        return new CreateBookingCommandValidator(dbContext.Object, clock.Object);
+        return new CreateBookingCommandValidator(dbContext.Object, clock.Object, new TestPlatformSettings());
     }
 
     private CreateBookingCommand Command(decimal latitude, decimal longitude) => new()

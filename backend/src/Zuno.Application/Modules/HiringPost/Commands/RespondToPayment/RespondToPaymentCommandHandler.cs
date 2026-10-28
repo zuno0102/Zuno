@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Zuno.Application.Common.Interfaces;
+using Zuno.Application.Modules.HiringPost.Common;
 using Zuno.Application.Modules.HiringPost.Events;
 using Zuno.Application.Modules.Notifications.Common;
 using Zuno.Domain.Entities;
@@ -25,10 +26,15 @@ public class RespondToPaymentCommandHandler(
         var userId = currentUserService.UserId
             ?? throw new UnauthorizedAccessException("User is not authenticated.");
 
-        var application = await dbContext.HiringPostApplications
-            .Include(a => a.WorkerProfile)
-            .Include(a => a.HiringPost).ThenInclude(p => p.Applications)
-            .FirstOrDefaultAsync(a => a.Id == request.HiringPostApplicationId, cancellationToken)
+        // The bare crew: settlement reads only statuses and wages, and must still count an
+        // application whose worker has since been removed.
+        var application = await dbContext.LoadHiringPostApplicationAsync(
+            dbContext.HiringPostApplications
+                .Include(a => a.WorkerProfile)
+                .Include(a => a.HiringPost)
+                .Where(a => a.Id == request.HiringPostApplicationId),
+            cancellationToken,
+            HiringPostCrewDetail.ApplicationsOnly)
             ?? throw new EntityNotFoundException(nameof(HiringPostApplication), request.HiringPostApplicationId);
 
         if (application.WorkerProfile.UserId != userId)

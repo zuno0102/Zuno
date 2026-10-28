@@ -95,5 +95,6 @@ public class OwnEventRoleDashboardTests
             Mock.Of<ICurrentUserService>(u => u.UserId == worker.UserId),
             Mock.Of<IDateTimeProvider>(c => c.UtcNow == Now),
             Mock.Of<IWorkerEarningsService>(),
+            new TestPlatformSettings(),
             db.Object);
 }

@@ -9,7 +9,8 @@ namespace Zuno.Application.Modules.Business.Queries.GetMyBusinessProfile;
 public class GetMyBusinessProfileQueryHandler(
     ICurrentUserService currentUserService,
     IBusinessOwnerProfileRepository businessOwnerProfileRepository,
-    IBusinessTrustService trustService)
+    IBusinessTrustService trustService,
+    IPlatformSettings platformSettings)
     : IRequestHandler<GetMyBusinessProfileQuery, BusinessProfileDto>
 {
     public async Task<BusinessProfileDto> Handle(GetMyBusinessProfileQuery request, CancellationToken cancellationToken)
@@ -20,7 +21,7 @@ public class GetMyBusinessProfileQueryHandler(
         var profile = await businessOwnerProfileRepository.GetByUserIdAsync(userId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(BusinessOwnerProfile), userId);
 
-        var dto = profile.ToDto();
+        var dto = profile.ToDto(platformSettings.Current.BusinessLevels);
 
         // An owner should be able to see both verdicts on themselves — it is the only way to know
         // what a customer or a worker is looking at before they decide.

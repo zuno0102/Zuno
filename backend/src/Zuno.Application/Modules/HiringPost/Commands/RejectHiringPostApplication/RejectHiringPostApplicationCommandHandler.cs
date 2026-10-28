@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Zuno.Application.Common.Interfaces;
+using Zuno.Application.Modules.HiringPost.Common;
 using Zuno.Application.Modules.HiringPost.DTOs;
 using Zuno.Application.Modules.HiringPost.Events;
 using Zuno.Domain.Entities;
@@ -24,12 +25,12 @@ public class RejectHiringPostApplicationCommandHandler(
         var businessProfile = await businessOwnerProfileRepository.GetByUserIdAsync(userId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(BusinessOwnerProfile), userId);
 
-        var application = await dbContext.HiringPostApplications
-            .Include(a => a.HiringPost).ThenInclude(p => p.BusinessOwnerProfile)
-            .Include(a => a.HiringPost).ThenInclude(p => p.ServiceSubCategory)
-            .Include(a => a.HiringPost).ThenInclude(p => p.Applications).ThenInclude(a => a.WorkerProfile).ThenInclude(wp => wp.User)
-            .Include(a => a.HiringPost).ThenInclude(p => p.Applications).ThenInclude(a => a.SalaryAdjustments)
-            .FirstOrDefaultAsync(a => a.Id == request.ApplicationId, cancellationToken)
+        var application = await dbContext.LoadHiringPostApplicationAsync(
+            dbContext.HiringPostApplications
+                .Include(a => a.HiringPost).ThenInclude(p => p.BusinessOwnerProfile)
+                .Include(a => a.HiringPost).ThenInclude(p => p.ServiceSubCategory)
+                .Where(a => a.Id == request.ApplicationId),
+            cancellationToken)
             ?? throw new EntityNotFoundException(nameof(HiringPostApplication), request.ApplicationId);
 
         if (application.HiringPost.BusinessOwnerProfileId != businessProfile.Id)

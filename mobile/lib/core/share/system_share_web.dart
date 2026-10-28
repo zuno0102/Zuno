@@ -1,5 +1,6 @@
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
+import 'dart:typed_data';
 
 import 'package:zuno/core/share/share_outcome.dart';
 
@@ -46,4 +47,12 @@ class SystemShare {
           : ShareOutcome.unavailable;
     }
   }
+
+  /// Not offered in the browser: applicants' documents are opened from the phone app, where
+  /// they are handed to the system viewer and never left in a downloads folder.
+  static Future<ShareOutcome> openFile({
+    required Uint8List bytes,
+    required String fileName,
+    required String mimeType,
+  }) async => ShareOutcome.unavailable;
 }

@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Zuno.Application.Common.Interfaces;
+using Zuno.Application.Modules.Business.Common;
 using Zuno.Application.Common.Settings;
 using Zuno.Application.Modules.Authentication.Common;
 using Zuno.Application.Modules.Authentication.DTOs;
@@ -20,7 +21,7 @@ public class RegisterUserCommandHandler(
     IJwtTokenService jwtTokenService,
     IDateTimeProvider dateTimeProvider,
     IOptions<JwtSettings> jwtSettings,
-    IOptions<VerificationSettings> verificationSettings,
+    BusinessApproval businessApproval,
     RefreshTokenFactory refreshTokenFactory,
     IPublisher publisher) : IRequestHandler<RegisterUserCommand, AuthResponseDto>
 {
@@ -43,6 +44,13 @@ public class RegisterUserCommandHandler(
 
         CreateRoleProfile(user, request.Role);
 
+        // Approved straight away only when auto-approval is on and the business passes the check;
+        // otherwise it waits for an admin.
+        if (user.BusinessOwnerProfile is { } business)
+        {
+            await businessApproval.TryAutoApproveAsync(business, cancellationToken);
+        }
+
         userRepository.Add(user);
 
         var (refreshToken, rawRefreshToken) = refreshTokenFactory.Create(user.Id, request.IpAddress);
@@ -64,12 +72,6 @@ public class RegisterUserCommandHandler(
         else if (roleName == nameof(Domain.Enums.UserRoleType.BusinessOwner))
         {
             user.BusinessOwnerProfile = new BusinessOwnerProfile { UserId = user.Id, BusinessName = $"{user.FirstName} {user.LastName}" };
-
-            if (verificationSettings.Value.AutoVerifyBusinesses)
-            {
-                user.BusinessOwnerProfile.VerificationStatus = VerificationStatus.Verified;
-                user.BusinessOwnerProfile.VerifiedAt = dateTimeProvider.UtcNow;
-            }
         }
         else if (roleName == nameof(Domain.Enums.UserRoleType.Worker))
         {

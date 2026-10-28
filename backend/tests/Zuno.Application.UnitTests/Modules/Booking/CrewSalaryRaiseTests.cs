@@ -291,6 +291,7 @@ public class CrewSalaryRaiseTests
     {
         var db = new Mock<IApplicationDbContext>();
         db.Setup(d => d.HiringPosts).Returns(post is null ? TestDbSet.From<HiringPost>() : TestDbSet.From(post));
+        db.Setup(d => d.HiringPostApplications).Returns(TestDbSet.From(post?.Applications.ToArray() ?? []));
         db.Setup(d => d.PayoutBatches).Returns(run is null ? TestDbSet.From<PayoutBatch>() : TestDbSet.From(run));
         db.Setup(d => d.HiringPostSalaryAdjustments).Returns(TestDbSet.From<HiringPostSalaryAdjustment>());
         db.Setup(d => d.BookingAssignmentSalaryAdjustments).Returns(TestDbSet.From<BookingAssignmentSalaryAdjustment>());

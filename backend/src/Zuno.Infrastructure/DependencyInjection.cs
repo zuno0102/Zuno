@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Npgsql;
 using Zuno.Application.Common.Interfaces;
 using Zuno.Application.Common.Services;
 using Zuno.Application.Common.Settings;
@@ -43,7 +44,23 @@ public static class DependencyInjection
                     .GetConnectionString("ZunoDatabase")
                 ?? throw new InvalidOperationException("Connection string 'ZunoDatabase' was not found.");
 
-            options.UseNpgsql(connectionString)
+            // A bounded pool per instance. Npgsql's default (100) equals Postgres's default connection
+            // limit, so under load one instance took every connection the server had: the database then
+            // ran a hundred queries at once and slowed them all, and a second instance behind a load
+            // balancer would have been refused outright. Requests beyond the pool wait their turn instead.
+            // An explicit "Maximum Pool Size" in the connection string still wins.
+            var builder = new NpgsqlConnectionStringBuilder(connectionString);
+            if (!connectionString.Contains("Maximum Pool Size", StringComparison.OrdinalIgnoreCase)
+                && !connectionString.Contains("MaxPoolSize", StringComparison.OrdinalIgnoreCase))
+            {
+                builder.MaxPoolSize = serviceProvider.GetRequiredService<IConfiguration>()
+                    .GetValue("Database:MaxPoolSize", 30);
+            }
+
+            // Split queries: a read that includes several lists (an order with its crew, answers and
+            // proposals) runs as one small query per list instead of one join whose rows multiply. On a
+            // million orders the single join took 15 s for one worker's jobs.
+            options.UseNpgsql(builder.ConnectionString, npgsql => npgsql.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery))
                 .UseSnakeCaseNamingConvention();
         });
 
@@ -65,6 +82,21 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
         services.AddHostedService<UnfilledHiringPostCleanupService>();
+
+        // Business rules the app owner can change, read from the platform_settings table into memory and
+        // refreshed in the background, so no request pays a database round trip for them.
+        services.AddOptions<PlatformSettingsOptions>()
+            .Bind(configuration.GetSection(PlatformSettingsOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.AddSingleton<IPlatformSettings, PlatformSettingsStore>();
+        services.AddSingleton<IUiConfigStore, UiConfigStore>();
+        services.AddHostedService<PlatformSettingsRefreshService>();
+
+        services.AddOptions<VacancySettings>()
+            .Bind(configuration.GetSection(VacancySettings.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
 
         // Razorpay moves the money. Its credentials are validated on start-up, so a deployment
         // missing them fails at boot with a clear message rather than at the moment someone
@@ -109,6 +141,7 @@ public static class DependencyInjection
         // without one. This is also why place search is proxied through us rather than called from
         // the app: one identifiable caller, one cache, and a key can be added here later.
         services.AddMemoryCache();
+        services.AddSingleton<IReadCache, MemoryReadCache>();
         services.AddHttpClient<IPlaceSearchService, NominatimPlaceSearchService>(client =>
             {
                 client.BaseAddress = new Uri("https://nominatim.openstreetmap.org");
@@ -132,6 +165,7 @@ public static class DependencyInjection
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<IFileStorageService, LocalFileStorageService>();
+        services.AddScoped<IPrivateDocumentStore, LocalPrivateDocumentStore>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IBusinessOwnerProfileRepository, BusinessOwnerProfileRepository>();

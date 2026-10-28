@@ -122,6 +122,7 @@ public class SecurityTests(ZunoApiFactory factory) : IClassFixture<ZunoApiFactor
         { "/api/v1/worker/jobs", "Worker" },
         { "/api/v1/admin/catalog/categories", "SuperAdmin" },
         { "/api/v1/bookings/threads", "Any" },
+        { "/api/v1/app-options", "Any" },
     };
 
     // ---- no token ------------------------------------------------------------------------------

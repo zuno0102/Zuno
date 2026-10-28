@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using MediatR;
 using Zuno.Application.Common.Interfaces;
 using Zuno.Domain.Exceptions;
@@ -14,11 +16,21 @@ public class ResetPasswordCommandHandler(
 {
     public async Task Handle(ResetPasswordCommand request, CancellationToken cancellationToken)
     {
-        var userId = jwtTokenService.ValidatePasswordResetToken(request.Token)
+        var claims = jwtTokenService.ValidatePasswordResetToken(request.Token)
             ?? throw new UnauthorizedAccessException("Invalid or expired password reset token.");
 
-        var user = await userRepository.GetByIdAsync(userId, cancellationToken)
-            ?? throw new EntityNotFoundException("User", userId);
+        var user = await userRepository.GetByIdAsync(claims.UserId, cancellationToken)
+            ?? throw new EntityNotFoundException("User", claims.UserId);
+
+        // One use only: the token was issued against the password the account had then. Once it has
+        // been used — or the password changed any other way — the stamp no longer matches, so a link
+        // that leaked from an inbox or a log cannot be replayed.
+        if (!CryptographicOperations.FixedTimeEquals(
+                Encoding.UTF8.GetBytes(jwtTokenService.PasswordStamp(user.PasswordHash)),
+                Encoding.UTF8.GetBytes(claims.PasswordStamp)))
+        {
+            throw new UnauthorizedAccessException("Invalid or expired password reset token.");
+        }
 
         user.PasswordHash = passwordHasher.Hash(request.NewPassword);
 

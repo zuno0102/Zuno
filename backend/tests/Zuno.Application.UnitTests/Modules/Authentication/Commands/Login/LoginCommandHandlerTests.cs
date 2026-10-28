@@ -5,6 +5,7 @@ using Zuno.Application.Common.Interfaces;
 using Zuno.Application.Common.Settings;
 using Zuno.Application.Modules.Authentication.Commands.Login;
 using Zuno.Application.Modules.Authentication.Common;
+using Zuno.Application.Modules.Business.Common;
 using Zuno.Domain.Entities;
 
 namespace Zuno.Application.UnitTests.Modules.Authentication.Commands.Login;
@@ -44,7 +45,8 @@ public class LoginCommandHandlerTests
             _jwtTokenServiceMock.Object,
             _dateTimeProviderMock.Object,
             jwtSettings,
-            Options.Create(new VerificationSettings()),
+            new BusinessApproval(
+                new BusinessVerificationCheck(), Options.Create(new VerificationSettings()), _dateTimeProviderMock.Object),
             refreshTokenFactory);
     }
 

@@ -4,4 +4,8 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Plain HTTP only in development builds, for a local API over adb reverse. A release build
+         talks to the server over HTTPS or not at all, so a token can never cross the network in
+         the clear. -->
+    <application android:usesCleartextTraffic="true" />
 </manifest>

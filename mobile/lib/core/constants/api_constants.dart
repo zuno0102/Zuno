@@ -34,6 +34,8 @@ class ApiConstants {
 
   /// Names, colours and order of order stages, for status chips and filters.
   static const String orderStagesPath = '/api/$apiVersion/order-stages';
+  static const String appOptionsPath = '/api/$apiVersion/app-options';
+  static const String uiConfigPath = '/api/$apiVersion/ui-config';
   static const String districtsPath = '/api/$apiVersion/districts';
 
   /// The app owner's catalogue: the kinds of work the whole product offers.
@@ -292,4 +294,42 @@ class ApiConstants {
     String target,
     String targetId,
   ) => '$notificationsPath/targets/$target/$targetId/read';
+
+  // ---- Full-time vacancies ----
+
+  static const String businessVacanciesPath =
+      '/api/$apiVersion/business/vacancies';
+  static const String businessVacancyOptionsPath =
+      '$businessVacanciesPath/options';
+  static const String businessVacancySummaryPath =
+      '$businessVacanciesPath/summary';
+  static String businessVacancyPath(String id) => '$businessVacanciesPath/$id';
+  static String stopVacancyHiringPath(String id) =>
+      '${businessVacancyPath(id)}/stop-hiring';
+  static String startVacancyHiringPath(String id) =>
+      '${businessVacancyPath(id)}/start-hiring';
+  static String vacancyPaymentPath(String id) =>
+      '${businessVacancyPath(id)}/payment';
+  static String confirmVacancyPaymentPath(String id) =>
+      '${vacancyPaymentPath(id)}/confirm';
+  static String vacancyApplicationsPath(String id) =>
+      '${businessVacancyPath(id)}/applications';
+  static const String allVacancyApplicationsPath =
+      '$businessVacanciesPath/applications';
+  static String vacancyApplicationStatusPath(String applicationId) =>
+      '$businessVacanciesPath/applications/$applicationId/status';
+  static String vacancyApplicationViewedPath(String applicationId) =>
+      '$businessVacanciesPath/applications/$applicationId/viewed';
+  static String vacancyDocumentPath(String answerId) =>
+      '$businessVacanciesPath/documents/$answerId';
+
+  static const String workerVacanciesPath = '/api/$apiVersion/worker/vacancies';
+  static const String workerVacancyOptionsPath = '$workerVacanciesPath/options';
+  static String workerVacancyPath(String id) => '$workerVacanciesPath/$id';
+  static String applyToVacancyPath(String id) =>
+      '${workerVacancyPath(id)}/apply';
+  static const String myVacancyApplicationsPath =
+      '$workerVacanciesPath/applications';
+  static String withdrawVacancyApplicationPath(String applicationId) =>
+      '$myVacancyApplicationsPath/$applicationId';
 }

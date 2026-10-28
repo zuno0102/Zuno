@@ -1,3 +1,6 @@
+import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/core/ui_config/ui_config.dart';
+
 /// A worker's own profile: what they earned, what they are owed, and whether they can be paid.
 class WorkerProfile {
   const WorkerProfile({
@@ -70,7 +73,15 @@ class WorkerProfile {
   final int offersDeclined;
   final int openDisputes;
 
-  bool get isAvailable => availabilityStatus == 'Available';
+  /// How [availabilityStatus] reads: the table's words, else the server's own word for it.
+  String get availabilityLabel =>
+      UiConfig.current.labels[_availabilityGroup]?[availabilityStatus]?.label ??
+      availabilityStatus;
+
+  StatusTone get availabilityTone =>
+      UiConfig.current.tone(_availabilityGroup, availabilityStatus);
+
+  static const _availabilityGroup = 'WorkerAvailability';
 
   /// The one thing that stops wages arriving at all, so it is the profile's first card.
   bool get needsPayoutSetup => !canReceivePayouts;

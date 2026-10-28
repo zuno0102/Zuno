@@ -80,7 +80,8 @@ class _NearbyJobsMapState extends State<NearbyJobsMap> {
                 initialZoom: _initialZoom,
                 // No rotation: a tilted map helps nobody find a job and makes the labels unreadable.
                 interactionOptions: const InteractionOptions(
-                  flags: InteractiveFlag.pinchZoom |
+                  flags:
+                      InteractiveFlag.pinchZoom |
                       InteractiveFlag.drag |
                       InteractiveFlag.doubleTapZoom,
                 ),
@@ -102,8 +103,12 @@ class _NearbyJobsMapState extends State<NearbyJobsMap> {
                         point: widget.centre,
                         radius: km * 1000,
                         useRadiusInMeter: true,
-                        color: theme.colorScheme.primary.withValues(alpha: 0.08),
-                        borderColor: theme.colorScheme.primary.withValues(alpha: 0.45),
+                        color: theme.colorScheme.primary.withValues(
+                          alpha: 0.08,
+                        ),
+                        borderColor: theme.colorScheme.primary.withValues(
+                          alpha: 0.45,
+                        ),
                         borderStrokeWidth: 1.5,
                       ),
                     ],
@@ -172,8 +177,8 @@ class _YouAreHere extends StatelessWidget {
     decoration: BoxDecoration(
       color: colour,
       shape: BoxShape.circle,
-      border: Border.all(color: Colors.white, width: 3),
-      boxShadow: const [BoxShadow(blurRadius: 4, color: AppColors.shadowSoft)],
+      border: Border.all(color: AppColors.onMedia, width: 3),
+      boxShadow: [BoxShadow(blurRadius: 4, color: AppColors.shadowSoft)],
     ),
     child: const SizedBox.shrink(),
   );
@@ -199,7 +204,7 @@ class _JobPin extends StatelessWidget {
       isApproximate ? Icons.location_searching : Icons.location_on,
       size: isSelected ? 34 : 28,
       color: colour,
-      shadows: const [Shadow(blurRadius: 3, color: AppColors.shadowStrong)],
+      shadows: [Shadow(blurRadius: 3, color: AppColors.shadowStrong)],
     );
   }
 }

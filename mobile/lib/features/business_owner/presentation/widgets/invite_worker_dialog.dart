@@ -1,5 +1,6 @@
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:flutter/material.dart';
+import 'package:zuno/shared/widgets/detail_row.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/features/business_owner/domain/entities/business_worker.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_workers_notifier.dart';
@@ -139,7 +140,8 @@ class _InviteWorkerDialogState extends ConsumerState<_InviteWorkerDialog> {
     // The list refreshes under us after a successful invite, and the job just used can drop out
     // of it once its pending count rises. DropdownButtonFormField asserts its value is present
     // among its items, so fall back to null rather than pointing at a job no longer listed.
-    final selectedId = _isNewDate || invitable.any((p) => p.id == _selectedPostId)
+    final selectedId =
+        _isNewDate || invitable.any((p) => p.id == _selectedPostId)
         ? _selectedPostId
         : null;
 
@@ -179,9 +181,7 @@ class _InviteWorkerDialogState extends ConsumerState<_InviteWorkerDialog> {
                 ErrorBanner(message: _errorMessage!),
                 const SizedBox(height: 12),
               ],
-              _WorkerIdentifierField(
-                onChanged: (value) => _identifier = value,
-              ),
+              _WorkerIdentifierField(onChanged: (value) => _identifier = value),
               const SizedBox(height: 16),
               if (pinned != null)
                 _JobSummary(post: pinned)
@@ -355,7 +355,9 @@ class _WorkerIdentifierField extends ConsumerWidget {
         .watch(businessWorkersProvider)
         .maybeWhen(
           data: (list) => list
-              .where((w) => w.isActive && (w.workerEmail ?? w.workerPhone) != null)
+              .where(
+                (w) => w.isActive && (w.workerEmail ?? w.workerPhone) != null,
+              )
               .toList(),
           orElse: () => const <BusinessWorker>[],
         );
@@ -422,7 +424,9 @@ class _WorkerIdentifierField extends ConsumerWidget {
                     radius: 14,
                     backgroundColor: theme.colorScheme.primaryContainer,
                     child: Text(
-                      w.workerName.isEmpty ? '?' : w.workerName[0].toUpperCase(),
+                      w.workerName.isEmpty
+                          ? '?'
+                          : w.workerName[0].toUpperCase(),
                       style: theme.textTheme.labelMedium,
                     ),
                   ),
@@ -461,6 +465,20 @@ class _JobSummary extends StatelessWidget {
     final theme = Theme.of(context);
     final where = post.location?.trim() ?? '';
 
+    // Primary icons and plain text, top-aligned: these lines describe the offer being made, so
+    // they read a little louder than the muted summary lines elsewhere.
+    Widget line({required IconData icon, required String text}) =>
+        DetailRow.iconText(
+          icon: icon,
+          text: text,
+          iconColor: theme.colorScheme.primary,
+          muted: false,
+          iconSize: 15,
+          iconGap: 8,
+          padding: const EdgeInsets.only(bottom: 4),
+          alignment: CrossAxisAlignment.start,
+        );
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -470,44 +488,20 @@ class _JobSummary extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _Line(
+          line(
             icon: Icons.event_outlined,
             text:
                 '${formatDate(post.eventDate.toLocal())}'
                 ' · ${post.scheduleLabel}',
           ),
-          if (where.isNotEmpty)
-            _Line(icon: Icons.place_outlined, text: where),
-          _Line(icon: Icons.payments_outlined, text: post.salaryLabel),
-          _Line(
+          if (where.isNotEmpty) line(icon: Icons.place_outlined, text: where),
+          line(icon: Icons.payments_outlined, text: post.salaryLabel),
+          line(
             icon: Icons.groups_outlined,
             text:
                 '${post.workersNeeded - post.filledCount} of '
                 '${post.workersNeeded} place(s) still open',
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Line extends StatelessWidget {
-  const _Line({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 15, color: theme.colorScheme.primary),
-          const SizedBox(width: 8),
-          Expanded(child: Text(text, style: theme.textTheme.bodySmall)),
         ],
       ),
     );
@@ -532,7 +526,10 @@ class _NewDateField extends StatelessWidget {
       initialDate: value ?? now.add(const Duration(days: 1)),
       // No past dates: the server refuses them, and offering one is never meant.
       firstDate: now,
-      lastDate: now.add(const Duration(days: 365)),
+      lastDate: ProviderScope.containerOf(
+        context,
+        listen: false,
+      ).read(currentAppOptionsProvider).lastPickableDate(now),
     );
     if (date == null || !context.mounted) return;
 

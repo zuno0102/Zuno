@@ -491,7 +491,7 @@ class _LocationPinPickerScreenState
                         Icons.location_on,
                         size: 48,
                         color: theme.colorScheme.error,
-                        shadows: const [
+                        shadows: [
                           Shadow(blurRadius: 6, color: AppColors.shadowStrong),
                         ],
                       ),

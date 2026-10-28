@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Zuno.Application.Common.Settings;
 using Moq;
 using Zuno.Application.Common.Interfaces;
 using Zuno.Application.Modules.HiringPost.Commands.CreateHiringPost;
@@ -16,12 +17,18 @@ public class HiringPostLocationTests
 {
     private static readonly District Kanniyakumari = new()
     {
-        Id = Guid.NewGuid(), Name = "Kanniyakumari", CentreLatitude = 8.1833m, CentreLongitude = 77.4119m,
+        Id = Guid.NewGuid(),
+        Name = "Kanniyakumari",
+        CentreLatitude = 8.1833m,
+        CentreLongitude = 77.4119m,
     };
 
     private static readonly District Thiruvananthapuram = new()
     {
-        Id = Guid.NewGuid(), Name = "Thiruvananthapuram", CentreLatitude = 8.5241m, CentreLongitude = 76.9366m,
+        Id = Guid.NewGuid(),
+        Name = "Thiruvananthapuram",
+        CentreLatitude = 8.5241m,
+        CentreLongitude = 76.9366m,
     };
 
     private readonly Mock<IApplicationDbContext> _dbContext = new();
@@ -35,7 +42,8 @@ public class HiringPostLocationTests
     public async Task Picks_The_District_Whose_Centre_Is_Nearest()
     {
         // Marthandam sits between the two centres but is closer to Kanniyakumari's.
-        var id = await HiringPostLocation.NearestDistrictIdAsync(8.3123m, 77.2201m, _dbContext.Object, CancellationToken.None);
+        var id = await HiringPostLocation.NearestDistrictIdAsync(
+            8.3123m, 77.2201m, PlatformRules.Defaults.DistrictMatchMaxDistanceKm, _dbContext.Object, CancellationToken.None);
 
         id.Should().Be(Kanniyakumari.Id);
     }
@@ -44,7 +52,8 @@ public class HiringPostLocationTests
     public async Task Leaves_The_District_Empty_Far_From_Any_Known_Centre()
     {
         // Delhi: nowhere near either seeded centre.
-        var id = await HiringPostLocation.NearestDistrictIdAsync(28.6139m, 77.2090m, _dbContext.Object, CancellationToken.None);
+        var id = await HiringPostLocation.NearestDistrictIdAsync(
+            28.6139m, 77.2090m, PlatformRules.Defaults.DistrictMatchMaxDistanceKm, _dbContext.Object, CancellationToken.None);
 
         id.Should().BeNull();
     }
@@ -164,6 +173,6 @@ public class HiringPostLocationTests
         _dbContext.Setup(d => d.HiringPosts).Returns(postSet.Object);
         _dbContext.Setup(d => d.ServiceSubCategories).Returns(TestDbSet.From<ServiceSubCategory>());
 
-        return (new CreateHiringPostCommandHandler(currentUser.Object, businesses.Object, _dbContext.Object), booking, posts);
+        return (new CreateHiringPostCommandHandler(currentUser.Object, businesses.Object, new TestPlatformSettings(), _dbContext.Object), booking, posts);
     }
 }

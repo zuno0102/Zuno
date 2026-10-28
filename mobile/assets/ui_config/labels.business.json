@@ -1,0 +1,56 @@
+{
+  "groups": {
+    "WorkerAvailability.Business": {
+      "AtWork": { "label": "On a job now", "tone": "progress", "sort": 1 },
+      "Booked": { "label": "Booked", "tone": "waiting", "sort": 2 },
+      "*": { "label": "Free", "tone": "success" }
+    },
+    "WorkerAvailability.Roster": {
+      "AtWork": { "label": "At work", "tone": "progress", "sort": 1 },
+      "Booked": { "label": "Already booked", "tone": "waiting", "sort": 2 },
+      "*": { "label": "Free", "tone": "success" }
+    },
+    "BusinessWorker.Status": {
+      "Invited": { "label": "Invited", "tone": "progress", "sort": 1 },
+      "Active": { "label": "Active", "tone": "success", "sort": 2 },
+      "Rejected": { "label": "Rejected", "tone": "danger", "sort": 3 },
+      "Removed": { "label": "Removed", "tone": "waiting", "sort": 4 }
+    },
+    "BusinessVerification": {
+      "Pending": { "label": "Pending", "tone": "waiting", "sort": 1 },
+      "Verified": { "label": "Verified", "tone": "success", "sort": 2 },
+      "Rejected": { "label": "Rejected", "tone": "waiting", "sort": 3 }
+    },
+    "BusinessVerification.Badge": {
+      "Verified": { "label": "Verified", "tone": "success", "icon": "verified_outlined", "sort": 1 },
+      "*": { "label": "Pending", "tone": "progress", "icon": "hourglass_top_outlined" }
+    },
+    "HiringPostApplication.BusinessTone": {
+      "Applied": { "label": "Applied", "tone": "waiting", "sort": 1 },
+      "Confirmed": { "label": "Awaiting worker", "tone": "progress", "sort": 2 },
+      "Accepted": { "label": "Accepted", "tone": "success", "sort": 3 },
+      "Rejected": { "label": "Rejected", "tone": "danger", "sort": 4 },
+      "Declined": { "label": "Declined by worker", "tone": "danger", "sort": 5 },
+      "*": { "label": "Rejected", "tone": "danger" }
+    },
+    "PaymentStatus.BusinessTone": {
+      "Paid": { "label": "Paid", "tone": "success", "sort": 1 },
+      "Processing": { "label": "Sending", "tone": "progress", "sort": 2 },
+      "AwaitingWorkerConfirmation": { "label": "Awaiting confirmation", "tone": "progress", "sort": 3 },
+      "Failed": { "label": "Payment failed", "tone": "danger", "sort": 4 },
+      "Disputed": { "label": "Disputed", "tone": "danger", "sort": 5 },
+      "*": { "label": "Unpaid", "tone": "progress" }
+    },
+    "PriceType.ServiceForm": {
+      "Fixed": { "label": "Fixed price", "detail": "One price for the job", "sort": 1 },
+      "Hourly": { "label": "Per hour", "detail": "Charged by the hour", "sort": 2 },
+      "Daily": { "label": "Per day", "detail": "Charged by the day", "sort": 3 },
+      "PerPerson": { "label": "Per person", "detail": "Rate × the crew you agree", "sort": 4 }
+    },
+    "PriceType.VariantForm": {
+      "Fixed": { "label": "Fixed price", "sort": 1 },
+      "Hourly": { "label": "Hourly rate", "sort": 2 },
+      "Daily": { "label": "Daily rate", "sort": 3 }
+    }
+  }
+}

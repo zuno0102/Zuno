@@ -45,6 +45,13 @@ public class BookingWorkerAssignmentDto
     /// </remarks>
     public bool HasPayoutDetails { get; set; }
 
+    /// <summary>
+    /// Why a crew member can or cannot be paid: <c>Ready</c>, <c>NotVerified</c> (a UPI is on file but
+    /// not verified — the business should check with them) or <c>None</c> (nothing on file). Empty on
+    /// a row the viewer may not see into.
+    /// </summary>
+    public string PayoutState { get; set; } = string.Empty;
+
     /// <summary>The crew member is owed money through Zuno.</summary>
     public bool IsPayee => AgreedSalaryAmount.HasValue;
 }

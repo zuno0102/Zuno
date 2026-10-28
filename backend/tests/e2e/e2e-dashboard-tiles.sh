@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Business home counts: the Orders finished card, and the Active workers tile.
-API=http://localhost:5056/api/v1
+API=${API:-http://localhost:5056/api/v1}
 PSQL="${PSQL:-psql}"
 : "${PGPASSWORD:?set PGPASSWORD to your Postgres password first}"
 S=$(date +%s)

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
+using Zuno.Api.Uploads;
 using Zuno.Api.Common;
 using Zuno.Api.RateLimiting;
 using Zuno.Application.Common.Interfaces;
@@ -31,13 +32,6 @@ public class AuthController(
     IOptions<FileStorageSettings> fileStorageSettings) : ControllerBase
 {
     /// <summary>What a profile picture may be. Matches the worker photo endpoint.</summary>
-    private static readonly HashSet<string> AllowedImageContentTypes =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            "image/jpeg",
-            "image/png",
-            "image/webp",
-        };
 
     // Marked one by one rather than on the controller: the application denies anything that does not
     // say otherwise, and a class-level AllowAnonymous would silently override the [Authorize] on
@@ -127,21 +121,13 @@ public class AuthController(
                 HttpContext.TraceIdentifier));
         }
 
-        if (!AllowedImageContentTypes.Contains(file.ContentType))
+        // Judged by the file's first bytes; the stored extension comes from what it really is.
+        var extension = await MediaUpload.ImageExtensionAsync(file, cancellationToken);
+        if (extension is null)
         {
-            return BadRequest(ApiResponse.Fail(
-                "Image must be a JPEG, PNG or WebP file.",
-                HttpContext.TraceIdentifier));
+            return BadRequest(ApiResponse.Fail(MediaUpload.ImageRule, HttpContext.TraceIdentifier));
         }
 
-        // Taken from the content type just validated, never from the uploaded file name: the name is
-        // the caller's to choose and it ends up in a file path.
-        var extension = file.ContentType.ToLowerInvariant() switch
-        {
-            "image/png" => ".png",
-            "image/webp" => ".webp",
-            _ => ".jpg",
-        };
 
         // Stored under the signed-in user's own id, read from the token.
         var userId = currentUserService.UserId

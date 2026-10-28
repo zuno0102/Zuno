@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_providers.dart';
 import 'package:zuno/features/catalog/data/datasources/catalog_remote_datasource.dart';
+import 'package:zuno/features/catalog/domain/entities/app_options.dart';
 import 'package:zuno/features/catalog/domain/entities/district.dart';
 import 'package:zuno/features/catalog/domain/entities/location_state.dart';
 import 'package:zuno/features/catalog/domain/entities/order_stage.dart';
@@ -19,6 +20,18 @@ Future<List<ServiceCategory>> serviceCategories(Ref ref) async =>
     (await ref.watch(catalogRemoteDataSourceProvider).getServiceCategories())
         .map((m) => m.toEntity())
         .toList();
+
+/// The limits the app's forms check, from the server's own settings. Kept for the session.
+@Riverpod(keepAlive: true)
+Future<AppOptions> appOptions(Ref ref) async =>
+    (await ref.watch(catalogRemoteDataSourceProvider).getAppOptions())
+        .toEntity();
+
+/// [appOptions] once loaded; the shipped defaults until then, or if it fails — what a form reads,
+/// so it always has a limit to check against.
+@Riverpod(keepAlive: true)
+AppOptions currentAppOptions(Ref ref) =>
+    ref.watch(appOptionsProvider).value ?? AppOptions.defaults;
 
 /// How each order stage is named, coloured and ordered — reference data from the server, kept for
 /// the session like the categories.

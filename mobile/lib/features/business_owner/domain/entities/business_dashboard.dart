@@ -1,3 +1,4 @@
+import 'package:zuno/core/ui_config/ui_config.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/shared/domain/business_trust.dart';
 
@@ -208,11 +209,8 @@ class DashboardWorker {
   /// Nothing on their plate — the ones worth reading first when staffing a job.
   bool get isFree => !isAtWork && !isBooked;
 
-  String get availabilityLabel => switch (availabilityStatus) {
-    'AtWork' => 'On a job now',
-    'Booked' => 'Booked',
-    _ => 'Free',
-  };
+  String get availabilityLabel =>
+      UiConfig.current.label('WorkerAvailability.Business', availabilityStatus);
 
   /// "From 23 Sep 09:00" — when the job holding them starts. Null when free, so the row omits
   /// the line entirely.

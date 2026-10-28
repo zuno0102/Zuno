@@ -1,4 +1,4 @@
-﻿name: zuno
+name: zuno
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.8.2+31
+version: 1.9.0+32
 
 environment:
   sdk: ^3.12.2
@@ -84,6 +84,10 @@ dependencies:
   latlong2: ^0.9.1
   crop_your_image: ^2.0.1
 
+  # Picking a resume or certificate PDF for a job application. image_picker only reaches photos,
+  # and nothing else in the app or Flutter opens the system document picker.
+  file_picker: ^13.3.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -99,6 +103,10 @@ dev_dependencies:
   freezed: ^3.2.6-dev.1
   json_serializable: ^6.14.0
 
+  # Already in the build through video_player. Named here so a test can stand in a fake player:
+  # there is no real one under `flutter test`, and the shared video preview loads on sight.
+  video_player_platform_interface: ^6.9.0
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
@@ -109,6 +117,12 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # The built-in labels and colours, painted before the server has ever been reached. An identical
+  # copy of backend/src/Zuno.Infrastructure/Persistence/Seed/UiConfig — a backend test fails if the
+  # two drift.
+  assets:
+    - assets/ui_config/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

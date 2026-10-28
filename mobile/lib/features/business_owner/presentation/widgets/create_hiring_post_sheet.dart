@@ -1,22 +1,23 @@
 import 'package:collection/collection.dart';
 import 'package:zuno/features/booking/presentation/providers/business_bookings_notifier.dart';
-import 'package:zuno/features/booking/presentation/widgets/order_code.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'dart:typed_data';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:zuno/core/utils/upload_image.dart';
+import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:zuno/core/constants/api_constants.dart';
 import 'package:zuno/features/booking/domain/entities/booking.dart';
 import 'package:zuno/features/business_owner/domain/entities/business_service.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_services_notifier.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/business_hiring_posts_notifier.dart';
+import 'package:zuno/features/business_owner/presentation/widgets/hiring_post_booking_picker_sheet.dart';
+import 'package:zuno/features/business_owner/presentation/widgets/hiring_post_form_fields.dart';
+import 'package:zuno/features/business_owner/presentation/widgets/hiring_post_service_title_picker.dart';
+import 'package:zuno/features/business_owner/presentation/widgets/salary_unit_dropdown.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
-import 'package:zuno/shared/widgets/job_location_card.dart';
 import 'package:zuno/shared/widgets/location_pin_picker.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
 
@@ -85,7 +86,9 @@ class _CreateHiringPostSheetState
   /// The linked order already carries the customer's exact pin, which the server copies onto the
   /// post. Nothing to ask the business for.
   bool get _usesOrderPin =>
-      !_isEditing && _linkedBooking?.latitude != null && _linkedBooking?.longitude != null;
+      !_isEditing &&
+      _linkedBooking?.latitude != null &&
+      _linkedBooking?.longitude != null;
 
   bool get _hasOwnPin => _pinLatitude != null && _pinLongitude != null;
 
@@ -115,7 +118,8 @@ class _CreateHiringPostSheetState
     );
     // The order already knows what kind of work it is — the package the customer chose carries
     // it — so the post starts from that rather than asking the business the same question.
-    _subCategoryId = post?.serviceSubCategoryId ?? booking?.serviceSubCategoryId;
+    _subCategoryId =
+        post?.serviceSubCategoryId ?? booking?.serviceSubCategoryId;
 
     // The order names a service, and the service knows its own description. Fetched after the
     // first frame because the services may not be loaded when the sheet opens.
@@ -213,7 +217,7 @@ class _CreateHiringPostSheetState
     final choice = await showModalBottomSheet<(Booking?,)>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => _BookingPickerSheet(
+      builder: (context) => HiringPostBookingPickerSheet(
         bookings: hireable,
         selectedId: _linkedBooking?.id,
       ),
@@ -296,12 +300,9 @@ class _CreateHiringPostSheetState
 
     try {
       final rawBytes = await picked.readAsBytes();
-      final compressed = await FlutterImageCompress.compressWithList(
+      final compressed = await compressForUpload(
         rawBytes,
-        format: CompressFormat.jpeg,
-        quality: 85,
-        minWidth: 1600,
-        minHeight: 1600,
+        ref.read(currentAppOptionsProvider),
       );
       setState(() => _pickedImageBytes = compressed);
     } catch (e) {
@@ -320,7 +321,7 @@ class _CreateHiringPostSheetState
       initialDate: existing ?? now.add(const Duration(days: 1)),
       // An event already in the past must stay selectable when editing an older post.
       firstDate: existing != null && existing.isBefore(now) ? existing : now,
-      lastDate: now.add(const Duration(days: 365)),
+      lastDate: ref.read(currentAppOptionsProvider).lastPickableDate(now),
     );
     if (date == null || !mounted) return;
 
@@ -503,81 +504,20 @@ class _CreateHiringPostSheetState
               // how many people are still missing — and puts everyone who accepts straight onto
               // that booking, so nobody has to be added by hand afterwards.
               if (!_isEditing) ...[
-                InkWell(
-                  borderRadius: BorderRadius.circular(4),
-                  onTap: _isLoadingBookings ? null : _pickBooking,
-                  child: InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'For which order?',
-                      border: OutlineInputBorder(),
-                      helperText: 'Workers who accept join that order.',
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _linkedBooking == null
-                              ? Text(
-                                  'Not linked — my own event',
-                                  style: TextStyle(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                )
-                              : Row(
-                                  children: [
-                                    OrderCode(
-                                      code: _linkedBooking!.reference,
-                                      compact: true,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Flexible(
-                                      child: Text(
-                                        _linkedBooking!.serviceName,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                        ),
-                        if (_isLoadingBookings)
-                          const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        else
-                          const Icon(Icons.arrow_drop_down),
-                      ],
-                    ),
-                  ),
+                HiringPostOrderField(
+                  linkedBooking: _linkedBooking,
+                  isLoading: _isLoadingBookings,
+                  onTap: _pickBooking,
                 ),
                 const SizedBox(height: 16),
               ],
-              GestureDetector(
+              HiringPostImageSlot(
+                pickedBytes: _pickedImageBytes,
+                existingImageUrl: existingImageUrl,
                 onTap: _pickImage,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    width: 96,
-                    height: 96,
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    child: _pickedImageBytes != null
-                        ? Image.memory(_pickedImageBytes!, fit: BoxFit.cover)
-                        : existingImageUrl != null
-                        ? CachedNetworkImage(
-                            imageUrl:
-                                '${ApiConstants.baseUrl}$existingImageUrl',
-                            fit: BoxFit.cover,
-                          )
-                        : Icon(
-                            Icons.add_a_photo_outlined,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                  ),
-                ),
               ),
               const SizedBox(height: 14),
-              _ServiceTitlePicker(
+              HiringPostServiceTitlePicker(
                 selectedTitle: _titleController.text.trim().isEmpty
                     ? null
                     : _titleController.text.trim(),
@@ -590,7 +530,8 @@ class _CreateHiringPostSheetState
                 InputDecorator(
                   decoration: const InputDecoration(
                     labelText: 'Kind of work',
-                    helperText: 'Taken from the order — what a worker reads first',
+                    helperText:
+                        'Taken from the order — what a worker reads first',
                     border: OutlineInputBorder(),
                   ),
                   child: Text(kind),
@@ -606,106 +547,18 @@ class _CreateHiringPostSheetState
                 ),
               ),
               const SizedBox(height: 14),
-              InkWell(
-                borderRadius: BorderRadius.circular(4),
+              HiringPostEventDateField(
+                value: _eventDate,
                 onTap: _pickEventDate,
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Event date & time',
-                    border: OutlineInputBorder(),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        _eventDate == null
-                            ? 'Select date & time'
-                            : _eventDate!.toLocal().toString().substring(0, 16),
-                        style: _eventDate == null
-                            ? TextStyle(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              )
-                            : null,
-                      ),
-                      const Icon(Icons.edit_calendar_outlined),
-                    ],
-                  ),
-                ),
               ),
               const SizedBox(height: 14),
-              if (_usesOrderPin) ...[
-                // The customer pinned this order's door; the crew goes there. Shown, not asked.
-                JobLocationCard(
-                  key: const Key('hirePostOrderPin'),
-                  latitude: _linkedBooking!.latitude,
-                  longitude: _linkedBooking!.longitude,
-                  caption: 'From the order · exact pin (set automatically)',
-                  addressLines: [
-                    _linkedBooking!.addressLine1,
-                    _linkedBooking!.addressLine2,
-                    _linkedBooking!.city,
-                    _linkedBooking!.state,
-                    _linkedBooking!.postalCode,
-                  ],
-                  showActions: false,
-                ),
-                const SizedBox(height: 10),
-              ],
-              TextFormField(
+              HiringPostLocationFields(
                 controller: _locationController,
-                maxLines: 2,
-                decoration: InputDecoration(
-                  labelText: _usesOrderPin
-                      ? 'Directions for the crew (optional)'
-                      : 'Location details',
-                  hintText: 'e.g. Hall behind the church, gate 2',
-                  border: const OutlineInputBorder(),
-                ),
+                orderPinBooking: _usesOrderPin ? _linkedBooking : null,
+                hasOwnPin: _hasOwnPin,
+                onPick: _pickLocation,
+                onClearPin: _clearPin,
               ),
-              if (!_usesOrderPin) ...[
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    ActionChip(
-                      key: const Key('hirePostSearchLocation'),
-                      avatar: const Icon(Icons.search, size: 18),
-                      label: const Text('Search location'),
-                      onPressed: () => _pickLocation(fromCurrentLocation: false),
-                    ),
-                    ActionChip(
-                      key: const Key('hirePostCurrentLocation'),
-                      avatar: const Icon(Icons.my_location, size: 18),
-                      label: const Text('Current location'),
-                      onPressed: () => _pickLocation(fromCurrentLocation: true),
-                    ),
-                    if (_hasOwnPin)
-                      InputChip(
-                        key: const Key('hirePostPinSet'),
-                        avatar: Icon(
-                          Icons.check_circle,
-                          size: 18,
-                          color: theme.colorScheme.primary,
-                        ),
-                        label: const Text('Exact pin set'),
-                        onPressed: () => _pickLocation(fromCurrentLocation: false),
-                        onDeleted: _clearPin,
-                      ),
-                  ],
-                ),
-                if (!_hasOwnPin)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      'Pin it so nearby workers see the job and how far it is.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-              ],
               const SizedBox(height: 14),
               TextFormField(
                 controller: _durationController,
@@ -719,9 +572,12 @@ class _CreateHiringPostSheetState
                 ),
                 onChanged: (_) => setState(() {}),
                 validator: (value) {
+                  final options = ref.read(currentAppOptionsProvider);
+                  final min = options.hiringPostMinDurationMinutes;
+                  final max = options.hiringPostMaxDurationMinutes;
                   final parsed = int.tryParse((value ?? '').trim());
-                  return (parsed == null || parsed < 15 || parsed > 1440)
-                      ? 'Enter between 15 and 1440 minutes.'
+                  return (parsed == null || parsed < min || parsed > max)
+                      ? 'Enter between $min and $max minutes.'
                       : null;
                 },
               ),
@@ -737,6 +593,12 @@ class _CreateHiringPostSheetState
                   final parsed = int.tryParse((value ?? '').trim());
                   if (parsed == null || parsed < 1) {
                     return 'Enter at least 1.';
+                  }
+                  final most = ref
+                      .read(currentAppOptionsProvider)
+                      .hiringPostMaxWorkers;
+                  if (parsed > most) {
+                    return 'Enter at most $most.';
                   }
                   final confirmed = _post?.confirmedCount ?? 0;
                   if (parsed < confirmed) {
@@ -767,33 +629,20 @@ class _CreateHiringPostSheetState
                   const SizedBox(width: 12),
                   Expanded(
                     flex: 2,
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _salaryUnit,
-                      decoration: const InputDecoration(
-                        labelText: 'Per',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'PerEvent',
-                          child: Text('Event'),
-                        ),
-                        DropdownMenuItem(value: 'PerDay', child: Text('Day')),
-                        DropdownMenuItem(value: 'PerHour', child: Text('Hour')),
-                      ],
+                    child: SalaryUnitDropdown(
+                      value: _salaryUnit,
                       // Fixed once anyone is confirmed — changing it would silently
                       // reprice work that has already been agreed.
                       onChanged: _isSalaryLocked
                           ? null
-                          : (value) =>
-                                setState(() => _salaryUnit = value ?? _salaryUnit),
+                          : (value) => setState(() => _salaryUnit = value),
                     ),
                   ),
                 ],
               ),
               if (_isSalaryLocked) ...[
                 const SizedBox(height: 10),
-                _SalaryLockNotice(post: _post!),
+                HiringPostSalaryLockNotice(post: _post!),
               ],
               const SizedBox(height: 20),
               PrimaryButton(
@@ -809,245 +658,3 @@ class _CreateHiringPostSheetState
     );
   }
 }
-
-/// Titles a hiring post by picking one of the business's own services, rather than free
-/// text. Selecting one also carries that service's description into the form.
-///
-/// A post edited before this existed may carry a title that matches no current service
-/// (or the service may since have been renamed or removed); that title is offered as an
-/// extra option so editing such a post does not silently blank its title.
-class _ServiceTitlePicker extends ConsumerWidget {
-  const _ServiceTitlePicker({
-    required this.selectedTitle,
-    required this.onSelected,
-  });
-
-  final String? selectedTitle;
-  /// Passes the whole service, not just its name: the post takes its description from it and
-  /// filters the kinds of work on offer by its category.
-  final void Function(String title, BusinessService? service) onSelected;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final servicesAsync = ref.watch(businessServicesProvider);
-
-    return servicesAsync.when(
-      loading: () => const InputDecorator(
-        decoration: InputDecoration(
-          labelText: 'Service',
-          border: OutlineInputBorder(),
-        ),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-            SizedBox(width: 10),
-            Text('Loading your services…'),
-          ],
-        ),
-      ),
-      error: (error, _) => ErrorBanner(message: error.toString()),
-      data: (services) {
-        if (services.isEmpty && selectedTitle == null) {
-          return const _NoServicesNotice();
-        }
-
-        final byName = <String, BusinessService>{
-          for (final service in services) service.name: service,
-        };
-
-        // Keep an unrecognised existing title selectable so editing never drops it.
-        final titles = <String>[
-          if (selectedTitle != null && !byName.containsKey(selectedTitle))
-            selectedTitle!,
-          ...byName.keys,
-        ];
-
-        return DropdownButtonFormField<String>(
-          initialValue: selectedTitle,
-          isExpanded: true,
-          decoration: const InputDecoration(
-            labelText: 'Service',
-            helperText: 'Picks the title and fills in the description',
-            border: OutlineInputBorder(),
-          ),
-          items: titles
-              .map(
-                (title) => DropdownMenuItem(
-                  value: title,
-                  child: Text(title, overflow: TextOverflow.ellipsis),
-                ),
-              )
-              .toList(),
-          onChanged: (title) {
-            if (title == null) return;
-            onSelected(title, byName[title]);
-          },
-          validator: (value) => (value == null || value.trim().isEmpty)
-              ? 'Choose the service you are hiring for.'
-              : null,
-        );
-      },
-    );
-  }
-}
-
-/// A business with no services yet cannot title a hiring post, so say so plainly
-/// instead of presenting an empty dropdown.
-class _NoServicesNotice extends StatelessWidget {
-  const _NoServicesNotice();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.errorContainer.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.info_outline, size: 18, color: theme.colorScheme.error),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Add a service under the Services tab first — a hiring post is titled '
-              'by the service you need workers for.',
-              style: theme.textTheme.bodySmall,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Explains, inside the form, why the salary controls behave differently on a post that
-/// already has confirmed workers.
-class _SalaryLockNotice extends StatelessWidget {
-  const _SalaryLockNotice({required this.post});
-
-  final HiringPost post;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.lock_outline, size: 18, color: theme.colorScheme.primary),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              '${post.confirmedCount} worker(s) confirmed at ${post.salaryLabel}. '
-              'You can raise the salary, but not lower it or change the unit.',
-              style: theme.textTheme.bodySmall,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Picks the customer order a hiring post is being raised for.
-///
-/// Shows only orders that can still take crew, with how many people each is short — the number
-/// the business is about to advertise for.
-class _BookingPickerSheet extends StatelessWidget {
-  const _BookingPickerSheet({required this.bookings, this.selectedId});
-
-  final List<Booking> bookings;
-  final String? selectedId;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 6),
-            child: Text(
-              'Hire for which order?',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          Flexible(
-            child: ListView(
-              shrinkWrap: true,
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.event_note_outlined),
-                  title: const Text('Not linked'),
-                  subtitle: const Text('Hiring for my own event'),
-                  trailing: selectedId == null
-                      ? Icon(Icons.check, color: theme.colorScheme.primary)
-                      : null,
-                  onTap: () => Navigator.of(context).pop((null,)),
-                ),
-                if (bookings.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(20, 8, 20, 20),
-                    child: Text(
-                      'No confirmed orders are waiting for crew. Confirm a booking first, or '
-                      'leave this unlinked.',
-                    ),
-                  )
-                else
-                  for (final booking in bookings)
-                    ListTile(
-                      title: Row(
-                        children: [
-                          OrderCode(code: booking.reference, compact: true),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              booking.variantName ?? booking.serviceName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      subtitle: Text(
-                        '${booking.customerName} · '
-                        '${formatDate(booking.scheduledDate.toLocal())}\n'
-                        // A crew size of 0 means it has not been agreed yet, so there is no
-                        // "how many more" to state — subtracting would print a negative.
-                        '${booking.requiredWorkerCount < 1 ? 'Crew size to be agreed' : 'Needs ${booking.requiredWorkerCount - booking.activeWorkerCount} more of ${booking.requiredWorkerCount}'}',
-                      ),
-                      isThreeLine: true,
-                      trailing: booking.id == selectedId
-                          ? Icon(Icons.check, color: theme.colorScheme.primary)
-                          : null,
-                      onTap: () => Navigator.of(context).pop((booking,)),
-                    ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-

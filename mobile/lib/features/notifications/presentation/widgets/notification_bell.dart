@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/notifications/system_notifications.dart';
+import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/features/notifications/domain/entities/app_notification.dart';
 import 'package:zuno/features/notifications/presentation/providers/notification_providers.dart';
 import 'package:zuno/features/notifications/presentation/providers/notification_surfacer.dart';
@@ -116,7 +117,9 @@ class _NotificationBellState extends ConsumerState<NotificationBell>
     // gradient behind it — so there the badge is white with the role's colour on it, and on the
     // customer's light header it is the role's colour with white on it.
     final onColouredHeader = widget.color != null;
-    final badgeBackground = onColouredHeader ? Colors.white : colors.primary;
+    final badgeBackground = onColouredHeader
+        ? AppColors.onMedia
+        : colors.primary;
     final badgeText = onColouredHeader ? colors.primary : colors.onPrimary;
 
     return IconButton(

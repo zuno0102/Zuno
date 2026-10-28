@@ -6,7 +6,7 @@ using Zuno.Domain.Enums;
 
 namespace Zuno.Application.Modules.Customer.Queries.SearchBusinesses;
 
-public class SearchBusinessesQueryHandler(IApplicationDbContext dbContext)
+public class SearchBusinessesQueryHandler(IApplicationDbContext dbContext, IPlatformSettings platformSettings)
     : IRequestHandler<SearchBusinessesQuery, List<BusinessSummaryDto>>
 {
     public async Task<List<BusinessSummaryDto>> Handle(SearchBusinessesQuery request, CancellationToken cancellationToken)
@@ -38,6 +38,7 @@ public class SearchBusinessesQueryHandler(IApplicationDbContext dbContext)
 
         var businesses = await query.OrderBy(bp => bp.BusinessName).ToListAsync(cancellationToken);
 
-        return businesses.Select(bp => bp.ToSummaryDto()).ToList();
+        var levels = platformSettings.Current.BusinessLevels;
+        return businesses.Select(bp => bp.ToSummaryDto(levels)).ToList();
     }
 }

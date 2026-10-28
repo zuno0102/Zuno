@@ -26,6 +26,9 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(applicationAssembly);
 
         services.AddScoped<RefreshTokenFactory>();
+        services.AddScoped<IBusinessVerificationCheck, Modules.Business.Common.BusinessVerificationCheck>();
+        services.AddScoped<Modules.Business.Common.BusinessApproval>();
+        services.AddScoped<IPayoutDestinationCheck, Modules.Worker.Common.PayoutDestinationCheck>();
         services.AddScoped<IWorkerScheduleService, WorkerScheduleService>();
 
         // The in-app half of notifications. A push sender decorates this one when FCM lands; it

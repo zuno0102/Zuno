@@ -1,3 +1,5 @@
+import 'package:zuno/core/utils/formatting.dart';
+
 /// What a business's record looks like to each side of the marketplace.
 ///
 /// Two blocks rather than one score: a customer is deciding whether the job will be done well,
@@ -71,11 +73,7 @@ class WorkerFacingTrust {
   int get crewsDue => crewsPaid + crewsAwaitingPayment;
 
   /// "per event" / "per day" / "per hour", for the line under the headline figure.
-  String get unitLabel => switch (salaryUnit) {
-    'PerDay' => 'per day',
-    'PerHour' => 'per hour',
-    _ => 'per event',
-  };
+  String get unitLabel => salaryUnitWords(salaryUnit ?? SalaryUnit.perEvent);
 
   String get salaryRangeLabel {
     if (lowestSalary == null || highestSalary == null) return '';

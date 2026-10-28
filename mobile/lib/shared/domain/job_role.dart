@@ -11,6 +11,9 @@
 /// travels as a string and old assignments still carry free text from before these three existed.
 library;
 
+import 'package:zuno/core/ui_config/ui_config.dart';
+import 'package:zuno/core/utils/ui_lookup.dart';
+
 class JobRole {
   const JobRole._();
 
@@ -27,11 +30,11 @@ class JobRole {
   /// The three, in the order they are offered.
   static const List<String> all = [supervisor, lead, support];
 
-  /// What each one is for, shown under its name so the choice is not a guess.
-  static const Map<String, String> descriptions = {
-    supervisor: 'Watches how the work is going',
-    lead: 'Runs the work — can start and finish this job',
-    support: 'Sorts out whatever the job needs',
+  /// What each one is for, shown under its name so the choice is not a guess. From the `JobRole`
+  /// labels' detail.
+  static Map<String, String> get descriptions => {
+    for (final role in all)
+      role: ?UiConfig.current.own('JobRole', role)?.detail,
   };
 
   /// Whether holding this role lets somebody start and finish the job's work.

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/core/ui_config/ui_config.dart';
 import 'package:zuno/shared/domain/track_state.dart';
 
 /// One strand of a job's progress.
@@ -47,22 +48,11 @@ class _Track extends StatelessWidget {
 
   final TrackRow track;
 
-  static const _stateWords = {
-    TrackState.notStarted: 'Not started',
-    TrackState.active: 'Active',
-    TrackState.inProgress: 'In progress',
-    TrackState.completed: 'Completed',
-    TrackState.lapsed: 'Lapsed',
-  };
-
-  StatusTone get _tone => switch (track.state) {
-    TrackState.completed => StatusTone.success,
-    TrackState.inProgress => StatusTone.progress,
-    // Neutral, not the danger tone. A post nobody applied to is a disappointment, not a
-    // fault — and colouring it like a failure implies a black mark the business has not
-    // actually earned. It is simply not the success colour either.
-    _ => StatusTone.waiting,
-  };
+  /// The state's words and tone, from the `TrackState` labels. A lapsed track is neutral, not the
+  /// danger tone: a post nobody applied to is a disappointment, not a fault — and colouring it
+  /// like a failure implies a black mark the business has not actually earned.
+  UiLabel get _stateLabel =>
+      UiConfig.current.entry('TrackState', track.state.name);
 
   /// How many of the three steps are behind us. Drives the dots.
   int get _reached => switch (track.state) {
@@ -77,7 +67,8 @@ class _Track extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = AppColors.status(_tone, theme.brightness);
+    final state = _stateLabel;
+    final color = AppColors.status(state.statusTone, theme.brightness);
     final muted = theme.colorScheme.onSurfaceVariant;
 
     return Row(
@@ -92,11 +83,15 @@ class _Track extends StatelessWidget {
             ),
           ),
         ),
-        _Dots(reached: _reached, color: color, muted: muted.withValues(alpha: 0.28)),
+        _Dots(
+          reached: _reached,
+          color: color,
+          muted: muted.withValues(alpha: 0.28),
+        ),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
-            _stateWords[track.state]!,
+            state.label,
             style: theme.textTheme.bodySmall?.copyWith(
               color: color,
               fontWeight: FontWeight.w700,
@@ -135,7 +130,11 @@ class _Dots extends StatelessWidget {
       children: [
         for (var step = 1; step <= 3; step++) ...[
           if (step > 1)
-            Container(width: 10, height: 2, color: step <= reached ? color : muted),
+            Container(
+              width: 10,
+              height: 2,
+              color: step <= reached ? color : muted,
+            ),
           Container(
             width: 8,
             height: 8,

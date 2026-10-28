@@ -106,6 +106,98 @@ final class ServiceCategoriesProvider
 
 String _$serviceCategoriesHash() => r'd7924e13f827d82f3538dc9777a33d61bd77813c';
 
+/// The limits the app's forms check, from the server's own settings. Kept for the session.
+
+@ProviderFor(appOptions)
+final appOptionsProvider = AppOptionsProvider._();
+
+/// The limits the app's forms check, from the server's own settings. Kept for the session.
+
+final class AppOptionsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<AppOptions>,
+          AppOptions,
+          FutureOr<AppOptions>
+        >
+    with $FutureModifier<AppOptions>, $FutureProvider<AppOptions> {
+  /// The limits the app's forms check, from the server's own settings. Kept for the session.
+  AppOptionsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'appOptionsProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$appOptionsHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<AppOptions> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<AppOptions> create(Ref ref) {
+    return appOptions(ref);
+  }
+}
+
+String _$appOptionsHash() => r'7df56815ae7adf5cecb6165007d1d3875996f325';
+
+/// [appOptions] once loaded; the shipped defaults until then, or if it fails — what a form reads,
+/// so it always has a limit to check against.
+
+@ProviderFor(currentAppOptions)
+final currentAppOptionsProvider = CurrentAppOptionsProvider._();
+
+/// [appOptions] once loaded; the shipped defaults until then, or if it fails — what a form reads,
+/// so it always has a limit to check against.
+
+final class CurrentAppOptionsProvider
+    extends $FunctionalProvider<AppOptions, AppOptions, AppOptions>
+    with $Provider<AppOptions> {
+  /// [appOptions] once loaded; the shipped defaults until then, or if it fails — what a form reads,
+  /// so it always has a limit to check against.
+  CurrentAppOptionsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'currentAppOptionsProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$currentAppOptionsHash();
+
+  @$internal
+  @override
+  $ProviderElement<AppOptions> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  AppOptions create(Ref ref) {
+    return currentAppOptions(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AppOptions value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AppOptions>(value),
+    );
+  }
+}
+
+String _$currentAppOptionsHash() => r'c772aa1d10fc19f42908a888c599bc8257584e65';
+
 /// How each order stage is named, coloured and ordered — reference data from the server, kept for
 /// the session like the categories.
 

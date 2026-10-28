@@ -10,6 +10,7 @@ import 'package:zuno/features/booking/presentation/widgets/propose_terms_sheet.d
 import 'package:zuno/features/booking/presentation/screens/booking_chat_screen.dart';
 import 'package:zuno/features/notifications/presentation/providers/notification_providers.dart';
 import 'package:flutter/material.dart';
+import 'package:zuno/shared/widgets/detail_row.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/core/constants/api_constants.dart';
@@ -285,7 +286,7 @@ class _BusinessBookingDetailScreenState
             ),
           ],
           const SizedBox(height: 20),
-          _DetailRow(
+          DetailRow(
             label: 'Scheduled for',
             // Through the shared formatters, not a substring of toString(), which printed
             // "2026-09-23 09:0" — machine format, with a digit clipped off the time.
@@ -293,15 +294,15 @@ class _BusinessBookingDetailScreenState
                 '${formatDate(booking.scheduledDate)} · '
                 '${formatTime(booking.scheduledDate)}',
           ),
-          _DetailRow(label: 'Price', value: booking.priceDisplay()),
+          DetailRow(label: 'Price', value: booking.priceDisplay()),
           if (booking.customerPhone != null)
-            _DetailRow(label: 'Customer phone', value: booking.customerPhone!),
+            DetailRow(label: 'Customer phone', value: booking.customerPhone!),
 
           // What the customer told the business about the job, each line carrying the question as it
 
           // was worded when they answered it.
           for (final answer in booking.serviceAnswers)
-            _DetailRow(label: answer.questionPrompt, value: answer.answerText),
+            DetailRow(label: answer.questionPrompt, value: answer.answerText),
 
           // Agreeing how many people the job takes, right under what the customer told us —
           // the answers are what the number is worked out from.
@@ -314,7 +315,7 @@ class _BusinessBookingDetailScreenState
           ),
 
           if (booking.notes != null && booking.notes!.isNotEmpty)
-            _DetailRow(label: 'Notes', value: booking.notes!),
+            DetailRow(label: 'Notes', value: booking.notes!),
           // The customer's pinned location, with Directions — so the business (and anyone it
           // forwards the address to) goes to the right door, not wherever the typed text points.
           if (booking.addressLine1 != null) ...[
@@ -389,27 +390,6 @@ class _BusinessBookingDetailScreenState
               ),
             ],
           ],
-        ],
-      ),
-    );
-  }
-}
-
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.labelMedium),
-          Text(value),
         ],
       ),
     );

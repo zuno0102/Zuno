@@ -25,7 +25,8 @@ namespace Zuno.Application.Modules.Customer.Queries.GetDailyBanners;
 /// </remarks>
 public class GetDailyBannersQueryHandler(
     IApplicationDbContext dbContext,
-    IDateTimeProvider dateTimeProvider)
+    IDateTimeProvider dateTimeProvider,
+    IPlatformSettings platformSettings)
     : IRequestHandler<GetDailyBannersQuery, List<ServiceListingDto>>
 {
     /// <summary>How many a customer sees at once, and how far the window moves overnight.</summary>
@@ -89,9 +90,10 @@ public class GetDailyBannersQueryHandler(
             })
             .ToListAsync(cancellationToken);
 
+        var levels = platformSettings.Current.BusinessLevels;
         foreach (var listing in listings)
         {
-            listing.LevelName = BusinessLevel.Name(listing.Level);
+            listing.LevelName = levels.Name(listing.Level);
         }
 
         // Back into the order the window chose. `Contains` returns rows in whatever order the

@@ -24,16 +24,17 @@ public class GetWorkerDashboardQueryHandler(
     ICurrentUserService currentUserService,
     IDateTimeProvider dateTimeProvider,
     IWorkerEarningsService earningsService,
+    IPlatformSettings platformSettings,
     IApplicationDbContext dbContext) : IRequestHandler<GetWorkerDashboardQuery, WorkerDashboardDto>
 {
-    /// <summary>Months of history on the chart.</summary>
-    private const int TrendMonths = 6;
+    /// <summary>Months of history on the chart. A platform setting.</summary>
+    private int TrendMonths => platformSettings.Current.WorkerDashboardTrendMonths;
 
     /// <summary>
     /// Caps the rows sent, never the counts. A worker with forty upcoming jobs still sees forty in
-    /// the figure; the list just stops being a useful thing to scroll.
+    /// the figure; the list just stops being a useful thing to scroll. A platform setting.
     /// </summary>
-    private const int DetailLimit = 25;
+    private int DetailLimit => platformSettings.Current.WorkerDashboardDetailLimit;
 
     /// <summary>Wages on their way but not arrived, matching <c>WorkerEarningsService</c>.</summary>
     private static readonly PaymentStatus[] StillComing =
@@ -118,7 +119,7 @@ public class GetWorkerDashboardQueryHandler(
 
         return new WorkerDashboardDto
         {
-            Profile = profile.ToDto(earnings),
+            Profile = profile.ToDto(earnings, platformSettings.Current.WorkerLevels),
 
             InProgressCount = inProgress.Count,
             UpcomingCount = upcoming.Count,
@@ -132,7 +133,7 @@ public class GetWorkerDashboardQueryHandler(
             // the worker's profile can never disagree on one screen.
             PendingPaymentTotal = earnings.OwedToYou,
 
-            Trend = BuildTrend(orderJobs, postJobs, now),
+            Trend = BuildTrend(orderJobs, postJobs, now, TrendMonths),
         };
     }
 
@@ -237,7 +238,8 @@ public class GetWorkerDashboardQueryHandler(
     private static List<WorkerMonthlyEarningDto> BuildTrend(
         List<OrderJobRow> orderJobs,
         List<PostJobRow> postJobs,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        int trendMonths)
     {
         // The count is partitioned to avoid crediting one job twice; the money is not, because a
         // wage only ever exists on one side. See WorkerEarningsRollup for why.
@@ -262,7 +264,7 @@ public class GetWorkerDashboardQueryHandler(
 
         var months = new List<WorkerMonthlyEarningDto>();
 
-        for (var offset = TrendMonths - 1; offset >= 0; offset--)
+        for (var offset = trendMonths - 1; offset >= 0; offset--)
         {
             var point = now.AddMonths(-offset);
 

@@ -1,7 +1,9 @@
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Zuno.Application.Modules.Authentication.Validators;
 using Zuno.Domain.Entities;
 
 namespace Zuno.Infrastructure.Persistence.Seed;
@@ -36,6 +38,19 @@ public static class AdminUserSeeder
         {
             logger.LogWarning(
                 "No Super Admin account exists and AdminSeed:Email/AdminSeed:Password are not configured. Skipping seed.");
+            return;
+        }
+
+        // The same rule every other account meets. The app owner's account is the one that matters
+        // most, and a seed variable typed in a hurry is how a weak one gets in.
+        var strength = new InlineValidator<string>();
+        strength.RuleFor(p => p).MustBeAStrongPassword();
+        var verdict = strength.Validate(password);
+        if (!verdict.IsValid)
+        {
+            logger.LogError(
+                "AdminSeed:Password is too weak ({Reasons}). The Super Admin was not created; set a stronger one and restart.",
+                string.Join(" ", verdict.Errors.Select(e => e.ErrorMessage)));
             return;
         }
 

@@ -28,11 +28,11 @@ public class CompleteHiringPostWorkCommandHandler(
         // Null for a worker: the Lead the owner named on this own event may finish it too.
         var businessProfile = await businessOwnerProfileRepository.GetByUserIdAsync(userId, cancellationToken);
 
-        var post = await dbContext.HiringPosts
-            .Include(p => p.BusinessOwnerProfile)
-            .Include(p => p.Applications).ThenInclude(a => a.WorkerProfile).ThenInclude(wp => wp.User)
-            .Include(p => p.Applications).ThenInclude(a => a.SalaryAdjustments)
-            .FirstOrDefaultAsync(p => p.Id == request.HiringPostId, cancellationToken)
+        var post = await dbContext.LoadHiringPostAsync(
+            dbContext.HiringPosts
+                .Include(p => p.BusinessOwnerProfile)
+                .Where(p => p.Id == request.HiringPostId),
+            cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Domain.Entities.HiringPost), request.HiringPostId);
 
         if (!HiringPostWorkControl.MayMoveWork(post, userId, businessProfile?.Id))

@@ -20,7 +20,7 @@ public class ForgotPasswordCommandHandler(
             return;
         }
 
-        var resetToken = jwtTokenService.GeneratePasswordResetToken(user.Id);
+        var resetToken = jwtTokenService.GeneratePasswordResetToken(user.Id, user.PasswordHash);
 
         try
         {

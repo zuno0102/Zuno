@@ -35,18 +35,20 @@ public class WorkerInvitedToHiringPostNotificationHandler(
             cancellationToken);
 }
 
-/// <summary>The business picked this applicant. Still an offer — they have to answer it.</summary>
-public class HiringPostApplicationConfirmedNotificationHandler(
-    INotificationSender notifications) : INotificationHandler<HiringPostApplicationConfirmedEvent>
+/// <summary>
+/// The business accepted this applicant: they are on the crew. Opens My jobs, where the job now is.
+/// </summary>
+public class HiringPostApplicantHiredNotificationHandler(
+    INotificationSender notifications) : INotificationHandler<HiringPostApplicantHiredEvent>
 {
-    public Task Handle(HiringPostApplicationConfirmedEvent notification, CancellationToken cancellationToken) =>
+    public Task Handle(HiringPostApplicantHiredEvent notification, CancellationToken cancellationToken) =>
         notifications.NotifyAsync(
             notification.WorkerUserId,
             NotificationKind.JobOfferConfirmed,
-            $"{notification.BusinessName} picked you for {notification.PostTitle}",
-            "Answer to take the job — the place is not held for long.",
-            NotificationTarget.HiringPost,
-            notification.HiringPostId,
+            $"{notification.BusinessName} hired you for {notification.PostTitle}",
+            "You are on the crew. Find the job under My jobs.",
+            NotificationTarget.MyJobs,
+            Guid.Empty,
             cancellationToken);
 }
 

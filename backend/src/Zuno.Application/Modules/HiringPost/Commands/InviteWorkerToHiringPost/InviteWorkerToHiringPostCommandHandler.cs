@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Zuno.Application.Common.Interfaces;
 using Zuno.Application.Common.Services;
+using Zuno.Application.Modules.HiringPost.Common;
 using Zuno.Application.Modules.HiringPost.DTOs;
 using Zuno.Application.Modules.HiringPost.Events;
 using Zuno.Domain.Entities;
@@ -40,12 +41,12 @@ public class InviteWorkerToHiringPostCommandHandler(
         // The booking comes along for two reasons: the guard below needs its status, and the
         // response is mapped straight back into the client's list — without it the post would
         // come home looking standalone and reappear in the pickers this guard closes.
-        var post = await dbContext.HiringPosts
-            .Include(p => p.BusinessOwnerProfile)
-            .Include(p => p.Booking).ThenInclude(b => b!.BusinessService)
-            .Include(p => p.Applications).ThenInclude(a => a.WorkerProfile).ThenInclude(wp => wp.User)
-            .Include(p => p.Applications).ThenInclude(a => a.SalaryAdjustments)
-            .FirstOrDefaultAsync(p => p.Id == request.HiringPostId, cancellationToken)
+        var post = await dbContext.LoadHiringPostAsync(
+            dbContext.HiringPosts
+                .Include(p => p.BusinessOwnerProfile)
+                .Include(p => p.Booking).ThenInclude(b => b!.BusinessService)
+                .Where(p => p.Id == request.HiringPostId),
+            cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Domain.Entities.HiringPost), request.HiringPostId);
 
         if (post.BusinessOwnerProfileId != businessProfile.Id)

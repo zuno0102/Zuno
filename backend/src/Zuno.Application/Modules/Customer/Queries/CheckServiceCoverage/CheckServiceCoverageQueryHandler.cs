@@ -12,7 +12,7 @@ namespace Zuno.Application.Modules.Customer.Queries.CheckServiceCoverage;
 /// The same <see cref="ServiceAreaCheck"/> the booking validator runs, so the app's early warning and
 /// the server's refusal can never disagree about a pin.
 /// </remarks>
-public class CheckServiceCoverageQueryHandler(IApplicationDbContext dbContext)
+public class CheckServiceCoverageQueryHandler(IApplicationDbContext dbContext, IPlatformSettings platformSettings)
     : IRequestHandler<CheckServiceCoverageQuery, ServiceCoverageDto>
 {
     public async Task<ServiceCoverageDto> Handle(
@@ -33,6 +33,7 @@ public class CheckServiceCoverageQueryHandler(IApplicationDbContext dbContext)
             request.ServiceId,
             request.Latitude,
             request.Longitude,
+            platformSettings.Current,
             dbContext,
             cancellationToken);
 

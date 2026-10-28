@@ -1,4 +1,6 @@
+import 'package:zuno/core/ui_config/ui_config.dart';
 import 'package:zuno/core/utils/formatting.dart';
+import 'package:zuno/core/utils/ui_lookup.dart';
 import 'package:zuno/features/booking/domain/entities/booking_service_answer.dart';
 import 'package:zuno/features/booking/domain/entities/booking_terms_proposal.dart';
 import 'package:zuno/features/booking/domain/entities/booking_worker_assignment.dart';
@@ -400,13 +402,9 @@ class Booking {
   bool get isCrewDone => crewStatus == 'Done';
 
   /// "2 of 5 · Part staffed".
-  String get crewStatusLabel => switch (crewStatus) {
-    'NotStaffed' => 'Nobody assigned yet',
-    'PartStaffed' => 'Part staffed',
-    'FullyStaffed' => 'Fully staffed',
-    'Done' => 'Crew finished',
-    _ => crewStatus,
-  };
+  String get crewStatusLabel =>
+      UiConfig.current.own('BookingCrewStatus', crewStatus)?.label ??
+      crewStatus;
 
   String get crewCountLabel => '$activeCrewCount of $requiredWorkerCount';
 
@@ -467,13 +465,8 @@ class Booking {
 
   bool get myWageIsPaid => myPaymentStatus == 'Paid';
 
-  String get wageStatusLabel => switch (wageStatus) {
-    'NoWagesThroughZuno' => 'No wages through Zuno',
-    'Disputed' => 'Payment disputed',
-    'Outstanding' => 'Payment pending',
-    'Settled' => 'All crew paid',
-    _ => '',
-  };
+  String get wageStatusLabel =>
+      UiConfig.current.own('BookingWageStatus', wageStatus)?.label ?? '';
 
   /// "2 of 5 paid" — only meaningful when somebody is actually owed.
   String get wagePaidLabel => '$wagePaidPayeeCount of $wagePayeeCount paid';

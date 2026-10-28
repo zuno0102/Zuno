@@ -13,7 +13,7 @@
 #   * the price type is snapshotted onto the booking, so repricing the service later cannot
 #     restate what an old order was quoted in
 #   * every price type that worked before still works, unchanged
-API=http://localhost:5056/api/v1
+API=${API:-http://localhost:5056/api/v1}
 PSQL="${PSQL:-psql}"
 : "${PGPASSWORD:?set PGPASSWORD to your Postgres password first}"
 S=$(date +%s)

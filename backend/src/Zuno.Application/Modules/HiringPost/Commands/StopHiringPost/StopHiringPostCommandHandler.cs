@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Zuno.Application.Common.Interfaces;
+using Zuno.Application.Modules.HiringPost.Common;
 using Zuno.Application.Modules.HiringPost.DTOs;
 using Zuno.Domain.Entities;
 using Zuno.Domain.Enums;
@@ -27,11 +28,11 @@ public class StopHiringPostCommandHandler(
         var businessProfile = await businessOwnerProfileRepository.GetByUserIdAsync(userId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(BusinessOwnerProfile), userId);
 
-        var post = await dbContext.HiringPosts
-            .Include(p => p.BusinessOwnerProfile)
-            .Include(p => p.Applications).ThenInclude(a => a.WorkerProfile).ThenInclude(wp => wp.User)
-            .Include(p => p.Applications).ThenInclude(a => a.SalaryAdjustments)
-            .FirstOrDefaultAsync(p => p.Id == request.HiringPostId, cancellationToken)
+        var post = await dbContext.LoadHiringPostAsync(
+            dbContext.HiringPosts
+                .Include(p => p.BusinessOwnerProfile)
+                .Where(p => p.Id == request.HiringPostId),
+            cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Domain.Entities.HiringPost), request.HiringPostId);
 
         if (post.BusinessOwnerProfileId != businessProfile.Id)

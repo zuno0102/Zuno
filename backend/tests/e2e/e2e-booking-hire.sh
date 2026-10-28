@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # End-to-end: hiring a crew for a customer booking.
-API=http://localhost:5056/api/v1
+API=${API:-http://localhost:5056/api/v1}
 PSQL="${PSQL:-psql}"
 : "${PGPASSWORD:?set PGPASSWORD to your Postgres password first}"
 S=$(date +%s)
@@ -156,12 +156,12 @@ EVC=$(date -u -d '+40 days 09:00' +%Y-%m-%dT%H:%M:%SZ)
 PC=$(post_ /business/hiring-posts "$BT" "{\"bookingId\":\"$BKC\",\"title\":\"Catering\",\"eventDate\":\"$EVC\",\"durationMinutes\":180,\"workersNeeded\":3,\"salaryAmount\":800,\"salaryUnit\":\"PerEvent\",\"serviceSubCategoryId\":\"a2222222-0000-0000-0003-000000000002\"}" | j id)
 eq "Start at 0 hired" "$(sql "select count(*) from booking_worker_assignments where booking_id='$BKC' and assignment_status in (1,2) and is_deleted=false")" "0"
 
-# Channel 1 — worker applies to the open post, business confirms, worker accepts.
+# Channel 1 — worker applies to the open post; the business hiring them is the second yes.
 W4=$(reg Wfour "bh_w4$S@zuno.local" Worker | j accessToken)
 post_ /worker/hiring-posts/$PC/apply "$W4" >/dev/null
 A4=$(sql "select a.id from hiring_post_applications a join worker_profiles w on w.id=a.worker_profile_id join users u on u.id=w.user_id where a.hiring_post_id='$PC' and u.email='bh_w4$S@zuno.local'")
 post_ /business/hiring-posts/applications/$A4/confirm "$BT" >/dev/null
-post_ /worker/hiring-posts/applications/$A4/respond "$W4" '{"accept":true}' >/dev/null
+want_no "...with nothing left for the worker to answer" "$(post_ /worker/hiring-posts/applications/$A4/respond "$W4" '{"accept":true}')"
 eq "Channel 1 (applied to post) -> 1 hired" "$(sql "select count(*) from booking_worker_assignments where booking_id='$BKC' and assignment_status in (1,2) and is_deleted=false")" "1"
 
 # Channel 2 — business invites a specific worker to that post.

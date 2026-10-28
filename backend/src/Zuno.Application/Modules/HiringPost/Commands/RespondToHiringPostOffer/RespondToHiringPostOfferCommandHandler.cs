@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Zuno.Application.Common.Interfaces;
 using Zuno.Application.Common.Services;
+using Zuno.Application.Modules.HiringPost.Common;
 using Zuno.Application.Modules.HiringPost.DTOs;
 using Zuno.Application.Modules.HiringPost.Events;
 using Zuno.Application.Modules.Notifications.Common;
@@ -12,9 +13,9 @@ using Zuno.Domain.Exceptions;
 namespace Zuno.Application.Modules.HiringPost.Commands.RespondToHiringPostOffer;
 
 /// <summary>
-/// The worker's half of the hiring handshake. A business approval only creates an offer; the
-/// slot is not filled until the worker says yes here. Declining releases the slot immediately,
-/// which is what lets a vacancy shrink again — the business alone can never un-hire someone.
+/// The worker answering an invitation. The business asked first, so the worker saying yes here is
+/// the second yes and hires them on the spot — no further step for the business. Declining releases
+/// the slot immediately, which is what lets a vacancy shrink again.
 /// </summary>
 public class RespondToHiringPostOfferCommandHandler(
     ICurrentUserService currentUserService,
@@ -33,12 +34,12 @@ public class RespondToHiringPostOfferCommandHandler(
             .FirstOrDefaultAsync(wp => wp.UserId == userId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(WorkerProfile), userId);
 
-        var application = await dbContext.HiringPostApplications
-            .Include(a => a.HiringPost).ThenInclude(p => p.BusinessOwnerProfile)
-            .Include(a => a.HiringPost).ThenInclude(p => p.ServiceSubCategory)
-            .Include(a => a.HiringPost).ThenInclude(p => p.Applications).ThenInclude(x => x.WorkerProfile).ThenInclude(wp => wp.User)
-            .Include(a => a.HiringPost).ThenInclude(p => p.Applications).ThenInclude(x => x.SalaryAdjustments)
-            .FirstOrDefaultAsync(a => a.Id == request.ApplicationId, cancellationToken)
+        var application = await dbContext.LoadHiringPostApplicationAsync(
+            dbContext.HiringPostApplications
+                .Include(a => a.HiringPost).ThenInclude(p => p.BusinessOwnerProfile)
+                .Include(a => a.HiringPost).ThenInclude(p => p.ServiceSubCategory)
+                .Where(a => a.Id == request.ApplicationId),
+            cancellationToken)
             ?? throw new EntityNotFoundException(nameof(HiringPostApplication), request.ApplicationId);
 
         if (application.WorkerProfileId != workerProfile.Id)
@@ -85,33 +86,9 @@ public class RespondToHiringPostOfferCommandHandler(
                         clash, workerScheduleService.TravelBufferMinutes, post.EventDate));
             }
 
-            application.ApplicationStatus = HiringPostApplicationStatus.Accepted;
-
-            // Only now does the worker join the business's roster — accepting the job is what
-            // makes the relationship real, not the business having offered it.
-            var businessProfileId = application.HiringPost.BusinessOwnerProfileId;
-            var businessWorker = await businessWorkerRepository.GetByBusinessAndWorkerAsync(
-                businessProfileId, application.WorkerProfileId, cancellationToken);
-
-            if (businessWorker is null)
-            {
-                businessWorkerRepository.Add(new BusinessWorker
-                {
-                    BusinessOwnerProfileId = businessProfileId,
-                    WorkerProfileId = application.WorkerProfileId,
-                    WorkerProfile = workerProfile,
-                    AssignmentStatus = BusinessWorkerStatus.Active,
-                    InvitedAt = application.RespondedAt ?? dateTimeProvider.UtcNow,
-                    RespondedAt = dateTimeProvider.UtcNow,
-                });
-            }
-            else if (businessWorker.AssignmentStatus != BusinessWorkerStatus.Active)
-            {
-                businessWorker.AssignmentStatus = BusinessWorkerStatus.Active;
-                businessWorker.RespondedAt = dateTimeProvider.UtcNow;
-            }
-
-            await AssignToLinkedBookingAsync(application, cancellationToken);
+            // The business invited them, so this yes is the second one: they are hired now.
+            await HiringPostHire.CompleteAsync(
+                application, businessWorkerRepository, dbContext, dateTimeProvider.UtcNow, cancellationToken);
         }
         else
         {
@@ -146,68 +123,5 @@ public class RespondToHiringPostOfferCommandHandler(
             cancellationToken);
 
         return application.HiringPost.ToDto(workerProfile.Id);
-    }
-
-    /// <summary>
-    /// Puts a worker who just accepted onto the booking the post was raised for, if there is one.
-    /// </summary>
-    /// <remarks>
-    /// Written directly rather than by sending <c>AssignWorkerCommand</c>, for one specific
-    /// reason: that handler runs a clash check, and <c>WorkerScheduleService</c> counts accepted
-    /// hiring-post applications as commitments. It would find the post this worker accepted a
-    /// moment ago, see an exact overlap with itself, and refuse every single time. The real check
-    /// has already run above, for this worker over this same window.
-    ///
-    /// The worker ends up holding two commitments for one event — the application and the
-    /// assignment. That is harmless for clash detection, which simply reports the same conflict
-    /// twice when a third job is checked.
-    ///
-    /// Nothing in here may throw. A problem on the booking side is not the worker's fault, and
-    /// failing here would leave them un-hired after they had already said yes.
-    /// </remarks>
-    private async Task AssignToLinkedBookingAsync(
-        HiringPostApplication application,
-        CancellationToken cancellationToken)
-    {
-        if (application.HiringPost.BookingId is not { } bookingId)
-        {
-            return;
-        }
-
-        var booking = await dbContext.Bookings
-            .Include(b => b.WorkerAssignments)
-            .FirstOrDefaultAsync(b => b.Id == bookingId, cancellationToken);
-
-        // The order was called off or finished while the offer sat unanswered.
-        if (booking is null
-            || booking.BookingStatus is BookingStatus.Cancelled or BookingStatus.Completed)
-        {
-            return;
-        }
-
-        // Already on it — added by hand while the offer sat unanswered. Nothing to write, and the
-        // hire itself still stands.
-        if (booking.WorkerAssignments.Any(a => a.WorkerProfileId == application.WorkerProfileId))
-        {
-            return;
-        }
-
-        // Deliberately no headcount limit. The post already said how many people the business
-        // wanted and stopped taking workers once that many accepted — checking a second, unrelated
-        // number off the service definition would quietly drop someone the business had just hired.
-
-        // Accepted, not Assigned: the worker consented by taking the offer. Assigned would put the
-        // same job back in front of them to accept a second time.
-        dbContext.BookingWorkerAssignments.Add(new BookingWorkerAssignment
-        {
-            BookingId = booking.Id,
-            WorkerProfileId = application.WorkerProfileId,
-            AssignmentStatus = BookingWorkerAssignmentStatus.Accepted,
-            RespondedAt = dateTimeProvider.UtcNow,
-        });
-
-        // The order's own status is untouched. Staffing is its own track now, worked out from
-        // these assignments — hiring someone is not the business confirming the order, nor the
-        // work having started.
     }
 }

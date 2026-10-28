@@ -104,8 +104,8 @@ Vercel and the APK regardless. `-SkipApk` leaves the APK for another time.
 
 `ConnectionStrings__ZunoDatabase`, `Cors__AllowedOrigins__0` (= `https://zuno-infinite-service.vercel.app`,
 exactly, no trailing slash or newline),
-`Razorpay__KeyId`, `Razorpay__KeySecret`, `AdminSeed__Email`, `AdminSeed__Password`, and — while
-testing, until the admin verification screen exists — `Verification__AutoVerifyBusinesses=true`.
+`Razorpay__KeyId`, `Razorpay__KeySecret`, `AdminSeed__Email`, `AdminSeed__Password`, and `Verification__AutoVerifyBusinesses` (`false`: a Super Admin approves
+each business; `true`: approved automatically — either way only after it passes validation).
 
 ---
 
@@ -228,6 +228,11 @@ it, and nothing in the UI explains why.
 **The easy way:** set `AdminSeed__Email` and `AdminSeed__Password` in Render. On start-up the API
 creates that Super Admin if none exists yet (and does nothing once one does). Sign in with it on the
 normal login screen — the app opens the admin panel for that role.
+
+The password must meet the same rules as every account (8+ characters, upper and lower case, a digit
+and a symbol); a weaker one is refused and logged, and no admin is created. Once you have signed in,
+**delete both variables from Render** — the admin exists, and a password left in the environment is
+one more place it can leak from.
 
 The manual way, if you cannot use the seeder — register an ordinary account, then promote it:
 

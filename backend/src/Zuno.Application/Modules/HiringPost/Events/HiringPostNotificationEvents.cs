@@ -34,10 +34,10 @@ public record WorkerInvitedToHiringPostEvent(
     SalaryUnit SalaryUnit) : INotification;
 
 /// <summary>
-/// The business picked this applicant out of the people who applied. It is an offer, not a hiring —
-/// the place is only filled when they answer.
+/// The business accepted someone who applied. They are hired — the worker asked first, so nothing
+/// is left for them to answer.
 /// </summary>
-public record HiringPostApplicationConfirmedEvent(
+public record HiringPostApplicantHiredEvent(
     Guid HiringPostId,
     Guid WorkerUserId,
     string BusinessName,

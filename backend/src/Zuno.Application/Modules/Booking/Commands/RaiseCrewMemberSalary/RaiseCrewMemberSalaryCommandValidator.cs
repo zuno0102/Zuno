@@ -1,4 +1,5 @@
 using FluentValidation;
+using Zuno.Domain.Common;
 
 namespace Zuno.Application.Modules.Booking.Commands.RaiseCrewMemberSalary;
 
@@ -10,7 +11,7 @@ public class RaiseCrewMemberSalaryCommandValidator : AbstractValidator<RaiseCrew
         RuleFor(x => x.WorkerProfileId).NotEmpty();
         RuleFor(x => x.Increase)
             .GreaterThan(0).WithMessage("The raise must be more than ₹0.")
-            .LessThanOrEqualTo(99_999_999.99m);
+            .LessThanOrEqualTo(MoneyLimits.MaxAmount);
         RuleFor(x => x.Reason).MaximumLength(300);
     }
 }

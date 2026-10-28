@@ -185,7 +185,7 @@ public class BusinessOwnershipRulesTests
         SignedInAs(_ownerUserId);
         _owner.LogoUrl = "/uploads/businesses/x/logo.jpg";
         var sut = new SetBusinessLogoCommandHandler(
-            _currentUser.Object, _profiles.Object, _storage.Object, _dbContext.Object);
+            _currentUser.Object, _profiles.Object, _storage.Object, _dbContext.Object, new TestPlatformSettings());
 
         await sut.Handle(
             new SetBusinessLogoCommand { Url = "/uploads/businesses/x/logo.png" },
@@ -207,7 +207,7 @@ public class BusinessOwnershipRulesTests
         SignedInAs(_ownerUserId);
         _owner.LogoUrl = "/uploads/businesses/x/logo.jpg";
         var sut = new SetBusinessLogoCommandHandler(
-            _currentUser.Object, _profiles.Object, _storage.Object, _dbContext.Object);
+            _currentUser.Object, _profiles.Object, _storage.Object, _dbContext.Object, new TestPlatformSettings());
 
         await sut.Handle(
             new SetBusinessLogoCommand { Url = "/uploads/businesses/x/logo.jpg" },
@@ -222,7 +222,7 @@ public class BusinessOwnershipRulesTests
         SignedInAs(_ownerUserId);
         _owner.LogoUrl = null;
         var sut = new SetBusinessLogoCommandHandler(
-            _currentUser.Object, _profiles.Object, _storage.Object, _dbContext.Object);
+            _currentUser.Object, _profiles.Object, _storage.Object, _dbContext.Object, new TestPlatformSettings());
 
         await sut.Handle(
             new SetBusinessLogoCommand { Url = "/uploads/businesses/x/logo.jpg" },

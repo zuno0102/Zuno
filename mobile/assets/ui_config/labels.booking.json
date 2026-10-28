@@ -1,0 +1,124 @@
+{
+  "groups": {
+    "PayoutState": {
+      "Ready": { "label": "Ready to be paid", "tone": "success", "sort": 1 },
+      "NotVerified": { "label": "UPI is not verified — check with the worker", "tone": "danger", "icon": "error_outline", "sort": 2 },
+      "None": { "label": "No UPI ID on file — ask the worker to add one", "tone": "danger", "icon": "error_outline", "sort": 3 }
+    },
+    "PaymentStatus": {
+      "Paid": { "label": "Paid", "sort": 1 },
+      "Failed": { "label": "Payment failed", "sort": 2 },
+      "Disputed": { "label": "Disputed", "sort": 3 },
+      "Processing": { "label": "Sending", "sort": 4 },
+      "AwaitingWorkerConfirmation": { "label": "Awaiting confirmation", "sort": 5 }
+    },
+    "BookingCrewStatus": {
+      "NotStaffed": { "label": "Nobody assigned yet", "sort": 1 },
+      "PartStaffed": { "label": "Part staffed", "sort": 2 },
+      "FullyStaffed": { "label": "Fully staffed", "sort": 3 },
+      "Done": { "label": "Crew finished", "sort": 4 }
+    },
+    "BookingWageStatus": {
+      "NoWagesThroughZuno": { "label": "No wages through Zuno", "sort": 1 },
+      "Disputed": { "label": "Payment disputed", "sort": 2 },
+      "Outstanding": { "label": "Payment pending", "sort": 3 },
+      "Settled": { "label": "All crew paid", "sort": 4 }
+    },
+    "BookingWorkerAssignment.Crew": {
+      "Awaiting": { "label": "Awaiting their answer", "icon": "schedule", "sort": 1 },
+      "Active": { "label": "Active", "icon": "check_circle_outline", "sort": 2 },
+      "InProgress": { "label": "In progress", "icon": "play_circle_fill", "sort": 3 },
+      "Completed": { "label": "Completed", "icon": "check_circle", "sort": 4 },
+      "Declined": { "label": "Declined", "icon": "cancel_outlined", "sort": 5 },
+      "*": { "label": "Awaiting their answer", "icon": "schedule" }
+    },
+    "BookingWorkerAssignment.Chip": {
+      "Assigned": { "label": "Pending response", "tone": "progress", "sort": 1 },
+      "Accepted": { "label": "Accepted", "tone": "success", "sort": 2 },
+      "Rejected": { "label": "Declined", "tone": "danger", "sort": 3 },
+      "Completed": { "label": "Completed", "tone": "success", "sort": 4 }
+    },
+    "BookingAgreement.Chip": {
+      "Agreed": { "label": "Agreed", "sort": 1 },
+      "Closed": { "label": "Closed", "sort": 2 },
+      "WaitingForYou": { "label": "Waiting for you", "sort": 3 },
+      "WaitingForThem": { "label": "Waiting for them", "sort": 4 },
+      "*": { "label": "Not agreed yet" }
+    },
+    "HiringPostApplication.Business": {
+      "Applied": { "label": "Applied", "sort": 1 },
+      "Confirmed": { "label": "Awaiting worker", "sort": 2 },
+      "Accepted": { "label": "Accepted", "sort": 3 },
+      "Rejected": { "label": "Rejected", "sort": 4 },
+      "Declined": { "label": "Declined by worker", "sort": 5 }
+    },
+    "NotificationKind": {
+      "JobInvitation": { "label": "Job invitation", "icon": "person_add_alt_1_outlined", "sort": 1 },
+      "JobOfferConfirmed": { "label": "Job offer confirmed", "icon": "person_add_alt_1_outlined", "sort": 2 },
+      "TeamInvitation": { "label": "Team invitation", "icon": "person_add_alt_1_outlined", "sort": 3 },
+      "JobAssignment": { "label": "Job assignment", "icon": "assignment_ind_outlined", "sort": 4 },
+      "WagePaid": { "label": "Wage paid", "icon": "payments_outlined", "sort": 5 },
+      "WageRaised": { "label": "Wage raised", "icon": "trending_up", "sort": 6 },
+      "PaymentDisputed": { "label": "Payment disputed", "icon": "report_gmailerrorred_outlined", "sort": 7 },
+      "BookingRequested": { "label": "Booking requested", "icon": "add_shopping_cart_outlined", "sort": 8 },
+      "BookingConfirmed": { "label": "Booking confirmed", "icon": "event_available_outlined", "sort": 9 },
+      "BookingTermsProposed": { "label": "Booking terms proposed", "icon": "handshake_outlined", "sort": 10 },
+      "BookingCrewAssigned": { "label": "Booking crew assigned", "icon": "groups_outlined", "sort": 11 },
+      "BookingWorkStarted": { "label": "Booking work started", "icon": "play_circle_outline", "sort": 12 },
+      "BookingCompleted": { "label": "Booking completed", "icon": "star_outline", "sort": 13 },
+      "BookingCancelledByBusiness": { "label": "Booking cancelled by business", "icon": "event_busy_outlined", "sort": 14 },
+      "BookingCancelledByCustomer": { "label": "Booking cancelled by customer", "icon": "event_busy_outlined", "sort": 15 },
+      "JobCancelled": { "label": "Job cancelled", "icon": "event_busy_outlined", "sort": 16 },
+      "ApplicationRejected": { "label": "Application rejected", "icon": "do_not_disturb_on_outlined", "sort": 17 },
+      "PayoutDestinationChanged": { "label": "Payout UPI changed", "icon": "payments_outlined", "sort": 30 },
+      "NewApplicants": { "label": "New applicants", "icon": "how_to_reg_outlined", "sort": 18 },
+      "VacancyApplicationReceived": { "label": "Vacancy application received", "icon": "badge_outlined", "sort": 19 },
+      "VacancyApplicationUpdated": { "label": "Vacancy application updated", "icon": "mark_email_unread_outlined", "sort": 20 },
+      "OfferAnswered": { "label": "Offer answered", "icon": "mark_email_read_outlined", "sort": 21 },
+      "AssignmentAnswered": { "label": "Assignment answered", "icon": "mark_email_read_outlined", "sort": 22 },
+      "WorkerFinishedWork": { "label": "Worker finished work", "icon": "task_alt_outlined", "sort": 23 },
+      "RatingReceived": { "label": "Rating received", "icon": "grade_outlined", "sort": 24 },
+      "ChatMessage": { "label": "Chat message", "icon": "chat_bubble_outline", "sort": 25 },
+      "*": { "label": "Notification", "icon": "notifications_outlined" }
+    },
+    "VerificationStatus": {
+      "Pending": { "label": "Pending", "tone": "progress", "sort": 1 },
+      "Verified": { "label": "Verified", "tone": "success", "sort": 2 },
+      "Rejected": { "label": "Rejected", "tone": "danger", "sort": 3 },
+      "*": { "label": "Pending", "tone": "progress" }
+    },
+    "TrackState": {
+      "notStarted": { "label": "Not started", "tone": "waiting", "sort": 1 },
+      "active": { "label": "Active", "tone": "waiting", "sort": 2 },
+      "inProgress": { "label": "In progress", "tone": "progress", "sort": 3 },
+      "completed": { "label": "Completed", "tone": "success", "sort": 4 },
+      "lapsed": { "label": "Lapsed", "tone": "waiting", "sort": 5 }
+    },
+    "PriceType": {
+      "Hourly": { "label": "per hour", "short": "/hr", "sort": 1 },
+      "Daily": { "label": "per day", "short": "/day", "sort": 2 },
+      "PerPerson": { "label": "per person", "short": " per person", "sort": 3 }
+    },
+    "PriceType.RateField": {
+      "Hourly": { "label": "Rate per hour (INR)", "sort": 1 },
+      "Daily": { "label": "Rate per day (INR)", "sort": 2 },
+      "PerPerson": { "label": "Rate per person (INR)", "sort": 3 },
+      "*": { "label": "Price (INR)" }
+    },
+    "PriceType.DurationField": {
+      "Hourly": { "label": "Typical duration (hours)", "sort": 1 },
+      "Daily": { "label": "Typical duration (days)", "sort": 2 },
+      "*": { "label": "Duration (mins)" }
+    },
+    "RegisterRole": {
+      "Customer": { "label": "Customer", "sort": 1 },
+      "BusinessOwner": { "label": "Business", "sort": 2 },
+      "Worker": { "label": "Worker", "sort": 3 }
+    },
+    "JobRole": {
+      "Supervisor": { "label": "Supervisor", "detail": "Watches how the work is going", "sort": 1 },
+      "Lead": { "label": "Lead", "detail": "Runs the work — can start and finish this job", "sort": 2 },
+      "Support": { "label": "Support", "detail": "Sorts out whatever the job needs", "sort": 3 }
+    }
+  }
+}

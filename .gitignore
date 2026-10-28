@@ -6,6 +6,7 @@ backend/**/obj/
 *.suo
 backend/**/appsettings.*.local.json
 backend/src/Zuno.Api/wwwroot/uploads/
+backend/src/Zuno.Api/private-uploads/
 
 # ---- Desktop launcher ----
 launcher/**/bin/

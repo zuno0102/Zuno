@@ -1,8 +1,8 @@
 namespace Zuno.Domain.ValueObjects;
 
 /// <summary>
-/// A business's standing, 1–5, earned from jobs seen through to the last rupee and how both sides
-/// rate them.
+/// A business's standing, from level 1 up, earned from jobs seen through to the last rupee and
+/// how both sides rate them.
 /// </summary>
 /// <remarks>
 /// Two rules give this its teeth.
@@ -12,33 +12,12 @@ namespace Zuno.Domain.ValueObjects;
 ///
 /// Both averages must clear the bar. A business cannot buy standing by delighting customers while
 /// underpaying its crew — the worker average gates the level exactly as the customer one does.
-/// An open dispute caps the level at 1 outright, however good the history.
+/// An open dispute caps the level at 1 outright, however good the history. The thresholds and names
+/// are rows in the <c>level_definitions</c> table, passed in as a <see cref="LevelLadder"/>.
 /// </remarks>
 public static class BusinessLevel
 {
-    public const int Minimum = 1;
-    public const int Maximum = 5;
-
-    /// <summary>Reviews needed before an average is treated as meaningful rather than noise.</summary>
-    public const int MinimumReviewsForAverage = 3;
-
-    private static readonly (int Level, int Jobs, decimal Rating)[] Thresholds =
-    [
-        (5, 100, 4.5m),
-        (4, 50, 4.3m),
-        (3, 20, 4.0m),
-        (2, 5, 3.5m),
-    ];
-
-    /// <summary>Human-readable name for a level, for badges and profile headers.</summary>
-    public static string Name(int level) => level switch
-    {
-        5 => "Top rated",
-        4 => "Established",
-        3 => "Trusted",
-        2 => "Rising",
-        _ => "New",
-    };
+    public const int Minimum = LevelLadder.Minimum;
 
     /// <summary>
     /// Works out the level a business has earned.
@@ -48,6 +27,7 @@ public static class BusinessLevel
     /// <param name="workerRatingAverage">Null until there are any worker reviews.</param>
     /// <param name="openDisputeCount">Unresolved non-payment reports.</param>
     public static int Calculate(
+        LevelLadder ladder,
         int completedJobCount,
         decimal? customerRatingAverage,
         int customerReviewCount,
@@ -62,13 +42,13 @@ public static class BusinessLevel
             return Minimum;
         }
 
-        foreach (var (level, jobs, rating) in Thresholds)
+        foreach (var rung in ladder.Earned)
         {
-            if (completedJobCount >= jobs
-                && MeetsBar(customerRatingAverage, customerReviewCount, rating)
-                && MeetsBar(workerRatingAverage, workerReviewCount, rating))
+            if (completedJobCount >= rung.MinCompletedJobs
+                && MeetsBar(ladder, customerRatingAverage, customerReviewCount, rung.MinRating)
+                && MeetsBar(ladder, workerRatingAverage, workerReviewCount, rung.MinRating))
             {
-                return level;
+                return rung.Level;
             }
         }
 
@@ -80,7 +60,7 @@ public static class BusinessLevel
     /// a business with one glowing review has not proved itself, but neither should a thin record
     /// hold back someone whose job count has plainly been earned.
     /// </summary>
-    private static bool MeetsBar(decimal? average, int reviewCount, decimal required) =>
-        reviewCount < MinimumReviewsForAverage || (average ?? 0m) >= required;
+    private static bool MeetsBar(LevelLadder ladder, decimal? average, int reviewCount, decimal required) =>
+        reviewCount < ladder.MinimumReviewsForAverage || (average ?? 0m) >= required;
 
 }

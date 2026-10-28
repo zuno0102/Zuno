@@ -1,0 +1,45 @@
+{
+  "groups": {
+    "VacancyApplication.Worker": {
+      "Applied": { "label": "Application sent", "tone": "waiting", "icon": "send_outlined", "sort": 1 },
+      "Viewed": { "label": "Application viewed", "tone": "progress", "icon": "visibility_outlined", "sort": 2 },
+      "Shortlisted": { "label": "Shortlisted", "tone": "progress", "icon": "star_outline", "sort": 3 },
+      "Hired": { "label": "Hired", "tone": "success", "icon": "verified_outlined", "sort": 4 },
+      "Rejected": { "label": "Rejected", "tone": "danger", "icon": "block", "sort": 5 },
+      "*": { "label": "Application sent", "tone": "waiting", "icon": "send_outlined" }
+    },
+    "VacancyApplication.Business": {
+      "Applied": { "label": "New", "detail": "New applicants appear here until you open them.", "tone": "waiting", "icon": "send_outlined", "sort": 1 },
+      "Viewed": { "label": "Waiting", "detail": "Applicants you have opened but not decided on wait here.", "tone": "progress", "icon": "visibility_outlined", "sort": 2 },
+      "Shortlisted": { "label": "Shortlisted", "detail": "Applicants you shortlist appear here, ready to call.", "tone": "progress", "icon": "star_outline", "sort": 3 },
+      "Hired": { "label": "Hired", "detail": "Applicants you hire appear here.", "tone": "success", "icon": "verified_outlined", "sort": 4 },
+      "Rejected": { "label": "Rejected", "detail": "New applicants appear here until you open them.", "tone": "danger", "icon": "block", "sort": 5 },
+      "*": { "label": "New", "detail": "New applicants appear here until you open them.", "tone": "waiting", "icon": "send_outlined" }
+    },
+    "VacancyPost": {
+      "NotPosted": { "label": "Not posted yet", "tone": "waiting", "icon": "hourglass_empty", "sort": 1 },
+      "Live": { "label": "Live", "tone": "success", "icon": "campaign_outlined", "sort": 2 },
+      "Stopped": { "label": "Hiring stopped", "tone": "waiting", "icon": "pause_circle_outline", "sort": 3 },
+      "Expired": { "label": "Expired", "tone": "danger", "icon": "event_busy_outlined", "sort": 4 }
+    },
+    "VacancyFieldKind": {
+      "Text": { "label": "Text", "sort": 1 },
+      "Number": { "label": "Number", "sort": 2 },
+      "YesNo": { "label": "Yes / No", "sort": 3 },
+      "File": { "label": "File upload (photo or PDF)", "sort": 4 },
+      "*": { "label": "Text" }
+    },
+    "VacancyPayPeriod": {
+      "PerMonth": { "label": "Per month", "short": "/ month", "sort": 1 },
+      "PerWeek": { "label": "Per week", "short": "/ week", "sort": 2 },
+      "PerDay": { "label": "Per day", "short": "/ day", "sort": 3 },
+      "*": { "label": "Per month", "short": "/ month" }
+    },
+    "SalaryUnit": {
+      "PerEvent": { "label": "Event", "short": "per event", "sort": 1 },
+      "PerDay": { "label": "Day", "short": "per day", "sort": 2 },
+      "PerHour": { "label": "Hour", "short": "per hour", "sort": 3 },
+      "*": { "label": "Event", "short": "per event" }
+    }
+  }
+}

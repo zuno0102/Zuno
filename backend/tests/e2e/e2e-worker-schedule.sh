@@ -9,7 +9,7 @@
 #
 # Also covered: several dates, several jobs on one date, two jobs at the identical minute, and
 # the rule that the schedule reports times only — never what the work is.
-API=http://localhost:5056/api/v1
+API=${API:-http://localhost:5056/api/v1}
 PSQL="${PSQL:-psql}"
 : "${PGPASSWORD:?set PGPASSWORD to your Postgres password first}"
 S=$(date +%s)
@@ -85,7 +85,10 @@ agree "Free badge, no dates behind it" "Active" "0"
 
 echo
 echo "==== 2. ONE ORDER: BOOKED, AND ONE DATE ===="
-D1=2027-04-01T09:00:00Z
+# Inside the customer booking horizon (platform setting, 90 days by default), so the dates are relative.
+DAY1=$(date -u -d "+30 days" +%Y-%m-%d)
+DAY5=$(date -u -d "+34 days" +%Y-%m-%d)
+D1=${DAY1}T09:00:00Z
 B1=$(mk $D1); post_ /business/bookings/$B1/confirm "$BT" >/dev/null
 eq "Assignment written" "$(assign $B1)" "1"
 agree "Booked badge, one date behind it" "Booked" "1"
@@ -94,13 +97,13 @@ eq "The window is a real one"  "$(echo "$R" | grep -o '"endsAt":"[^"]*"' | head 
 
 echo
 echo "==== 3. SEVERAL DATES, AND SEVERAL JOBS ON ONE DATE ===="
-B2=$(mk 2027-04-01T14:00:00Z); post_ /business/bookings/$B2/confirm "$BT" >/dev/null   # same day, later
-B3=$(mk 2027-04-05T08:00:00Z); post_ /business/bookings/$B3/confirm "$BT" >/dev/null   # another day
+B2=$(mk ${DAY1}T14:00:00Z); post_ /business/bookings/$B2/confirm "$BT" >/dev/null   # same day, later
+B3=$(mk ${DAY5}T08:00:00Z); post_ /business/bookings/$B3/confirm "$BT" >/dev/null   # another day
 eq "Two more assignments written" "$(assign $B2)$(assign $B3)" "11"
 agree "Still one badge, now three dates" "Booked" "3"
 R=$(sched)
-eq "Two of them fall on 1 Apr"  "$(echo "$R" | grep -o '"startsAt":"2027-04-01' | wc -l | tr -d ' ')" "2"
-eq "Soonest first"              "$(echo "$R" | grep -o '"startsAt":"[^"]*"' | head -1 | cut -d'"' -f4 | cut -c1-16)" "2027-04-01T09:00"
+eq "Two of them fall on the first day"  "$(echo "$R" | grep -o "\"startsAt\":\"$DAY1" | wc -l | tr -d ' ')" "2"
+eq "Soonest first"              "$(echo "$R" | grep -o '"startsAt":"[^"]*"' | head -1 | cut -d'"' -f4 | cut -c1-16)" "${DAY1}T09:00"
 
 echo
 echo "==== 4. TWO ORDERS AT THE IDENTICAL MINUTE STAY TWO ENTRIES ===="
@@ -109,7 +112,7 @@ echo "==== 4. TWO ORDERS AT THE IDENTICAL MINUTE STAY TWO ENTRIES ===="
 BSAME=$(mk $D1); post_ /business/bookings/$BSAME/confirm "$BT" >/dev/null
 eq "A clashing assignment written" "$(assign $BSAME)" "1"
 agree "Four dates now, not three" "Booked" "4"
-eq "Two start at exactly 09:00"    "$(sched | grep -o '"startsAt":"2027-04-01T09:00' | wc -l | tr -d ' ')" "2"
+eq "Two start at exactly 09:00"    "$(sched | grep -o "\"startsAt\":\"${DAY1}T09:00" | wc -l | tr -d ' ')" "2"
 
 echo
 echo "==== 5. THE SCHEDULE NAMES TIMES, NEVER THE WORK ===="

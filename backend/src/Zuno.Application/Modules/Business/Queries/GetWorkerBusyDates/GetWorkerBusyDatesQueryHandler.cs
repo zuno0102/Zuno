@@ -2,6 +2,7 @@ using MediatR;
 using Zuno.Application.Common.Interfaces;
 using Zuno.Application.Modules.Business.DTOs;
 using Zuno.Domain.Entities;
+using Zuno.Domain.Enums;
 using Zuno.Domain.Exceptions;
 
 namespace Zuno.Application.Modules.Business.Queries.GetWorkerBusyDates;
@@ -36,7 +37,9 @@ public class GetWorkerBusyDatesQueryHandler(
         var membership = await businessWorkerRepository.GetByBusinessAndWorkerAsync(
             businessProfile.Id, request.WorkerProfileId, cancellationToken);
 
-        if (membership is null)
+        // A crew member, not merely someone invited: an invitation is one-sided, and must not open a
+        // stranger's calendar to whoever sent it.
+        if (membership is null || membership.AssignmentStatus != BusinessWorkerStatus.Active)
         {
             // Not found rather than forbidden: a refusal would confirm that the guessed id belongs
             // to a real worker, which is already more than a stranger should learn.

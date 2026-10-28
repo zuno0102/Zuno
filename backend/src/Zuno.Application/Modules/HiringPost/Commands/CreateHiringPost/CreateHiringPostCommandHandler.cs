@@ -12,6 +12,7 @@ namespace Zuno.Application.Modules.HiringPost.Commands.CreateHiringPost;
 public class CreateHiringPostCommandHandler(
     ICurrentUserService currentUserService,
     IBusinessOwnerProfileRepository businessOwnerProfileRepository,
+    IPlatformSettings platformSettings,
     IApplicationDbContext dbContext) : IRequestHandler<CreateHiringPostCommand, HiringPostDto>
 {
     public async Task<HiringPostDto> Handle(CreateHiringPostCommand request, CancellationToken cancellationToken)
@@ -87,7 +88,7 @@ public class CreateHiringPostCommandHandler(
             Description = request.Description,
             ImageUrl = inheritedImageUrl,
             EventDate = request.EventDate,
-            DurationMinutes = request.DurationMinutes,
+            DurationMinutes = request.DurationMinutes ?? platformSettings.Current.HiringPostDefaultDurationMinutes,
             Location = string.IsNullOrWhiteSpace(request.Location)
                 ? DescribeAddress(orderAddress)
                 : request.Location,
@@ -104,12 +105,13 @@ public class CreateHiringPostCommandHandler(
         if (orderAddress is { Latitude: { } orderLat, Longitude: { } orderLon })
         {
             await HiringPostLocation.PlaceAsync(
-                post, orderLat, orderLon, HiringPostLocationPrecision.Pinned, dbContext, cancellationToken);
+                post, orderLat, orderLon, HiringPostLocationPrecision.Pinned, platformSettings.Current, dbContext, cancellationToken);
         }
         else if (request is { Latitude: { } lat, Longitude: { } lon })
         {
             await HiringPostLocation.PlaceAsync(
-                post, lat, lon, HiringPostLocation.ParsePrecision(request.LocationPrecision), dbContext, cancellationToken);
+                post, lat, lon, HiringPostLocation.ParsePrecision(request.LocationPrecision),
+                platformSettings.Current, dbContext, cancellationToken);
         }
 
         dbContext.HiringPosts.Add(post);

@@ -76,5 +76,25 @@ public interface IApplicationDbContext
 
     public DbSet<Notification> Notifications { get; }
 
+    public DbSet<VacancyJobType> VacancyJobTypes { get; }
+
+    public DbSet<VacancyFeePlan> VacancyFeePlans { get; }
+
+    public DbSet<Vacancy> Vacancies { get; }
+
+    public DbSet<VacancyRequirement> VacancyRequirements { get; }
+
+    public DbSet<VacancyApplication> VacancyApplications { get; }
+
+    public DbSet<VacancyApplicationAnswer> VacancyApplicationAnswers { get; }
+
+    public DbSet<PlatformSetting> PlatformSettings { get; }
+
+    public DbSet<LevelDefinition> LevelDefinitions { get; }
+
+    public DbSet<DisplayLabel> DisplayLabels { get; }
+
+    public DbSet<ThemeColor> ThemeColors { get; }
+
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }

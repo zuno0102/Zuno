@@ -99,6 +99,10 @@ public class CompleteBookingWorkCommandHandler(
                 booking.BusinessOwnerProfile.BusinessName),
             cancellationToken);
 
-        return booking.ToDto();
+        // Answered as the caller sees it: a Lead moving the work is a worker, and is not shown the
+        // customer's phone or the rest of the crew's wages.
+        return booking.ToDto(booking.BusinessOwnerProfile.UserId == userId
+            ? null
+            : booking.WorkerAssignments.FirstOrDefault(a => a.WorkerProfile.UserId == userId)?.WorkerProfileId);
     }
 }

@@ -63,11 +63,11 @@ services:
       - key: AdminSeed__Password
         sync: false
 
-      # TEMPORARY, for real-world testing: every business is Verified on sign-up (and a Pending one
-      # on its next sign-in), so its services show to customers without an admin approving it.
-      # Set to "false" once the Super Admin verification screen is in use.
+      # Off: every new business waits for a Super Admin to review and approve it before customers
+      # see it, and the approval itself is refused until the business passes validation.
+      # "true" approves a business automatically — but still only once it passes the same validation.
       - key: Verification__AutoVerifyBusinesses
-        value: "true"
+        value: "false"
 
       # Where uploaded pictures are written. On the free plan this is a container filesystem with
       # no disk attached, so everything written here is lost on every deploy and on every wake from

@@ -22,11 +22,18 @@ public static class WorkerMappingExtensions
     /// From <c>IWorkerEarningsService</c>. Passed in rather than computed here so the work-record
     /// rule stays in one place and a caller cannot accidentally ship a second version of it.
     /// </param>
+    /// <param name="levels">The worker ladder from the platform settings.</param>
     public static WorkerProfileDto ToDto(
         this WorkerProfile profile,
-        WorkerEarningsRollup earnings)
+        WorkerEarningsRollup earnings,
+        LevelLadder levels)
     {
         var payout = profile.PayoutDetail;
+
+        // Derived, not stored: there is nothing to keep in step, and a level that is recomputed on read
+        // can never drift from the record behind it.
+        var level = WorkerLevel.Calculate(
+            levels, earnings.JobsCompleted, earnings.BusinessesWorkedFor, earnings.OffersDeclined);
 
         return new WorkerProfileDto
         {
@@ -40,19 +47,15 @@ public static class WorkerMappingExtensions
             VerificationStatus = profile.VerificationStatus.ToString(),
             PhotoUrl = profile.PhotoUrl,
 
-            // Derived, not stored: there is nothing to keep in step, and a level that is recomputed
-            // on read can never drift from the record behind it.
-            Level = WorkerLevel.Calculate(
-                earnings.JobsCompleted, earnings.BusinessesWorkedFor, earnings.OffersDeclined),
-            LevelName = WorkerLevel.Name(WorkerLevel.Calculate(
-                earnings.JobsCompleted, earnings.BusinessesWorkedFor, earnings.OffersDeclined)),
+            Level = level,
+            LevelName = levels.Name(level),
             JobsToNextLevel = WorkerLevel.JobsToNextLevel(
-                earnings.JobsCompleted, earnings.BusinessesWorkedFor, earnings.OffersDeclined),
+                levels, earnings.JobsCompleted, earnings.BusinessesWorkedFor, earnings.OffersDeclined),
 
             // What is actually in the way, which the job count alone stopped being able to say once
             // the level depended on more than jobs.
             NextLevelRequirement = WorkerLevel.NextLevelRequirement(
-                earnings.JobsCompleted, earnings.BusinessesWorkedFor, earnings.OffersDeclined),
+                levels, earnings.JobsCompleted, earnings.BusinessesWorkedFor, earnings.OffersDeclined),
 
             UpiVpa = payout?.UpiVpa,
             HasPayoutDestination = payout?.HasDestination ?? false,

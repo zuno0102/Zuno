@@ -90,7 +90,11 @@ class _Total extends StatelessWidget {
         padding: const EdgeInsets.all(18),
         child: Row(
           children: [
-            Icon(Icons.account_balance_wallet_outlined, size: 30, color: accent),
+            Icon(
+              Icons.account_balance_wallet_outlined,
+              size: 30,
+              color: accent,
+            ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -151,7 +155,9 @@ class _PendingPaymentRowState extends ConsumerState<PendingPaymentRow> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('The business will be told the money has not reached you.'),
+              const Text(
+                'The business will be told the money has not reached you.',
+              ),
               const SizedBox(height: 12),
               TextField(
                 controller: controller,
@@ -211,11 +217,6 @@ class _PendingPaymentRowState extends ConsumerState<PendingPaymentRow> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final payment = widget.payment;
-    final tone = payment.hasFailed
-        ? StatusTone.danger
-        : payment.needsMyConfirmation
-        ? StatusTone.progress
-        : StatusTone.waiting;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -265,7 +266,11 @@ class _PendingPaymentRowState extends ConsumerState<PendingPaymentRow> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                StatusPill(label: payment.stateLabel, tone: tone, compact: true),
+                StatusPill(
+                  label: payment.stateLabel,
+                  tone: payment.stateTone,
+                  compact: true,
+                ),
                 if (_isResponding)
                   const Padding(
                     padding: EdgeInsets.only(top: 8),

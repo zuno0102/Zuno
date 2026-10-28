@@ -13,4 +13,10 @@ public class FileStorageSettings
     public long MaxFileSizeBytes { get; set; } = 5 * 1024 * 1024;
 
     public long MaxVideoFileSizeBytes { get; set; } = 25 * 1024 * 1024;
+
+    /// <summary>
+    /// Directory, relative to the content root, for personal documents. Must sit outside
+    /// <see cref="RootPath"/> — everything under that is served publicly.
+    /// </summary>
+    public string PrivateRootPath { get; set; } = "private-uploads";
 }

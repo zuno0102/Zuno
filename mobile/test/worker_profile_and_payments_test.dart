@@ -108,12 +108,12 @@ void main() {
       expect(find.text('ra••@okhdfcbank'), findsOneWidget);
     });
 
-    testWidgets('says in red what a business would find missing', (tester) async {
+    testWidgets('says in red what a business would find missing', (
+      tester,
+    ) async {
       await pump(
         tester,
-        WorkerDashboard(
-          profile: profile(phoneNumber: null, hourlyRate: null),
-        ),
+        WorkerDashboard(profile: profile(phoneNumber: null, hourlyRate: null)),
         const WorkerProfileScreen(),
       );
 
@@ -139,8 +139,11 @@ void main() {
         );
       });
 
-      testWidgets('reads as waiting while it is being checked', (tester) async {
-        // Nothing for the worker to do here, so it must not read as an action.
+      testWidgets('says the UPI is not verified, so the worker checks it', (
+        tester,
+      ) async {
+        // A changed UPI is verified again before it can be paid; until then the worker is told to
+        // check it, since wages cannot reach them.
         await pump(
           tester,
           WorkerDashboard(
@@ -152,7 +155,7 @@ void main() {
           const WorkerProfileScreen(),
         );
 
-        expect(find.text('Your UPI is being checked'), findsOneWidget);
+        expect(find.text('Your UPI is not verified'), findsOneWidget);
       });
 
       testWidgets('says plainly when there is nowhere to send money', (
@@ -182,7 +185,10 @@ void main() {
         tester,
         WorkerDashboard(
           profile: profile(),
-          pendingPayments: [payment(id: 'p1'), payment(id: 'p2', amount: 900)],
+          pendingPayments: [
+            payment(id: 'p1'),
+            payment(id: 'p2', amount: 900),
+          ],
           pendingPaymentTotal: 1700,
         ),
         const WorkerPaymentsScreen(),
@@ -212,7 +218,9 @@ void main() {
       expect(find.text('Not sent yet'), findsOneWidget);
     });
 
-    testWidgets('a failed payout is not shown as merely waiting', (tester) async {
+    testWidgets('a failed payout is not shown as merely waiting', (
+      tester,
+    ) async {
       await pump(
         tester,
         WorkerDashboard(

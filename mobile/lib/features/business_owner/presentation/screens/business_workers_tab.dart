@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/core/ui_config/ui_config.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/business_owner/domain/entities/business_worker.dart';
 import 'package:zuno/features/business_owner/domain/entities/worker_busy_period.dart';
@@ -8,13 +9,15 @@ import 'package:zuno/features/business_owner/presentation/providers/business_pro
 import 'package:zuno/features/business_owner/presentation/providers/business_workers_notifier.dart';
 import 'package:zuno/features/business_owner/presentation/screens/business_hiring_posts_tab.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/invite_worker_dialog.dart';
+import 'package:zuno/features/vacancy/presentation/screens/business_vacancies_tab.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
+import 'package:zuno/shared/widgets/confirm_dialog.dart';
 
 class BusinessWorkersTab extends StatelessWidget {
   const BusinessWorkersTab({this.initialIndex = 0, super.key});
 
-  /// Which of the two sub-tabs opens first.
+  /// Which of the sub-tabs opens first.
   ///
   /// Normally the crew. Set to the hire post when the owner arrived from a notification about one:
   /// landing them on "Active workers" and making them find the other tab is the hunting a
@@ -24,7 +27,7 @@ class BusinessWorkersTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       initialIndex: initialIndex,
       child: Column(
         children: [
@@ -34,12 +37,17 @@ class BusinessWorkersTab extends StatelessWidget {
               tabs: [
                 Tab(text: 'Active workers'),
                 Tab(text: 'Hire post'),
+                Tab(text: 'Full-time jobs'),
               ],
             ),
           ),
           const Expanded(
             child: TabBarView(
-              children: [_ActiveWorkersTab(), BusinessHiringPostsTab()],
+              children: [
+                _ActiveWorkersTab(),
+                BusinessHiringPostsTab(),
+                BusinessVacanciesTab(),
+              ],
             ),
           ),
         ],
@@ -103,27 +111,14 @@ class _WorkerCard extends ConsumerWidget {
   final BusinessWorker worker;
 
   Future<void> _confirmRemove(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Remove worker?'),
-        content: Text(
-          '${worker.workerName} will no longer be part of your business.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.tonal(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Remove'),
-          ),
-        ],
-      ),
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Remove worker?',
+      message: '${worker.workerName} will no longer be part of your business.',
+      confirmLabel: 'Remove',
     );
 
-    if (confirmed == true) {
+    if (confirmed) {
       await ref.read(businessWorkersProvider.notifier).remove(worker.id);
     }
   }
@@ -173,11 +168,10 @@ class _WorkerCard extends ConsumerWidget {
 
   /// The colour that carries this worker's availability, used by the avatar and the pill so the
   /// row reads at a glance before any of it is actually read.
-  StatusTone get _availabilityTone => worker.isAtWork
-      ? StatusTone.progress
-      : worker.isBooked
-      ? StatusTone.waiting
-      : StatusTone.success;
+  StatusTone get _availabilityTone => UiConfig.current.tone(
+    'WorkerAvailability.Roster',
+    worker.availabilityStatus,
+  );
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -245,24 +239,27 @@ class _WorkerCard extends ConsumerWidget {
                       runSpacing: 6,
                       children: [
                         StatusPill(
-                          label: worker.status,
-                          tone: switch (worker.status) {
-                            'Active' => StatusTone.success,
-                            'Invited' => StatusTone.progress,
-                            'Rejected' => StatusTone.danger,
-                            _ => StatusTone.waiting,
-                          },
+                          label: UiConfig.current.label(
+                            'BusinessWorker.Status',
+                            worker.status,
+                          ),
+                          tone: UiConfig.current.tone(
+                            'BusinessWorker.Status',
+                            worker.status,
+                          ),
                           compact: true,
                         ),
                         // Availability is only worth a pill when it is a reason not to offer
                         // someone a job. A free worker already reads as Active, and a second
                         // pill repeating it in the same word said nothing while looking like
                         // it did.
-                        if (worker.isActive && (worker.isAtWork || worker.isBooked))
+                        if (worker.isActive &&
+                            (worker.isAtWork || worker.isBooked))
                           StatusPill(
-                            label: worker.isAtWork
-                                ? 'At work'
-                                : 'Already booked',
+                            label: UiConfig.current.label(
+                              'WorkerAvailability.Roster',
+                              worker.availabilityStatus,
+                            ),
                             tone: _availabilityTone,
                             compact: true,
                           ),

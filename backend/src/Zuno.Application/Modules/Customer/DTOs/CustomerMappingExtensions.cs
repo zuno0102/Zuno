@@ -6,7 +6,7 @@ namespace Zuno.Application.Modules.Customer.DTOs;
 
 public static class CustomerMappingExtensions
 {
-    public static BusinessSummaryDto ToSummaryDto(this BusinessOwnerProfile profile) => new()
+    public static BusinessSummaryDto ToSummaryDto(this BusinessOwnerProfile profile, LevelLadder levels) => new()
     {
         Id = profile.Id,
         BusinessName = profile.BusinessName,
@@ -20,7 +20,7 @@ public static class CustomerMappingExtensions
             .Distinct()
             .ToList(),
         Level = profile.Level,
-        LevelName = BusinessLevel.Name(profile.Level),
+        LevelName = levels.Name(profile.Level),
         RatingAverage = profile.CustomerRatingAverage,
         ReviewCount = profile.CustomerReviewCount,
         CompletedJobCount = profile.CompletedJobCount,
@@ -49,10 +49,10 @@ public static class CustomerMappingExtensions
             .ToList(),
     };
 
-    public static ServiceDetailDto ToServiceDetailDto(this BusinessService service) => new()
+    public static ServiceDetailDto ToServiceDetailDto(this BusinessService service, LevelLadder levels) => new()
     {
         Service = service.ToCustomerServiceDto(),
-        Business = service.BusinessOwnerProfile.ToSummaryDto(),
+        Business = service.BusinessOwnerProfile.ToSummaryDto(levels),
     };
 
     public static CustomerServiceDto ToCustomerServiceDto(this BusinessService service) => new()

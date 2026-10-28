@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:zuno/core/constants/app_constants.dart';
+import 'package:zuno/core/ui_config/ui_config.dart';
+import 'package:zuno/core/utils/ui_lookup.dart';
 import 'package:zuno/core/utils/validators.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:zuno/features/auth/presentation/widgets/auth_text_field.dart';
@@ -26,12 +28,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   String _role = AppConstants.selfRegistrableRoles.first;
-
-  static const _roleLabels = {
-    'Customer': 'Customer',
-    'BusinessOwner': 'Business',
-    'Worker': 'Worker',
-  };
 
   @override
   void dispose() {
@@ -121,7 +117,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             .map(
                               (role) => ButtonSegment(
                                 value: role,
-                                label: Text(_roleLabels[role] ?? role),
+                                label: Text(
+                                  UiConfig.current
+                                          .own('RegisterRole', role)
+                                          ?.label ??
+                                      role,
+                                ),
                               ),
                             )
                             .toList(),

@@ -27,12 +27,12 @@ public class SetHiringPostApplicationRoleCommandHandler(
         var businessProfile = await businessOwnerProfileRepository.GetByUserIdAsync(userId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(BusinessOwnerProfile), userId);
 
-        var application = await dbContext.HiringPostApplications
-            .Include(a => a.HiringPost).ThenInclude(p => p.BusinessOwnerProfile)
-            .Include(a => a.HiringPost).ThenInclude(p => p.ServiceSubCategory)
-            .Include(a => a.HiringPost).ThenInclude(p => p.Applications).ThenInclude(x => x.WorkerProfile).ThenInclude(wp => wp.User)
-            .Include(a => a.HiringPost).ThenInclude(p => p.Applications).ThenInclude(x => x.SalaryAdjustments)
-            .FirstOrDefaultAsync(a => a.Id == request.ApplicationId, cancellationToken)
+        var application = await dbContext.LoadHiringPostApplicationAsync(
+            dbContext.HiringPostApplications
+                .Include(a => a.HiringPost).ThenInclude(p => p.BusinessOwnerProfile)
+                .Include(a => a.HiringPost).ThenInclude(p => p.ServiceSubCategory)
+                .Where(a => a.Id == request.ApplicationId),
+            cancellationToken)
             ?? throw new EntityNotFoundException(nameof(HiringPostApplication), request.ApplicationId);
 
         var post = application.HiringPost;

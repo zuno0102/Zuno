@@ -10,7 +10,8 @@ namespace Zuno.Application.Common.Services;
 /// <inheritdoc />
 public class BusinessReputationService(
     IApplicationDbContext dbContext,
-    IDateTimeProvider dateTimeProvider) : IBusinessReputationService
+    IDateTimeProvider dateTimeProvider,
+    IPlatformSettings platformSettings) : IBusinessReputationService
 {
     public async Task RecalculateAndSaveAsync(
         Guid businessOwnerProfileId,
@@ -72,6 +73,7 @@ public class BusinessReputationService(
             : null;
 
         profile.Level = BusinessLevel.Calculate(
+            platformSettings.Current.BusinessLevels,
             profile.CompletedJobCount,
             profile.CustomerRatingAverage,
             profile.CustomerReviewCount,

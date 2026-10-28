@@ -1,5 +1,6 @@
 import 'package:zuno/shared/domain/job_role.dart';
 import 'package:flutter/material.dart';
+import 'package:zuno/shared/widgets/detail_row.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/worker/domain/entities/worker_dashboard.dart';
@@ -75,6 +76,21 @@ class _JobRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    // A [tint] colours both the icon and the text and makes the text bold: it marks the line that
+    // says something about this worker in particular, such as their role or a recorded wage.
+    Widget line({required IconData icon, required String text, Color? tint}) =>
+        DetailRow.iconText(
+          icon: icon,
+          text: text,
+          iconColor: tint,
+          valueColor: tint,
+          muted: false,
+          emphasised: tint != null,
+          maxLines: 2,
+          iconGap: 6,
+          padding: const EdgeInsets.only(bottom: 3),
+        );
+
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
@@ -112,20 +128,20 @@ class _JobRow extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            _Line(
+            line(
               icon: Icons.event_outlined,
               text:
                   '${formatDate(job.scheduledDate)} · '
                   '${formatTime(job.scheduledDate)}',
             ),
             if (job.location case final where? when where.isNotEmpty)
-              _Line(icon: Icons.place_outlined, text: where),
+              line(icon: Icons.place_outlined, text: where),
             // What they are on this particular job. Said on every row rather than only where a
             // role grants something, because "Supervisor" is the answer to "what am I here for"
             // just as much as "Lead" is — and knowing which job made them the Lead was, until
             // now, a matter of opening each one in turn.
             if (job.myRole case final role? when role.trim().isNotEmpty)
-              _Line(
+              line(
                 icon: JobRole.grantsWorkControl(role)
                     ? Icons.star_outline
                     : Icons.badge_outlined,
@@ -136,7 +152,7 @@ class _JobRow extends StatelessWidget {
                     ? theme.colorScheme.primary
                     : null,
               ),
-            _Line(
+            line(
               icon: Icons.payments_outlined,
               // Said either way: "paid outside Zuno" and "wage not recorded" look identical if the
               // line is simply left off, and only one of them is a problem.
@@ -157,44 +173,6 @@ class _JobRow extends StatelessWidget {
               ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _Line extends StatelessWidget {
-  const _Line({required this.icon, required this.text, this.tint});
-
-  final IconData icon;
-  final String text;
-  final Color? tint;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 3),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            size: 14,
-            color: tint ?? theme.colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              text,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: tint,
-                fontWeight: tint == null ? null : FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

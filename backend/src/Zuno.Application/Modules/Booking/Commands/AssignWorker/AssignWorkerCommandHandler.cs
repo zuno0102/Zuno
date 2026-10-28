@@ -17,6 +17,7 @@ public class AssignWorkerCommandHandler(
     IBusinessWorkerRepository businessWorkerRepository,
     IBookingRepository bookingRepository,
     IWorkerScheduleService workerScheduleService,
+    IPlatformSettings platformSettings,
     IApplicationDbContext dbContext,
     IPublisher publisher) : IRequestHandler<AssignWorkerCommand, BookingDto>
 {
@@ -65,7 +66,7 @@ public class AssignWorkerCommandHandler(
         var startsAt = request.ScheduledDate ?? booking.ScheduledDate;
         var jobMinutes = booking.BusinessServiceVariant?.EstimatedDurationMinutes
             ?? booking.BusinessService.EstimatedDurationMinutes
-            ?? 120;
+            ?? platformSettings.Current.DefaultJobMinutes;
 
         var clash = await workerScheduleService.FindConflictAsync(
             request.WorkerProfileId,

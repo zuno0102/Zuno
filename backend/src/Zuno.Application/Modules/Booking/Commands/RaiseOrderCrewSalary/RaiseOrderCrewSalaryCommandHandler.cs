@@ -44,11 +44,9 @@ public class RaiseOrderCrewSalaryCommandHandler(
             dbContext.BookingAssignmentSalaryAdjustments.Add(assignment.RaiseSalary(request.Increase, request.Reason));
         }
 
-        var posts = await dbContext.HiringPosts
-            .Include(p => p.Applications).ThenInclude(a => a.WorkerProfile)
-            .Include(p => p.Applications).ThenInclude(a => a.SalaryAdjustments)
-            .Where(p => p.BookingId == booking.Id)
-            .ToListAsync(cancellationToken);
+        var posts = await dbContext.LoadHiringPostsAsync(
+            dbContext.HiringPosts.Where(p => p.BookingId == booking.Id),
+            cancellationToken);
 
         var raisedHires = new List<(Domain.Entities.HiringPost Post, List<HiringPostApplication> Hires)>();
         foreach (var post in posts)

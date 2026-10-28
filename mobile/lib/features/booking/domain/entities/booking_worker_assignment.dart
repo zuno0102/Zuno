@@ -1,5 +1,7 @@
 import 'package:zuno/shared/domain/payment_status.dart';
+import 'package:zuno/core/ui_config/ui_config.dart';
 import 'package:zuno/core/utils/formatting.dart';
+import 'package:zuno/core/utils/ui_lookup.dart';
 
 class BookingWorkerAssignment {
   const BookingWorkerAssignment({
@@ -14,6 +16,7 @@ class BookingWorkerAssignment {
     this.originalSalaryAmount,
     this.paymentStatus = '',
     this.hasPayoutDetails = false,
+    this.payoutState = '',
   });
 
   /// The wage before any raise, when it has been raised; otherwise null.
@@ -37,14 +40,11 @@ class BookingWorkerAssignment {
   /// someone who accepted is "active" until the work starts and "in progress" once it has.
   final String displayStatus;
 
-  String get displayStatusLabel => switch (displayStatus) {
-    'Awaiting' => 'Awaiting their answer',
-    'Active' => 'Active',
-    'InProgress' => 'In progress',
-    'Completed' => 'Completed',
-    'Declined' => 'Declined',
-    _ => status,
-  };
+  String get displayStatusLabel =>
+      UiConfig.current
+          .own('BookingWorkerAssignment.Crew', displayStatus)
+          ?.label ??
+      status;
 
   /// Their wage for this job, or null when the business pays them outside Zuno.
   final double? agreedSalaryAmount;
@@ -57,6 +57,9 @@ class BookingWorkerAssignment {
 
   /// Whether there is somewhere to send their money.
   final bool hasPayoutDetails;
+
+  /// `Ready`, `NotVerified` or `None`; see the `PayoutState` label group for what each says.
+  final String payoutState;
 
   bool get isAssigned => status == 'Assigned';
   bool get isAccepted => status == 'Accepted';

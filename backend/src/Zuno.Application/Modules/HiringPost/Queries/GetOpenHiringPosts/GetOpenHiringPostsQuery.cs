@@ -32,8 +32,8 @@ public class GetOpenHiringPostsQuery : IRequest<List<HiringPostDto>>
     public List<Guid>? DistrictIds { get; set; }
 
     /// <summary>
-    /// How many posts to return. Capped, because this query had no limit at all and returned every
-    /// open post in the country on every load.
+    /// How many posts to return. Omitted, the platform's default page size; never more than its
+    /// maximum, whatever is asked for — this query once returned every open post in the country.
     /// </summary>
-    public int Take { get; set; } = 60;
+    public int? Take { get; set; }
 }

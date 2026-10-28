@@ -289,7 +289,7 @@ class _BusinessLine extends StatelessWidget {
                     Row(
                       children: [
                         if (business.hasRating) ...[
-                          const Icon(
+                          Icon(
                             Icons.star_rounded,
                             size: 14,
                             color: AppColors.ratingStar,

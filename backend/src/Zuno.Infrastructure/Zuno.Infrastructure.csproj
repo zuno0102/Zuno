@@ -26,6 +26,12 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.19.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The built-in labels and colours: seed data for display_labels and theme_colors, and the
+         fallback for any row that is missing or unusable. The app bundles an identical copy. -->
+    <EmbeddedResource Include="Persistence\Seed\UiConfig\*.json" LogicalName="UiConfig.%(Filename)%(Extension)" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>

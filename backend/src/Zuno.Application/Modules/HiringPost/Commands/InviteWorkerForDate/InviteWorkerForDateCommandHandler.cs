@@ -22,6 +22,7 @@ namespace Zuno.Application.Modules.HiringPost.Commands.InviteWorkerForDate;
 public class InviteWorkerForDateCommandHandler(
     ICurrentUserService currentUserService,
     IDateTimeProvider dateTimeProvider,
+    IPlatformSettings platformSettings,
     IBusinessOwnerProfileRepository businessOwnerProfileRepository,
     IWorkerScheduleService workerScheduleService,
     IApplicationDbContext dbContext,
@@ -54,7 +55,8 @@ public class InviteWorkerForDateCommandHandler(
 
         var workerName = $"{workerProfile.User.FirstName} {workerProfile.User.LastName}";
         var now = dateTimeProvider.UtcNow;
-        var endsAt = request.EventDate.AddMinutes(request.DurationMinutes);
+        var durationMinutes = request.DurationMinutes ?? platformSettings.Current.HiringPostDefaultDurationMinutes;
+        var endsAt = request.EventDate.AddMinutes(durationMinutes);
 
         // Caught here rather than left to IsHiringOver further down, which would call a date in the
         // past "hiring has closed" — true of a post that ran its course, and baffling about one the
@@ -131,7 +133,7 @@ public class InviteWorkerForDateCommandHandler(
             BookingId = null,
             Title = title,
             EventDate = request.EventDate,
-            DurationMinutes = request.DurationMinutes,
+            DurationMinutes = durationMinutes,
             ServiceSubCategoryId = subCategory?.Id,
             ServiceSubCategory = subCategory,
             // Typed out, so the post keeps no coordinates and never claims a precision the

@@ -54,6 +54,7 @@ class _BusinessOwnerDashboardShellState
 
   static const _crewSubTab = 0;
   static const _hirePostSubTab = 1;
+  static const _fullTimeSubTab = 2;
 
   /// Takes the owner to whatever is waiting on them.
   ///
@@ -69,10 +70,13 @@ class _BusinessOwnerDashboardShellState
 
       // A message from one of the business's workers. The title is the sender's name.
       case NotificationTarget.workChat:
-        pushScreen(context, WorkChatScreen(
-              counterpartId: notification.targetId!,
-              counterpartName: notification.title,
-            ));
+        pushScreen(
+          context,
+          WorkChatScreen(
+            counterpartId: notification.targetId!,
+            counterpartName: notification.title,
+          ),
+        );
 
       // Hiring: applicants to go through, offers answered, wages to settle. All three live on the
       // hire post list under Workers.
@@ -82,6 +86,13 @@ class _BusinessOwnerDashboardShellState
         setState(() {
           _index = _workersTab;
           _workersSubTab = _hirePostSubTab;
+        });
+
+      // Someone applied for a full-time job: its applicants are under Workers › Full-time jobs.
+      case NotificationTarget.vacancyApplicants:
+        setState(() {
+          _index = _workersTab;
+          _workersSubTab = _fullTimeSubTab;
         });
 
       // A rating changed the stars a customer sees before choosing, which is on the profile.
@@ -97,29 +108,34 @@ class _BusinessOwnerDashboardShellState
   }
 
   void _openOrder(String bookingId) {
-    pushScreen(context, AsyncDetailScreen<Booking>(
-          title: 'Order',
-          fetch: () => ref
-              .read(bookingRepositoryProvider)
-              .getBookingByIdAsBusiness(bookingId),
-          builder: (_, booking) =>
-              BusinessBookingDetailScreen(booking: booking),
-        ));
+    pushScreen(
+      context,
+      AsyncDetailScreen<Booking>(
+        title: 'Order',
+        fetch: () => ref
+            .read(bookingRepositoryProvider)
+            .getBookingByIdAsBusiness(bookingId),
+        builder: (_, booking) => BusinessBookingDetailScreen(booking: booking),
+      ),
+    );
   }
 
   void _openChat(String bookingId) {
-    pushScreen(context, AsyncDetailScreen<Booking>(
-          title: 'Chat',
-          fetch: () => ref
-              .read(bookingRepositoryProvider)
-              .getBookingByIdAsBusiness(bookingId),
-          builder: (_, booking) => BookingChatScreen(
-            bookingId: booking.id,
-            title: booking.variantName ?? booking.serviceName,
-            // The customer, since this is the business reading it.
-            counterpartName: booking.customerName,
-          ),
-        ));
+    pushScreen(
+      context,
+      AsyncDetailScreen<Booking>(
+        title: 'Chat',
+        fetch: () => ref
+            .read(bookingRepositoryProvider)
+            .getBookingByIdAsBusiness(bookingId),
+        builder: (_, booking) => BookingChatScreen(
+          bookingId: booking.id,
+          title: booking.variantName ?? booking.serviceName,
+          // The customer, since this is the business reading it.
+          counterpartName: booking.customerName,
+        ),
+      ),
+    );
   }
 
   @override
@@ -186,10 +202,10 @@ class _BusinessOwnerDashboardShellState
                 actions: [
                   NotificationBell(
                     onOpen: _openNotification,
-                    color: Colors.white,
+                    color: AppColors.onMedia,
                   ),
                   IconButton(
-                    icon: const Icon(Icons.logout, color: Colors.white),
+                    icon: Icon(Icons.logout, color: AppColors.onMedia),
                     tooltip: 'Log out',
                     onPressed: () => ref.read(authProvider.notifier).logout(),
                   ),

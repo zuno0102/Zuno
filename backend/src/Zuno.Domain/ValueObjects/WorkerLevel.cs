@@ -39,52 +39,14 @@ namespace Zuno.Domain.ValueObjects;
 /// what it intends, and so wiring it up later is one call site rather than a redesign. The level
 /// names still describe experience, never quality, because experience is all the data supports.
 /// </para>
+/// <para>
+/// The thresholds, names and small-sample rules are rows in the <c>level_definitions</c> and
+/// <c>platform_settings</c> tables, passed in as a <see cref="LevelLadder"/>.
+/// </para>
 /// </remarks>
 public static class WorkerLevel
 {
-    public const int Minimum = 1;
-    public const int Maximum = 5;
-
-    /// <summary>Ratings needed before an average is treated as meaningful rather than noise.</summary>
-    public const int MinimumReviewsForAverage = 3;
-
-    /// <summary>
-    /// Offers needed before the answered-offers rate is judged at all.
-    /// </summary>
-    /// <remarks>
-    /// Turning down a job is a legitimate thing to do — the date did not suit, the pay was too low,
-    /// the venue was too far. One decline out of two should not read as unreliable, so the rate is
-    /// only applied once there is a pattern to read.
-    /// </remarks>
-    public const int MinimumOffersForRate = 5;
-
-    /// <summary>
-    /// What each level asks for: finished jobs, distinct businesses, answered-offer rate, rating.
-    /// Highest first, so the first row that holds is the level.
-    /// </summary>
-    private static readonly (int Level, int Jobs, int Businesses, double AnsweredRate, decimal Rating)[] Thresholds =
-    [
-        (5, 100, 8, 0.90, 4.5m),
-        (4, 50, 5, 0.85, 4.3m),
-        (3, 20, 3, 0.80, 4.0m),
-        (2, 5, 1, 0.70, 3.5m),
-    ];
-
-    /// <summary>
-    /// What to call a level on a badge.
-    /// </summary>
-    /// <remarks>
-    /// Every name describes how much work somebody has done, not how well they did it. "Trusted" or
-    /// "Top rated" would imply a judgement nobody has made — no business can rate a worker yet.
-    /// </remarks>
-    public static string Name(int level) => level switch
-    {
-        5 => "Highly experienced",
-        4 => "Very experienced",
-        3 => "Experienced",
-        2 => "Getting established",
-        _ => "New",
-    };
+    public const int Minimum = LevelLadder.Minimum;
 
     /// <summary>The level this record has earned.</summary>
     /// <param name="completedJobCount">
@@ -96,20 +58,18 @@ public static class WorkerLevel
     /// <param name="ratingAverage">Null until businesses can rate workers, which is not yet.</param>
     /// <param name="ratingCount">How many ratings that average rests on.</param>
     public static int Calculate(
+        LevelLadder ladder,
         int completedJobCount,
         int businessesWorkedFor = 0,
         int offersDeclined = 0,
         decimal? ratingAverage = null,
         int ratingCount = 0)
     {
-        foreach (var (level, jobs, businesses, answeredRate, rating) in Thresholds)
+        foreach (var rung in ladder.Earned)
         {
-            if (completedJobCount >= jobs
-                && businessesWorkedFor >= businesses
-                && MeetsAnsweredRate(completedJobCount, offersDeclined, answeredRate)
-                && MeetsRating(ratingAverage, ratingCount, rating))
+            if (Meets(ladder, rung, completedJobCount, businessesWorkedFor, offersDeclined, ratingAverage, ratingCount))
             {
-                return level;
+                return rung.Level;
             }
         }
 
@@ -129,29 +89,22 @@ public static class WorkerLevel
     /// and do today — who hires them follows from it.
     /// </remarks>
     public static string? NextLevelRequirement(
+        LevelLadder ladder,
         int completedJobCount,
         int businessesWorkedFor = 0,
         int offersDeclined = 0,
         decimal? ratingAverage = null,
         int ratingCount = 0)
     {
-        var current = Calculate(
-            completedJobCount, businessesWorkedFor, offersDeclined, ratingAverage, ratingCount);
+        var next = NextRung(ladder, completedJobCount, businessesWorkedFor, offersDeclined, ratingAverage, ratingCount);
 
-        if (current >= Maximum)
+        if (next is null)
         {
             return null;
         }
 
-        var next = Thresholds.FirstOrDefault(t => t.Level == current + 1);
-
-        if (next.Level == 0)
-        {
-            return null;
-        }
-
-        var jobsShort = Math.Max(0, next.Jobs - completedJobCount);
-        var businessesShort = Math.Max(0, next.Businesses - businessesWorkedFor);
+        var jobsShort = Math.Max(0, next.MinCompletedJobs - completedJobCount);
+        var businessesShort = Math.Max(0, next.MinBusinesses - businessesWorkedFor);
 
         if (jobsShort > 0)
         {
@@ -165,12 +118,12 @@ public static class WorkerLevel
                 : $"work for {businessesShort} more businesses";
         }
 
-        if (!MeetsAnsweredRate(completedJobCount, offersDeclined, next.AnsweredRate))
+        if (!MeetsAnsweredRate(ladder, completedJobCount, offersDeclined, next.MinAnsweredRate))
         {
             return "take more of the offers you are sent";
         }
 
-        if (!MeetsRating(ratingAverage, ratingCount, next.Rating))
+        if (!MeetsRating(ladder, ratingAverage, ratingCount, next.MinRating))
         {
             return "a higher rating from the businesses you work for";
         }
@@ -185,46 +138,62 @@ public static class WorkerLevel
     /// whether jobs are actually the thing in the way.
     /// </remarks>
     public static int? JobsToNextLevel(
+        LevelLadder ladder,
         int completedJobCount,
         int businessesWorkedFor = 0,
         int offersDeclined = 0,
         decimal? ratingAverage = null,
         int ratingCount = 0)
     {
-        var current = Calculate(
-            completedJobCount, businessesWorkedFor, offersDeclined, ratingAverage, ratingCount);
+        var next = NextRung(ladder, completedJobCount, businessesWorkedFor, offersDeclined, ratingAverage, ratingCount);
 
-        if (current >= Maximum)
-        {
-            return null;
-        }
-
-        var next = Thresholds
-            .Where(threshold => threshold.Level == current + 1)
-            .Select(threshold => threshold.Jobs)
-            .FirstOrDefault();
-
-        return next == 0 ? null : Math.Max(0, next - completedJobCount);
+        return next is null ? null : Math.Max(0, next.MinCompletedJobs - completedJobCount);
     }
+
+    /// <summary>The rung above the one this record has earned, or null at the top.</summary>
+    private static LevelRung? NextRung(
+        LevelLadder ladder,
+        int completedJobCount,
+        int businessesWorkedFor,
+        int offersDeclined,
+        decimal? ratingAverage,
+        int ratingCount) =>
+        ladder.Rung(Calculate(
+            ladder, completedJobCount, businessesWorkedFor, offersDeclined, ratingAverage, ratingCount) + 1);
+
+    private static bool Meets(
+        LevelLadder ladder,
+        LevelRung rung,
+        int completedJobCount,
+        int businessesWorkedFor,
+        int offersDeclined,
+        decimal? ratingAverage,
+        int ratingCount) =>
+        completedJobCount >= rung.MinCompletedJobs
+        && businessesWorkedFor >= rung.MinBusinesses
+        && MeetsAnsweredRate(ladder, completedJobCount, offersDeclined, rung.MinAnsweredRate)
+        && MeetsRating(ladder, ratingAverage, ratingCount, rung.MinRating);
 
     /// <summary>
     /// Whether enough of the offers this worker engaged with turned into finished work.
     /// </summary>
     /// <remarks>
-    /// Too few offers to judge counts as clearing it, for the same reason a thin review history does:
-    /// a bar that cannot be met yet is a bar that only punishes newcomers.
+    /// Turning down a job is a legitimate thing to do — the date did not suit, the pay was too low,
+    /// the venue was too far. One decline out of two should not read as unreliable, so the rate is
+    /// only applied once there is a pattern to read, for the same reason a thin review history is
+    /// not: a bar that cannot be met yet is a bar that only punishes newcomers.
     /// </remarks>
-    private static bool MeetsAnsweredRate(int completedJobCount, int offersDeclined, double required)
+    private static bool MeetsAnsweredRate(LevelLadder ladder, int completedJobCount, int offersDeclined, decimal required)
     {
         var offers = completedJobCount + offersDeclined;
 
-        return offers < MinimumOffersForRate || (double)completedJobCount / offers >= required;
+        return offers == 0 || offers < ladder.MinimumOffersForRate || (decimal)completedJobCount / offers >= required;
     }
 
     /// <summary>
     /// Whether a rating clears the bar. Too few ratings to judge counts as clearing it — which, until
     /// businesses can rate workers at all, is every worker.
     /// </summary>
-    private static bool MeetsRating(decimal? average, int ratingCount, decimal required) =>
-        ratingCount < MinimumReviewsForAverage || (average ?? 0m) >= required;
+    private static bool MeetsRating(LevelLadder ladder, decimal? average, int ratingCount, decimal required) =>
+        ratingCount < ladder.MinimumReviewsForAverage || (average ?? 0m) >= required;
 }

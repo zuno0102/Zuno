@@ -17,6 +17,7 @@ class BookingWorkerAssignmentModel {
     this.originalSalaryAmount,
     this.paymentStatus = '',
     this.hasPayoutDetails = false,
+    this.payoutState = '',
   });
 
   factory BookingWorkerAssignmentModel.fromJson(Map<String, dynamic> json) =>
@@ -34,6 +35,10 @@ class BookingWorkerAssignmentModel {
   final String paymentStatus;
   final bool hasPayoutDetails;
 
+  /// `Ready`, `NotVerified` or `None` — why this crew member can or cannot be paid. Empty on a row
+  /// the viewer may not see into.
+  final String payoutState;
+
   BookingWorkerAssignment toEntity() => BookingWorkerAssignment(
     workerProfileId: workerProfileId,
     workerName: workerName,
@@ -46,5 +51,6 @@ class BookingWorkerAssignmentModel {
     originalSalaryAmount: originalSalaryAmount,
     paymentStatus: paymentStatus,
     hasPayoutDetails: hasPayoutDetails,
+    payoutState: payoutState,
   );
 }

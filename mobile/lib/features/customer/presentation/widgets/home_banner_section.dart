@@ -122,9 +122,8 @@ class _HomeBannerSectionState extends ConsumerState<HomeBannerSection> {
                         decoration: BoxDecoration(
                           color: i == _page
                               ? Theme.of(context).colorScheme.primary
-                              : Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                              : Theme.of(context).colorScheme.onSurfaceVariant
+                                    .withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(3),
                         ),
                       ),
@@ -171,7 +170,7 @@ class _BannerCard extends StatelessWidget {
 
             // Dark at the bottom only, so the photograph is still the thing you see while the words
             // stay readable over whatever happens to be behind them.
-            const DecoratedBox(
+            DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
@@ -195,7 +194,7 @@ class _BannerCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.labelSmall?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.85),
+                      color: AppColors.onMedia.withValues(alpha: 0.85),
                       letterSpacing: 0.8,
                       fontWeight: FontWeight.w700,
                     ),
@@ -206,7 +205,7 @@ class _BannerCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleMedium?.copyWith(
-                      color: Colors.white,
+                      color: AppColors.onMedia,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -219,7 +218,7 @@ class _BannerCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: Colors.white.withValues(alpha: 0.9),
+                            color: AppColors.onMedia.withValues(alpha: 0.9),
                           ),
                         ),
                       ),
@@ -227,7 +226,7 @@ class _BannerCard extends StatelessWidget {
                       Text(
                         priceLabel(service.price, service.priceType),
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: Colors.white,
+                          color: AppColors.onMedia,
                           fontWeight: FontWeight.w700,
                         ),
                       ),

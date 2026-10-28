@@ -13,7 +13,10 @@ public class UpdateMyWorkerProfileCommandHandler(
     IUserRepository userRepository,
     IWorkerEarningsService earningsService,
     IApplicationDbContext dbContext,
-    IDateTimeProvider dateTimeProvider)
+    IDateTimeProvider dateTimeProvider,
+    IPlatformSettings platformSettings,
+    IPayoutDestinationCheck payoutCheck,
+    INotificationSender notifications)
     : IRequestHandler<UpdateMyWorkerProfileCommand, WorkerProfileDto>
 {
     public async Task<WorkerProfileDto> Handle(
@@ -46,10 +49,7 @@ public class UpdateMyWorkerProfileCommandHandler(
             await SetPhoneNumberAsync(profile.User, phone, cancellationToken);
         }
 
-        if (request.UpiVpa is { } upi)
-        {
-            SetUpi(profile, upi);
-        }
+        var upiChanged = request.UpiVpa is { } upi && await SetUpiAsync(profile, upi, cancellationToken);
 
         // Assigned only when sent. A form that posts back four fields of which the worker touched
         // one must not blank the other three.
@@ -65,8 +65,21 @@ public class UpdateMyWorkerProfileCommandHandler(
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
+        if (upiChanged)
+        {
+            // So the worker hears of it if it was not them: a changed UPI is where their next wages go.
+            await notifications.NotifyAsync(
+                userId,
+                NotificationKind.PayoutDestinationChanged,
+                "Your payout UPI was changed",
+                $"Wages will now go to {Mask(request.UpiVpa!)}. If you did not change it, change your password now.",
+                NotificationTarget.Profile,
+                Guid.Empty,
+                cancellationToken);
+        }
+
         var earnings = await earningsService.GetAsync(profile.Id, cancellationToken);
-        return profile.ToDto(earnings);
+        return profile.ToDto(earnings, platformSettings.Current.WorkerLevels);
     }
 
     /// <summary>
@@ -101,37 +114,28 @@ public class UpdateMyWorkerProfileCommandHandler(
     }
 
     /// <summary>
-    /// Points the worker's wages at a UPI address, creating the payout record on first use.
+    /// Points the worker's wages at a UPI address, creating the payout record on first use. Returns
+    /// whether the address actually changed.
     /// </summary>
     /// <remarks>
-    /// A changed address goes back to Pending. Verification attaches to a specific destination, so
-    /// carrying the old status over to a new address would let unverified details be paid to — the
-    /// one thing <c>WorkerPayoutDetail.CanReceivePayouts</c> exists to prevent. The provider handle
-    /// is cleared for the same reason: it identifies the old destination.
+    /// A new or changed address is verified again through <see cref="IPayoutDestinationCheck"/> before
+    /// it can be paid: verification belongs to one destination, and carrying the old status over to a
+    /// new address would let unchecked details be paid to — the one thing
+    /// <c>WorkerPayoutDetail.CanReceivePayouts</c> exists to prevent. Until it passes, a pay run
+    /// leaves the worker out and tells the business why. An unchanged address is not re-checked. The
+    /// provider handle is cleared on any change: it identifies the old destination.
     /// </remarks>
-    /// <summary>
-    /// Records the worker's UPI, ready to be paid to.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Accepted on sight, the same way a business is verified the moment it registers. Nothing in
-    /// this app has ever been able to move payout details out of Pending — no admin screen, no
-    /// provider call, no job — so every worker who saved a UPI sat in "being checked" for good and
-    /// could never be paid. The e2e scripts hid it by writing verification_status straight into
-    /// the database.
-    /// </para>
-    /// <para>
-    /// This is a placeholder for a real check, and deliberately a small one: asking Razorpay
-    /// whether the address exists, through /fund_accounts/validations, is the answer the UI
-    /// already promises the worker ("Checked before the first payment"). Until that is built, a
-    /// wrong address fails at the payout itself with a reason the business can read and act on,
-    /// which is a better place to find out than a status that never changes.
-    /// </para>
-    /// </remarks>
-    private void SetUpi(WorkerProfile profile, string upiVpa)
+    private async Task<bool> SetUpiAsync(WorkerProfile profile, string upiVpa, CancellationToken cancellationToken)
     {
         var payout = profile.PayoutDetail;
-        var now = dateTimeProvider.UtcNow;
+        if (payout is not null && string.Equals(payout.UpiVpa, upiVpa, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var check = await payoutCheck.CheckUpiAsync(upiVpa, cancellationToken);
+        var status = check.IsVerified ? VerificationStatus.Verified : VerificationStatus.Pending;
+        DateTimeOffset? verifiedAt = check.IsVerified ? dateTimeProvider.UtcNow : null;
 
         if (payout is null)
         {
@@ -142,21 +146,23 @@ public class UpdateMyWorkerProfileCommandHandler(
             {
                 WorkerProfileId = profile.Id,
                 UpiVpa = upiVpa,
-                VerificationStatus = VerificationStatus.Verified,
-                VerifiedAt = now,
+                VerificationStatus = status,
+                VerifiedAt = verifiedAt,
             });
-            return;
-        }
-
-        if (string.Equals(payout.UpiVpa, upiVpa, StringComparison.OrdinalIgnoreCase))
-        {
-            return;
+            return true;
         }
 
         payout.UpiVpa = upiVpa;
-        payout.VerificationStatus = VerificationStatus.Verified;
-        payout.VerifiedAt = now;
-        // The old address's handle does not describe the new one.
+        payout.VerificationStatus = status;
+        payout.VerifiedAt = verifiedAt;
         payout.ProviderFundAccountId = null;
+        return true;
+    }
+
+    /// <summary>"ravi@okaxis" → "ra***@okaxis": enough to recognise, not enough to copy.</summary>
+    private static string Mask(string upiVpa)
+    {
+        var at = upiVpa.IndexOf('@');
+        return at <= 0 ? "***" : upiVpa[..Math.Min(2, at)] + "***" + upiVpa[at..];
     }
 }

@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/booking/domain/entities/booking.dart';
 import 'package:zuno/features/booking/presentation/providers/business_bookings_notifier.dart';
@@ -8,6 +9,7 @@ import 'package:zuno/features/business_owner/domain/entities/business_worker.dar
 import 'package:zuno/features/business_owner/domain/entities/worker_busy_period.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_providers.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_workers_notifier.dart';
+import 'package:zuno/features/business_owner/presentation/widgets/salary_unit_dropdown.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 
 Future<Booking?> showAssignWorkerDialog(
@@ -143,7 +145,9 @@ class _AssignWorkerDialogState extends ConsumerState<_AssignWorkerDialog> {
       context: context,
       initialDate: _scheduledDate,
       firstDate: DateTime.now().subtract(const Duration(days: 1)),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      lastDate: ref
+          .read(currentAppOptionsProvider)
+          .lastPickableDate(DateTime.now()),
     );
     if (date == null || !mounted) {
       return;
@@ -331,28 +335,9 @@ class _AssignWorkerDialogState extends ConsumerState<_AssignWorkerDialog> {
                   const SizedBox(width: 12),
                   Expanded(
                     flex: 2,
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _salaryUnit,
-                      decoration: const InputDecoration(
-                        labelText: 'Per',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: SalaryUnit.perEvent,
-                          child: Text('Event'),
-                        ),
-                        DropdownMenuItem(
-                          value: SalaryUnit.perDay,
-                          child: Text('Day'),
-                        ),
-                        DropdownMenuItem(
-                          value: SalaryUnit.perHour,
-                          child: Text('Hour'),
-                        ),
-                      ],
-                      onChanged: (value) =>
-                          setState(() => _salaryUnit = value ?? _salaryUnit),
+                    child: SalaryUnitDropdown(
+                      value: _salaryUnit,
+                      onChanged: (value) => setState(() => _salaryUnit = value),
                     ),
                   ),
                 ],

@@ -1,12 +1,13 @@
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Zuno.Application.Common.Interfaces;
+using Zuno.Application.Modules.HiringPost.Common;
 
 namespace Zuno.Application.Modules.HiringPost.Commands.UpdateHiringPost;
 
 public class UpdateHiringPostCommandValidator : AbstractValidator<UpdateHiringPostCommand>
 {
-    public UpdateHiringPostCommandValidator(IApplicationDbContext dbContext)
+    public UpdateHiringPostCommandValidator(IApplicationDbContext dbContext, IPlatformSettings platformSettings)
     {
         RuleFor(x => x.HiringPostId).NotEmpty();
         RuleFor(x => x.Title).NotEmpty().MaximumLength(200);
@@ -18,9 +19,7 @@ public class UpdateHiringPostCommandValidator : AbstractValidator<UpdateHiringPo
             .Must(x => x.Latitude.HasValue == x.Longitude.HasValue)
             .WithMessage("Send both latitude and longitude, or neither.");
         RuleFor(x => x.EventDate).NotEmpty();
-        RuleFor(x => x.DurationMinutes)
-            .InclusiveBetween(Domain.Entities.HiringPost.MinDurationMinutes, Domain.Entities.HiringPost.MaxDurationMinutes)
-            .WithMessage("Duration must be between 15 minutes and 24 hours.");
+        RuleFor(x => x.DurationMinutes).ValidDuration(platformSettings);
         // Not required: a post raised from an order takes its kind of work from the package the
         // customer chose, and a standalone post has no order to take one from. Validated only
         // when something was sent, so a bad id can never be stored.
@@ -30,10 +29,8 @@ public class UpdateHiringPostCommandValidator : AbstractValidator<UpdateHiringPo
             .When(x => x.ServiceSubCategoryId.HasValue)
             .WithMessage("That kind of work is not one Zuno lists.");
 
-        RuleFor(x => x.WorkersNeeded).GreaterThanOrEqualTo(1);
-        RuleFor(x => x.SalaryAmount)
-            .GreaterThan(0).WithMessage("Salary must be greater than 0.")
-            .LessThanOrEqualTo(99_999_999.99m);
+        RuleFor(x => x.WorkersNeeded).ValidWorkersNeeded(platformSettings);
+        RuleFor(x => x.SalaryAmount).ValidWage();
         RuleFor(x => x.SalaryUnit).IsInEnum();
     }
 }

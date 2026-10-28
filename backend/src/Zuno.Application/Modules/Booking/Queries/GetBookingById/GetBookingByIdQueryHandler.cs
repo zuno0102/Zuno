@@ -36,6 +36,11 @@ public class GetBookingByIdQueryHandler(
             ? await wageService.GetAsync(booking.Id, cancellationToken)
             : (BookingWageRollup?)null;
 
-        return booking.ToDto(myAssignment?.WorkerProfileId, wages: wages);
+        // The crew is the business's and the crew's business: a customer is told the order, not who
+        // is on it or what they are paid.
+        return booking.ToDto(myAssignment?.WorkerProfileId, includeCrew: !IsCustomerOnly(booking, userId, myAssignment), wages: wages);
     }
+
+    private static bool IsCustomerOnly(Domain.Entities.Booking booking, Guid userId, Domain.Entities.BookingWorkerAssignment? myAssignment) =>
+        booking.BusinessOwnerProfile.UserId != userId && myAssignment is null;
 }

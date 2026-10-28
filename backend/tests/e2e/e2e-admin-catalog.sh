@@ -14,7 +14,7 @@
 #   * hiding a category takes it out of the customer-facing list but breaks nothing:
 #     the businesses already using it keep working
 #   * the existing 8 categories and 49 sub-categories are untouched
-API=http://localhost:5056/api/v1
+API=${API:-http://localhost:5056/api/v1}
 PSQL="${PSQL:-psql}"
 : "${PGPASSWORD:?set PGPASSWORD to your Postgres password first}"
 S=$(date +%s)

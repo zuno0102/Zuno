@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:zuno/shared/widgets/detail_row.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/core/ui_config/ui_config.dart';
 import 'package:zuno/features/business_owner/domain/entities/business_dashboard.dart';
 import 'package:zuno/features/business_owner/domain/entities/business_service.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_services_notifier.dart';
@@ -146,19 +148,19 @@ class _BookingCard extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 10),
-            _DetailLine(
+            DetailRow.iconText(
               icon: Icons.person_outline,
               text: event.customerName.isEmpty
                   ? 'Customer'
                   : event.customerName,
             ),
-            _DetailLine(
+            DetailRow.iconText(
               icon: Icons.schedule_outlined,
               text: '${formatDate(event.scheduledDate)} · ${event.whenLabel}',
             ),
             if (event.city case final city? when city.isNotEmpty)
-              _DetailLine(icon: Icons.place_outlined, text: city),
-            _DetailLine(
+              DetailRow.iconText(icon: Icons.place_outlined, text: city),
+            DetailRow.iconText(
               icon: Icons.groups_outlined,
               // Zero is not "no workers" — it is a per-person job whose crew size is still to be
               // agreed with the customer. "0 workers needed" would read as nothing to staff.
@@ -305,15 +307,18 @@ class _CrewEventCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 10),
-            _DetailLine(
+            DetailRow.iconText(
               icon: Icons.event_outlined,
               text: formatDate(event.eventDate),
             ),
             if (event.location case final where? when where.isNotEmpty)
-              _DetailLine(icon: Icons.place_outlined, text: where),
-            _DetailLine(icon: Icons.groups_outlined, text: event.crewLabel),
+              DetailRow.iconText(icon: Icons.place_outlined, text: where),
+            DetailRow.iconText(
+              icon: Icons.groups_outlined,
+              text: event.crewLabel,
+            ),
             if (event.workCompletedAt case final done?)
-              _DetailLine(
+              DetailRow.iconText(
                 icon: Icons.check_circle_outline,
                 text: 'Work finished ${formatDate(done)}',
               ),
@@ -398,36 +403,6 @@ class _WageFigure extends StatelessWidget {
   }
 }
 
-class _DetailLine extends StatelessWidget {
-  const _DetailLine({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          Icon(icon, size: 14, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(width: 7),
-          Expanded(
-            child: Text(
-              text,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// The roster behind the Active workers tile.
 ///
 /// Ordered by the server so whoever is free reads first — this screen keeps that order rather
@@ -486,11 +461,10 @@ class _WorkerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final tone = worker.isAtWork
-        ? StatusTone.progress
-        : worker.isBooked
-        ? StatusTone.waiting
-        : StatusTone.success;
+    final tone = UiConfig.current.tone(
+      'WorkerAvailability.Business',
+      worker.availabilityStatus,
+    );
     final colour = AppColors.status(tone, theme.brightness);
 
     return Card(
@@ -530,8 +504,11 @@ class _WorkerCard extends StatelessWidget {
                   // The date first when there is one: the whole point of reading this list is
                   // working out who is free *when*, and a status with no date cannot answer it.
                   if (worker.busyDetail case final busy?)
-                    _DetailLine(icon: Icons.event_busy_outlined, text: busy),
-                  _DetailLine(
+                    DetailRow.iconText(
+                      icon: Icons.event_busy_outlined,
+                      text: busy,
+                    ),
+                  DetailRow.iconText(
                     icon: Icons.workspace_premium_outlined,
                     text:
                         '${worker.experienceLabel} · with you since '
@@ -539,7 +516,7 @@ class _WorkerCard extends StatelessWidget {
                   ),
                   if (worker.workerPhone case final phone?
                       when phone.isNotEmpty)
-                    _DetailLine(icon: Icons.phone_outlined, text: phone),
+                    DetailRow.iconText(icon: Icons.phone_outlined, text: phone),
                 ],
               ),
             ),
@@ -669,18 +646,18 @@ class _ServiceSummaryCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  _DetailLine(
+                  DetailRow.iconText(
                     icon: Icons.category_outlined,
                     text: service.serviceCategoryName,
                   ),
-                  _DetailLine(
+                  DetailRow.iconText(
                     icon: Icons.payments_outlined,
                     text: priceLabel(service.price, service.priceType),
                   ),
                   // Only where there are any: an item count of nothing reads as a fault rather
                   // than as a service priced as one thing.
                   if (service.variants.isNotEmpty)
-                    _DetailLine(
+                    DetailRow.iconText(
                       icon: Icons.list_alt_outlined,
                       text:
                           '${service.variants.length} '

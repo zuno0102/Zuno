@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:zuno/core/constants/api_constants.dart';
 import 'package:zuno/core/network/dio_error_mapper.dart';
+import 'package:zuno/features/catalog/data/models/app_options_model.dart';
 import 'package:zuno/features/catalog/data/models/district_model.dart';
 import 'package:zuno/features/catalog/data/models/location_state_model.dart';
 import 'package:zuno/features/catalog/data/models/order_stage_model.dart';
@@ -10,6 +11,17 @@ class CatalogRemoteDataSource {
   CatalogRemoteDataSource(this._dio);
 
   final Dio _dio;
+
+  Future<AppOptionsModel> getAppOptions() async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        ApiConstants.appOptionsPath,
+      );
+      return AppOptionsModel.fromJson(response.data!);
+    } on DioException catch (e) {
+      throw mapDioExceptionToAppException(e);
+    }
+  }
 
   Future<List<OrderStageModel>> getOrderStages() async {
     try {

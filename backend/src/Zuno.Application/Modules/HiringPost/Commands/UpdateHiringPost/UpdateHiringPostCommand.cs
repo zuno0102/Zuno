@@ -17,8 +17,11 @@ public class UpdateHiringPostCommand : IRequest<HiringPostDto>
 
     public DateTimeOffset EventDate { get; set; }
 
-    /// <summary>How long the work runs, in minutes. Used to detect clashes in a worker.s day.</summary>
-    public int DurationMinutes { get; set; } = 120;
+    /// <summary>
+    /// How long the work runs, in minutes — used to detect clashes in a worker's day. Omitted, the
+    /// post keeps its current length.
+    /// </summary>
+    public int? DurationMinutes { get; set; }
 
     public string? Location { get; set; }
 

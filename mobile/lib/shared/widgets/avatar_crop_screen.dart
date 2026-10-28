@@ -96,15 +96,15 @@ class _AvatarCropScreenState extends State<AvatarCropScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.mediaBackdrop,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
+        backgroundColor: AppColors.mediaBackdrop,
+        foregroundColor: AppColors.onMedia,
         title: const Text('Adjust photo'),
         actions: [
           TextButton(
             onPressed: _isReady && !_isCropping ? _crop : null,
-            child: const Text('Done', style: TextStyle(color: Colors.white)),
+            child: Text('Done', style: TextStyle(color: AppColors.onMedia)),
           ),
         ],
       ),
@@ -128,8 +128,8 @@ class _AvatarCropScreenState extends State<AvatarCropScreen> {
                       size: 0.85,
                       aspectRatio: 1,
                     ),
-                    baseColor: Colors.black,
-                    maskColor: Colors.black.withValues(alpha: 0.6),
+                    baseColor: AppColors.mediaBackdrop,
+                    maskColor: AppColors.scrim.withValues(alpha: 0.6),
                     onStatusChanged: (status) {
                       if (status == CropStatus.ready && !_isReady) {
                         setState(() => _isReady = true);
@@ -141,7 +141,7 @@ class _AvatarCropScreenState extends State<AvatarCropScreen> {
                 ],
               ),
             ),
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(16),
               child: Text(
                 'Pinch to zoom and drag to position your face in the circle',

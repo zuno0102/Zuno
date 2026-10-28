@@ -18,7 +18,7 @@ import 'package:zuno/shared/widgets/status_with_actions.dart';
 import 'package:zuno/features/work_chat/presentation/providers/work_chat_providers.dart';
 import 'package:zuno/features/work_chat/presentation/widgets/work_message_button.dart';
 import 'package:zuno/features/work_chat/presentation/widgets/work_threads_list.dart';
-import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/core/ui_config/ui_config.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/worker_job_offers_notifier.dart';
 import 'package:zuno/features/worker/domain/entities/worker_invitation.dart';
 import 'package:zuno/features/worker/presentation/providers/worker_invitations_notifier.dart';
@@ -493,18 +493,12 @@ class _PostJobCard extends StatelessWidget {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  StatusPill(
-                    label: post.isWorkCompleted
-                        ? 'Work finished'
+                  _progressPill(
+                    post.isWorkCompleted
+                        ? 'Finished'
                         : post.isWorkStarted
-                        ? 'Work started'
+                        ? 'Started'
                         : 'Booked',
-                    tone: post.isWorkCompleted
-                        ? StatusTone.success
-                        : post.isWorkStarted
-                        ? StatusTone.progress
-                        : StatusTone.waiting,
-                    compact: true,
                   ),
                   const Spacer(),
                   // Every job here is one the worker was accepted on, so the business can be
@@ -784,4 +778,10 @@ class _JobCardState extends ConsumerState<_JobCard> {
       ),
     );
   }
+}
+
+/// Where the work on a job stands: `Booked`, `Started` or `Finished`.
+StatusPill _progressPill(String state) {
+  final entry = UiConfig.current.entry('WorkerJobProgress', state);
+  return StatusPill(label: entry.label, tone: entry.statusTone, compact: true);
 }

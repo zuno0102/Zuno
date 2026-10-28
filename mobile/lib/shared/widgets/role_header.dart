@@ -32,7 +32,12 @@ class RoleHeader extends StatelessWidget {
     final (from, to) = AppColors.gradientFor(role);
 
     return Container(
-      padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 16, 20, 20),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        MediaQuery.of(context).padding.top + 16,
+        20,
+        20,
+      ),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [from, to],
@@ -53,7 +58,7 @@ class RoleHeader extends StatelessWidget {
                     Text(
                       greeting,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.78),
+                        color: AppColors.onMedia.withValues(alpha: 0.78),
                       ),
                     ),
                     Text(
@@ -61,7 +66,7 @@ class RoleHeader extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleLarge?.copyWith(
-                        color: Colors.white,
+                        color: AppColors.onMedia,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -69,7 +74,7 @@ class RoleHeader extends StatelessWidget {
                       Text(
                         subtitle!,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.white.withValues(alpha: 0.78),
+                          color: AppColors.onMedia.withValues(alpha: 0.78),
                         ),
                       ),
                   ],
@@ -116,9 +121,9 @@ class _StatCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         // Translucent white rather than a fixed colour, so one card works on every gradient.
-        color: Colors.white.withValues(alpha: 0.16),
+        color: AppColors.onMedia.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+        border: Border.all(color: AppColors.onMedia.withValues(alpha: 0.22)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -126,7 +131,11 @@ class _StatCard extends StatelessWidget {
           Row(
             children: [
               if (stat.icon != null) ...[
-                Icon(stat.icon, size: 14, color: Colors.white.withValues(alpha: 0.85)),
+                Icon(
+                  stat.icon,
+                  size: 14,
+                  color: AppColors.onMedia.withValues(alpha: 0.85),
+                ),
                 const SizedBox(width: 5),
               ],
               Flexible(
@@ -135,7 +144,7 @@ class _StatCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.85),
+                    color: AppColors.onMedia.withValues(alpha: 0.85),
                     fontSize: 11.5,
                   ),
                 ),
@@ -146,7 +155,7 @@ class _StatCard extends StatelessWidget {
           Text(
             stat.value,
             style: theme.textTheme.headlineSmall?.copyWith(
-              color: Colors.white,
+              color: AppColors.onMedia,
               fontWeight: FontWeight.w700,
               fontFeatures: const [FontFeature.tabularFigures()],
             ),

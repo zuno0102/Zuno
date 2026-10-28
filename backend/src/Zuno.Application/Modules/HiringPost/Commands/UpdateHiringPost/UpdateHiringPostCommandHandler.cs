@@ -19,6 +19,7 @@ namespace Zuno.Application.Modules.HiringPost.Commands.UpdateHiringPost;
 public class UpdateHiringPostCommandHandler(
     ICurrentUserService currentUserService,
     IBusinessOwnerProfileRepository businessOwnerProfileRepository,
+    IPlatformSettings platformSettings,
     IApplicationDbContext dbContext) : IRequestHandler<UpdateHiringPostCommand, HiringPostDto>
 {
     public async Task<HiringPostDto> Handle(UpdateHiringPostCommand request, CancellationToken cancellationToken)
@@ -29,11 +30,11 @@ public class UpdateHiringPostCommandHandler(
         var businessProfile = await businessOwnerProfileRepository.GetByUserIdAsync(userId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(BusinessOwnerProfile), userId);
 
-        var post = await dbContext.HiringPosts
-            .Include(p => p.BusinessOwnerProfile)
-            .Include(p => p.Applications).ThenInclude(a => a.WorkerProfile).ThenInclude(wp => wp.User)
-            .Include(p => p.Applications).ThenInclude(a => a.SalaryAdjustments)
-            .FirstOrDefaultAsync(p => p.Id == request.HiringPostId, cancellationToken)
+        var post = await dbContext.LoadHiringPostAsync(
+            dbContext.HiringPosts
+                .Include(p => p.BusinessOwnerProfile)
+                .Where(p => p.Id == request.HiringPostId),
+            cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Domain.Entities.HiringPost), request.HiringPostId);
 
         if (post.BusinessOwnerProfileId != businessProfile.Id)
@@ -76,7 +77,7 @@ public class UpdateHiringPostCommandHandler(
         post.Title = request.Title;
         post.Description = request.Description;
         post.EventDate = request.EventDate;
-        post.DurationMinutes = request.DurationMinutes;
+        post.DurationMinutes = request.DurationMinutes ?? post.DurationMinutes;
         post.Location = request.Location;
 
         // Only moved when the form sent a point. An edit that leaves the location alone keeps the
@@ -84,7 +85,8 @@ public class UpdateHiringPostCommandHandler(
         if (request is { Latitude: { } lat, Longitude: { } lon })
         {
             await HiringPostLocation.PlaceAsync(
-                post, lat, lon, HiringPostLocation.ParsePrecision(request.LocationPrecision), dbContext, cancellationToken);
+                post, lat, lon, HiringPostLocation.ParsePrecision(request.LocationPrecision),
+                platformSettings.Current, dbContext, cancellationToken);
         }
 
         post.ServiceSubCategoryId = request.ServiceSubCategoryId;

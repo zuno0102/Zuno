@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Zuno.Api.Uploads;
 using Zuno.Api.Authorization;
 using Zuno.Api.Common;
 using Zuno.Application.Common.Interfaces;
@@ -39,21 +40,10 @@ namespace Zuno.Api.Controllers;
 public class BusinessController(
     ISender mediator,
     IFileStorageService fileStorageService,
-    IOptions<FileStorageSettings> fileStorageSettings) : ControllerBase
+    IOptions<FileStorageSettings> fileStorageSettings,
+    IPlatformSettings platformSettings) : ControllerBase
 {
-    private static readonly HashSet<string> AllowedImageContentTypes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-    };
 
-    private static readonly HashSet<string> AllowedVideoContentTypes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "video/mp4",
-        "video/quicktime",
-        "video/webm",
-    };
 
     /// <summary>The business home screen: work delivered, split by category, plus trust.</summary>
     [HttpGet("dashboard")]
@@ -98,14 +88,12 @@ public class BusinessController(
                 HttpContext.TraceIdentifier));
         }
 
-        if (!AllowedImageContentTypes.Contains(file.ContentType))
+        // Judged by the file's first bytes; the stored extension comes from what it really is.
+        var extension = await MediaUpload.ImageExtensionAsync(file, cancellationToken);
+        if (extension is null)
         {
-            return BadRequest(ApiResponse.Fail("Image must be a JPEG, PNG, or WebP file.", HttpContext.TraceIdentifier));
+            return BadRequest(ApiResponse.Fail(MediaUpload.ImageRule, HttpContext.TraceIdentifier));
         }
-
-        // Taken from the content type we just validated, not from the uploaded file name. The
-        // name is the client's to choose, and it ends up in a file path.
-        var extension = ExtensionForImageContentType(file.ContentType);
 
         // The picture is stored under the profile's own id, so a business can only ever write
         // to its own folder — there is no id in the route for a caller to tamper with.
@@ -127,13 +115,6 @@ public class BusinessController(
         return Ok(result);
     }
 
-    /// <summary>The file extension matching an already-validated image content type.</summary>
-    private static string ExtensionForImageContentType(string contentType) => contentType.ToLowerInvariant() switch
-    {
-        "image/png" => ".png",
-        "image/webp" => ".webp",
-        _ => ".jpg",
-    };
 
     [HttpGet("services")]
     public async Task<IActionResult> GetServices(CancellationToken cancellationToken)
@@ -186,9 +167,9 @@ public class BusinessController(
     [RequestSizeLimit(10_000_000)]
     public async Task<IActionResult> UploadServiceImage(Guid id, int slot, IFormFile file, CancellationToken cancellationToken)
     {
-        if (slot is < 0 or > 2)
+        if (InvalidImageSlot(slot) is { } slotError)
         {
-            return BadRequest(ApiResponse.Fail("Image slot must be between 0 and 2.", HttpContext.TraceIdentifier));
+            return slotError;
         }
 
         if (file.Length == 0)
@@ -203,12 +184,13 @@ public class BusinessController(
                 HttpContext.TraceIdentifier));
         }
 
-        if (!AllowedImageContentTypes.Contains(file.ContentType))
+        // Judged by the file's first bytes; the stored extension comes from what it really is.
+        var extension = await MediaUpload.ImageExtensionAsync(file, cancellationToken);
+        if (extension is null)
         {
-            return BadRequest(ApiResponse.Fail("Image must be a JPEG, PNG, or WebP file.", HttpContext.TraceIdentifier));
+            return BadRequest(ApiResponse.Fail(MediaUpload.ImageRule, HttpContext.TraceIdentifier));
         }
 
-        var extension = Path.GetExtension(file.FileName) is { Length: > 0 } ext ? ext : ".jpg";
 
         // The file is handed to the command rather than saved here. Saving it here wrote it to
         // disk before anything had checked the service was the caller's, and the storage layer
@@ -251,12 +233,13 @@ public class BusinessController(
                 HttpContext.TraceIdentifier));
         }
 
-        if (!AllowedVideoContentTypes.Contains(file.ContentType))
+        // Judged by the file's first bytes; the stored extension comes from what it really is.
+        var extension = await MediaUpload.VideoExtensionAsync(file, cancellationToken);
+        if (extension is null)
         {
-            return BadRequest(ApiResponse.Fail("Video must be an MP4, MOV, or WebM file.", HttpContext.TraceIdentifier));
+            return BadRequest(ApiResponse.Fail(MediaUpload.VideoRule, HttpContext.TraceIdentifier));
         }
 
-        var extension = Path.GetExtension(file.FileName) is { Length: > 0 } ext ? ext : ".mp4";
 
         await using var stream = file.OpenReadStream();
 
@@ -308,9 +291,9 @@ public class BusinessController(
     public async Task<IActionResult> UploadServiceVariantImage(
         Guid id, Guid variantId, int slot, IFormFile file, CancellationToken cancellationToken)
     {
-        if (slot is < 0 or > 2)
+        if (InvalidImageSlot(slot) is { } slotError)
         {
-            return BadRequest(ApiResponse.Fail("Image slot must be between 0 and 2.", HttpContext.TraceIdentifier));
+            return slotError;
         }
 
         if (file.Length == 0)
@@ -325,12 +308,13 @@ public class BusinessController(
                 HttpContext.TraceIdentifier));
         }
 
-        if (!AllowedImageContentTypes.Contains(file.ContentType))
+        // Judged by the file's first bytes; the stored extension comes from what it really is.
+        var extension = await MediaUpload.ImageExtensionAsync(file, cancellationToken);
+        if (extension is null)
         {
-            return BadRequest(ApiResponse.Fail("Image must be a JPEG, PNG, or WebP file.", HttpContext.TraceIdentifier));
+            return BadRequest(ApiResponse.Fail(MediaUpload.ImageRule, HttpContext.TraceIdentifier));
         }
 
-        var extension = Path.GetExtension(file.FileName) is { Length: > 0 } ext ? ext : ".jpg";
 
         await using var stream = file.OpenReadStream();
 
@@ -373,12 +357,13 @@ public class BusinessController(
                 HttpContext.TraceIdentifier));
         }
 
-        if (!AllowedVideoContentTypes.Contains(file.ContentType))
+        // Judged by the file's first bytes; the stored extension comes from what it really is.
+        var extension = await MediaUpload.VideoExtensionAsync(file, cancellationToken);
+        if (extension is null)
         {
-            return BadRequest(ApiResponse.Fail("Video must be an MP4, MOV, or WebM file.", HttpContext.TraceIdentifier));
+            return BadRequest(ApiResponse.Fail(MediaUpload.VideoRule, HttpContext.TraceIdentifier));
         }
 
-        var extension = Path.GetExtension(file.FileName) is { Length: > 0 } ext ? ext : ".mp4";
 
         await using var stream = file.OpenReadStream();
 
@@ -433,5 +418,18 @@ public class BusinessController(
     {
         await mediator.Send(new RemoveBusinessWorkerCommand { Id = id }, cancellationToken);
         return NoContent();
+    }
+
+    /// <summary>
+    /// A refusal when <paramref name="slot"/> is not one of the photo slots a service or package has —
+    /// a platform setting — or null when it is.
+    /// </summary>
+    private BadRequestObjectResult? InvalidImageSlot(int slot)
+    {
+        var slots = platformSettings.Current.ServiceImageSlots;
+        return slot >= 0 && slot < slots
+            ? null
+            : BadRequest(ApiResponse.Fail(
+                $"Image slot must be between 0 and {slots - 1}.", HttpContext.TraceIdentifier));
     }
 }

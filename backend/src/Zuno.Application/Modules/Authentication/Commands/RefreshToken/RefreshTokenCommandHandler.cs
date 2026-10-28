@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Zuno.Application.Common.Interfaces;
 using Zuno.Application.Modules.Authentication.Common;
 using Zuno.Application.Modules.Authentication.DTOs;
@@ -46,7 +47,16 @@ public class RefreshTokenCommandHandler(
         existingToken.ReasonRevoked = "Rotated";
         existingToken.ReplacedByTokenId = newToken.Id;
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Another request rotated this same token a moment ago. Only one of them may; this one is
+            // refused. The chain is not revoked: two refreshes racing is the app retrying, not a thief.
+            throw new UnauthorizedAccessException("Refresh token has already been used.");
+        }
 
         return new AuthResponseDto
         {
@@ -68,6 +78,14 @@ public class RefreshTokenCommandHandler(
             token.ReasonRevoked = "SecurityIncident:TokenReuseDetected";
         }
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Another request revoking or rotating the same sessions got there first. Either way they
+            // end up revoked, which is all this was for; the caller is still refused.
+        }
     }
 }

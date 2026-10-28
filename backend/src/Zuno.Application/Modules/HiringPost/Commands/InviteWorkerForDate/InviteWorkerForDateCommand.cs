@@ -53,6 +53,6 @@ public class InviteWorkerForDateCommand : IRequest<HiringPostDto>
     /// </remarks>
     public string? Location { get; set; }
 
-    /// <summary>How long the work runs. Defaults to the same two hours a hiring post does.</summary>
-    public int DurationMinutes { get; set; } = 120;
+    /// <summary>How long the work runs, in minutes. Omitted, the platform's default post length.</summary>
+    public int? DurationMinutes { get; set; }
 }

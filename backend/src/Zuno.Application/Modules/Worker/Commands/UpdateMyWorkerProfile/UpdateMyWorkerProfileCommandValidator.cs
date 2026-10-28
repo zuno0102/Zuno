@@ -1,4 +1,5 @@
 using FluentValidation;
+using Zuno.Application.Modules.Worker.Common;
 
 namespace Zuno.Application.Modules.Worker.Commands.UpdateMyWorkerProfile;
 
@@ -43,11 +44,8 @@ public class UpdateMyWorkerProfileCommandValidator : AbstractValidator<UpdateMyW
             RuleFor(x => x.UpiVpa!)
                 .NotEmpty().WithMessage("Enter your UPI address, or leave the field untouched.")
                 .MaximumLength(100)
-                // name@handle. Loose on purpose: banks keep adding handles, and a strict list would
-                // start refusing valid addresses the month after it was written. The payout provider
-                // is the real authority and rejects a bad one at verification.
-                .Matches(@"^[\w.\-]{2,}@[A-Za-z]{2,}$")
-                .WithMessage("A UPI address looks like name@bank, for example ravi@okhdfcbank.");
+                .Matches(UpiFormat.Pattern)
+                .WithMessage(UpiFormat.Hint);
         });
 
         When(x => x.HourlyRate is not null, () =>

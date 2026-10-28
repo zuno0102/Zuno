@@ -1,36 +1,21 @@
-import 'dart:typed_data';
-
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:video_player/video_player.dart';
 import 'package:zuno/core/utils/formatting.dart';
-import 'package:zuno/core/constants/api_constants.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/features/business_owner/domain/entities/business_service.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_services_notifier.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/service_area_picker.dart';
+import 'package:zuno/features/business_owner/presentation/widgets/service_form_message_banner.dart';
+import 'package:zuno/features/business_owner/presentation/widgets/service_form_pickers.dart';
+import 'package:zuno/features/business_owner/presentation/widgets/service_media_slots.dart';
+import 'package:zuno/features/business_owner/presentation/widgets/service_price_type_picker.dart';
+import 'package:zuno/features/business_owner/presentation/widgets/service_questions_section.dart';
 import 'package:zuno/features/catalog/domain/entities/service_category.dart';
 import 'package:zuno/features/catalog/domain/entities/service_sub_category.dart';
-import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
-
-const _maxVideoBytes = 25 * 1024 * 1024;
-
-String _videoMimeSubtype(XFile file) {
-  final mime = file.mimeType;
-  if (mime != null && mime.startsWith('video/')) {
-    return mime.substring('video/'.length);
-  }
-  final name = file.name.toLowerCase();
-  if (name.endsWith('.mov')) return 'quicktime';
-  if (name.endsWith('.webm')) return 'webm';
-  return 'mp4';
-}
 
 /// Shows the add/edit bottom sheet for a business service. Pass [existing] to edit,
 /// omit it to create a new service.
@@ -72,8 +57,6 @@ class _BusinessServiceFormSheetState
   /// The trade under that category, or null for "any in this category".
   String? _selectedSubCategoryId;
 
-  /// Sentinel for the "any" row, since popping null only means the sheet was dismissed.
-  static const _clearSubCategory = '__clear__';
   String _priceType = 'Fixed';
   bool _isActive = true;
   bool _isSaving = false;
@@ -83,21 +66,21 @@ class _BusinessServiceFormSheetState
   Set<String> _stateIds = {};
   Set<String> _districtIds = {};
 
-  final List<Uint8List?> _pickedImageBytes = [null, null, null];
-  final Set<int> _removedExistingImageSlots = {};
-
-  Uint8List? _pickedVideoBytes;
-  String? _pickedVideoMimeSubtype;
-  bool _removedExistingVideo = false;
+  /// The photos and video picked or removed on this form, uploaded once the service is saved.
+  late final _media = ServiceMediaSelection(
+    slotCount: ref.read(currentAppOptionsProvider).serviceImageSlots,
+    savedImageUrl: widget.existing?.imageUrlForSlot,
+    savedVideoUrl: widget.existing?.video?.url,
+  );
 
   /// The boxes this service asks a customer, as the business is editing them.
   ///
   /// Each row keeps the id of the question it came from, so saving edits it in place rather than
   /// replacing it — which is what leaves answers customers already gave still pointing somewhere.
   /// A row the business just added has no id yet.
-  late final List<_QuestionRow> _questionRows = [
+  late final List<ServiceQuestionRow> _questionRows = [
     for (final q in (widget.existing?.questions ?? const []))
-      _QuestionRow(id: q.id, prompt: q.prompt, isRequired: q.isRequired),
+      ServiceQuestionRow(id: q.id, prompt: q.prompt, isRequired: q.isRequired),
   ];
 
   // Per person is priced by headcount rather than time, so its duration stays in plain minutes
@@ -161,225 +144,15 @@ class _BusinessServiceFormSheetState
     _priceController.dispose();
     _durationController.dispose();
     _requiredWorkerCountController.dispose();
+    _media.dispose();
     for (final row in _questionRows) {
       row.dispose();
     }
     super.dispose();
   }
 
-  /// How the business charges for this service.
-  ///
-  /// A 2×2 grid of labelled tiles rather than chips or a segmented button. Four options is one
-  /// too many for a segmented row on a phone — the labels squeeze to nothing — and plain chips
-  /// gave almost no contrast between chosen and not, with nothing on screen saying what the row
-  /// was even for. Each tile carries a line explaining what it means, because "per person" is
-  /// not self-evident until you have used it once.
-  Widget _buildPriceTypePicker() {
-    const options = [
-      (PriceType.fixed, 'Fixed price', 'One price for the job'),
-      (PriceType.hourly, 'Per hour', 'Charged by the hour'),
-      (PriceType.daily, 'Per day', 'Charged by the day'),
-      (PriceType.perPerson, 'Per person', 'Rate × the crew you agree'),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'How do you charge?',
-          style: Theme.of(
-            context,
-          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 10),
-        for (var row = 0; row < 2; row++) ...[
-          // IntrinsicHeight, not CrossAxisAlignment.stretch. Stretch asks the children to fill
-          // the cross axis, which inside a scrolling column is unbounded — "BoxConstraints
-          // forces an infinite height", and the whole page fails to render rather than just
-          // this row. IntrinsicHeight measures the taller tile and matches the other to it,
-          // which is the equal-height result actually wanted.
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (var column = 0; column < 2; column++) ...[
-                  if (column == 1) const SizedBox(width: 10),
-                  Expanded(child: _priceTypeTile(options[row * 2 + column])),
-                ],
-              ],
-            ),
-          ),
-          if (row == 0) const SizedBox(height: 10),
-        ],
-      ],
-    );
-  }
-
-  Widget _priceTypeTile((String, String, String) option) {
-    final theme = Theme.of(context);
-    final (value, label, explanation) = option;
-    final selected = _priceType == value;
-
-    return InkWell(
-      onTap: () => _onPriceTypeChanged(value),
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(11, 10, 11, 11),
-        decoration: BoxDecoration(
-          // Filled and outlined when chosen, so which one is picked reads at a glance rather
-          // than from a shade of grey.
-          color: selected
-              ? theme.colorScheme.primaryContainer
-              : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: selected
-                ? theme.colorScheme.primary
-                : theme.colorScheme.outlineVariant,
-            width: selected ? 2 : 1,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  selected
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_unchecked,
-                  size: 17,
-                  color: selected
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.outline,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                      color: selected
-                          ? theme.colorScheme.onPrimaryContainer
-                          : theme.colorScheme.onSurface,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 3),
-            Text(
-              explanation,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: selected
-                    ? theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.8)
-                    : theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _addQuestionRow() => setState(() => _questionRows.add(_QuestionRow()));
-
-  /// The boxes this service asks a customer, and the ➕ that adds one.
-  ///
-  /// Nothing here is fixed by the app: a caterer types "Enter your dishes count", a painter types
-  /// "Wall size details". The booking form then draws whatever is in this list, which is what
-  /// lets the business see the facts it needs before deciding how many people the job takes.
-  Widget _buildQuestionsSection() {
-    final theme = Theme.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'What should the customer tell you?',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            TextButton.icon(
-              onPressed: _addQuestionRow,
-              icon: const Icon(Icons.add, size: 19),
-              label: const Text('Add'),
-            ),
-          ],
-        ),
-        Text(
-          _questionRows.isEmpty
-              ? 'Add a box for anything you need to know before you can staff the job.'
-              : 'Every customer booking this service answers these.',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 10),
-
-        for (var index = 0; index < _questionRows.length; index++)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _questionRows[index].controller,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: InputDecoration(
-                      labelText: 'Question ${index + 1}',
-                      hintText: 'e.g. Enter your dishes count',
-                      border: const OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                    validator: (value) => (value ?? '').trim().isEmpty
-                        ? 'Type the question, or remove this row.'
-                        : null,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                // Required is a toggle rather than a second field: it is one bit, and a checkbox
-                // beside the box reads faster than a row of its own.
-                Tooltip(
-                  message: _questionRows[index].isRequired
-                      ? 'Must be answered'
-                      : 'Optional',
-                  child: IconButton(
-                    icon: Icon(
-                      _questionRows[index].isRequired
-                          ? Icons.star_rounded
-                          : Icons.star_outline_rounded,
-                      color: _questionRows[index].isRequired
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.outline,
-                    ),
-                    onPressed: () => setState(
-                      () => _questionRows[index].isRequired =
-                          !_questionRows[index].isRequired,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(
-                    Icons.close_rounded,
-                    color: theme.colorScheme.outline,
-                  ),
-                  tooltip: 'Remove',
-                  onPressed: () => _removeQuestionRow(index),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
+  void _addQuestionRow() =>
+      setState(() => _questionRows.add(ServiceQuestionRow()));
 
   void _removeQuestionRow(int index) {
     setState(() {
@@ -389,196 +162,9 @@ class _BusinessServiceFormSheetState
     });
   }
 
-  Future<void> _pickImage(int slot) async {
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (picked == null) {
-      return;
-    }
-
-    try {
-      final rawBytes = await picked.readAsBytes();
-
-      // The gallery may hand back HEIC/HEIF (common on modern phone camera defaults), which
-      // Flutter's image renderer cannot decode at all. Re-encoding to JPEG here — using the
-      // platform's native decoder, which does understand HEIC — guarantees the bytes this app
-      // uploads and later tries to display are always something it can actually render.
-      //
-      // Bytes in, bytes out (rather than file paths) is deliberate: image_picker returns a
-      // blob URL on web, not a real filesystem path, so any path-based API (dart:io File,
-      // compressAndGetFile) silently fails there. This works identically on every platform.
-      final compressed = await FlutterImageCompress.compressWithList(
-        rawBytes,
-        format: CompressFormat.jpeg,
-        quality: 85,
-        minWidth: 1600,
-        minHeight: 1600,
-      );
-
-      setState(() {
-        _pickedImageBytes[slot] = compressed;
-        _removedExistingImageSlots.remove(slot);
-        _errorMessage = null;
-      });
-    } catch (e) {
-      setState(
-        () => _errorMessage =
-            'Could not process the selected image. Please try a different photo.',
-      );
-    }
-  }
-
-  void _removeImage(int slot) {
-    setState(() {
-      _pickedImageBytes[slot] = null;
-      if (widget.existing?.imageUrlForSlot(slot) != null) {
-        _removedExistingImageSlots.add(slot);
-      }
-    });
-  }
-
-  Future<void> _handleImageSlotTap(int slot) async {
-    final hasContent =
-        _pickedImageBytes[slot] != null || _existingImageUrl(slot) != null;
-    if (!hasContent) {
-      await _pickImage(slot);
-      return;
-    }
-
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Replace'),
-              onTap: () => Navigator.of(context).pop('replace'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline),
-              title: const Text('Remove'),
-              onTap: () => Navigator.of(context).pop('remove'),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (action == 'replace') {
-      await _pickImage(slot);
-    } else if (action == 'remove') {
-      _removeImage(slot);
-    }
-  }
-
-  String? _existingImageUrl(int slot) =>
-      _removedExistingImageSlots.contains(slot)
-      ? null
-      : widget.existing?.imageUrlForSlot(slot);
-
-  Future<void> _pickVideo() async {
-    final picked = await ImagePicker().pickVideo(
-      source: ImageSource.gallery,
-      maxDuration: const Duration(seconds: 30),
-    );
-    if (picked == null) {
-      return;
-    }
-
-    try {
-      final bytes = await picked.readAsBytes();
-      if (bytes.lengthInBytes > _maxVideoBytes) {
-        setState(
-          () => _errorMessage =
-              'Video must be 30 seconds or shorter and under 25MB.',
-        );
-        return;
-      }
-
-      setState(() {
-        _pickedVideoBytes = bytes;
-        _pickedVideoMimeSubtype = _videoMimeSubtype(picked);
-        _removedExistingVideo = false;
-        _errorMessage = null;
-      });
-    } catch (e) {
-      setState(
-        () => _errorMessage =
-            'Could not process the selected video. Please try a different clip.',
-      );
-    }
-  }
-
-  void _removeVideo() {
-    setState(() {
-      _pickedVideoBytes = null;
-      _pickedVideoMimeSubtype = null;
-      if (_existingVideoUrl != null) {
-        _removedExistingVideo = true;
-      }
-    });
-  }
-
-  String? get _existingVideoUrl =>
-      _removedExistingVideo ? null : widget.existing?.video?.url;
-
-  Future<void> _handleVideoTap() async {
-    final hasExisting = _existingVideoUrl != null;
-    final hasPending = _pickedVideoBytes != null;
-
-    if (!hasExisting && !hasPending) {
-      await _pickVideo();
-      return;
-    }
-
-    final options = <String, String>{
-      if (hasExisting) 'preview': 'Preview',
-      'replace': 'Replace',
-      'remove': 'Remove',
-    };
-
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: options.entries
-              .map(
-                (entry) => ListTile(
-                  leading: Icon(switch (entry.key) {
-                    'preview' => Icons.play_circle_outline,
-                    'replace' => Icons.video_library_outlined,
-                    _ => Icons.delete_outline,
-                  }),
-                  title: Text(entry.value),
-                  onTap: () => Navigator.of(context).pop(entry.key),
-                ),
-              )
-              .toList(),
-        ),
-      ),
-    );
-
-    if (action == 'preview' && _existingVideoUrl != null) {
-      if (!mounted) return;
-      await _showVideoPreview(
-        context,
-        '${ApiConstants.baseUrl}${_existingVideoUrl!}',
-      );
-    } else if (action == 'replace') {
-      await _pickVideo();
-    } else if (action == 'remove') {
-      _removeVideo();
-    }
-  }
-
-  Future<void> _showVideoPreview(BuildContext context, String url) {
-    return showDialog<void>(
-      context: context,
-      builder: (context) => Dialog(child: _VideoPreviewPlayer(url: url)),
-    );
-  }
+  void _toggleQuestionRequired(int index) => setState(
+    () => _questionRows[index].isRequired = !_questionRows[index].isRequired,
+  );
 
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
@@ -618,11 +204,7 @@ class _BusinessServiceFormSheetState
         : int.tryParse(_requiredWorkerCountController.text.trim()) ?? 1;
     final districtIds = _districtIds.toList();
 
-    final hasMediaChanges =
-        _pickedImageBytes.any((bytes) => bytes != null) ||
-        _removedExistingImageSlots.isNotEmpty ||
-        _pickedVideoBytes != null ||
-        _removedExistingVideo;
+    final hasMediaChanges = _media.hasChanges;
 
     // Questions are saved by their own call, so they need their own change check. Without it, a
     // business that edited nothing but the questions would hit the no-op branch below, close the
@@ -713,28 +295,27 @@ class _BusinessServiceFormSheetState
       // service has no id until it has been created. For a brand-new service the flag is simply
       // "were any rows typed", so a service saved without questions makes no call at all.
       if (hasQuestionChanges) {
-        await notifier.setServiceQuestions(
-          serviceId,
-          [for (final row in _questionRows) row.toPayload()],
-        );
+        await notifier.setServiceQuestions(serviceId, [
+          for (final row in _questionRows) row.toPayload(),
+        ]);
       }
 
-      for (var slot = 0; slot < _pickedImageBytes.length; slot++) {
-        final bytes = _pickedImageBytes[slot];
+      for (var slot = 0; slot < _media.slotCount; slot++) {
+        final bytes = _media.pickedImage(slot);
         if (bytes != null) {
           await notifier.uploadServiceImage(serviceId, slot, bytes);
-        } else if (_removedExistingImageSlots.contains(slot)) {
+        } else if (_media.isImageRemoved(slot)) {
           await notifier.removeServiceImage(serviceId, slot);
         }
       }
 
-      if (_pickedVideoBytes != null) {
+      if (_media.pickedVideo case final video?) {
         await notifier.uploadServiceVideo(
           serviceId,
-          _pickedVideoBytes!,
-          _pickedVideoMimeSubtype!,
+          video,
+          _media.pickedVideoMimeSubtype!,
         );
-      } else if (_removedExistingVideo) {
+      } else if (_media.isVideoRemoved) {
         await notifier.removeServiceVideo(serviceId);
       }
 
@@ -763,33 +344,11 @@ class _BusinessServiceFormSheetState
     }
   }
 
-  /// Opens category selection as its own bottom sheet with a plain, scrollable [ListView]
-  /// rather than a [DropdownButtonFormField]: that widget's popup menu positions itself
-  /// relative to the whole screen, not the modal bottom sheet's visible bounds, so inside a
-  /// sheet like this one its menu renders overlapping the rest of the form instead of neatly
-  /// under the field.
   Future<void> _showCategoryPicker(List<ServiceCategory> categories) async {
-    final selected = await showModalBottomSheet<String>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: categories
-              .map(
-                (category) => ListTile(
-                  title: Text(category.name),
-                  trailing: category.id == _selectedCategoryId
-                      ? Icon(
-                          Icons.check,
-                          color: Theme.of(context).colorScheme.primary,
-                        )
-                      : null,
-                  onTap: () => Navigator.of(context).pop(category.id),
-                ),
-              )
-              .toList(),
-        ),
-      ),
+    final selected = await showServiceCategoryPicker(
+      context,
+      categories: categories,
+      selectedId: _selectedCategoryId,
     );
 
     if (selected != null) {
@@ -807,45 +366,24 @@ class _BusinessServiceFormSheetState
   }
 
   /// The trades under the chosen category, and nothing else.
-  List<ServiceSubCategory> _subCategoryOptions(List<ServiceCategory> categories) =>
+  List<ServiceSubCategory> _subCategoryOptions(
+    List<ServiceCategory> categories,
+  ) =>
       categories
           .firstWhereOrNull((c) => c.id == _selectedCategoryId)
           ?.subCategories ??
       const [];
 
   Future<void> _showSubCategoryPicker(List<ServiceSubCategory> options) async {
-    final selected = await showModalBottomSheet<String>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            // A way back out. The trade is optional, and without this a business that picked
-            // one by mistake could only change it, never undo it.
-            ListTile(
-              title: const Text('Any in this category'),
-              trailing: _selectedSubCategoryId == null
-                  ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
-                  : null,
-              onTap: () => Navigator.of(context).pop(_clearSubCategory),
-            ),
-            ...options.map(
-              (option) => ListTile(
-                title: Text(option.name),
-                trailing: option.id == _selectedSubCategoryId
-                    ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
-                    : null,
-                onTap: () => Navigator.of(context).pop(option.id),
-              ),
-            ),
-          ],
-        ),
-      ),
+    final selected = await showServiceSubCategoryPicker(
+      context,
+      options: options,
+      selectedId: _selectedSubCategoryId,
     );
 
     if (selected != null) {
       setState(
-        () => _selectedSubCategoryId = selected == _clearSubCategory
+        () => _selectedSubCategoryId = selected == anySubCategory
             ? null
             : selected,
       );
@@ -866,72 +404,9 @@ class _BusinessServiceFormSheetState
     }
   }
 
-  Widget _buildImageSlot(int slot) {
-    final pickedBytes = _pickedImageBytes[slot];
-    final existingUrl = _existingImageUrl(slot);
-
-    Widget child;
-    if (pickedBytes != null) {
-      child = Image.memory(
-        pickedBytes,
-        fit: BoxFit.cover,
-        width: 88,
-        height: 88,
-      );
-    } else if (existingUrl != null) {
-      child = CachedNetworkImage(
-        imageUrl: '${ApiConstants.baseUrl}$existingUrl',
-        fit: BoxFit.cover,
-        width: 88,
-        height: 88,
-        errorWidget: (context, url, error) =>
-            const Icon(Icons.broken_image_outlined),
-      );
-    } else {
-      child = Icon(
-        Icons.add_a_photo_outlined,
-        color: Theme.of(context).colorScheme.onSurfaceVariant,
-      );
-    }
-
-    return GestureDetector(
-      onTap: () => _handleImageSlotTap(slot),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: 88,
-          height: 88,
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          child: child,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVideoSlot() {
-    final hasContent = _pickedVideoBytes != null || _existingVideoUrl != null;
-
-    return GestureDetector(
-      onTap: _handleVideoTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: 88,
-          height: 88,
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          child: Icon(
-            hasContent ? Icons.videocam : Icons.videocam_outlined,
-            color: hasContent
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _serviceAreaSummary() {
-    if (_districtIds.isEmpty) return 'Select service area';
+  /// "2 states • 5 districts", or null while no district is chosen.
+  String? _serviceAreaSummary() {
+    if (_districtIds.isEmpty) return null;
     return '${_stateIds.length} state${_stateIds.length == 1 ? '' : 's'} • ${_districtIds.length} district${_districtIds.length == 1 ? '' : 's'}';
   }
 
@@ -964,34 +439,18 @@ class _BusinessServiceFormSheetState
                   ),
                   const SizedBox(height: 16),
                   if (_errorMessage != null) ...[
-                    _MessageBanner(
+                    ServiceFormMessageBanner(
                       message: _errorMessage!,
                       color: AppColors.error,
+                      onColor: Theme.of(context).colorScheme.onError,
                       icon: Icons.error_outline,
                     ),
                     const SizedBox(height: 16),
                   ],
-                  Text(
-                    'Photos & video',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        for (var slot = 0; slot < 3; slot++) ...[
-                          _buildImageSlot(slot),
-                          const SizedBox(width: 10),
-                        ],
-                        _buildVideoSlot(),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Up to 3 photos and one video (30 seconds, 25MB max).',
-                    style: Theme.of(context).textTheme.bodySmall,
+                  ServiceMediaSlots(
+                    media: _media,
+                    onError: (message) =>
+                        setState(() => _errorMessage = message),
                   ),
                   const SizedBox(height: 16),
                   categoriesAsync.when(
@@ -999,41 +458,17 @@ class _BusinessServiceFormSheetState
                     error: (error, _) => ErrorBanner(
                       message: 'Failed to load categories: $error',
                     ),
-                    data: (categories) {
-                      final selectedName = categories
+                    data: (categories) => ServicePickerField(
+                      label: 'Category',
+                      value: categories
                           .where(
                             (category) => category.id == _selectedCategoryId,
                           )
                           .map((category) => category.name)
-                          .firstOrNull;
-
-                      return InkWell(
-                        borderRadius: BorderRadius.circular(4),
-                        onTap: () => _showCategoryPicker(categories),
-                        child: InputDecorator(
-                          decoration: const InputDecoration(
-                            labelText: 'Category',
-                            border: OutlineInputBorder(),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                selectedName ?? 'Select a category',
-                                style: selectedName == null
-                                    ? TextStyle(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
-                                      )
-                                    : null,
-                              ),
-                              const Icon(Icons.arrow_drop_down),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+                          .firstOrNull,
+                      placeholder: 'Select a category',
+                      onTap: () => _showCategoryPicker(categories),
+                    ),
                   ),
                   // Only once a category is chosen, because its whole content comes from that
                   // choice. Shown before one is made it would be an empty field asking a
@@ -1045,74 +480,29 @@ class _BusinessServiceFormSheetState
                         final options = _subCategoryOptions(categories);
                         if (options.isEmpty) return const SizedBox.shrink();
 
-                        final selectedName = options
-                            .where((sub) => sub.id == _selectedSubCategoryId)
-                            .map((sub) => sub.name)
-                            .firstOrNull;
-
-                        return InkWell(
-                          borderRadius: BorderRadius.circular(4),
+                        return ServicePickerField(
+                          label: 'Kind of work',
+                          helperText: 'Optional — narrows the category',
+                          value: options
+                              .where((sub) => sub.id == _selectedSubCategoryId)
+                              .map((sub) => sub.name)
+                              .firstOrNull,
+                          placeholder: 'Any in this category',
                           onTap: () => _showSubCategoryPicker(options),
-                          child: InputDecorator(
-                            decoration: const InputDecoration(
-                              labelText: 'Kind of work',
-                              helperText: 'Optional — narrows the category',
-                              border: OutlineInputBorder(),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  selectedName ?? 'Any in this category',
-                                  style: selectedName == null
-                                      ? TextStyle(
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onSurfaceVariant,
-                                        )
-                                      : null,
-                                ),
-                                const Icon(Icons.arrow_drop_down),
-                              ],
-                            ),
-                          ),
                         );
                       },
                       orElse: () => const SizedBox.shrink(),
                     ),
                   ],
                   const SizedBox(height: 14),
-                  InkWell(
-                    borderRadius: BorderRadius.circular(4),
+                  // Ellipsized, so a long summary truncates instead of running off the edge.
+                  // Without it the row overflows on a narrow phone.
+                  ServicePickerField(
+                    label: 'Service area',
+                    value: _serviceAreaSummary(),
+                    placeholder: 'Select service area',
                     onTap: _openServiceAreaPicker,
-                    child: InputDecorator(
-                      decoration: const InputDecoration(
-                        labelText: 'Service area',
-                        border: OutlineInputBorder(),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // Expanded, so a long summary ("3 districts in Kerala, 2 in …")
-                          // truncates instead of running off the edge. Without it the row
-                          // overflows on a narrow phone.
-                          Expanded(
-                            child: Text(
-                              _serviceAreaSummary(),
-                              overflow: TextOverflow.ellipsis,
-                              style: _districtIds.isEmpty
-                                  ? TextStyle(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant,
-                                    )
-                                  : null,
-                            ),
-                          ),
-                          const Icon(Icons.arrow_drop_down),
-                        ],
-                      ),
-                    ),
+                    ellipsize: true,
                   ),
                   const SizedBox(height: 14),
                   TextFormField(
@@ -1145,7 +535,10 @@ class _BusinessServiceFormSheetState
                     ),
                   ),
                   const SizedBox(height: 14),
-                  _buildPriceTypePicker(),
+                  ServicePriceTypePicker(
+                    value: _priceType,
+                    onChanged: _onPriceTypeChanged,
+                  ),
                   const SizedBox(height: 14),
                   Row(
                     children: [
@@ -1183,38 +576,8 @@ class _BusinessServiceFormSheetState
                     ],
                   ),
                   const SizedBox(height: 14),
-                  // Priced per head, so the crew size is the thing being agreed rather than
-                  // something the business fixes in advance. The field would only invite a number
-                  // that the order then contradicts.
                   if (isPerPersonPrice(_priceType))
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.primaryContainer.withValues(alpha: 0.45),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Workers agreed per order',
-                            style: Theme.of(context).textTheme.labelLarge,
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            // No invented headcount here: an example number would read as a
-                            // default, and the only figure worth showing is the one the business
-                            // is actually typing above.
-                            'You propose the number when the order comes in, and the price '
-                            'follows it — the rate above for each person on the job.',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    )
+                    const PerPersonCrewNotice()
                   else
                     TextFormField(
                       controller: _requiredWorkerCountController,
@@ -1237,7 +600,12 @@ class _BusinessServiceFormSheetState
                       },
                     ),
                   const SizedBox(height: 18),
-                  _buildQuestionsSection(),
+                  ServiceQuestionsSection(
+                    rows: _questionRows,
+                    onAdd: _addQuestionRow,
+                    onRemove: _removeQuestionRow,
+                    onToggleRequired: _toggleQuestionRequired,
+                  ),
                   if (isEditing) ...[
                     const SizedBox(height: 4),
                     SwitchListTile(
@@ -1272,11 +640,12 @@ class _BusinessServiceFormSheetState
           Positioned(
             top: 12,
             right: 20,
-            child: _MessageBanner(
+            child: ServiceFormMessageBanner(
               message: _successMessage!,
               // Read from the theme, not from AppColors: the scheme is seeded per role, so a
               // constant here came out indigo on a business screen that is purple throughout.
               color: Theme.of(context).colorScheme.primary,
+              onColor: Theme.of(context).colorScheme.onPrimary,
               icon: Icons.check_circle,
             ),
           ),
@@ -1293,145 +662,4 @@ class _BusinessServiceFormSheet extends ConsumerStatefulWidget {
   @override
   ConsumerState<_BusinessServiceFormSheet> createState() =>
       _BusinessServiceFormSheetState();
-}
-
-/// A compact, rounded inline message — used both for the brief success confirmation
-/// shown inside the form sheet itself (rather than a SnackBar on the underlying screen,
-/// so feedback stays scoped to the component the user is looking at) and for validation
-/// errors, so both share the same visual language instead of two different banner styles.
-class _MessageBanner extends StatelessWidget {
-  const _MessageBanner({
-    required this.message,
-    required this.color,
-    required this.icon,
-  });
-
-  final String message;
-  final Color color;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: Colors.white, size: 14),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                message,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _VideoPreviewPlayer extends StatefulWidget {
-  const _VideoPreviewPlayer({required this.url});
-
-  final String url;
-
-  @override
-  State<_VideoPreviewPlayer> createState() => _VideoPreviewPlayerState();
-}
-
-class _VideoPreviewPlayerState extends State<_VideoPreviewPlayer> {
-  late final VideoPlayerController _controller =
-      VideoPlayerController.networkUrl(Uri.parse(widget.url))
-        ..initialize().then((_) {
-          if (mounted) setState(() {});
-          _controller.play();
-        });
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!_controller.value.isInitialized) {
-      return const SizedBox(
-        width: 200,
-        height: 200,
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    return AspectRatio(
-      aspectRatio: _controller.value.aspectRatio,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          VideoPlayer(_controller),
-          GestureDetector(
-            onTap: () => setState(
-              () => _controller.value.isPlaying
-                  ? _controller.pause()
-                  : _controller.play(),
-            ),
-            child: AnimatedOpacity(
-              opacity: _controller.value.isPlaying ? 0 : 1,
-              duration: const Duration(milliseconds: 200),
-              child: const Icon(
-                Icons.play_circle_fill,
-                size: 56,
-                color: AppColors.onMediaMuted,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// One editable question row on the service form.
-///
-/// Holds its own controller so typing does not rebuild the whole sheet, and its [id] so a saved
-/// question is edited in place rather than replaced — replacing it would orphan every answer
-/// customers have already given to it.
-class _QuestionRow {
-  _QuestionRow({this.id, String prompt = '', this.isRequired = false})
-    : controller = TextEditingController(text: prompt);
-
-  /// Null for a row the business has just added.
-  final String? id;
-  final TextEditingController controller;
-  bool isRequired;
-
-  String get prompt => controller.text.trim();
-
-  /// What the server is sent. No id at all for a new row, rather than a null one.
-  Map<String, dynamic> toPayload() => {
-    if (id != null) 'id': id,
-    'prompt': prompt,
-    'isRequired': isRequired,
-  };
-
-  void dispose() => controller.dispose();
 }

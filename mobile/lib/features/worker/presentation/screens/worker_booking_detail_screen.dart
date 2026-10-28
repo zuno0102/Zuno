@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:zuno/shared/widgets/detail_row.dart';
 import 'package:zuno/features/worker/presentation/widgets/job_role_banner.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -160,22 +161,22 @@ class _WorkerBookingDetailScreenState
             ),
           ],
           const SizedBox(height: 20),
-          _DetailRow(label: 'Customer', value: booking.customerName),
-          _DetailRow(
+          DetailRow(label: 'Customer', value: booking.customerName),
+          DetailRow(
             label: 'Scheduled for',
             value:
                 '${formatDate(booking.scheduledDate)} · ${formatTime(booking.scheduledDate)}',
           ),
-          _DetailRow(label: 'Price', value: booking.priceDisplay()),
+          DetailRow(label: 'Price', value: booking.priceDisplay()),
 
           // What the customer told the business about the job, each line carrying the question as it
 
           // was worded when they answered it.
           for (final answer in booking.serviceAnswers)
-            _DetailRow(label: answer.questionPrompt, value: answer.answerText),
+            DetailRow(label: answer.questionPrompt, value: answer.answerText),
 
           if (booking.notes != null && booking.notes!.isNotEmpty)
-            _DetailRow(label: 'Notes', value: booking.notes!),
+            DetailRow(label: 'Notes', value: booking.notes!),
           // Where to go. The pin the customer placed, with Directions straight to it — the worker
           // is the one person who actually has to find the house.
           if (booking.addressLine1 != null) ...[
@@ -268,27 +269,6 @@ class _WorkerBookingDetailScreenState
                       ),
               ),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.labelMedium),
-          Text(value),
         ],
       ),
     );

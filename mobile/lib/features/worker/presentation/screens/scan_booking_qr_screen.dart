@@ -53,7 +53,9 @@ class _ScanBookingQrScreenState extends ConsumerState<ScanBookingQrScreen> {
       }
     } catch (e) {
       if (mounted) {
-        context.showFailureMessage(e.toString().replaceFirst('Exception: ', ''));
+        context.showFailureMessage(
+          e.toString().replaceFirst('Exception: ', ''),
+        );
         setState(() => _isProcessing = false);
         await _controller.start();
       }
@@ -72,7 +74,7 @@ class _ScanBookingQrScreenState extends ConsumerState<ScanBookingQrScreen> {
             width: 240,
             height: 240,
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.white, width: 3),
+              border: Border.all(color: AppColors.onMedia, width: 3),
               borderRadius: BorderRadius.circular(16),
             ),
           ),
@@ -87,7 +89,7 @@ class _ScanBookingQrScreenState extends ConsumerState<ScanBookingQrScreen> {
               'Point the camera at the customer\'s booking QR code',
               style: Theme.of(
                 context,
-              ).textTheme.bodyMedium?.copyWith(color: Colors.white),
+              ).textTheme.bodyMedium?.copyWith(color: AppColors.onMedia),
               textAlign: TextAlign.center,
             ),
           ),

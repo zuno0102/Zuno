@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Zuno.Application.Common;
 using Zuno.Application.Common.Interfaces;
+using Zuno.Application.Common.Settings;
 
 namespace Zuno.Application.Modules.Booking.Common;
 
@@ -17,7 +18,7 @@ namespace Zuno.Application.Modules.Booking.Common;
 /// one headquarters point per district, so "which district is this pin in" is answered by the nearest
 /// headquarters. That is wrong near a border: Marthandam is in Kanyakumari but only about a dozen
 /// kilometres further from Thiruvananthapuram's headquarters than from Nagercoil's. So a pin passes when
-/// the nearest <em>served</em> headquarters is within <see cref="BorderSlackKm"/> of the nearest
+/// the nearest <em>served</em> headquarters is within the border slack of the nearest
 /// headquarters overall. That forgives a border town and still refuses another city outright.
 /// </para>
 /// <para>
@@ -25,15 +26,13 @@ namespace Zuno.Application.Modules.Booking.Common;
 /// curated states. If any served district has none, the check cannot judge the pin and lets it through,
 /// the same rule the district data already follows elsewhere.
 /// </para>
+/// <para>
+/// Both distances — the border slack and the outer limit — are platform settings
+/// (<see cref="PlatformRules.ServiceAreaBorderSlackKm"/>, <see cref="PlatformRules.ServiceAreaMaxDistanceKm"/>).
+/// </para>
 /// </remarks>
 public static class ServiceAreaCheck
 {
-    /// <summary>How much further the nearest served headquarters may be than the nearest one overall.</summary>
-    public const double BorderSlackKm = 25;
-
-    /// <summary>Beyond this from every served headquarters, a pin is outside the area whatever the border says.</summary>
-    public const double MaxDistanceKm = 150;
-
     /// <summary>The result of a check: whether the pin is served, and the names of the served districts.</summary>
     public sealed record Result(bool IsServed, IReadOnlyList<string> ServedDistrictNames);
 
@@ -41,6 +40,7 @@ public static class ServiceAreaCheck
         Guid businessServiceId,
         decimal latitude,
         decimal longitude,
+        PlatformRules rules,
         IApplicationDbContext dbContext,
         CancellationToken cancellationToken)
     {
@@ -72,7 +72,8 @@ public static class ServiceAreaCheck
             (double)latitude,
             (double)longitude,
             served.Select(s => ((double)s.Lat!.Value, (double)s.Lon!.Value)).ToList(),
-            allCentres.Select(c => ((double)c.Lat, (double)c.Lon)).ToList());
+            allCentres.Select(c => ((double)c.Lat, (double)c.Lon)).ToList(),
+            rules);
 
         return new Result(isServed, names);
     }
@@ -82,7 +83,8 @@ public static class ServiceAreaCheck
         double latitude,
         double longitude,
         IReadOnlyList<(double Latitude, double Longitude)> servedCentres,
-        IReadOnlyList<(double Latitude, double Longitude)> allCentres)
+        IReadOnlyList<(double Latitude, double Longitude)> allCentres,
+        PlatformRules rules)
     {
         if (servedCentres.Count == 0)
         {
@@ -90,7 +92,7 @@ public static class ServiceAreaCheck
         }
 
         var nearestServedKm = servedCentres.Min(c => GeoDistance.HaversineKm(latitude, longitude, c.Latitude, c.Longitude));
-        if (nearestServedKm > MaxDistanceKm)
+        if (nearestServedKm > rules.ServiceAreaMaxDistanceKm)
         {
             return false;
         }
@@ -99,6 +101,6 @@ public static class ServiceAreaCheck
             ? nearestServedKm
             : allCentres.Min(c => GeoDistance.HaversineKm(latitude, longitude, c.Latitude, c.Longitude));
 
-        return nearestServedKm <= nearestAnyKm + BorderSlackKm;
+        return nearestServedKm <= nearestAnyKm + rules.ServiceAreaBorderSlackKm;
     }
 }

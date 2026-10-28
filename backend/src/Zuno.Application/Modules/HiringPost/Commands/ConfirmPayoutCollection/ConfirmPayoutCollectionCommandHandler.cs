@@ -1,6 +1,9 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Zuno.Application.Common.Interfaces;
+using Zuno.Application.Common.Settings;
+using Zuno.Application.Modules.HiringPost.Common;
 using Zuno.Application.Modules.HiringPost.DTOs;
 using Zuno.Application.Modules.HiringPost.Events;
 using Zuno.Domain.Entities;
@@ -24,7 +27,8 @@ public class ConfirmPayoutCollectionCommandHandler(
     IBusinessReputationService reputationService,
     IPayoutProvider payoutProvider,
     IApplicationDbContext dbContext,
-    IPublisher publisher) : IRequestHandler<ConfirmPayoutCollectionCommand, PayoutBatchDto>
+    IPublisher publisher,
+    IOptions<RazorpaySettings> razorpaySettings) : IRequestHandler<ConfirmPayoutCollectionCommand, PayoutBatchDto>
 {
     public async Task<PayoutBatchDto> Handle(ConfirmPayoutCollectionCommand request, CancellationToken cancellationToken)
     {
@@ -94,6 +98,13 @@ public class ConfirmPayoutCollectionCommandHandler(
                     "This payment could not be verified with Razorpay. Nothing has been sent to "
                     + "the crew — try paying again.");
             }
+        }
+        else if (!razorpaySettings.Value.SimulateCollection)
+        {
+            // No order means collection was simulated when the run was opened. Honoured only while it
+            // still is, so a run left over from a Development session can never be paid out for free.
+            throw new DomainException(
+                "This payment could not be verified. Nothing has been sent to the crew — open the pay run again.");
         }
 
         batch.ProviderPaymentId = request.ProviderPaymentId;
@@ -284,9 +295,10 @@ public class ConfirmPayoutCollectionCommandHandler(
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
-        var post = await dbContext.HiringPosts
-            .Include(p => p.Applications)
-            .FirstOrDefaultAsync(p => p.Id == hiringPostId, cancellationToken);
+        var post = await dbContext.LoadHiringPostAsync(
+            dbContext.HiringPosts.Where(p => p.Id == hiringPostId),
+            cancellationToken,
+            HiringPostCrewDetail.ApplicationsOnly);
 
         if (post is null)
         {

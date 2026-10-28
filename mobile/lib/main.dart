@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/notifications/system_notifications.dart';
 import 'package:zuno/core/router/app_router.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/theme/app_theme.dart';
+import 'package:zuno/core/ui_config/ui_config_provider.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_state.dart';
 
@@ -21,6 +23,11 @@ Future<void> main() async {
     debugPrint('[Notifications] Could not set up the shade: $error\n$stack');
   }
 
+  // Every label and colour, before the first frame: the bundled copy with the last one saved from
+  // the server over it. Reading local files only, so it cannot hang on a slow network; the server
+  // copy is fetched in the background once the app is up.
+  await loadStartupUiConfig(rootBundle);
+
   runApp(const ProviderScope(child: ZunoApp()));
 }
 
@@ -30,6 +37,9 @@ class ZunoApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
+
+    // Rebuilds the themes when a newer set of colours arrives from the server.
+    ref.watch(uiConfigProvider);
 
     // The signed-in role colours the whole app, not only the dashboards.
     //

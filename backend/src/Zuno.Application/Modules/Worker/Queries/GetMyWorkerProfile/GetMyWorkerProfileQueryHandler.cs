@@ -10,7 +10,8 @@ namespace Zuno.Application.Modules.Worker.Queries.GetMyWorkerProfile;
 public class GetMyWorkerProfileQueryHandler(
     ICurrentUserService currentUserService,
     IWorkerEarningsService earningsService,
-    IApplicationDbContext dbContext) : IRequestHandler<GetMyWorkerProfileQuery, WorkerProfileDto>
+    IApplicationDbContext dbContext,
+    IPlatformSettings platformSettings) : IRequestHandler<GetMyWorkerProfileQuery, WorkerProfileDto>
 {
     public async Task<WorkerProfileDto> Handle(
         GetMyWorkerProfileQuery request,
@@ -30,6 +31,6 @@ public class GetMyWorkerProfileQueryHandler(
         // done no jobs — and the dashboard would have repeated the mistake in a second place.
         var earnings = await earningsService.GetAsync(profile.Id, cancellationToken);
 
-        return profile.ToDto(earnings);
+        return profile.ToDto(earnings, platformSettings.Current.WorkerLevels);
     }
 }

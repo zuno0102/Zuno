@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Zuno.Application.Common.Interfaces;
+using Zuno.Application.Modules.HiringPost.Common;
 using Zuno.Application.Modules.HiringPost.DTOs;
 using Zuno.Application.Modules.HiringPost.Events;
 using Zuno.Application.Modules.Notifications.Common;
@@ -25,11 +26,11 @@ public class ApplyToHiringPostCommandHandler(
             .FirstOrDefaultAsync(wp => wp.UserId == userId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(WorkerProfile), userId);
 
-        var post = await dbContext.HiringPosts
-            .Include(p => p.BusinessOwnerProfile)
-            .Include(p => p.Applications).ThenInclude(a => a.WorkerProfile).ThenInclude(wp => wp.User)
-            .Include(p => p.Applications).ThenInclude(a => a.SalaryAdjustments)
-            .FirstOrDefaultAsync(p => p.Id == request.HiringPostId, cancellationToken)
+        var post = await dbContext.LoadHiringPostAsync(
+            dbContext.HiringPosts
+                .Include(p => p.BusinessOwnerProfile)
+                .Where(p => p.Id == request.HiringPostId),
+            cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Domain.Entities.HiringPost), request.HiringPostId);
 
         // Checked before the status test so a worker is told the real reason: a finished job and a
@@ -60,11 +61,12 @@ public class ApplyToHiringPostCommandHandler(
         dbContext.HiringPostApplications.Add(application);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        var updated = await dbContext.HiringPosts
-            .Include(p => p.BusinessOwnerProfile)
-            .Include(p => p.Applications).ThenInclude(a => a.WorkerProfile).ThenInclude(wp => wp.User)
-            .Include(p => p.Applications).ThenInclude(a => a.SalaryAdjustments)
-            .FirstAsync(p => p.Id == post.Id, cancellationToken);
+        var updated = await dbContext.LoadHiringPostAsync(
+            dbContext.HiringPosts
+                .Include(p => p.BusinessOwnerProfile)
+                .Where(p => p.Id == post.Id),
+            cancellationToken)
+            ?? throw new EntityNotFoundException(nameof(Domain.Entities.HiringPost), post.Id);
 
         // Read off the re-fetched post: the profile loaded above came back without its User, and
         // the waiting count has to include the application just written.

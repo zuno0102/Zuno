@@ -12,7 +12,7 @@
 #   * a worker with NO wage is not a payee and never holds the order open
 #   * an unpaid hand-added worker DOES stop the order counting toward the profile
 #   * both ways onto a job are added together, not one or the other
-API=http://localhost:5056/api/v1
+API=${API:-http://localhost:5056/api/v1}
 PSQL="${PSQL:-psql}"
 : "${PGPASSWORD:?set PGPASSWORD to your Postgres password first}"
 S=$(date +%s)

@@ -9,7 +9,10 @@ import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
 /// Email is shown but not editable. It is the account's identity and half of how somebody signs in,
 /// so changing it needs proof the new address is theirs — and offering a field that silently refuses
 /// would be worse than not offering one.
-Future<bool> showEditAccountSheet(BuildContext context, {required User user}) async {
+Future<bool> showEditAccountSheet(
+  BuildContext context, {
+  required User user,
+}) async {
   final saved = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
@@ -33,7 +36,9 @@ class _EditAccountSheetState extends ConsumerState<_EditAccountSheet> {
   final _formKey = GlobalKey<FormState>();
   late final _firstName = TextEditingController(text: widget.user.firstName);
   late final _lastName = TextEditingController(text: widget.user.lastName);
-  late final _phone = TextEditingController(text: widget.user.phoneNumber ?? '');
+  late final _phone = TextEditingController(
+    text: widget.user.phoneNumber ?? '',
+  );
 
   bool _isSaving = false;
   String? _error;
@@ -174,7 +179,8 @@ class _EditAccountSheetState extends ConsumerState<_EditAccountSheet> {
                     enabled: false,
                     decoration: const InputDecoration(
                       labelText: 'Email',
-                      helperText: 'You sign in with this, so it cannot be changed here',
+                      helperText:
+                          'You sign in with this, so it cannot be changed here',
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -196,12 +202,12 @@ class _EditAccountSheetState extends ConsumerState<_EditAccountSheet> {
                   child: FilledButton(
                     onPressed: _isSaving ? null : _save,
                     child: _isSaving
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              color: Theme.of(context).colorScheme.onPrimary,
                             ),
                           )
                         : const Text('Save'),

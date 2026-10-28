@@ -4,7 +4,7 @@
 # A hiring post does not close itself when its order completes or is cancelled, so its own
 # status keeps reading "Open" long after there is anything left to staff. These checks cover
 # the field the client filters on, and the server guard behind it.
-API=http://localhost:5056/api/v1
+API=${API:-http://localhost:5056/api/v1}
 PSQL="${PSQL:-psql}"
 : "${PGPASSWORD:?set PGPASSWORD to your Postgres password first}"
 S=$(date +%s)

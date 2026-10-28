@@ -65,35 +65,33 @@ public static class BookingMappingExtensions
             AssignedWorkers = includeCrew
             ? booking.WorkerAssignments
                 .OrderBy(a => a.CreatedDate)
-                .Select(a => new BookingWorkerAssignmentDto
+                .Select(a => (a, Private: viewerWorkerProfileId is not null && a.WorkerProfileId != viewerWorkerProfileId))
+                .Select(x => new BookingWorkerAssignmentDto
                 {
-                    WorkerProfileId = a.WorkerProfileId,
-                    WorkerName = $"{a.WorkerProfile.User.FirstName} {a.WorkerProfile.User.LastName}",
-                    WorkerPhone = a.WorkerProfile.User.PhoneNumber,
-                    Role = a.Role,
-                    Status = a.AssignmentStatus.ToString(),
-                    DisplayStatus = WorkerDisplayStatus(a.AssignmentStatus, booking),
-                    AgreedSalaryAmount = a.AgreedSalaryAmount,
-                    AgreedSalaryUnit = a.AgreedSalaryUnit?.ToString(),
-                    OriginalSalaryAmount = a.SalaryAdjustments
+                    WorkerProfileId = x.a.WorkerProfileId,
+                    WorkerName = $"{x.a.WorkerProfile.User.FirstName} {x.a.WorkerProfile.User.LastName}",
+                    // Another worker's phone, wage and payment are between them and the business. A
+                    // worker viewing the order sees who else is on it, and in what role — nothing more.
+                    WorkerPhone = x.Private ? null : x.a.WorkerProfile.User.PhoneNumber,
+                    Role = x.a.Role,
+                    Status = x.a.AssignmentStatus.ToString(),
+                    DisplayStatus = WorkerDisplayStatus(x.a.AssignmentStatus, booking),
+                    AgreedSalaryAmount = x.Private ? null : x.a.AgreedSalaryAmount,
+                    AgreedSalaryUnit = x.Private ? null : x.a.AgreedSalaryUnit?.ToString(),
+                    OriginalSalaryAmount = x.Private ? null : x.a.SalaryAdjustments
                         .OrderBy(s => s.CreatedDate)
                         .Select(s => (decimal?)s.PreviousAmount)
                         .FirstOrDefault(),
-                    PaymentStatus = a.PaymentStatus.ToString(),
+                    PaymentStatus = x.Private ? string.Empty : x.a.PaymentStatus.ToString(),
                     // Null-safe: the payout detail is not always loaded, and an unloaded
                     // navigation must read as "unknown, do not promise", never as "ready to pay".
                     //
                     // Payable, not merely present. A row whose details are still being checked
                     // used to satisfy this, so the crew list showed nothing wrong and the
                     // business only learnt otherwise after paying for that worker.
-                    // Mirrors CanReceivePayouts, inlined because a computed property cannot be
-                    // translated to SQL: somewhere to send it, and checked.
-                    HasPayoutDetails = a.WorkerProfile.PayoutDetail != null
-                                       && (a.WorkerProfile.PayoutDetail.UpiVpa != null
-                                           || (a.WorkerProfile.PayoutDetail.AccountNumber != null
-                                               && a.WorkerProfile.PayoutDetail.IfscCode != null))
-                                       && a.WorkerProfile.PayoutDetail.VerificationStatus
-                                          == VerificationStatus.Verified,
+                    // Mirrors CanReceivePayouts: somewhere to send it, and verified.
+                    HasPayoutDetails = !x.Private && PayoutStateOf(x.a.WorkerProfile.PayoutDetail) == "Ready",
+                    PayoutState = x.Private ? string.Empty : PayoutStateOf(x.a.WorkerProfile.PayoutDetail),
                 })
                 .ToList()
             : [],
@@ -129,7 +127,8 @@ public static class BookingMappingExtensions
                 includeCrew ? wages : null).ToString(),
             ScheduledDate = booking.ScheduledDate,
             Notes = booking.Notes,
-            PriceQuoted = booking.PriceQuoted,
+            // What the customer pays is between them and the business; a worker is told their own wage.
+            PriceQuoted = viewerWorkerProfileId is null ? booking.PriceQuoted : 0,
             PriceType = booking.PriceType?.ToString(),
             ServiceAnswers = booking.ServiceAnswers.ToAnswerDtos(),
             // Sent to both sides unmasked: the crew size on the ORDER stays hidden from the customer,
@@ -164,6 +163,15 @@ public static class BookingMappingExtensions
     /// business starts the work, at which point they are working. One row, two readings, so the
     /// assignment enum needs no extra value and no migration.
     /// </remarks>
+    /// <summary>Ready, NotVerified or None — see <see cref="BookingWorkerAssignmentDto.PayoutState"/>.</summary>
+    private static string PayoutStateOf(WorkerPayoutDetail? payout) => payout switch
+    {
+        null => "None",
+        { HasDestination: false } => "None",
+        { CanReceivePayouts: true } => "Ready",
+        _ => "NotVerified",
+    };
+
     private static string WorkerDisplayStatus(
         BookingWorkerAssignmentStatus status,
         Domain.Entities.Booking booking) => status switch

@@ -10,7 +10,8 @@ public class SetBusinessLogoCommandHandler(
     ICurrentUserService currentUserService,
     IBusinessOwnerProfileRepository businessOwnerProfileRepository,
     IFileStorageService fileStorageService,
-    IApplicationDbContext dbContext) : IRequestHandler<SetBusinessLogoCommand, BusinessProfileDto>
+    IApplicationDbContext dbContext,
+    IPlatformSettings platformSettings) : IRequestHandler<SetBusinessLogoCommand, BusinessProfileDto>
 {
     public async Task<BusinessProfileDto> Handle(SetBusinessLogoCommand request, CancellationToken cancellationToken)
     {
@@ -33,6 +34,6 @@ public class SetBusinessLogoCommandHandler(
             fileStorageService.DeleteFile(previousUrl);
         }
 
-        return profile.ToDto();
+        return profile.ToDto(platformSettings.Current.BusinessLevels);
     }
 }

@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/constants/api_constants.dart';
 import 'package:zuno/features/customer/domain/entities/service_media.dart';
 
@@ -178,7 +179,7 @@ class _Gallery extends StatelessWidget {
                     height: 6,
                     margin: const EdgeInsets.symmetric(horizontal: 2),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(
+                      color: AppColors.onMedia.withValues(
                         alpha: i == page ? 0.95 : 0.5,
                       ),
                       borderRadius: BorderRadius.circular(3),

@@ -1283,6 +1283,2155 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                     b.ToTable("customer_profiles", (string)null);
                 });
 
+            modelBuilder.Entity("Zuno.Domain.Entities.DisplayLabel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("code");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
+
+                    b.Property<string>("Detail")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("detail");
+
+                    b.Property<string>("Group")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("group");
+
+                    b.Property<string>("IconName")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("icon_name");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("label");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_date");
+
+                    b.Property<string>("ShortLabel")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("short_label");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Tone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("tone");
+
+                    b.HasKey("Id")
+                        .HasName("pk_display_labels");
+
+                    b.HasIndex("Group", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("ux_display_labels_group_code")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("display_labels", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("18e0cb8e-c570-d2e4-41f0-5c2dbd0b8385"),
+                            Code = "Ready",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PayoutState",
+                            IsDeleted = false,
+                            Label = "Ready to be paid",
+                            SortOrder = 1,
+                            Status = (short)1,
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Id = new Guid("1ec6ec24-6389-37c0-e70a-059261e4458b"),
+                            Code = "NotVerified",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PayoutState",
+                            IconName = "error_outline",
+                            IsDeleted = false,
+                            Label = "UPI is not verified — check with the worker",
+                            SortOrder = 2,
+                            Status = (short)1,
+                            Tone = "danger"
+                        },
+                        new
+                        {
+                            Id = new Guid("576a1f9f-1e4a-c2c4-d090-4dbc70ff03ca"),
+                            Code = "None",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PayoutState",
+                            IconName = "error_outline",
+                            IsDeleted = false,
+                            Label = "No UPI ID on file — ask the worker to add one",
+                            SortOrder = 3,
+                            Status = (short)1,
+                            Tone = "danger"
+                        },
+                        new
+                        {
+                            Id = new Guid("627afe09-cbee-8a12-35f6-f6c8b63ac12c"),
+                            Code = "Paid",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PaymentStatus",
+                            IsDeleted = false,
+                            Label = "Paid",
+                            SortOrder = 1,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("5c6c62e8-2452-bd4c-62de-1dcf29077fd9"),
+                            Code = "Failed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PaymentStatus",
+                            IsDeleted = false,
+                            Label = "Payment failed",
+                            SortOrder = 2,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("70394822-b9a8-95cc-93c1-9016c975c68a"),
+                            Code = "Disputed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PaymentStatus",
+                            IsDeleted = false,
+                            Label = "Disputed",
+                            SortOrder = 3,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("962ebe74-a03c-29ed-bf65-5f7f305ea476"),
+                            Code = "Processing",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PaymentStatus",
+                            IsDeleted = false,
+                            Label = "Sending",
+                            SortOrder = 4,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("98f7e804-750e-7e89-3327-50a0ba24187c"),
+                            Code = "AwaitingWorkerConfirmation",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PaymentStatus",
+                            IsDeleted = false,
+                            Label = "Awaiting confirmation",
+                            SortOrder = 5,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("56373597-e3a6-a11b-1a76-ec3b47b97578"),
+                            Code = "NotStaffed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BookingCrewStatus",
+                            IsDeleted = false,
+                            Label = "Nobody assigned yet",
+                            SortOrder = 1,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("4448a509-533e-d60e-13f9-b7178de5442d"),
+                            Code = "PartStaffed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BookingCrewStatus",
+                            IsDeleted = false,
+                            Label = "Part staffed",
+                            SortOrder = 2,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("6daa2f3e-bcd1-ccca-d675-617133be27f8"),
+                            Code = "FullyStaffed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BookingCrewStatus",
+                            IsDeleted = false,
+                            Label = "Fully staffed",
+                            SortOrder = 3,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("eb6bb5a5-4cdd-3bd9-11f1-96606d858e83"),
+                            Code = "Done",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BookingCrewStatus",
+                            IsDeleted = false,
+                            Label = "Crew finished",
+                            SortOrder = 4,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("3fa83938-9d04-aa38-26a0-824c0172259d"),
+                            Code = "NoWagesThroughZuno",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BookingWageStatus",
+                            IsDeleted = false,
+                            Label = "No wages through Zuno",
+                            SortOrder = 1,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("53efd3dd-18d0-4639-243e-ac528ebd2bea"),
+                            Code = "Disputed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BookingWageStatus",
+                            IsDeleted = false,
+                            Label = "Payment disputed",
+                            SortOrder = 2,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("3a2cbdd6-0f32-49c9-ed45-e186b1a5a793"),
+                            Code = "Outstanding",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BookingWageStatus",
+                            IsDeleted = false,
+                            Label = "Payment pending",
+                            SortOrder = 3,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("0b442e83-3317-d0ee-d07e-b5e7af6f90e7"),
+                            Code = "Settled",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BookingWageStatus",
+                            IsDeleted = false,
+                            Label = "All crew paid",
+                            SortOrder = 4,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("def8b436-9e6f-2166-3905-cc2c9f275dfe"),
+                            Code = "Awaiting",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BookingWorkerAssignment.Crew",
+                            IconName = "schedule",
+                            IsDeleted = false,
+                            Label = "Awaiting their answer",
+                            SortOrder = 1,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c7e631ac-b059-3057-9efb-e58197856ff1"),
+                            Code = "Active",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BookingWorkerAssignment.Crew",
+                            IconName = "check_circle_outline",
+                            IsDeleted = false,
+                            Label = "Active",
+                            SortOrder = 2,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("e54c13bf-c6ed-7a34-0574-81282d368281"),
+                            Code = "InProgress",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BookingWorkerAssignment.Crew",
+                            IconName = "play_circle_fill",
+                            IsDeleted = false,
+                            Label = "In progress",
+                            SortOrder = 3,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("b63ad054-3007-2b64-a3af-198934b2a2ac"),
+                            Code = "Completed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BookingWorkerAssignment.Crew",
+                            IconName = "check_circle",
+                            IsDeleted = false,
+                            Label = "Completed",
+                            SortOrder = 4,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("851c880a-47de-0fb1-7a8f-dbd8a4451b28"),
+                            Code = "Declined",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BookingWorkerAssignment.Crew",
+                            IconName = "cancel_outlined",
+                            IsDeleted = false,
+                            Label = "Declined",
+                            SortOrder = 5,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("1da5a821-514d-043f-e76c-0001d88e6a52"),
+                            Code = "*",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BookingWorkerAssignment.Crew",
+                            IconName = "schedule",
+                            IsDeleted = false,
+                            Label = "Awaiting their answer",
+                            SortOrder = 0,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("3bb964c7-256b-74ba-7efa-68938ea17b66"),
+                            Code = "Assigned",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BookingWorkerAssignment.Chip",
+                            IsDeleted = false,
+                            Label = "Pending response",
+                            SortOrder = 1,
+                            Status = (short)1,
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Id = new Guid("a8a229b3-0ae0-c70e-3ebf-db7aa893f420"),
+                            Code = "Accepted",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BookingWorkerAssignment.Chip",
+                            IsDeleted = false,
+                            Label = "Accepted",
+                            SortOrder = 2,
+                            Status = (short)1,
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Id = new Guid("23207e7e-5893-21b3-43dc-d2dadbafc9a7"),
+                            Code = "Rejected",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BookingWorkerAssignment.Chip",
+                            IsDeleted = false,
+                            Label = "Declined",
+                            SortOrder = 3,
+                            Status = (short)1,
+                            Tone = "danger"
+                        },
+                        new
+                        {
+                            Id = new Guid("a336f9a4-f947-df42-2dc0-bb50e6db1086"),
+                            Code = "Completed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BookingWorkerAssignment.Chip",
+                            IsDeleted = false,
+                            Label = "Completed",
+                            SortOrder = 4,
+                            Status = (short)1,
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Id = new Guid("64e6a934-c8cb-7a8e-02ad-5e3792c5cd91"),
+                            Code = "Agreed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BookingAgreement.Chip",
+                            IsDeleted = false,
+                            Label = "Agreed",
+                            SortOrder = 1,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("f11c6f47-a3a7-fa2e-f93f-2b7295e6f7d7"),
+                            Code = "Closed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BookingAgreement.Chip",
+                            IsDeleted = false,
+                            Label = "Closed",
+                            SortOrder = 2,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("0b50169c-7c69-7516-760f-eeed410989e1"),
+                            Code = "WaitingForYou",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BookingAgreement.Chip",
+                            IsDeleted = false,
+                            Label = "Waiting for you",
+                            SortOrder = 3,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("476fc298-518e-4af6-d058-ff6f03c78f9c"),
+                            Code = "WaitingForThem",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BookingAgreement.Chip",
+                            IsDeleted = false,
+                            Label = "Waiting for them",
+                            SortOrder = 4,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("0f4acee7-989c-ef18-8628-3221ea1174fc"),
+                            Code = "*",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BookingAgreement.Chip",
+                            IsDeleted = false,
+                            Label = "Not agreed yet",
+                            SortOrder = 0,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("6f2dcb83-e949-cc6b-ee4a-cbaa28c80be7"),
+                            Code = "Applied",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "HiringPostApplication.Business",
+                            IsDeleted = false,
+                            Label = "Applied",
+                            SortOrder = 1,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("87e54ec4-fb37-868f-e172-7eecb29bd325"),
+                            Code = "Confirmed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "HiringPostApplication.Business",
+                            IsDeleted = false,
+                            Label = "Awaiting worker",
+                            SortOrder = 2,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("e9d6e966-b511-7d7c-fe54-8ff887853529"),
+                            Code = "Accepted",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "HiringPostApplication.Business",
+                            IsDeleted = false,
+                            Label = "Accepted",
+                            SortOrder = 3,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("b055b742-b5e7-0f6f-ab18-22dc793d498d"),
+                            Code = "Rejected",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "HiringPostApplication.Business",
+                            IsDeleted = false,
+                            Label = "Rejected",
+                            SortOrder = 4,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("28cfb8fe-2e1e-0604-5e34-96d29ced469f"),
+                            Code = "Declined",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "HiringPostApplication.Business",
+                            IsDeleted = false,
+                            Label = "Declined by worker",
+                            SortOrder = 5,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("310a8b72-8085-44e6-b467-3f820f6194f4"),
+                            Code = "JobInvitation",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "person_add_alt_1_outlined",
+                            IsDeleted = false,
+                            Label = "Job invitation",
+                            SortOrder = 1,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("79c28864-b934-bcf6-126e-e249f95380d1"),
+                            Code = "JobOfferConfirmed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "person_add_alt_1_outlined",
+                            IsDeleted = false,
+                            Label = "Job offer confirmed",
+                            SortOrder = 2,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("33e13e58-238c-c522-7739-95e47b769bbe"),
+                            Code = "TeamInvitation",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "person_add_alt_1_outlined",
+                            IsDeleted = false,
+                            Label = "Team invitation",
+                            SortOrder = 3,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("67473c12-1a78-cbb8-56b7-45c53594c2dd"),
+                            Code = "JobAssignment",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "assignment_ind_outlined",
+                            IsDeleted = false,
+                            Label = "Job assignment",
+                            SortOrder = 4,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("7a26f6e1-2dea-cf29-f359-27790664132f"),
+                            Code = "WagePaid",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "payments_outlined",
+                            IsDeleted = false,
+                            Label = "Wage paid",
+                            SortOrder = 5,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("02fe697e-e1dd-0650-cff5-a825c4e96a06"),
+                            Code = "WageRaised",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "trending_up",
+                            IsDeleted = false,
+                            Label = "Wage raised",
+                            SortOrder = 6,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("06f9a12e-2c2e-fb32-6585-055dd826b67e"),
+                            Code = "PaymentDisputed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "report_gmailerrorred_outlined",
+                            IsDeleted = false,
+                            Label = "Payment disputed",
+                            SortOrder = 7,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("20a66a24-c524-8d52-f397-2bf9d13bae84"),
+                            Code = "BookingRequested",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "add_shopping_cart_outlined",
+                            IsDeleted = false,
+                            Label = "Booking requested",
+                            SortOrder = 8,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("3d45f987-7e49-1d53-16ce-b6fe46ba2c16"),
+                            Code = "BookingConfirmed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "event_available_outlined",
+                            IsDeleted = false,
+                            Label = "Booking confirmed",
+                            SortOrder = 9,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("f83e1e36-388e-d101-38ef-1eb14add367c"),
+                            Code = "BookingTermsProposed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "handshake_outlined",
+                            IsDeleted = false,
+                            Label = "Booking terms proposed",
+                            SortOrder = 10,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c4f47ebe-03c1-27fc-8ed5-3cd0bbd7b0a4"),
+                            Code = "BookingCrewAssigned",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "groups_outlined",
+                            IsDeleted = false,
+                            Label = "Booking crew assigned",
+                            SortOrder = 11,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("f2747157-6a43-8efe-44b1-6353544103a8"),
+                            Code = "BookingWorkStarted",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "play_circle_outline",
+                            IsDeleted = false,
+                            Label = "Booking work started",
+                            SortOrder = 12,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("22dbfdc6-e3bf-caf8-d0e2-5eab9376b68e"),
+                            Code = "BookingCompleted",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "star_outline",
+                            IsDeleted = false,
+                            Label = "Booking completed",
+                            SortOrder = 13,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("6bc6b2e2-89c1-67c0-ede8-d7253a0304ee"),
+                            Code = "BookingCancelledByBusiness",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "event_busy_outlined",
+                            IsDeleted = false,
+                            Label = "Booking cancelled by business",
+                            SortOrder = 14,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c7f57777-76ac-bde6-9d84-cd26de291632"),
+                            Code = "BookingCancelledByCustomer",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "event_busy_outlined",
+                            IsDeleted = false,
+                            Label = "Booking cancelled by customer",
+                            SortOrder = 15,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("9736813f-887f-593a-113c-5c193cf3383a"),
+                            Code = "JobCancelled",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "event_busy_outlined",
+                            IsDeleted = false,
+                            Label = "Job cancelled",
+                            SortOrder = 16,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("6578d396-ea02-6b5e-fec1-c2f05abd5960"),
+                            Code = "ApplicationRejected",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "do_not_disturb_on_outlined",
+                            IsDeleted = false,
+                            Label = "Application rejected",
+                            SortOrder = 17,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("528c2af1-00e9-467d-654c-0a753fd5c6e5"),
+                            Code = "PayoutDestinationChanged",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "payments_outlined",
+                            IsDeleted = false,
+                            Label = "Payout UPI changed",
+                            SortOrder = 30,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("a0c4c045-c923-40ff-263a-17ed808f1ed3"),
+                            Code = "NewApplicants",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "how_to_reg_outlined",
+                            IsDeleted = false,
+                            Label = "New applicants",
+                            SortOrder = 18,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c5499a95-69eb-5d94-4afb-56cb2458c002"),
+                            Code = "VacancyApplicationReceived",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "badge_outlined",
+                            IsDeleted = false,
+                            Label = "Vacancy application received",
+                            SortOrder = 19,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("29117024-e69a-0b75-99a4-8c07581ce546"),
+                            Code = "VacancyApplicationUpdated",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "mark_email_unread_outlined",
+                            IsDeleted = false,
+                            Label = "Vacancy application updated",
+                            SortOrder = 20,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("8c7f8caf-013b-c5d2-36d4-22b98b6f59a0"),
+                            Code = "OfferAnswered",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "mark_email_read_outlined",
+                            IsDeleted = false,
+                            Label = "Offer answered",
+                            SortOrder = 21,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c4514843-7d08-566d-a916-4c3e294456ca"),
+                            Code = "AssignmentAnswered",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "mark_email_read_outlined",
+                            IsDeleted = false,
+                            Label = "Assignment answered",
+                            SortOrder = 22,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("5c2fae20-509c-c53e-eadf-30869b9a8a15"),
+                            Code = "WorkerFinishedWork",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "task_alt_outlined",
+                            IsDeleted = false,
+                            Label = "Worker finished work",
+                            SortOrder = 23,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("f24f3547-5b15-3c0b-fca6-530fbaa977a0"),
+                            Code = "RatingReceived",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "grade_outlined",
+                            IsDeleted = false,
+                            Label = "Rating received",
+                            SortOrder = 24,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("28262e24-e2c1-edbc-fabd-96e6d5480375"),
+                            Code = "ChatMessage",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "chat_bubble_outline",
+                            IsDeleted = false,
+                            Label = "Chat message",
+                            SortOrder = 25,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("30c291fb-0376-dce8-50e7-b66ca808a06c"),
+                            Code = "*",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "NotificationKind",
+                            IconName = "notifications_outlined",
+                            IsDeleted = false,
+                            Label = "Notification",
+                            SortOrder = 0,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("93b61f28-c983-540e-e67d-4ef41236d917"),
+                            Code = "Pending",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "VerificationStatus",
+                            IsDeleted = false,
+                            Label = "Pending",
+                            SortOrder = 1,
+                            Status = (short)1,
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Id = new Guid("297df412-bbb2-6379-2f79-951a4814c48c"),
+                            Code = "Verified",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "VerificationStatus",
+                            IsDeleted = false,
+                            Label = "Verified",
+                            SortOrder = 2,
+                            Status = (short)1,
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Id = new Guid("515e0216-d4cc-ef16-9ce5-488d123d5815"),
+                            Code = "Rejected",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "VerificationStatus",
+                            IsDeleted = false,
+                            Label = "Rejected",
+                            SortOrder = 3,
+                            Status = (short)1,
+                            Tone = "danger"
+                        },
+                        new
+                        {
+                            Id = new Guid("be488a9d-0605-0f43-bf2d-549302ec5f90"),
+                            Code = "*",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "VerificationStatus",
+                            IsDeleted = false,
+                            Label = "Pending",
+                            SortOrder = 0,
+                            Status = (short)1,
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Id = new Guid("555bfccc-02e8-e78d-aa79-88a67d0d8936"),
+                            Code = "notStarted",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "TrackState",
+                            IsDeleted = false,
+                            Label = "Not started",
+                            SortOrder = 1,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("f331cb89-60b5-87e2-6499-7b1b1a776bd5"),
+                            Code = "active",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "TrackState",
+                            IsDeleted = false,
+                            Label = "Active",
+                            SortOrder = 2,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("5e3f9675-cacc-5da0-e3f6-427798526f05"),
+                            Code = "inProgress",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "TrackState",
+                            IsDeleted = false,
+                            Label = "In progress",
+                            SortOrder = 3,
+                            Status = (short)1,
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Id = new Guid("fdfe6ac3-f9c6-4a45-bab2-2882e18891d7"),
+                            Code = "completed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "TrackState",
+                            IsDeleted = false,
+                            Label = "Completed",
+                            SortOrder = 4,
+                            Status = (short)1,
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Id = new Guid("3a4e6309-99a6-a0a8-fbb0-fbcd83b798eb"),
+                            Code = "lapsed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "TrackState",
+                            IsDeleted = false,
+                            Label = "Lapsed",
+                            SortOrder = 5,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("0e9a0f4f-1312-bf07-743a-9258c4ab7a36"),
+                            Code = "Hourly",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PriceType",
+                            IsDeleted = false,
+                            Label = "per hour",
+                            ShortLabel = "/hr",
+                            SortOrder = 1,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("917a3735-3f4d-cf8b-a0dc-339cbe8faffe"),
+                            Code = "Daily",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PriceType",
+                            IsDeleted = false,
+                            Label = "per day",
+                            ShortLabel = "/day",
+                            SortOrder = 2,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("19920ca6-f7f8-fb58-2420-810d1f95aeea"),
+                            Code = "PerPerson",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PriceType",
+                            IsDeleted = false,
+                            Label = "per person",
+                            ShortLabel = " per person",
+                            SortOrder = 3,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("e7aa167a-802a-825a-26bc-5cc44005dc92"),
+                            Code = "Hourly",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PriceType.RateField",
+                            IsDeleted = false,
+                            Label = "Rate per hour (INR)",
+                            SortOrder = 1,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("250b843e-8b84-8a81-2504-dd49a8ed722d"),
+                            Code = "Daily",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PriceType.RateField",
+                            IsDeleted = false,
+                            Label = "Rate per day (INR)",
+                            SortOrder = 2,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("0a702b0f-a47f-d314-80f4-aa1d627aa51a"),
+                            Code = "PerPerson",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PriceType.RateField",
+                            IsDeleted = false,
+                            Label = "Rate per person (INR)",
+                            SortOrder = 3,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c0a0e142-5606-7029-9bb0-4f46de47ad77"),
+                            Code = "*",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PriceType.RateField",
+                            IsDeleted = false,
+                            Label = "Price (INR)",
+                            SortOrder = 0,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("64185c50-7301-8e9f-3573-350ded5101af"),
+                            Code = "Hourly",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PriceType.DurationField",
+                            IsDeleted = false,
+                            Label = "Typical duration (hours)",
+                            SortOrder = 1,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("10f6dc19-3c32-1196-4352-bce29b4f89ac"),
+                            Code = "Daily",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PriceType.DurationField",
+                            IsDeleted = false,
+                            Label = "Typical duration (days)",
+                            SortOrder = 2,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("77735052-1736-ec27-ac10-ed1a7cce7485"),
+                            Code = "*",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PriceType.DurationField",
+                            IsDeleted = false,
+                            Label = "Duration (mins)",
+                            SortOrder = 0,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("91a977de-d7c9-9000-abb5-d807d582563f"),
+                            Code = "Customer",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "RegisterRole",
+                            IsDeleted = false,
+                            Label = "Customer",
+                            SortOrder = 1,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c4af98b7-cae6-c7ca-c481-e29034e64b76"),
+                            Code = "BusinessOwner",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "RegisterRole",
+                            IsDeleted = false,
+                            Label = "Business",
+                            SortOrder = 2,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("b58990b2-aded-0b4a-3fe4-d69f90290b1f"),
+                            Code = "Worker",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "RegisterRole",
+                            IsDeleted = false,
+                            Label = "Worker",
+                            SortOrder = 3,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("d0160f20-572c-a5df-b8ee-ed824ff55100"),
+                            Code = "Supervisor",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Detail = "Watches how the work is going",
+                            Group = "JobRole",
+                            IsDeleted = false,
+                            Label = "Supervisor",
+                            SortOrder = 1,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("2b23129e-d9b4-4ce5-dd32-d3b7e1961aed"),
+                            Code = "Lead",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Detail = "Runs the work — can start and finish this job",
+                            Group = "JobRole",
+                            IsDeleted = false,
+                            Label = "Lead",
+                            SortOrder = 2,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("78b754aa-955f-07a3-2d0d-c13b8d217200"),
+                            Code = "Support",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Detail = "Sorts out whatever the job needs",
+                            Group = "JobRole",
+                            IsDeleted = false,
+                            Label = "Support",
+                            SortOrder = 3,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("d2d2761d-223d-69bd-fdbd-a55320680834"),
+                            Code = "AtWork",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "WorkerAvailability.Business",
+                            IsDeleted = false,
+                            Label = "On a job now",
+                            SortOrder = 1,
+                            Status = (short)1,
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Id = new Guid("45f4f27c-a233-c3f9-b8aa-2c81ef89845c"),
+                            Code = "Booked",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "WorkerAvailability.Business",
+                            IsDeleted = false,
+                            Label = "Booked",
+                            SortOrder = 2,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("cd3e6770-c176-1724-2a5b-bc392ac78509"),
+                            Code = "*",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "WorkerAvailability.Business",
+                            IsDeleted = false,
+                            Label = "Free",
+                            SortOrder = 0,
+                            Status = (short)1,
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Id = new Guid("e7d56859-3ebb-e125-e4bf-1b5f00cd41a3"),
+                            Code = "AtWork",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "WorkerAvailability.Roster",
+                            IsDeleted = false,
+                            Label = "At work",
+                            SortOrder = 1,
+                            Status = (short)1,
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Id = new Guid("d7d285cc-e03f-00dc-4fc2-310c4e321897"),
+                            Code = "Booked",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "WorkerAvailability.Roster",
+                            IsDeleted = false,
+                            Label = "Already booked",
+                            SortOrder = 2,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("b8fff6b0-8516-93bf-398f-c60f0bb5aa06"),
+                            Code = "*",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "WorkerAvailability.Roster",
+                            IsDeleted = false,
+                            Label = "Free",
+                            SortOrder = 0,
+                            Status = (short)1,
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Id = new Guid("c3e678c4-8584-8209-663e-5cd6b3e739b5"),
+                            Code = "Invited",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BusinessWorker.Status",
+                            IsDeleted = false,
+                            Label = "Invited",
+                            SortOrder = 1,
+                            Status = (short)1,
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Id = new Guid("6c8db709-69d9-48d7-5289-bce812e7b473"),
+                            Code = "Active",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BusinessWorker.Status",
+                            IsDeleted = false,
+                            Label = "Active",
+                            SortOrder = 2,
+                            Status = (short)1,
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Id = new Guid("056e630b-d7a8-5292-86a3-9b9733396ff8"),
+                            Code = "Rejected",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BusinessWorker.Status",
+                            IsDeleted = false,
+                            Label = "Rejected",
+                            SortOrder = 3,
+                            Status = (short)1,
+                            Tone = "danger"
+                        },
+                        new
+                        {
+                            Id = new Guid("365463e9-de3f-0cdd-a252-aed946adf8a2"),
+                            Code = "Removed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BusinessWorker.Status",
+                            IsDeleted = false,
+                            Label = "Removed",
+                            SortOrder = 4,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("51bbd892-e5ec-744c-dece-5b5d98ccdfb4"),
+                            Code = "Pending",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BusinessVerification",
+                            IsDeleted = false,
+                            Label = "Pending",
+                            SortOrder = 1,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("b457853c-046f-9b60-2a1c-4e45053daff0"),
+                            Code = "Verified",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BusinessVerification",
+                            IsDeleted = false,
+                            Label = "Verified",
+                            SortOrder = 2,
+                            Status = (short)1,
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Id = new Guid("ea368a0b-8f51-d205-07e6-599e3a009440"),
+                            Code = "Rejected",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BusinessVerification",
+                            IsDeleted = false,
+                            Label = "Rejected",
+                            SortOrder = 3,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("d2511573-aa47-4aee-98af-51e9908a9fd3"),
+                            Code = "Verified",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BusinessVerification.Badge",
+                            IconName = "verified_outlined",
+                            IsDeleted = false,
+                            Label = "Verified",
+                            SortOrder = 1,
+                            Status = (short)1,
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Id = new Guid("6ec3a3f4-0042-7693-7cd4-e9089246d3db"),
+                            Code = "*",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "BusinessVerification.Badge",
+                            IconName = "hourglass_top_outlined",
+                            IsDeleted = false,
+                            Label = "Pending",
+                            SortOrder = 0,
+                            Status = (short)1,
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Id = new Guid("55fec610-7d3c-83d3-af9c-6bbbcc03fbc2"),
+                            Code = "Applied",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "HiringPostApplication.BusinessTone",
+                            IsDeleted = false,
+                            Label = "Applied",
+                            SortOrder = 1,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("4b06fb53-8bf2-3c50-bfa7-dd184f49aa19"),
+                            Code = "Confirmed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "HiringPostApplication.BusinessTone",
+                            IsDeleted = false,
+                            Label = "Awaiting worker",
+                            SortOrder = 2,
+                            Status = (short)1,
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Id = new Guid("00cda1e2-ada0-c664-876d-84d29315813c"),
+                            Code = "Accepted",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "HiringPostApplication.BusinessTone",
+                            IsDeleted = false,
+                            Label = "Accepted",
+                            SortOrder = 3,
+                            Status = (short)1,
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Id = new Guid("4c3ae4aa-cdc6-9259-643e-66e16b767335"),
+                            Code = "Rejected",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "HiringPostApplication.BusinessTone",
+                            IsDeleted = false,
+                            Label = "Rejected",
+                            SortOrder = 4,
+                            Status = (short)1,
+                            Tone = "danger"
+                        },
+                        new
+                        {
+                            Id = new Guid("f917b4b9-fa49-d232-30d0-39c1e5cea780"),
+                            Code = "Declined",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "HiringPostApplication.BusinessTone",
+                            IsDeleted = false,
+                            Label = "Declined by worker",
+                            SortOrder = 5,
+                            Status = (short)1,
+                            Tone = "danger"
+                        },
+                        new
+                        {
+                            Id = new Guid("6432763a-029e-8eeb-49fd-d19a276921b3"),
+                            Code = "*",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "HiringPostApplication.BusinessTone",
+                            IsDeleted = false,
+                            Label = "Rejected",
+                            SortOrder = 0,
+                            Status = (short)1,
+                            Tone = "danger"
+                        },
+                        new
+                        {
+                            Id = new Guid("050bda0d-1bc1-a5cb-7d24-17e04d529302"),
+                            Code = "Paid",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PaymentStatus.BusinessTone",
+                            IsDeleted = false,
+                            Label = "Paid",
+                            SortOrder = 1,
+                            Status = (short)1,
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Id = new Guid("1ba076db-fc71-e3c0-c169-cf69b1e009fa"),
+                            Code = "Processing",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PaymentStatus.BusinessTone",
+                            IsDeleted = false,
+                            Label = "Sending",
+                            SortOrder = 2,
+                            Status = (short)1,
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Id = new Guid("a4d73595-ce7b-e1f2-0a6d-8854279d3833"),
+                            Code = "AwaitingWorkerConfirmation",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PaymentStatus.BusinessTone",
+                            IsDeleted = false,
+                            Label = "Awaiting confirmation",
+                            SortOrder = 3,
+                            Status = (short)1,
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Id = new Guid("812441ee-8555-b1b3-a81d-419219fa7146"),
+                            Code = "Failed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PaymentStatus.BusinessTone",
+                            IsDeleted = false,
+                            Label = "Payment failed",
+                            SortOrder = 4,
+                            Status = (short)1,
+                            Tone = "danger"
+                        },
+                        new
+                        {
+                            Id = new Guid("44f26a44-3a1a-a954-0c9f-7f0ceba579f1"),
+                            Code = "Disputed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PaymentStatus.BusinessTone",
+                            IsDeleted = false,
+                            Label = "Disputed",
+                            SortOrder = 5,
+                            Status = (short)1,
+                            Tone = "danger"
+                        },
+                        new
+                        {
+                            Id = new Guid("fde951d4-8c1c-69ea-e89a-d7d84f6418db"),
+                            Code = "*",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PaymentStatus.BusinessTone",
+                            IsDeleted = false,
+                            Label = "Unpaid",
+                            SortOrder = 0,
+                            Status = (short)1,
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Id = new Guid("336a4997-e28a-87aa-8171-8cae93560c88"),
+                            Code = "Fixed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Detail = "One price for the job",
+                            Group = "PriceType.ServiceForm",
+                            IsDeleted = false,
+                            Label = "Fixed price",
+                            SortOrder = 1,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("d7df26b4-2f0b-7f49-c57a-d46a585d1f1a"),
+                            Code = "Hourly",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Detail = "Charged by the hour",
+                            Group = "PriceType.ServiceForm",
+                            IsDeleted = false,
+                            Label = "Per hour",
+                            SortOrder = 2,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("7a0d5951-270c-9b67-4918-3f5515af9139"),
+                            Code = "Daily",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Detail = "Charged by the day",
+                            Group = "PriceType.ServiceForm",
+                            IsDeleted = false,
+                            Label = "Per day",
+                            SortOrder = 3,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("e6299c9c-9182-837a-61e5-d39206b3f389"),
+                            Code = "PerPerson",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Detail = "Rate × the crew you agree",
+                            Group = "PriceType.ServiceForm",
+                            IsDeleted = false,
+                            Label = "Per person",
+                            SortOrder = 4,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("a25ac8b2-04aa-19b3-4c02-05b9607b7470"),
+                            Code = "Fixed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PriceType.VariantForm",
+                            IsDeleted = false,
+                            Label = "Fixed price",
+                            SortOrder = 1,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("f3c376f1-a9e0-4eaf-b5f1-fc3526290f3b"),
+                            Code = "Hourly",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PriceType.VariantForm",
+                            IsDeleted = false,
+                            Label = "Hourly rate",
+                            SortOrder = 2,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("9615babb-cd76-54bf-badc-3c8052b86fb3"),
+                            Code = "Daily",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "PriceType.VariantForm",
+                            IsDeleted = false,
+                            Label = "Daily rate",
+                            SortOrder = 3,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("784d2d1c-b704-6297-f9fb-a9e8db93e468"),
+                            Code = "Applied",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "VacancyApplication.Worker",
+                            IconName = "send_outlined",
+                            IsDeleted = false,
+                            Label = "Application sent",
+                            SortOrder = 1,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("9af80635-446a-d8b1-62ca-0adacb420d19"),
+                            Code = "Viewed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "VacancyApplication.Worker",
+                            IconName = "visibility_outlined",
+                            IsDeleted = false,
+                            Label = "Application viewed",
+                            SortOrder = 2,
+                            Status = (short)1,
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Id = new Guid("0dc114c4-4bac-b021-858b-22eba537e5c0"),
+                            Code = "Shortlisted",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "VacancyApplication.Worker",
+                            IconName = "star_outline",
+                            IsDeleted = false,
+                            Label = "Shortlisted",
+                            SortOrder = 3,
+                            Status = (short)1,
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Id = new Guid("f94e43a1-2855-6511-d297-f0f42fd6da60"),
+                            Code = "Hired",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "VacancyApplication.Worker",
+                            IconName = "verified_outlined",
+                            IsDeleted = false,
+                            Label = "Hired",
+                            SortOrder = 4,
+                            Status = (short)1,
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Id = new Guid("837bfff9-0038-4e40-c7db-46d583c28e7f"),
+                            Code = "Rejected",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "VacancyApplication.Worker",
+                            IconName = "block",
+                            IsDeleted = false,
+                            Label = "Rejected",
+                            SortOrder = 5,
+                            Status = (short)1,
+                            Tone = "danger"
+                        },
+                        new
+                        {
+                            Id = new Guid("04efb576-e8a3-475a-c302-31146ea677cc"),
+                            Code = "*",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "VacancyApplication.Worker",
+                            IconName = "send_outlined",
+                            IsDeleted = false,
+                            Label = "Application sent",
+                            SortOrder = 0,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("ba029c22-6db2-e767-6ec0-4ee0a8ac65f0"),
+                            Code = "Applied",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Detail = "New applicants appear here until you open them.",
+                            Group = "VacancyApplication.Business",
+                            IconName = "send_outlined",
+                            IsDeleted = false,
+                            Label = "New",
+                            SortOrder = 1,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("d908efb0-572f-f2f9-dbf4-8c0bed6c3a31"),
+                            Code = "Viewed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Detail = "Applicants you have opened but not decided on wait here.",
+                            Group = "VacancyApplication.Business",
+                            IconName = "visibility_outlined",
+                            IsDeleted = false,
+                            Label = "Waiting",
+                            SortOrder = 2,
+                            Status = (short)1,
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Id = new Guid("c4f15a9a-9da9-05c6-de47-6e5249ccfc9a"),
+                            Code = "Shortlisted",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Detail = "Applicants you shortlist appear here, ready to call.",
+                            Group = "VacancyApplication.Business",
+                            IconName = "star_outline",
+                            IsDeleted = false,
+                            Label = "Shortlisted",
+                            SortOrder = 3,
+                            Status = (short)1,
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Id = new Guid("db4993e1-3edd-68b4-f7be-85f81f0e0442"),
+                            Code = "Hired",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Detail = "Applicants you hire appear here.",
+                            Group = "VacancyApplication.Business",
+                            IconName = "verified_outlined",
+                            IsDeleted = false,
+                            Label = "Hired",
+                            SortOrder = 4,
+                            Status = (short)1,
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Id = new Guid("7cad7d96-28c3-8b50-59bc-5c9b5427e000"),
+                            Code = "Rejected",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Detail = "New applicants appear here until you open them.",
+                            Group = "VacancyApplication.Business",
+                            IconName = "block",
+                            IsDeleted = false,
+                            Label = "Rejected",
+                            SortOrder = 5,
+                            Status = (short)1,
+                            Tone = "danger"
+                        },
+                        new
+                        {
+                            Id = new Guid("69afbfc7-3006-88f0-d3c2-d26c733659fa"),
+                            Code = "*",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Detail = "New applicants appear here until you open them.",
+                            Group = "VacancyApplication.Business",
+                            IconName = "send_outlined",
+                            IsDeleted = false,
+                            Label = "New",
+                            SortOrder = 0,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("7e7bf4f2-fd8a-02b5-523b-95efda08e081"),
+                            Code = "NotPosted",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "VacancyPost",
+                            IconName = "hourglass_empty",
+                            IsDeleted = false,
+                            Label = "Not posted yet",
+                            SortOrder = 1,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("264ec37f-6e41-8d61-0eb0-1554b442f9fe"),
+                            Code = "Live",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "VacancyPost",
+                            IconName = "campaign_outlined",
+                            IsDeleted = false,
+                            Label = "Live",
+                            SortOrder = 2,
+                            Status = (short)1,
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Id = new Guid("b2a7ef98-1e4a-59cf-6fbb-9af8b122a698"),
+                            Code = "Stopped",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "VacancyPost",
+                            IconName = "pause_circle_outline",
+                            IsDeleted = false,
+                            Label = "Hiring stopped",
+                            SortOrder = 3,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("2cd00dc2-ca7b-06aa-fa44-40b7f2548beb"),
+                            Code = "Expired",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "VacancyPost",
+                            IconName = "event_busy_outlined",
+                            IsDeleted = false,
+                            Label = "Expired",
+                            SortOrder = 4,
+                            Status = (short)1,
+                            Tone = "danger"
+                        },
+                        new
+                        {
+                            Id = new Guid("55c5d0fb-012d-9f57-d4d8-311409f4ce02"),
+                            Code = "Text",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "VacancyFieldKind",
+                            IsDeleted = false,
+                            Label = "Text",
+                            SortOrder = 1,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("4570345b-76b9-c3a5-4634-177db421275c"),
+                            Code = "Number",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "VacancyFieldKind",
+                            IsDeleted = false,
+                            Label = "Number",
+                            SortOrder = 2,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("ea15d92a-41ff-a1a7-19ca-5c5150ae7394"),
+                            Code = "YesNo",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "VacancyFieldKind",
+                            IsDeleted = false,
+                            Label = "Yes / No",
+                            SortOrder = 3,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("704dd69d-684e-d190-9f52-3b649a8514e5"),
+                            Code = "File",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "VacancyFieldKind",
+                            IsDeleted = false,
+                            Label = "File upload (photo or PDF)",
+                            SortOrder = 4,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("79fc4512-26fc-c685-0152-286ba78d72d5"),
+                            Code = "*",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "VacancyFieldKind",
+                            IsDeleted = false,
+                            Label = "Text",
+                            SortOrder = 0,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("e5613f9e-ab35-5c71-3177-30d2a51b2dcb"),
+                            Code = "PerMonth",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "VacancyPayPeriod",
+                            IsDeleted = false,
+                            Label = "Per month",
+                            ShortLabel = "/ month",
+                            SortOrder = 1,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("7add72b0-b107-82f9-5428-1821aeeb3290"),
+                            Code = "PerWeek",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "VacancyPayPeriod",
+                            IsDeleted = false,
+                            Label = "Per week",
+                            ShortLabel = "/ week",
+                            SortOrder = 2,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("528525c4-9558-2058-5b31-35036845d2ff"),
+                            Code = "PerDay",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "VacancyPayPeriod",
+                            IsDeleted = false,
+                            Label = "Per day",
+                            ShortLabel = "/ day",
+                            SortOrder = 3,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("b4dc6dfb-5584-a072-8ebe-6ac90117b4d0"),
+                            Code = "*",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "VacancyPayPeriod",
+                            IsDeleted = false,
+                            Label = "Per month",
+                            ShortLabel = "/ month",
+                            SortOrder = 0,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("e8c1b8e9-36d1-ac60-7c29-562be4aa3008"),
+                            Code = "PerEvent",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "SalaryUnit",
+                            IsDeleted = false,
+                            Label = "Event",
+                            ShortLabel = "per event",
+                            SortOrder = 1,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("4d9c9224-ecd6-b2c4-5a1a-c7fe77bd8962"),
+                            Code = "PerDay",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "SalaryUnit",
+                            IsDeleted = false,
+                            Label = "Day",
+                            ShortLabel = "per day",
+                            SortOrder = 2,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("fd889c36-74d8-700c-0eaa-5de7cf221ba9"),
+                            Code = "PerHour",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "SalaryUnit",
+                            IsDeleted = false,
+                            Label = "Hour",
+                            ShortLabel = "per hour",
+                            SortOrder = 3,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("fdc45f33-ffce-3850-1f52-0be3b4350fc1"),
+                            Code = "*",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "SalaryUnit",
+                            IsDeleted = false,
+                            Label = "Event",
+                            ShortLabel = "per event",
+                            SortOrder = 0,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("30464807-9fce-a18d-583c-9b941537a4dc"),
+                            Code = "Unpaid",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "WorkerPayout",
+                            IsDeleted = false,
+                            Label = "Not sent yet",
+                            SortOrder = 1,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("ce542c3c-3411-62ff-cafb-54f2f604adfd"),
+                            Code = "Processing",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "WorkerPayout",
+                            IsDeleted = false,
+                            Label = "On its way",
+                            SortOrder = 2,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("c2d433ad-1f58-a3e0-0777-4ef1a1832b68"),
+                            Code = "AwaitingWorkerConfirmation",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "WorkerPayout",
+                            IsDeleted = false,
+                            Label = "Confirm you received it",
+                            SortOrder = 3,
+                            Status = (short)1,
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Id = new Guid("ad08b0d0-8399-ff35-dd73-a6fe743f5de8"),
+                            Code = "Failed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "WorkerPayout",
+                            IsDeleted = false,
+                            Label = "Payment failed",
+                            SortOrder = 4,
+                            Status = (short)1,
+                            Tone = "danger"
+                        },
+                        new
+                        {
+                            Id = new Guid("bac4872e-d8eb-c795-7ac7-8a5e2ce16a8a"),
+                            Code = "NoAddress",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Detail = "Add your UPI so wages have somewhere to go.",
+                            Group = "WorkerPayoutReadiness",
+                            IconName = "error_outline",
+                            IsDeleted = false,
+                            Label = "No payout address",
+                            SortOrder = 1,
+                            Status = (short)1,
+                            Tone = "danger"
+                        },
+                        new
+                        {
+                            Id = new Guid("9dcc89de-a8ff-1709-0586-5c5a3fd796e5"),
+                            Code = "Checking",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Detail = "Check the UPI ID is correct and save it again. Wages can be sent once it is verified.",
+                            Group = "WorkerPayoutReadiness",
+                            IconName = "error_outline",
+                            IsDeleted = false,
+                            Label = "Your UPI is not verified",
+                            SortOrder = 2,
+                            Status = (short)1,
+                            Tone = "danger"
+                        },
+                        new
+                        {
+                            Id = new Guid("ce8115cc-4b6c-35b2-ee8a-9dbbadc74ee0"),
+                            Code = "Ready",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Detail = "Wages go straight to {upi}.",
+                            Group = "WorkerPayoutReadiness",
+                            IconName = "verified_outlined",
+                            IsDeleted = false,
+                            Label = "Ready to be paid",
+                            SortOrder = 3,
+                            Status = (short)1,
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Id = new Guid("967f80c2-45b0-285f-5c62-7deed224d684"),
+                            Code = "Available",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "WorkerAvailability",
+                            IsDeleted = false,
+                            Label = "Available",
+                            SortOrder = 1,
+                            Status = (short)1,
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Id = new Guid("ce313ea5-7a64-08a0-0d51-ef50e9a49b78"),
+                            Code = "Busy",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "WorkerAvailability",
+                            IsDeleted = false,
+                            Label = "Busy",
+                            SortOrder = 2,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("f8609705-0461-bf05-fa75-7b65675798be"),
+                            Code = "Offline",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "WorkerAvailability",
+                            IsDeleted = false,
+                            Label = "Offline",
+                            SortOrder = 3,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("28676f38-e900-e315-5b8e-ea81b6b501e3"),
+                            Code = "Booked",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "WorkerJobProgress",
+                            IsDeleted = false,
+                            Label = "Booked",
+                            SortOrder = 1,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("658a22a4-d687-e847-036f-76a8c9d584d9"),
+                            Code = "Started",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "WorkerJobProgress",
+                            IsDeleted = false,
+                            Label = "Work started",
+                            SortOrder = 2,
+                            Status = (short)1,
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Id = new Guid("a84bd96b-9279-aee4-b2a1-0639663dfca0"),
+                            Code = "Finished",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "WorkerJobProgress",
+                            IsDeleted = false,
+                            Label = "Work finished",
+                            SortOrder = 3,
+                            Status = (short)1,
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Id = new Guid("ac32e875-6884-c7b3-477c-7dd6fefb2ff1"),
+                            Code = "Applied",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "HiringPostApplication.WorkerFeed",
+                            IsDeleted = false,
+                            Label = "Applied — awaiting the business",
+                            SortOrder = 1,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("47c07514-dfae-228d-845b-6f1f749ec0ab"),
+                            Code = "Accepted",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "HiringPostApplication.WorkerFeed",
+                            IsDeleted = false,
+                            Label = "You accepted this job",
+                            SortOrder = 2,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("5d29aa59-546e-adcf-2a1f-ae8cfc60d245"),
+                            Code = "Declined",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "HiringPostApplication.WorkerFeed",
+                            IsDeleted = false,
+                            Label = "You declined this offer",
+                            SortOrder = 3,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("cd6d81a1-bbf8-a34e-6063-98268d3556c7"),
+                            Code = "Rejected",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "HiringPostApplication.WorkerFeed",
+                            IsDeleted = false,
+                            Label = "Not selected",
+                            SortOrder = 4,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("5dee9468-2e34-dec7-617e-1f65b1522eab"),
+                            Code = "Applied",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "HiringPostApplication.WorkerDetail",
+                            IsDeleted = false,
+                            Label = "You have applied",
+                            SortOrder = 1,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("430fedb8-f241-239d-4887-a34378a129b4"),
+                            Code = "Confirmed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "HiringPostApplication.WorkerDetail",
+                            IsDeleted = false,
+                            Label = "Confirmed",
+                            SortOrder = 2,
+                            Status = (short)1,
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Id = new Guid("710861bc-e81f-ea74-f929-83776edd4cd9"),
+                            Code = "Accepted",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "HiringPostApplication.WorkerDetail",
+                            IsDeleted = false,
+                            Label = "You took this job",
+                            SortOrder = 3,
+                            Status = (short)1,
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Id = new Guid("d4e3436b-2fec-f09f-c208-59b85eafae97"),
+                            Code = "Declined",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "HiringPostApplication.WorkerDetail",
+                            IsDeleted = false,
+                            Label = "You turned this down",
+                            SortOrder = 4,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("62df3d3a-238c-21f4-108d-c2324100d873"),
+                            Code = "Rejected",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "HiringPostApplication.WorkerDetail",
+                            IsDeleted = false,
+                            Label = "Not taken forward",
+                            SortOrder = 5,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        });
+                });
+
             modelBuilder.Entity("Zuno.Domain.Entities.District", b =>
                 {
                     b.Property<Guid>("Id")
@@ -8822,6 +10971,222 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                     b.ToTable("hiring_post_salary_adjustments", (string)null);
                 });
 
+            modelBuilder.Entity("Zuno.Domain.Entities.LevelDefinition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Audience")
+                        .HasColumnType("integer")
+                        .HasColumnName("audience");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("integer")
+                        .HasColumnName("level");
+
+                    b.Property<decimal>("MinAnsweredRate")
+                        .HasPrecision(4, 3)
+                        .HasColumnType("numeric(4,3)")
+                        .HasColumnName("min_answered_rate");
+
+                    b.Property<int>("MinBusinesses")
+                        .HasColumnType("integer")
+                        .HasColumnName("min_businesses");
+
+                    b.Property<int>("MinCompletedJobs")
+                        .HasColumnType("integer")
+                        .HasColumnName("min_completed_jobs");
+
+                    b.Property<decimal>("MinRating")
+                        .HasPrecision(3, 2)
+                        .HasColumnType("numeric(3,2)")
+                        .HasColumnName("min_rating");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_date");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("name");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_level_definitions");
+
+                    b.HasIndex("Audience", "Level")
+                        .IsUnique()
+                        .HasDatabaseName("ux_level_definitions_audience_level")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("level_definitions", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("6b7ac230-8ccd-e081-a718-72926b2584f5"),
+                            Audience = 0,
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsDeleted = false,
+                            Level = 1,
+                            MinAnsweredRate = 0m,
+                            MinBusinesses = 0,
+                            MinCompletedJobs = 0,
+                            MinRating = 0m,
+                            Name = "New",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("d504fd7e-e562-17ba-2d37-f15d8d6146cb"),
+                            Audience = 0,
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsDeleted = false,
+                            Level = 2,
+                            MinAnsweredRate = 0m,
+                            MinBusinesses = 0,
+                            MinCompletedJobs = 5,
+                            MinRating = 3.5m,
+                            Name = "Rising",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("d2c99a45-b437-230d-44d3-bfecc5b4055e"),
+                            Audience = 0,
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsDeleted = false,
+                            Level = 3,
+                            MinAnsweredRate = 0m,
+                            MinBusinesses = 0,
+                            MinCompletedJobs = 20,
+                            MinRating = 4.0m,
+                            Name = "Trusted",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("7c404a06-f0f7-4ae4-9f13-1d8fb8a642b9"),
+                            Audience = 0,
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsDeleted = false,
+                            Level = 4,
+                            MinAnsweredRate = 0m,
+                            MinBusinesses = 0,
+                            MinCompletedJobs = 50,
+                            MinRating = 4.3m,
+                            Name = "Established",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("8144608c-6b5c-8b36-4621-f7279f9034ea"),
+                            Audience = 0,
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsDeleted = false,
+                            Level = 5,
+                            MinAnsweredRate = 0m,
+                            MinBusinesses = 0,
+                            MinCompletedJobs = 100,
+                            MinRating = 4.5m,
+                            Name = "Top rated",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("fc00526a-1f9c-d5c5-7000-57866a0d22c5"),
+                            Audience = 1,
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsDeleted = false,
+                            Level = 1,
+                            MinAnsweredRate = 0m,
+                            MinBusinesses = 0,
+                            MinCompletedJobs = 0,
+                            MinRating = 0m,
+                            Name = "New",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("e237e2da-637d-0dc4-bed1-8292099865a6"),
+                            Audience = 1,
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsDeleted = false,
+                            Level = 2,
+                            MinAnsweredRate = 0.70m,
+                            MinBusinesses = 1,
+                            MinCompletedJobs = 5,
+                            MinRating = 3.5m,
+                            Name = "Getting established",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("20140d8a-3a14-3cac-5863-5cf8a274fc51"),
+                            Audience = 1,
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsDeleted = false,
+                            Level = 3,
+                            MinAnsweredRate = 0.80m,
+                            MinBusinesses = 3,
+                            MinCompletedJobs = 20,
+                            MinRating = 4.0m,
+                            Name = "Experienced",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("bcaebb43-718b-e1dc-78bf-70ab8dfc5d89"),
+                            Audience = 1,
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsDeleted = false,
+                            Level = 4,
+                            MinAnsweredRate = 0.85m,
+                            MinBusinesses = 5,
+                            MinCompletedJobs = 50,
+                            MinRating = 4.3m,
+                            Name = "Very experienced",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("e6736bee-24a7-9fd9-39c0-90223461aa60"),
+                            Audience = 1,
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsDeleted = false,
+                            Level = 5,
+                            MinAnsweredRate = 0.90m,
+                            MinBusinesses = 8,
+                            MinCompletedJobs = 100,
+                            MinRating = 4.5m,
+                            Name = "Highly experienced",
+                            Status = (short)1
+                        });
+                });
+
             modelBuilder.Entity("Zuno.Domain.Entities.Notification", b =>
                 {
                     b.Property<Guid>("Id")
@@ -9229,6 +11594,458 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                     b.ToTable("payout_batch_items", (string)null);
                 });
 
+            modelBuilder.Entity("Zuno.Domain.Entities.PlatformSetting", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("key");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_date");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id")
+                        .HasName("pk_platform_settings");
+
+                    b.HasIndex("Key")
+                        .IsUnique()
+                        .HasDatabaseName("ux_platform_settings_key")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("platform_settings", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("1c6c03be-31d2-10e4-3e9c-5d206cc29fd2"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Furthest a customer may be from a served district's centre (km).",
+                            IsDeleted = false,
+                            Key = "service-area.max-distance-km",
+                            Status = (short)1,
+                            Value = "150"
+                        },
+                        new
+                        {
+                            Id = new Guid("9d981c59-1c68-3632-add5-f5680b4fbb29"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "How far past the nearest district a customer may be and still be served (km).",
+                            IsDeleted = false,
+                            Key = "service-area.border-slack-km",
+                            Status = (short)1,
+                            Value = "25"
+                        },
+                        new
+                        {
+                            Id = new Guid("d5c12ede-b430-3911-6d3f-960991164833"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Furthest a pin may be from a district centre and still be placed in it (km).",
+                            IsDeleted = false,
+                            Key = "district.match-max-distance-km",
+                            Status = (short)1,
+                            Value = "150"
+                        },
+                        new
+                        {
+                            Id = new Guid("144736b4-1aa3-1744-3e9b-9c5e277de372"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Job length assumed when a service gives none (minutes).",
+                            IsDeleted = false,
+                            Key = "schedule.default-job-minutes",
+                            Status = (short)1,
+                            Value = "120"
+                        },
+                        new
+                        {
+                            Id = new Guid("214d4020-e887-654d-b401-65db4e89aaa4"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Gap a worker needs between two jobs (minutes).",
+                            IsDeleted = false,
+                            Key = "schedule.travel-buffer-minutes",
+                            Status = (short)1,
+                            Value = "30"
+                        },
+                        new
+                        {
+                            Id = new Guid("74577a96-904f-2c88-22e7-daaef781aa18"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Shortest job a hiring post may describe (minutes).",
+                            IsDeleted = false,
+                            Key = "hiring-post.min-duration-minutes",
+                            Status = (short)1,
+                            Value = "15"
+                        },
+                        new
+                        {
+                            Id = new Guid("4b44c17d-167b-aa2c-e380-2f32d466d907"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Longest job a hiring post may describe (minutes).",
+                            IsDeleted = false,
+                            Key = "hiring-post.max-duration-minutes",
+                            Status = (short)1,
+                            Value = "1440"
+                        },
+                        new
+                        {
+                            Id = new Guid("50a46fb0-b5ee-4579-c78d-4c1ee5317baa"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Length a hiring post gets when none is given (minutes).",
+                            IsDeleted = false,
+                            Key = "hiring-post.default-duration-minutes",
+                            Status = (short)1,
+                            Value = "120"
+                        },
+                        new
+                        {
+                            Id = new Guid("674181cf-c6d5-d5bf-4686-3c48741e8489"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Most workers one hiring post may ask for.",
+                            IsDeleted = false,
+                            Key = "hiring-post.max-workers",
+                            Status = (short)1,
+                            Value = "100"
+                        },
+                        new
+                        {
+                            Id = new Guid("9a4f9b03-3652-2de1-ba43-6b324fe2374a"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Most orders one list shows, newest first (performance cap).",
+                            IsDeleted = false,
+                            Key = "order.list-max",
+                            Status = (short)1,
+                            Value = "500"
+                        },
+                        new
+                        {
+                            Id = new Guid("92990531-02e1-a739-b39d-b12062e2a351"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Most people one order's crew may be set to.",
+                            IsDeleted = false,
+                            Key = "order.max-crew-size",
+                            Status = (short)1,
+                            Value = "100"
+                        },
+                        new
+                        {
+                            Id = new Guid("44643e2b-5693-f981-baf5-0d043f01bbbe"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Jobs shown per page in a worker's Find work feed.",
+                            IsDeleted = false,
+                            Key = "hiring-feed.default-page-size",
+                            Status = (short)1,
+                            Value = "60"
+                        },
+                        new
+                        {
+                            Id = new Guid("4f1318a6-525a-7011-d04d-7ea3e6d514ee"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Most jobs a worker's Find work feed may ask for at once.",
+                            IsDeleted = false,
+                            Key = "hiring-feed.max-page-size",
+                            Status = (short)1,
+                            Value = "100"
+                        },
+                        new
+                        {
+                            Id = new Guid("1968ef61-b5e5-cc40-f4ca-3eaf3ea88c6a"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Further-away and unlocated jobs added to a nearby feed.",
+                            IsDeleted = false,
+                            Key = "hiring-feed.side-group-cap",
+                            Status = (short)1,
+                            Value = "10"
+                        },
+                        new
+                        {
+                            Id = new Guid("f2a8c0c7-aae1-0a16-32ba-c9b5f73e5cc7"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Rows a distance search reads before measuring (performance cap).",
+                            IsDeleted = false,
+                            Key = "hiring-feed.bounding-box-row-cap",
+                            Status = (short)1,
+                            Value = "500"
+                        },
+                        new
+                        {
+                            Id = new Guid("23ad102a-a9f0-dcf5-7eb1-9bb2ff19fea0"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Most questions a service may ask the customer.",
+                            IsDeleted = false,
+                            Key = "service.max-questions",
+                            Status = (short)1,
+                            Value = "15"
+                        },
+                        new
+                        {
+                            Id = new Guid("28dffa64-8a8e-8856-289a-932c065ce845"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Most services one customer search returns (performance cap).",
+                            IsDeleted = false,
+                            Key = "service-search.max-page-size",
+                            Status = (short)1,
+                            Value = "100"
+                        },
+                        new
+                        {
+                            Id = new Guid("9b24cd12-870a-071e-b96b-2ee8470d27c3"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Photo slots per service and per package.",
+                            IsDeleted = false,
+                            Key = "service.image-slots",
+                            Status = (short)1,
+                            Value = "3"
+                        },
+                        new
+                        {
+                            Id = new Guid("a4d2398a-43c6-0e7c-f61d-c16e4fdd5edf"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Longest a service video may run (seconds).",
+                            IsDeleted = false,
+                            Key = "service.video-max-seconds",
+                            Status = (short)1,
+                            Value = "30"
+                        },
+                        new
+                        {
+                            Id = new Guid("857b0a23-f7ca-c121-9bb0-436989de6381"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "JPEG quality the app compresses photos to before upload (1-100).",
+                            IsDeleted = false,
+                            Key = "media.image-quality",
+                            Status = (short)1,
+                            Value = "85"
+                        },
+                        new
+                        {
+                            Id = new Guid("f282dbf3-b7c3-dfed-8336-eae8d36746a0"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Widest a photo is uploaded at (pixels).",
+                            IsDeleted = false,
+                            Key = "media.image-max-width",
+                            Status = (short)1,
+                            Value = "1600"
+                        },
+                        new
+                        {
+                            Id = new Guid("c6bb5ba0-f03b-03f4-e5e7-68c427a902ca"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Furthest ahead a date can be picked in the app (days).",
+                            IsDeleted = false,
+                            Key = "schedule.max-days-ahead",
+                            Status = (short)1,
+                            Value = "365"
+                        },
+                        new
+                        {
+                            Id = new Guid("5eff7c8f-fb92-e4c0-3590-a0627ea5c218"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Furthest ahead a customer may book a service (days).",
+                            IsDeleted = false,
+                            Key = "booking.customer-max-days-ahead",
+                            Status = (short)1,
+                            Value = "90"
+                        },
+                        new
+                        {
+                            Id = new Guid("51046fce-7bbe-87ca-c26b-f0fbe8aa2fb0"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Most openings one full-time job post may offer.",
+                            IsDeleted = false,
+                            Key = "vacancy.max-openings",
+                            Status = (short)1,
+                            Value = "999"
+                        },
+                        new
+                        {
+                            Id = new Guid("40103091-6304-4fb3-1357-d97adc4720c3"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Longest contract a full-time job post may describe (months).",
+                            IsDeleted = false,
+                            Key = "vacancy.max-contract-months",
+                            Status = (short)1,
+                            Value = "60"
+                        },
+                        new
+                        {
+                            Id = new Guid("c0522967-3d3e-e7dc-ef3b-5e1c97b3f644"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "How long the customer home catalogue is reused before re-reading it (seconds; 0 = never).",
+                            IsDeleted = false,
+                            Key = "customer-home.cache-seconds",
+                            Status = (short)1,
+                            Value = "300"
+                        },
+                        new
+                        {
+                            Id = new Guid("206fee6b-393a-de17-9eb3-62e60dc6a81b"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Services in the customer home 'For you' grid.",
+                            IsDeleted = false,
+                            Key = "customer-home.for-you-count",
+                            Status = (short)1,
+                            Value = "14"
+                        },
+                        new
+                        {
+                            Id = new Guid("ee91f55a-fce5-7e42-77a9-cce798d57d4e"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Services in the customer home 'Booked most often' strip.",
+                            IsDeleted = false,
+                            Key = "customer-home.most-booked-count",
+                            Status = (short)1,
+                            Value = "7"
+                        },
+                        new
+                        {
+                            Id = new Guid("702e6a77-3a24-0ff3-7add-bd2f8dd7b612"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Services in the customer home 'More to explore' strip.",
+                            IsDeleted = false,
+                            Key = "customer-home.more-count",
+                            Status = (short)1,
+                            Value = "10"
+                        },
+                        new
+                        {
+                            Id = new Guid("e98a3ef4-d855-1d94-c47a-c5b1b1554051"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Services in the customer home 'Top rated' strip.",
+                            IsDeleted = false,
+                            Key = "customer-home.top-rated-count",
+                            Status = (short)1,
+                            Value = "5"
+                        },
+                        new
+                        {
+                            Id = new Guid("f4fc69d3-e38c-a4e5-7086-0402bde5c37a"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Services in the customer home full list.",
+                            IsDeleted = false,
+                            Key = "customer-home.all-count",
+                            Status = (short)1,
+                            Value = "40"
+                        },
+                        new
+                        {
+                            Id = new Guid("1e2e87c5-e504-cda7-9e39-71fa2b4f69de"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Reviews a business needs to appear in 'Top rated'.",
+                            IsDeleted = false,
+                            Key = "customer-home.top-rated-min-reviews",
+                            Status = (short)1,
+                            Value = "1"
+                        },
+                        new
+                        {
+                            Id = new Guid("ef5b0164-7aaf-85d1-4473-1a3e20c0d724"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Months shown on the business home trend chart.",
+                            IsDeleted = false,
+                            Key = "business-dashboard.trend-months",
+                            Status = (short)1,
+                            Value = "6"
+                        },
+                        new
+                        {
+                            Id = new Guid("ab457f5b-20c9-cd16-88c6-a8d18c726b65"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Rows in each business home list.",
+                            IsDeleted = false,
+                            Key = "business-dashboard.detail-limit",
+                            Status = (short)1,
+                            Value = "50"
+                        },
+                        new
+                        {
+                            Id = new Guid("bc1d398e-8ee9-0a33-b7f7-408ae6749b7b"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Months shown on the worker home trend chart.",
+                            IsDeleted = false,
+                            Key = "worker-dashboard.trend-months",
+                            Status = (short)1,
+                            Value = "6"
+                        },
+                        new
+                        {
+                            Id = new Guid("dc9f08a1-b535-1697-98a7-78c7cebd90bf"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Rows in each worker home list.",
+                            IsDeleted = false,
+                            Key = "worker-dashboard.detail-limit",
+                            Status = (short)1,
+                            Value = "25"
+                        },
+                        new
+                        {
+                            Id = new Guid("b075c538-b5bd-3532-ed10-c47b6129f8f9"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Reviews a business needs before its average counts towards its level.",
+                            IsDeleted = false,
+                            Key = "business-level.min-reviews-for-average",
+                            Status = (short)1,
+                            Value = "3"
+                        },
+                        new
+                        {
+                            Id = new Guid("7c3ec82f-6a15-8e30-21fe-cefc2fceca74"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Ratings a worker needs before their average counts towards their level.",
+                            IsDeleted = false,
+                            Key = "worker-level.min-reviews-for-average",
+                            Status = (short)1,
+                            Value = "3"
+                        },
+                        new
+                        {
+                            Id = new Guid("f1866297-a5c1-0ce5-5066-8fa5d901cb44"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Offers a worker needs before their answered-offers rate counts towards their level.",
+                            IsDeleted = false,
+                            Key = "worker-level.min-offers-for-rate",
+                            Status = (short)1,
+                            Value = "5"
+                        });
+                });
+
             modelBuilder.Entity("Zuno.Domain.Entities.Rating", b =>
                 {
                     b.Property<Guid>("Id")
@@ -9368,6 +12185,12 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("pk_refresh_tokens");
@@ -10652,6 +13475,418 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Zuno.Domain.Entities.ThemeColor", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
+
+                    b.Property<string>("DarkValue")
+                        .IsRequired()
+                        .HasMaxLength(9)
+                        .HasColumnType("character varying(9)")
+                        .HasColumnName("dark_value");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("LightValue")
+                        .IsRequired()
+                        .HasMaxLength(9)
+                        .HasColumnType("character varying(9)")
+                        .HasColumnName("light_value");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_date");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_theme_colors");
+
+                    b.HasIndex("Key")
+                        .IsUnique()
+                        .HasDatabaseName("ux_theme_colors_key")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("theme_colors", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("3fbd1e81-9a50-0d60-870b-5669841a752a"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FF4B3FB8",
+                            IsDeleted = false,
+                            Key = "brand.primary",
+                            LightValue = "#FF4B3FB8",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("2633e5dd-68ce-718b-91ef-464971e38543"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FF2E2578",
+                            IsDeleted = false,
+                            Key = "brand.primaryDark",
+                            LightValue = "#FF2E2578",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("d0e4704c-d7d1-f76b-d7a3-a80c22e21684"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FFF2A93B",
+                            IsDeleted = false,
+                            Key = "brand.secondary",
+                            LightValue = "#FFF2A93B",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("96793edd-63d8-8a34-a367-e07a71bde904"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FFB3261E",
+                            IsDeleted = false,
+                            Key = "brand.error",
+                            LightValue = "#FFB3261E",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("5194323f-481c-f047-faf8-7c2d1e5e37e7"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FF121212",
+                            IsDeleted = false,
+                            Key = "surface.auth",
+                            LightValue = "#FFFFFFFF",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("9cf86360-01f7-2a8e-f198-2dd32b8b7d37"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FF1A1A1A",
+                            IsDeleted = false,
+                            Key = "surface.authBackdrop",
+                            LightValue = "#FFF4F4F7",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c60e8009-7b82-d962-1943-53379e921f55"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FF121218",
+                            IsDeleted = false,
+                            Key = "surface.scaffold",
+                            LightValue = "#FFF5F5F9",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("b667a121-2b94-0cff-c251-1fe2cc8ec62f"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FF1D1D25",
+                            IsDeleted = false,
+                            Key = "surface.fieldFill",
+                            LightValue = "#FFF2F2F6",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("bd27786a-4750-c004-8197-20494a071cd2"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FF2E3568",
+                            IsDeleted = false,
+                            Key = "decor.circle",
+                            LightValue = "#FF2E3568",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("752f296f-4338-6b00-8a36-6482f4e3c8a5"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FF262633",
+                            IsDeleted = false,
+                            Key = "decor.circleFaint",
+                            LightValue = "#FFD4D5E3",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("96d3115c-341e-8fe3-b1ea-bc7fd96e601c"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FFF2A93B",
+                            IsDeleted = false,
+                            Key = "mark.ratingStar",
+                            LightValue = "#FFF2A93B",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("aebc895a-cabb-79c6-d579-1c66d18ab6be"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FFFFFFFF",
+                            IsDeleted = false,
+                            Key = "mark.qrBackdrop",
+                            LightValue = "#FFFFFFFF",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("a43bf641-cf18-2074-8c35-d38d004016c0"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#42000000",
+                            IsDeleted = false,
+                            Key = "mark.shadowSoft",
+                            LightValue = "#42000000",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("470bf0cd-9a84-c302-15cb-b26f1f804dba"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#61000000",
+                            IsDeleted = false,
+                            Key = "mark.shadowStrong",
+                            LightValue = "#61000000",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("8fbc1129-3bba-f9d7-fe43-5700303491b4"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FF000000",
+                            IsDeleted = false,
+                            Key = "media.backdrop",
+                            LightValue = "#FF000000",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("fb9f83ed-0ee4-8d40-d9d3-ce28b5259d11"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#8A000000",
+                            IsDeleted = false,
+                            Key = "media.scrim",
+                            LightValue = "#8A000000",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("d6bcb99f-cd3d-3eda-f7bb-47ce85e1eae2"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FFFFFFFF",
+                            IsDeleted = false,
+                            Key = "media.onMedia",
+                            LightValue = "#FFFFFFFF",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("91748003-4fd4-44a9-2dac-61af752e795e"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#B3FFFFFF",
+                            IsDeleted = false,
+                            Key = "media.onMediaMuted",
+                            LightValue = "#B3FFFFFF",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("92d7b0bb-a0bd-5eab-b746-358d49c54e15"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#DD000000",
+                            IsDeleted = false,
+                            Key = "media.gradientFoot",
+                            LightValue = "#DD000000",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("e19c9fd4-b83f-606c-e325-c7653b4d51ac"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FF7B1FA2",
+                            IsDeleted = false,
+                            Key = "role.business.seed",
+                            LightValue = "#FF7B1FA2",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("fb236b42-af61-3772-6bf8-31b26f336075"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FF4A0D6B",
+                            IsDeleted = false,
+                            Key = "role.business.gradientStart",
+                            LightValue = "#FF4A0D6B",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("5b288cd1-c39e-7872-0928-e5dd4bde9e63"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FF9C27B0",
+                            IsDeleted = false,
+                            Key = "role.business.gradientEnd",
+                            LightValue = "#FF9C27B0",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("4aedad13-4906-77b1-1814-8c7a3d4d608e"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FF0E8F5B",
+                            IsDeleted = false,
+                            Key = "role.worker.seed",
+                            LightValue = "#FF0E8F5B",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("b0d7ec05-946f-f15b-e643-294b63cbe81e"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FF066B43",
+                            IsDeleted = false,
+                            Key = "role.worker.gradientStart",
+                            LightValue = "#FF066B43",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("e93f472f-ad36-7499-7b2f-de79c088f2d6"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FF17A96C",
+                            IsDeleted = false,
+                            Key = "role.worker.gradientEnd",
+                            LightValue = "#FF17A96C",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("e36b91a1-5a71-2c08-ab83-68ef67b974c4"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FF3949AB",
+                            IsDeleted = false,
+                            Key = "role.customer.seed",
+                            LightValue = "#FF3949AB",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("fd0561fc-3730-1bad-63b5-5cc79228772a"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FF1A237E",
+                            IsDeleted = false,
+                            Key = "role.customer.gradientStart",
+                            LightValue = "#FF1A237E",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("77af0160-979e-2cb5-d97e-25c1c8826f52"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FF5C6BC0",
+                            IsDeleted = false,
+                            Key = "role.customer.gradientEnd",
+                            LightValue = "#FF5C6BC0",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("80af8198-42ed-37c5-7ab2-49393ab0f7e3"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FFC2185B",
+                            IsDeleted = false,
+                            Key = "role.admin.seed",
+                            LightValue = "#FFC2185B",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("fb74dc9e-63b1-2fa1-678e-c0ff0a0f2b19"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FF6E0B33",
+                            IsDeleted = false,
+                            Key = "role.admin.gradientStart",
+                            LightValue = "#FF6E0B33",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("3f6e728a-5ce4-f212-3372-9f0b5c59dcca"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FFD81B60",
+                            IsDeleted = false,
+                            Key = "role.admin.gradientEnd",
+                            LightValue = "#FFD81B60",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("a927b94d-0a8c-2f27-d16e-686b421071c2"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FF5FCB8B",
+                            IsDeleted = false,
+                            Key = "status.success",
+                            LightValue = "#FF1B7F42",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("61c9a1ce-c4a1-fcdf-4358-b99011c7a189"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FFE8B168",
+                            IsDeleted = false,
+                            Key = "status.progress",
+                            LightValue = "#FF97590A",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("9921c402-0a2e-5bcf-0c45-bdd92e27470a"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FF9BA6C2",
+                            IsDeleted = false,
+                            Key = "status.waiting",
+                            LightValue = "#FF4A5570",
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("ee63328e-1b82-873c-5ad1-a7f74a0b1be4"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DarkValue = "#FFF2938C",
+                            IsDeleted = false,
+                            Key = "status.danger",
+                            LightValue = "#FFB3261E",
+                            Status = (short)1
+                        });
+                });
+
             modelBuilder.Entity("Zuno.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -10762,6 +13997,597 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                     b.ToTable("users", null, t =>
                         {
                             t.HasCheckConstraint("ck_users_email_or_phone_required", "email IS NOT NULL OR phone_number IS NOT NULL");
+                        });
+                });
+
+            modelBuilder.Entity("Zuno.Domain.Entities.Vacancy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BusinessOwnerProfileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("business_owner_profile_id");
+
+                    b.Property<short?>("ContractMonths")
+                        .HasColumnType("smallint")
+                        .HasColumnName("contract_months");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<Guid?>("DistrictId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("district_id");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<decimal?>("FeeAmount")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("fee_amount");
+
+                    b.Property<int?>("FeeListingDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("fee_listing_days");
+
+                    b.Property<DateTimeOffset?>("HiringStoppedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("hiring_stopped_at");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("LastPaymentId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("last_payment_id");
+
+                    b.Property<decimal?>("Latitude")
+                        .HasColumnType("numeric(9,6)")
+                        .HasColumnName("latitude");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("location");
+
+                    b.Property<int>("LocationPrecision")
+                        .HasColumnType("integer")
+                        .HasColumnName("location_precision");
+
+                    b.Property<decimal?>("Longitude")
+                        .HasColumnType("numeric(9,6)")
+                        .HasColumnName("longitude");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_date");
+
+                    b.Property<int>("Openings")
+                        .HasColumnType("integer")
+                        .HasColumnName("openings");
+
+                    b.Property<int>("PaidCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("paid_count");
+
+                    b.Property<short>("PayPeriod")
+                        .HasColumnType("smallint")
+                        .HasColumnName("pay_period");
+
+                    b.Property<string>("PendingOrderId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("pending_order_id");
+
+                    b.Property<DateTimeOffset?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_at");
+
+                    b.Property<decimal?>("SalaryMax")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("salary_max");
+
+                    b.Property<decimal>("SalaryMin")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("salary_min");
+
+                    b.Property<Guid?>("ServiceSubCategoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("service_sub_category_id");
+
+                    b.Property<TimeOnly?>("ShiftEnd")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("shift_end");
+
+                    b.Property<TimeOnly?>("ShiftStart")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("shift_start");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("title");
+
+                    b.Property<Guid?>("VacancyFeePlanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("vacancy_fee_plan_id");
+
+                    b.Property<Guid>("VacancyJobTypeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("vacancy_job_type_id");
+
+                    b.Property<short>("VacancyStatus")
+                        .HasColumnType("smallint")
+                        .HasColumnName("vacancy_status");
+
+                    b.Property<short>("WorkingDaysPerWeek")
+                        .HasColumnType("smallint")
+                        .HasColumnName("working_days_per_week");
+
+                    b.HasKey("Id")
+                        .HasName("pk_vacancies");
+
+                    b.HasIndex("BusinessOwnerProfileId")
+                        .HasDatabaseName("ix_vacancies_business_owner_profile_id");
+
+                    b.HasIndex("DistrictId")
+                        .HasDatabaseName("ix_vacancies_district_id");
+
+                    b.HasIndex("ServiceSubCategoryId")
+                        .HasDatabaseName("ix_vacancies_service_sub_category_id");
+
+                    b.HasIndex("VacancyFeePlanId")
+                        .HasDatabaseName("ix_vacancies_vacancy_fee_plan_id");
+
+                    b.HasIndex("VacancyJobTypeId")
+                        .HasDatabaseName("ix_vacancies_vacancy_job_type_id");
+
+                    b.HasIndex("Latitude", "Longitude")
+                        .HasDatabaseName("ix_vacancies_latitude_longitude");
+
+                    b.HasIndex("VacancyStatus", "ExpiresAt")
+                        .HasDatabaseName("ix_vacancies_status_expires_at")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("vacancies", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_vacancies_openings", "openings >= 1");
+
+                            t.HasCheckConstraint("ck_vacancies_salary_min", "salary_min > 0");
+
+                            t.HasCheckConstraint("ck_vacancies_salary_range", "salary_max IS NULL OR salary_max >= salary_min");
+
+                            t.HasCheckConstraint("ck_vacancies_working_days", "working_days_per_week BETWEEN 1 AND 7");
+                        });
+                });
+
+            modelBuilder.Entity("Zuno.Domain.Entities.VacancyApplication", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<short>("ApplicationStatus")
+                        .HasColumnType("smallint")
+                        .HasColumnName("application_status");
+
+                    b.Property<string>("BusinessNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("business_note");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_date");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset?>("StatusChangedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("status_changed_at");
+
+                    b.Property<Guid>("VacancyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("vacancy_id");
+
+                    b.Property<Guid>("WorkerProfileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("worker_profile_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_vacancy_applications");
+
+                    b.HasIndex("WorkerProfileId")
+                        .HasDatabaseName("ix_vacancy_applications_worker_profile_id");
+
+                    b.HasIndex("VacancyId", "WorkerProfileId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_vacancy_applications_vacancy_worker")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("vacancy_applications", (string)null);
+                });
+
+            modelBuilder.Entity("Zuno.Domain.Entities.VacancyApplicationAnswer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AnswerText")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("answer_text");
+
+                    b.Property<string>("ContentType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("content_type");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
+
+                    b.Property<string>("FileKey")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("file_key");
+
+                    b.Property<string>("FileName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("file_name");
+
+                    b.Property<long?>("FileSizeBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("file_size_bytes");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<short>("Kind")
+                        .HasColumnType("smallint")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_date");
+
+                    b.Property<string>("Prompt")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("prompt");
+
+                    b.Property<short>("SortOrder")
+                        .HasColumnType("smallint")
+                        .HasColumnName("sort_order");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("VacancyApplicationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("vacancy_application_id");
+
+                    b.Property<Guid?>("VacancyRequirementId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("vacancy_requirement_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_vacancy_application_answers");
+
+                    b.HasIndex("VacancyApplicationId")
+                        .HasDatabaseName("ix_vacancy_application_answers_application_id");
+
+                    b.ToTable("vacancy_application_answers", (string)null);
+                });
+
+            modelBuilder.Entity("Zuno.Domain.Entities.VacancyFeePlan", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<int>("ListingDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("listing_days");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_date");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("name");
+
+                    b.Property<short>("SortOrder")
+                        .HasColumnType("smallint")
+                        .HasColumnName("sort_order");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_vacancy_fee_plans");
+
+                    b.ToTable("vacancy_fee_plans", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_vacancy_fee_plans_amount", "amount >= 0");
+
+                            t.HasCheckConstraint("ck_vacancy_fee_plans_listing_days", "listing_days > 0");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("c5555555-0000-0000-0000-000000000001"),
+                            Amount = 49m,
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 27, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDeleted = false,
+                            ListingDays = 30,
+                            Name = "Standard listing",
+                            SortOrder = (short)1,
+                            Status = (short)1
+                        });
+                });
+
+            modelBuilder.Entity("Zuno.Domain.Entities.VacancyJobType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
+
+                    b.Property<bool>("HasFixedLength")
+                        .HasColumnType("boolean")
+                        .HasColumnName("has_fixed_length");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_date");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("name");
+
+                    b.Property<short>("SortOrder")
+                        .HasColumnType("smallint")
+                        .HasColumnName("sort_order");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_vacancy_job_types");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("ux_vacancy_job_types_name")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("vacancy_job_types", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("c3333333-0000-0000-0000-000000000001"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 27, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            HasFixedLength = false,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Full-time",
+                            SortOrder = (short)1,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c3333333-0000-0000-0000-000000000002"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 27, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            HasFixedLength = false,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Part-time",
+                            SortOrder = (short)2,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c3333333-0000-0000-0000-000000000003"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 27, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            HasFixedLength = true,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Contract",
+                            SortOrder = (short)3,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c3333333-0000-0000-0000-000000000004"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 27, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            HasFixedLength = true,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Internship",
+                            SortOrder = (short)4,
+                            Status = (short)1
+                        });
+                });
+
+            modelBuilder.Entity("Zuno.Domain.Entities.VacancyRequirement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_required");
+
+                    b.Property<short>("Kind")
+                        .HasColumnType("smallint")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_date");
+
+                    b.Property<string>("Prompt")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("prompt");
+
+                    b.Property<short>("SortOrder")
+                        .HasColumnType("smallint")
+                        .HasColumnName("sort_order");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("VacancyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("vacancy_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_vacancy_requirements");
+
+                    b.HasIndex("VacancyId")
+                        .HasDatabaseName("ix_vacancy_requirements_vacancy_id");
+
+                    b.ToTable("vacancy_requirements", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_vacancy_requirements_kind", "kind BETWEEN 1 AND 4");
                         });
                 });
 
@@ -11523,6 +15349,96 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                     b.Navigation("Role");
                 });
 
+            modelBuilder.Entity("Zuno.Domain.Entities.Vacancy", b =>
+                {
+                    b.HasOne("Zuno.Domain.Entities.BusinessOwnerProfile", "BusinessOwnerProfile")
+                        .WithMany()
+                        .HasForeignKey("BusinessOwnerProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_vacancies_business_owner_profiles_business_owner_profile_id");
+
+                    b.HasOne("Zuno.Domain.Entities.District", "District")
+                        .WithMany()
+                        .HasForeignKey("DistrictId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_vacancies_districts_district_id");
+
+                    b.HasOne("Zuno.Domain.Entities.ServiceSubCategory", "ServiceSubCategory")
+                        .WithMany()
+                        .HasForeignKey("ServiceSubCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_vacancies_service_sub_categories_service_sub_category_id");
+
+                    b.HasOne("Zuno.Domain.Entities.VacancyFeePlan", "VacancyFeePlan")
+                        .WithMany()
+                        .HasForeignKey("VacancyFeePlanId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_vacancies_vacancy_fee_plans_vacancy_fee_plan_id");
+
+                    b.HasOne("Zuno.Domain.Entities.VacancyJobType", "VacancyJobType")
+                        .WithMany()
+                        .HasForeignKey("VacancyJobTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_vacancies_vacancy_job_types_vacancy_job_type_id");
+
+                    b.Navigation("BusinessOwnerProfile");
+
+                    b.Navigation("District");
+
+                    b.Navigation("ServiceSubCategory");
+
+                    b.Navigation("VacancyFeePlan");
+
+                    b.Navigation("VacancyJobType");
+                });
+
+            modelBuilder.Entity("Zuno.Domain.Entities.VacancyApplication", b =>
+                {
+                    b.HasOne("Zuno.Domain.Entities.Vacancy", "Vacancy")
+                        .WithMany("Applications")
+                        .HasForeignKey("VacancyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_vacancy_applications_vacancies_vacancy_id");
+
+                    b.HasOne("Zuno.Domain.Entities.WorkerProfile", "WorkerProfile")
+                        .WithMany()
+                        .HasForeignKey("WorkerProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_vacancy_applications_worker_profiles_worker_profile_id");
+
+                    b.Navigation("Vacancy");
+
+                    b.Navigation("WorkerProfile");
+                });
+
+            modelBuilder.Entity("Zuno.Domain.Entities.VacancyApplicationAnswer", b =>
+                {
+                    b.HasOne("Zuno.Domain.Entities.VacancyApplication", "VacancyApplication")
+                        .WithMany("Answers")
+                        .HasForeignKey("VacancyApplicationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_vacancy_application_answers_vacancy_applications_vacancy_ap");
+
+                    b.Navigation("VacancyApplication");
+                });
+
+            modelBuilder.Entity("Zuno.Domain.Entities.VacancyRequirement", b =>
+                {
+                    b.HasOne("Zuno.Domain.Entities.Vacancy", "Vacancy")
+                        .WithMany("Requirements")
+                        .HasForeignKey("VacancyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_vacancy_requirements_vacancies_vacancy_id");
+
+                    b.Navigation("Vacancy");
+                });
+
             modelBuilder.Entity("Zuno.Domain.Entities.WorkMessage", b =>
                 {
                     b.HasOne("Zuno.Domain.Entities.BusinessOwnerProfile", "BusinessOwnerProfile")
@@ -11665,6 +15581,18 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                     b.Navigation("RefreshTokens");
 
                     b.Navigation("WorkerProfile");
+                });
+
+            modelBuilder.Entity("Zuno.Domain.Entities.Vacancy", b =>
+                {
+                    b.Navigation("Applications");
+
+                    b.Navigation("Requirements");
+                });
+
+            modelBuilder.Entity("Zuno.Domain.Entities.VacancyApplication", b =>
+                {
+                    b.Navigation("Answers");
                 });
 
             modelBuilder.Entity("Zuno.Domain.Entities.WorkerProfile", b =>

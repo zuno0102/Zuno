@@ -1,0 +1,38 @@
+{
+  "groups": {
+    "WorkerPayout": {
+      "Unpaid": { "label": "Not sent yet", "tone": "waiting", "sort": 1 },
+      "Processing": { "label": "On its way", "tone": "waiting", "sort": 2 },
+      "AwaitingWorkerConfirmation": { "label": "Confirm you received it", "tone": "progress", "sort": 3 },
+      "Failed": { "label": "Payment failed", "tone": "danger", "sort": 4 }
+    },
+    "WorkerPayoutReadiness": {
+      "NoAddress": { "label": "No payout address", "detail": "Add your UPI so wages have somewhere to go.", "tone": "danger", "icon": "error_outline", "sort": 1 },
+      "Checking": { "label": "Your UPI is not verified", "detail": "Check the UPI ID is correct and save it again. Wages can be sent once it is verified.", "tone": "danger", "icon": "error_outline", "sort": 2 },
+      "Ready": { "label": "Ready to be paid", "detail": "Wages go straight to {upi}.", "tone": "success", "icon": "verified_outlined", "sort": 3 }
+    },
+    "WorkerAvailability": {
+      "Available": { "label": "Available", "tone": "success", "sort": 1 },
+      "Busy": { "label": "Busy", "tone": "waiting", "sort": 2 },
+      "Offline": { "label": "Offline", "tone": "waiting", "sort": 3 }
+    },
+    "WorkerJobProgress": {
+      "Booked": { "label": "Booked", "tone": "waiting", "sort": 1 },
+      "Started": { "label": "Work started", "tone": "progress", "sort": 2 },
+      "Finished": { "label": "Work finished", "tone": "success", "sort": 3 }
+    },
+    "HiringPostApplication.WorkerFeed": {
+      "Applied": { "label": "Applied — awaiting the business", "sort": 1 },
+      "Accepted": { "label": "You accepted this job", "sort": 2 },
+      "Declined": { "label": "You declined this offer", "sort": 3 },
+      "Rejected": { "label": "Not selected", "sort": 4 }
+    },
+    "HiringPostApplication.WorkerDetail": {
+      "Applied": { "label": "You have applied", "tone": "waiting", "sort": 1 },
+      "Confirmed": { "label": "Confirmed", "tone": "progress", "sort": 2 },
+      "Accepted": { "label": "You took this job", "tone": "success", "sort": 3 },
+      "Declined": { "label": "You turned this down", "tone": "waiting", "sort": 4 },
+      "Rejected": { "label": "Not taken forward", "tone": "waiting", "sort": 5 }
+    }
+  }
+}

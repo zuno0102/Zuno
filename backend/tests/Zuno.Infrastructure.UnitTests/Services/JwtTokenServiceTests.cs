@@ -198,8 +198,42 @@ public class JwtTokenServiceTests
         var userId = Guid.NewGuid();
         var service = Service();
 
-        service.ValidatePasswordResetToken(service.GeneratePasswordResetToken(userId))
-            .Should().Be(userId);
+        service.ValidatePasswordResetToken(service.GeneratePasswordResetToken(userId, "hash-1"))!
+            .UserId.Should().Be(userId);
+    }
+
+    [Fact]
+    public void A_password_reset_token_is_tied_to_the_password_it_was_issued_against()
+    {
+        // What makes a reset link single-use: once the password changes, the stamp in the token no
+        // longer matches the account's, and the reset handler refuses it.
+        _clock.Setup(c => c.UtcNow).Returns(DateTimeOffset.UtcNow);
+        var service = Service();
+
+        var claims = service.ValidatePasswordResetToken(service.GeneratePasswordResetToken(Guid.NewGuid(), "hash-1"))!;
+
+        claims.PasswordStamp.Should().Be(service.PasswordStamp("hash-1"));
+        claims.PasswordStamp.Should().NotBe(service.PasswordStamp("hash-2"));
+        claims.PasswordStamp.Should().NotContain("hash-1", "the token must say nothing about the password");
+    }
+
+    [Fact]
+    public void A_password_reset_token_is_not_a_sign_in_token()
+    {
+        // Same key and issuer, so without its own audience a reset token would pass the bearer check
+        // on every [Authorize] endpoint.
+        _clock.Setup(c => c.UtcNow).Returns(DateTimeOffset.UtcNow);
+        var reset = Service().GeneratePasswordResetToken(Guid.NewGuid(), "hash-1");
+
+        var asSignIn = () => new JwtSecurityTokenHandler().ValidateToken(reset, new TokenValidationParameters
+        {
+            ValidIssuer = Issuer,
+            ValidAudience = Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SigningKey)),
+            ClockSkew = TimeSpan.Zero,
+        }, out _);
+
+        asSignIn.Should().Throw<SecurityTokenInvalidAudienceException>();
     }
 
     [Fact]
@@ -208,7 +242,7 @@ public class JwtTokenServiceTests
         _clock.Setup(c => c.UtcNow).Returns(DateTimeOffset.UtcNow.AddMinutes(-31));
         var service = Service();
 
-        service.ValidatePasswordResetToken(service.GeneratePasswordResetToken(Guid.NewGuid()))
+        service.ValidatePasswordResetToken(service.GeneratePasswordResetToken(Guid.NewGuid(), "hash-1"))
             .Should().BeNull();
     }
 
@@ -249,7 +283,7 @@ public class JwtTokenServiceTests
             }),
             _clock.Object);
 
-        var forged = forger.GeneratePasswordResetToken(Guid.NewGuid());
+        var forged = forger.GeneratePasswordResetToken(Guid.NewGuid(), "hash-1");
 
         Service().ValidatePasswordResetToken(forged).Should().BeNull();
     }
@@ -269,7 +303,7 @@ public class JwtTokenServiceTests
             }),
             _clock.Object);
 
-        var foreign = elsewhere.GeneratePasswordResetToken(Guid.NewGuid());
+        var foreign = elsewhere.GeneratePasswordResetToken(Guid.NewGuid(), "hash-1");
 
         Service().ValidatePasswordResetToken(foreign).Should().BeNull();
     }

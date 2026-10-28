@@ -1,4 +1,5 @@
 using FluentValidation;
+using Zuno.Domain.Common;
 
 namespace Zuno.Application.Modules.HiringPost.Commands.RaiseAgreedSalary;
 
@@ -9,7 +10,7 @@ public class RaiseAgreedSalaryCommandValidator : AbstractValidator<RaiseAgreedSa
         RuleFor(x => x.ApplicationId).NotEmpty();
         RuleFor(x => x.NewAmount)
             .GreaterThan(0).WithMessage("Salary must be greater than 0.")
-            .LessThanOrEqualTo(99_999_999.99m);
+            .LessThanOrEqualTo(MoneyLimits.MaxAmount);
         RuleFor(x => x.Reason).MaximumLength(300);
     }
 }

@@ -16,7 +16,7 @@
 #
 # Checkout itself cannot be driven from a shell — a human types a UPI PIN on Razorpay's screen —
 # so the successful leg is verified on the device. Everything up to and around it is here.
-API=http://localhost:5056/api/v1
+API=${API:-http://localhost:5056/api/v1}
 PSQL="${PSQL:-psql}"
 : "${PGPASSWORD:?set PGPASSWORD to your Postgres password first}"
 S=$(date +%s)

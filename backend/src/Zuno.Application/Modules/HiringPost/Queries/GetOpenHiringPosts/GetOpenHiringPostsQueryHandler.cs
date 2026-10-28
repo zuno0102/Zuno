@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Zuno.Application.Common;
 using Zuno.Application.Common.Interfaces;
+using Zuno.Application.Modules.HiringPost.Common;
 using Zuno.Application.Modules.HiringPost.DTOs;
 using Zuno.Domain.Entities;
 using Zuno.Domain.Enums;
@@ -12,33 +13,28 @@ namespace Zuno.Application.Modules.HiringPost.Queries.GetOpenHiringPosts;
 public class GetOpenHiringPostsQueryHandler(
     ICurrentUserService currentUserService,
     IDateTimeProvider dateTimeProvider,
+    IPlatformSettings platformSettings,
     IApplicationDbContext dbContext) : IRequestHandler<GetOpenHiringPostsQuery, List<HiringPostDto>>
 {
-    /// <summary>
-    /// How many rows the bounding box may return before the true distance is worked out.
-    /// </summary>
-    /// <remarks>
-    /// Generous on purpose. The box is a square around a circle, so up to about a fifth of what it
-    /// returns is beyond the radius and gets dropped afterwards — capping tightly here would leave
-    /// the caller short of the page they asked for, and would break nearest-first ordering by
-    /// throwing away rows before they had been measured. This cap is the thing a proper spatial
-    /// index replaces.
-    /// </remarks>
-    private const int BoundingBoxRowCap = 500;
-
-    /// <summary>
-    /// How many of the side groups to send: jobs the worker applied to that are out of range, and
-    /// jobs with no location at all.
-    /// </summary>
-    /// <remarks>
-    /// Small on purpose. Both groups exist so nothing is hidden, not so they can fill the screen —
-    /// and in a database where most posts carry no coordinates, an uncapped "no location" group
-    /// crowds out every job the worker actually asked for.
-    /// </remarks>
-    private const int SideGroupCap = 10;
+    // Two caps below are platform settings: hiring-feed.bounding-box-row-cap and
+    // hiring-feed.side-group-cap.
+    //
+    // The bounding-box cap is how many rows a distance search may read before the true distance is
+    // worked out.
+    // Generous on purpose. The box is a square around a circle, so up to about a fifth of what it
+    // returns is beyond the radius and gets dropped afterwards — capping tightly would leave the caller
+    // short of the page they asked for, and break nearest-first ordering by throwing away rows before
+    // they had been measured. This cap is the thing a proper spatial index replaces.
+    //
+    // The side-group cap is how many of the side groups to send: jobs the worker applied to that are
+    // out of range, and jobs with no location at all. Small on purpose: both exist so nothing is
+    // hidden, not so they can fill the screen.
 
     public async Task<List<HiringPostDto>> Handle(GetOpenHiringPostsQuery request, CancellationToken cancellationToken)
     {
+        var rules = platformSettings.Current;
+        var take = rules.HiringFeedPageSize(request.Take);
+
         var userId = currentUserService.UserId
             ?? throw new UnauthorizedAccessException("User is not authenticated.");
 
@@ -56,8 +52,6 @@ public class GetOpenHiringPostsQueryHandler(
             .Include(p => p.BusinessOwnerProfile)
             .Include(p => p.ServiceSubCategory)
             .Include(p => p.District)
-            .Include(p => p.Applications).ThenInclude(a => a.WorkerProfile).ThenInclude(wp => wp.User)
-            .Include(p => p.Applications).ThenInclude(a => a.SalaryAdjustments)
             // A post is advertised while it still needs people and hiring has not ended — which
             // includes a job already under way, so a worker can still join late. Once the business
             // stops hiring or marks the work done, the post leaves this feed for everyone, applicants
@@ -94,10 +88,11 @@ public class GetOpenHiringPostsQueryHandler(
                 || p.Applications.Any(a => a.WorkerProfileId == workerProfile.Id));
         }
 
-        var posts = await query
-            .OrderByDescending(p => p.CreatedDate)
-            .Take(hasPosition ? BoundingBoxRowCap : request.Take)
-            .ToListAsync(cancellationToken);
+        var posts = await dbContext.LoadHiringPostsAsync(
+            query
+                .OrderByDescending(p => p.CreatedDate)
+                .Take(hasPosition ? rules.HiringFeedBoundingBoxRowCap : take),
+            cancellationToken);
 
         var results = posts.Select(post =>
         {
@@ -128,7 +123,7 @@ public class GetOpenHiringPostsQueryHandler(
 
         if (!hasPosition)
         {
-            return ByDate(all).Take(request.Take).ToList();
+            return ByDate(all).Take(take).ToList();
         }
 
         var radius = request.RadiusKm;
@@ -157,9 +152,9 @@ public class GetOpenHiringPostsQueryHandler(
         var unlocated = all.Where(dto => dto.DistanceKm is null).ToList();
 
         return ByDate(near)
-            .Take(request.Take)
-            .Concat(ByDate(appliedFurther).Take(SideGroupCap))
-            .Concat(ByDate(unlocated).Take(SideGroupCap))
+            .Take(take)
+            .Concat(ByDate(appliedFurther).Take(rules.HiringFeedSideGroupCap))
+            .Concat(ByDate(unlocated).Take(rules.HiringFeedSideGroupCap))
             .ToList();
     }
 }

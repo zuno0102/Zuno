@@ -8,7 +8,7 @@ using Zuno.Domain.Exceptions;
 
 namespace Zuno.Application.Modules.Customer.Queries.GetServiceDetail;
 
-public class GetServiceDetailQueryHandler(IApplicationDbContext dbContext)
+public class GetServiceDetailQueryHandler(IApplicationDbContext dbContext, IPlatformSettings platformSettings)
     : IRequestHandler<GetServiceDetailQuery, ServiceDetailDto>
 {
     public async Task<ServiceDetailDto> Handle(
@@ -35,6 +35,6 @@ public class GetServiceDetailQueryHandler(IApplicationDbContext dbContext)
                 cancellationToken)
             ?? throw new EntityNotFoundException(nameof(BusinessService), request.ServiceId);
 
-        return service.ToServiceDetailDto();
+        return service.ToServiceDetailDto(platformSettings.Current.BusinessLevels);
     }
 }

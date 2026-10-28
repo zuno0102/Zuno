@@ -8,6 +8,7 @@ import 'package:zuno/features/business_owner/domain/entities/service_variant.dar
 import 'package:zuno/features/business_owner/presentation/providers/business_services_notifier.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/service_variant_form_sheet.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
+import 'package:zuno/shared/widgets/confirm_dialog.dart';
 
 /// Lists the sub-items ("variants") under one service — e.g. Band / Chenda Melam / Panjabi
 /// Band under a "Band Set" service — with add/edit/delete, mirroring BusinessServicesTab's
@@ -77,27 +78,14 @@ class _VariantCard extends ConsumerWidget {
   final ServiceVariant variant;
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Remove item?'),
-        content: Text(
-          '"${variant.name}" will no longer be visible to customers.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.tonal(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Remove'),
-          ),
-        ],
-      ),
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Remove item?',
+      message: '"${variant.name}" will no longer be visible to customers.',
+      confirmLabel: 'Remove',
     );
 
-    if (confirmed == true) {
+    if (confirmed) {
       await ref
           .read(businessServicesProvider.notifier)
           .deleteServiceVariant(serviceId, variant.id);
@@ -116,7 +104,8 @@ class _VariantCard extends ConsumerWidget {
           borderRadius: BorderRadius.circular(8),
           child: variant.imageUrlForSlot(0) != null
               ? CachedNetworkImage(
-                  imageUrl: '${ApiConstants.baseUrl}${variant.imageUrlForSlot(0)}',
+                  imageUrl:
+                      '${ApiConstants.baseUrl}${variant.imageUrlForSlot(0)}',
                   width: 48,
                   height: 48,
                   fit: BoxFit.cover,

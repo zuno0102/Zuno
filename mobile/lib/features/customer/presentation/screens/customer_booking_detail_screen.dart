@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:zuno/shared/widgets/detail_row.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -331,11 +332,14 @@ class _CustomerBookingDetailScreenState
               if (booking.canBeMessaged)
                 Expanded(
                   child: FilledButton.tonalIcon(
-                    onPressed: () => pushScreen(context, BookingChatScreen(
-                          bookingId: booking.id,
-                          title: booking.variantName ?? booking.serviceName,
-                          counterpartName: booking.businessName,
-                        )),
+                    onPressed: () => pushScreen(
+                      context,
+                      BookingChatScreen(
+                        bookingId: booking.id,
+                        title: booking.variantName ?? booking.serviceName,
+                        counterpartName: booking.businessName,
+                      ),
+                    ),
                     icon: const Icon(Icons.chat_bubble_outline),
                     label: const Text('Message'),
                   ),
@@ -343,12 +347,12 @@ class _CustomerBookingDetailScreenState
             ],
           ),
           const SizedBox(height: 20),
-          _DetailRow(
+          DetailRow(
             label: 'Scheduled for',
             value:
                 '${formatDate(booking.scheduledDate)} · ${formatTime(booking.scheduledDate)}',
           ),
-          _DetailRow(label: 'Price', value: booking.priceDisplay()),
+          DetailRow(label: 'Price', value: booking.priceDisplay()),
 
           // No crew here. How many people a business puts on a job, and who they are, is the
           // business's arrangement — a customer booked a service, not a headcount.
@@ -356,7 +360,7 @@ class _CustomerBookingDetailScreenState
 
           // was worded when they answered it.
           for (final answer in booking.serviceAnswers)
-            _DetailRow(label: answer.questionPrompt, value: answer.answerText),
+            DetailRow(label: answer.questionPrompt, value: answer.answerText),
 
           // The crew and price being agreed. Shown to the customer because it is a number they
           // are being asked to accept — the order's *roster* stays the business's own affair.
@@ -369,9 +373,9 @@ class _CustomerBookingDetailScreenState
           ),
 
           if (booking.notes != null && booking.notes!.isNotEmpty)
-            _DetailRow(label: 'Notes', value: booking.notes!),
+            DetailRow(label: 'Notes', value: booking.notes!),
           if (booking.addressLine1 != null)
-            _DetailRow(
+            DetailRow(
               label: 'Address',
               value: [
                 booking.addressLine1,
@@ -381,7 +385,7 @@ class _CustomerBookingDetailScreenState
               ].where((p) => p != null && p.isNotEmpty).join(', '),
             ),
           if (booking.cancellationReason != null)
-            _DetailRow(
+            DetailRow(
               label: 'Cancellation reason',
               value: booking.cancellationReason!,
             ),
@@ -409,7 +413,7 @@ class _CustomerBookingDetailScreenState
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppColors.qrBackdrop,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: Theme.of(context).colorScheme.outlineVariant,
@@ -455,27 +459,6 @@ class _CustomerBookingDetailScreenState
               PrimaryButton(label: 'Rate this service', onPressed: _rate),
             ],
           ],
-        ],
-      ),
-    );
-  }
-}
-
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.labelMedium),
-          Text(value),
         ],
       ),
     );
