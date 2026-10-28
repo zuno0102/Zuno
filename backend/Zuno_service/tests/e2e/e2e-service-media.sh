@@ -13,7 +13,7 @@ API=${API:-http://localhost:5056/api/v1}
 HOST=${API%/api/v1}
 PSQL="${PSQL:-psql}"
 : "${PGPASSWORD:?set PGPASSWORD to your Postgres password first}"
-UPLOADS="/c/Beaulin Shajil/Projects/MobileApps/Zuno/backend/src/Zuno.Api/wwwroot/uploads"
+UPLOADS="/c/Beaulin Shajil/Projects/MobileApps/Zuno/backend/Zuno_service/src/Zuno.Api/wwwroot/uploads"
 S=$(date +%s)
 WORK=$(mktemp -d)
 PASS=0; FAIL=0

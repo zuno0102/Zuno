@@ -2,14 +2,14 @@
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
-COPY src/Zuno.Api/Zuno.Api.csproj src/Zuno.Api/
-COPY src/Zuno.Application/Zuno.Application.csproj src/Zuno.Application/
-COPY src/Zuno.Domain/Zuno.Domain.csproj src/Zuno.Domain/
-COPY src/Zuno.Infrastructure/Zuno.Infrastructure.csproj src/Zuno.Infrastructure/
-RUN dotnet restore src/Zuno.Api/Zuno.Api.csproj
+COPY Zuno_service/src/Zuno.Api/Zuno.Api.csproj Zuno_service/src/Zuno.Api/
+COPY Zuno_service/src/Zuno.Application/Zuno.Application.csproj Zuno_service/src/Zuno.Application/
+COPY Zuno_service/src/Zuno.Domain/Zuno.Domain.csproj Zuno_service/src/Zuno.Domain/
+COPY Zuno_service/src/Zuno.Infrastructure/Zuno.Infrastructure.csproj Zuno_service/src/Zuno.Infrastructure/
+RUN dotnet restore Zuno_service/src/Zuno.Api/Zuno.Api.csproj
 
-COPY src/ src/
-RUN dotnet publish src/Zuno.Api/Zuno.Api.csproj -c Release -o /app --no-restore
+COPY Zuno_service/src/ Zuno_service/src/
+RUN dotnet publish Zuno_service/src/Zuno.Api/Zuno.Api.csproj -c Release -o /app --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
 WORKDIR /app

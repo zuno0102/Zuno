@@ -5,23 +5,23 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zuno.Domain", "src\Zuno.Domain\Zuno.Domain.csproj", "{7837612D-D0CC-419C-AEE0-FB9FFEDBC248}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zuno.Domain", "Zuno_service\src\Zuno.Domain\Zuno.Domain.csproj", "{7837612D-D0CC-419C-AEE0-FB9FFEDBC248}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zuno.Application", "src\Zuno.Application\Zuno.Application.csproj", "{75658DF9-8B06-4E92-AE71-92505468046A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zuno.Application", "Zuno_service\src\Zuno.Application\Zuno.Application.csproj", "{75658DF9-8B06-4E92-AE71-92505468046A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zuno.Infrastructure", "src\Zuno.Infrastructure\Zuno.Infrastructure.csproj", "{800F0B6B-0CCB-4933-BC13-5D5F3D0AAB6A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zuno.Infrastructure", "Zuno_service\src\Zuno.Infrastructure\Zuno.Infrastructure.csproj", "{800F0B6B-0CCB-4933-BC13-5D5F3D0AAB6A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zuno.Api", "src\Zuno.Api\Zuno.Api.csproj", "{3CB9184A-DAF5-44FA-B0A3-D354016BEFF2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zuno.Api", "Zuno_service\src\Zuno.Api\Zuno.Api.csproj", "{3CB9184A-DAF5-44FA-B0A3-D354016BEFF2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zuno.Application.UnitTests", "tests\Zuno.Application.UnitTests\Zuno.Application.UnitTests.csproj", "{98443DE6-5E4C-4771-A9FD-09760705C694}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zuno.Application.UnitTests", "Zuno_service\tests\Zuno.Application.UnitTests\Zuno.Application.UnitTests.csproj", "{98443DE6-5E4C-4771-A9FD-09760705C694}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zuno.Api.IntegrationTests", "tests\Zuno.Api.IntegrationTests\Zuno.Api.IntegrationTests.csproj", "{AE299BA4-F028-4961-9C02-E066D67ED59C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zuno.Api.IntegrationTests", "Zuno_service\tests\Zuno.Api.IntegrationTests\Zuno.Api.IntegrationTests.csproj", "{AE299BA4-F028-4961-9C02-E066D67ED59C}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zuno.Infrastructure.UnitTests", "tests\Zuno.Infrastructure.UnitTests\Zuno.Infrastructure.UnitTests.csproj", "{ED846519-74A2-44A6-B6FD-1C081B67499B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zuno.Infrastructure.UnitTests", "Zuno_service\tests\Zuno.Infrastructure.UnitTests\Zuno.Infrastructure.UnitTests.csproj", "{ED846519-74A2-44A6-B6FD-1C081B67499B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zuno.LoadTests", "tests\Zuno.LoadTests\Zuno.LoadTests.csproj", "{2EC838A4-C57B-4CDA-A912-620B70600BA1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zuno.LoadTests", "Zuno_service\tests\Zuno.LoadTests\Zuno.LoadTests.csproj", "{2EC838A4-C57B-4CDA-A912-620B70600BA1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

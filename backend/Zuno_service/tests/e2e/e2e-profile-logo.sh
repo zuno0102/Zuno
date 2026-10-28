@@ -87,7 +87,7 @@ want_ok "Re-upload accepted" "$R2" ""
 URL2=$(echo "$R2" | j logoUrl)
 eq "Now points at the PNG" "$URL2" "/uploads/businesses/$BIZ/logo.png"
 eq "The old JPEG is gone"  "$(served "$URL")" "404"
-eq "Exactly one file on disk" "$(ls "/c/Beaulin Shajil/Projects/MobileApps/Zuno/backend/src/Zuno.Api/wwwroot/uploads/businesses/$BIZ" 2>/dev/null | wc -l | tr -d ' ')" "1"
+eq "Exactly one file on disk" "$(ls "/c/Beaulin Shajil/Projects/MobileApps/Zuno/backend/Zuno_service/src/Zuno.Api/wwwroot/uploads/businesses/$BIZ" 2>/dev/null | wc -l | tr -d ' ')" "1"
 
 echo
 echo "==== 3. EDITING THE PROFILE MUST NOT WIPE IT ===="

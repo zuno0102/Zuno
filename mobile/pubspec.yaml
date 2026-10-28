@@ -119,7 +119,7 @@ flutter:
   uses-material-design: true
 
   # The built-in labels and colours, painted before the server has ever been reached. An identical
-  # copy of backend/src/Zuno.Infrastructure/Persistence/Seed/UiConfig — a backend test fails if the
+  # copy of backend/Zuno_service/src/Zuno.Infrastructure/Persistence/Seed/UiConfig — a backend test fails if the
   # two drift.
   assets:
     - assets/ui_config/

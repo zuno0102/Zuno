@@ -169,7 +169,7 @@ Then create the schema. Run this from `backend/`, pointing at Neon:
 
 ```bash
 ConnectionStrings__ZunoDatabase="<the connection string above>" \
-  dotnet ef database update --project src/Zuno.Infrastructure --startup-project src/Zuno.Api
+  dotnet ef database update --project Zuno_service/src/Zuno.Infrastructure --startup-project Zuno_service/src/Zuno.Api
 ```
 
 The migrations seed the catalogue: 8 service categories, 36 states, 765 districts, and the four

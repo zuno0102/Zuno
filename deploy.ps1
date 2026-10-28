@@ -92,7 +92,7 @@ if (-not $changed -and -not $Force) {
     exit 0
 }
 
-$migrationsChanged = -not $SkipMigrations -and [bool]($changed -match '^backend/src/Zuno\.Infrastructure/Persistence/Migrations/')
+$migrationsChanged = -not $SkipMigrations -and [bool]($changed -match '^backend/(Zuno_service/)?src/Zuno\.Infrastructure/Persistence/Migrations/')
 $backendChanged = $Force -or [bool]($changed -match '^(backend/|render\.yaml$)')
 $webChanged = $Force -or [bool]($changed -match '^mobile/(lib|web|assets)/|^mobile/pubspec\.(yaml|lock)$')
 $apkChanged = -not $SkipApk -and ($Force -or [bool]($changed -match '^mobile/(lib|assets|android)/|^mobile/pubspec\.(yaml|lock)$'))
@@ -117,7 +117,7 @@ elseif ($migrationsChanged) {
     $env:ConnectionStrings__ZunoDatabase = $Settings.NEON_CONNECTION_STRING
     try {
         Push-Location (Join-Path $Root 'backend')
-        dotnet ef database update --project src/Zuno.Infrastructure --startup-project src/Zuno.Api; Run 'dotnet ef database update'
+        dotnet ef database update --project Zuno_service/src/Zuno.Infrastructure --startup-project Zuno_service/src/Zuno.Api; Run 'dotnet ef database update'
     } finally {
         Pop-Location
         Remove-Item Env:\ConnectionStrings__ZunoDatabase -ErrorAction SilentlyContinue

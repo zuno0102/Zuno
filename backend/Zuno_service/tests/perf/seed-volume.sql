@@ -1,7 +1,7 @@
 -- Fills an EMPTY, migrated database with production-sized dummy data, for performance tests.
 --
 -- NEVER run against a real database: it inserts hundreds of thousands of fake accounts.
--- Usage (from backend/tests/perf):
+-- Usage (from backend/Zuno_service/tests/perf):
 --   psql -h 127.0.0.1 -U postgres -d zuno_perf -v scale=1 -v pwhash="'<bcrypt hash>'" -f seed-volume.sql
 -- scale=1 gives ~200k users and ~1M orders; scale=0.1 a tenth of that for a quick run.
 -- Every account's password is the one the hash was made from. Ids are derived from a counter, so a

@@ -94,7 +94,7 @@ eq "The order is stored server-side"  "$(sql "select provider_order_id='$ORDER' 
 # signature section 2 relies on, and every check under it would become decorative. Read from the
 # server's own secret store rather than written here, so this cannot rot into checking for a
 # value the API stopped using.
-SECRET=$(dotnet user-secrets list --project "/c/Beaulin Shajil/Projects/MobileApps/Zuno/backend/src/Zuno.Api" 2>/dev/null \
+SECRET=$(dotnet user-secrets list --project "/c/Beaulin Shajil/Projects/MobileApps/Zuno/backend/Zuno_service/src/Zuno.Api" 2>/dev/null \
   | grep '^Razorpay:KeySecret' | cut -d= -f2 | tr -d ' \r')
 if [ -z "$SECRET" ]; then
   bad "The key secret stayed on the server" "could not read the secret to check against"

@@ -60,7 +60,7 @@ Every script exits non-zero if any assertion fails, so they work in CI as they s
   need it **on**, because they test what happens after a payment succeeds:
 
   ```bash
-  Razorpay__SimulateCollection=true dotnet run --project src/Zuno.Api
+  Razorpay__SimulateCollection=true dotnet run --project Zuno_service/src/Zuno.Api
   ```
 
   Simulated collection reports wages as sent without moving money, so the application refuses it
@@ -73,5 +73,5 @@ Check the rate limiter first. The scripts make many requests from one address, a
 
 ```bash
 RateLimiting__Auth__PermitLimit=100000 RateLimiting__Global__PermitLimit=100000 \
-  dotnet run --project src/Zuno.Api
+  dotnet run --project Zuno_service/src/Zuno.Api
 ```

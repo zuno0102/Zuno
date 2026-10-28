@@ -40,7 +40,7 @@ public class UiConfigSeedDataTests
 
     /// <remarks>
     /// The app bundles the same files so it can paint before it has ever reached the server. Copy
-    /// backend/src/Zuno.Infrastructure/Persistence/Seed/UiConfig/*.json to mobile/assets/ui_config/
+    /// backend/Zuno_service/src/Zuno.Infrastructure/Persistence/Seed/UiConfig/*.json to mobile/assets/ui_config/
     /// whenever one changes.
     /// </remarks>
     [Fact]

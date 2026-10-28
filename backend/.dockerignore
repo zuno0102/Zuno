@@ -1,4 +1,4 @@
 **/bin/
 **/obj/
-tests/
+Zuno_service/tests/
 *.user

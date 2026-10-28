@@ -9,7 +9,7 @@
 set -euo pipefail
 
 SERVICE_ID='0934fd83-9469-4c98-9cb3-c44755796cc3'
-ROOT="C:/Beaulin Shajil/Projects/MobileApps/Zuno/backend/src/Zuno.Api/wwwroot/uploads/services/$SERVICE_ID"
+ROOT="C:/Beaulin Shajil/Projects/MobileApps/Zuno/backend/Zuno_service/src/Zuno.Api/wwwroot/uploads/services/$SERVICE_ID"
 PSQL="${PSQL:-psql}"
 
 SECRETS="C:/Users/TLTuser/AppData/Roaming/Microsoft/UserSecrets/4e5c30fb-10fa-4613-a907-38ad9e1b98d5/secrets.json"

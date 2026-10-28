@@ -420,10 +420,10 @@ test that fails because of the bug.
 
 | Project | Purpose | Tools |
 |---|---|---|
-| `backend/tests/Zuno.Application.UnitTests` | Handlers, validators, domain rules | xUnit, Moq, FluentAssertions |
-| `backend/tests/Zuno.Infrastructure.UnitTests` | Repositories, external service clients, caching | xUnit, Moq, FluentAssertions |
-| `backend/tests/Zuno.Api.IntegrationTests` | Full HTTP pipeline: auth, routing, validation, real PostgreSQL | `WebApplicationFactory`, Testcontainers.PostgreSql |
-| `backend/tests/e2e` | End-to-end user journeys | — |
+| `backend/Zuno_service/tests/Zuno.Application.UnitTests` | Handlers, validators, domain rules | xUnit, Moq, FluentAssertions |
+| `backend/Zuno_service/tests/Zuno.Infrastructure.UnitTests` | Repositories, external service clients, caching | xUnit, Moq, FluentAssertions |
+| `backend/Zuno_service/tests/Zuno.Api.IntegrationTests` | Full HTTP pipeline: auth, routing, validation, real PostgreSQL | `WebApplicationFactory`, Testcontainers.PostgreSql |
+| `backend/Zuno_service/tests/e2e` | End-to-end user journeys | — |
 | `mobile/test/` | Providers, repositories, data sources, widgets | `flutter_test`, Riverpod `ProviderContainer` with overrides |
 
 ### 13.1 The scenario matrix
