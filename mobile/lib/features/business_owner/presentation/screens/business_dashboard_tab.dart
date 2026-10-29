@@ -12,6 +12,7 @@ import 'package:zuno/features/business_owner/presentation/screens/dashboard_deta
 import 'package:zuno/shared/widgets/empty_state.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/section_header.dart';
+import 'package:zuno/shared/widgets/stat_tile.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
 import 'package:zuno/shared/widgets/trust_cards.dart';
 import 'package:zuno/core/router/push_screen.dart';
@@ -63,17 +64,17 @@ class _Body extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
         // Named like the Full-time jobs section below, so each group of tiles says which kind of
-        // work it counts.
-        const SectionHeader(
-          title: 'Service jobs',
-          padding: EdgeInsets.fromLTRB(0, 0, 0, 8),
+        // work it counts. The names come from the label table, the same ones the worker home uses.
+        SectionHeader(
+          title: UiConfig.current.label(dashboardSectionGroup, 'Service'),
+          padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
         ),
         _CompletedCard(dashboard: dashboard),
         const SizedBox(height: 12),
         _QuickStats(dashboard: dashboard),
-        const SectionHeader(
-          title: 'Full-time jobs',
-          padding: EdgeInsets.fromLTRB(0, 18, 0, 8),
+        SectionHeader(
+          title: UiConfig.current.label(dashboardSectionGroup, 'FullTime'),
+          padding: const EdgeInsets.fromLTRB(0, 18, 0, 8),
         ),
         const _FullTimeJobsStats(),
         const SizedBox(height: 12),
@@ -312,7 +313,7 @@ class _QuickStats extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tiles = <Widget>[
-      _StatTile(
+      StatTile(
         label: 'Upcoming',
         value: '${dashboard.upcomingEvents}',
         icon: Icons.event_outlined,
@@ -326,7 +327,7 @@ class _QuickStats extends StatelessWidget {
           ),
         ),
       ),
-      _StatTile(
+      StatTile(
         label: 'Awaiting payment',
         value: '${dashboard.awaitingPaymentEvents}',
         icon: Icons.payments_outlined,
@@ -342,7 +343,7 @@ class _QuickStats extends StatelessWidget {
           ),
         ),
       ),
-      _StatTile(
+      StatTile(
         label: 'Cancelled',
         value: '${dashboard.cancelledEvents}',
         icon: Icons.event_busy_outlined,
@@ -358,7 +359,7 @@ class _QuickStats extends StatelessWidget {
           ),
         ),
       ),
-      _StatTile(
+      StatTile(
         label: 'Crew events',
         value: '${dashboard.crewEventsCompleted}',
         icon: Icons.groups_outlined,
@@ -368,7 +369,7 @@ class _QuickStats extends StatelessWidget {
           CrewEventListScreen(events: dashboard.crewEvents),
         ),
       ),
-      _StatTile(
+      StatTile(
         label: 'Active workers',
         value: '${dashboard.activeWorkers}',
         icon: Icons.badge_outlined,
@@ -380,7 +381,7 @@ class _QuickStats extends StatelessWidget {
           ActiveWorkerListScreen(workers: dashboard.workers),
         ),
       ),
-      _StatTile(
+      StatTile(
         label: 'Active services',
         value: '${dashboard.activeServices}',
         icon: Icons.storefront_outlined,
@@ -398,7 +399,7 @@ class _QuickStats extends StatelessWidget {
           ),
         ),
       ),
-      _StatTile(
+      StatTile(
         label: 'Inactive services',
         value: '${dashboard.inactiveServices}',
         icon: Icons.visibility_off_outlined,
@@ -413,47 +414,7 @@ class _QuickStats extends StatelessWidget {
       ),
     ];
 
-    return _TileGrid(tiles: tiles);
-  }
-}
-
-/// Stat tiles in rows of three. Shared by every tile section on this screen, so they line up.
-class _TileGrid extends StatelessWidget {
-  const _TileGrid({required this.tiles});
-
-  final List<Widget> tiles;
-
-  /// Tiles per row. Three is as many as fits before the labels start truncating on a phone,
-  /// so the rest wrap onto further rows rather than squeezing.
-  static const _perRow = 3;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        for (var start = 0; start < tiles.length; start += _perRow) ...[
-          if (start > 0) const SizedBox(height: 10),
-          // IntrinsicHeight, not CrossAxisAlignment.stretch. This Column sits in a ListView,
-          // so its height is unbounded — and stretch would hand the tiles an infinite height
-          // to fill, which fails the whole viewport's layout, not just this row.
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (var i = start; i < start + _perRow; i++) ...[
-                  if (i > start) const SizedBox(width: 10),
-                  // A short last row keeps the tile width of a full one, so every tile on the
-                  // screen is the same size rather than the last two stretching to fill.
-                  Expanded(
-                    child: i < tiles.length ? tiles[i] : const SizedBox(),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
+    return StatTileGrid(tiles: tiles);
   }
 }
 
@@ -479,9 +440,9 @@ class _FullTimeJobsStats extends ConsumerWidget {
     void openList(String status) =>
         pushScreen(context, VacancyApplicantsScreen(initialStatus: status));
 
-    return _TileGrid(
+    return StatTileGrid(
       tiles: [
-        _StatTile(
+        StatTile(
           label: 'Active posts',
           value: count((s) => s.activePosts),
           icon: Icons.campaign_outlined,
@@ -490,7 +451,7 @@ class _FullTimeJobsStats extends ConsumerWidget {
               : StatusTone.waiting,
           onTap: openJobs,
         ),
-        _StatTile(
+        StatTile(
           label: 'New applicants',
           value: count((s) => s.newCount),
           icon: Icons.mark_email_unread_outlined,
@@ -498,7 +459,7 @@ class _FullTimeJobsStats extends ConsumerWidget {
           tone: (s?.newCount ?? 0) > 0 ? StatusTone.danger : StatusTone.waiting,
           onTap: () => openList(VacancyApplicationStatus.applied),
         ),
-        _StatTile(
+        StatTile(
           label: 'Waiting',
           value: count((s) => s.waitingCount),
           icon: Icons.hourglass_top_outlined,
@@ -507,7 +468,7 @@ class _FullTimeJobsStats extends ConsumerWidget {
               : StatusTone.waiting,
           onTap: () => openList(VacancyApplicationStatus.viewed),
         ),
-        _StatTile(
+        StatTile(
           label: 'Shortlisted',
           value: count((s) => s.shortlistedCount),
           icon: Icons.star_outline,
@@ -516,7 +477,7 @@ class _FullTimeJobsStats extends ConsumerWidget {
               : StatusTone.waiting,
           onTap: () => openList(VacancyApplicationStatus.shortlisted),
         ),
-        _StatTile(
+        StatTile(
           label: 'Hired',
           value: count((s) => s.hiredCount),
           icon: Icons.verified_outlined,
@@ -526,76 +487,6 @@ class _FullTimeJobsStats extends ConsumerWidget {
           onTap: () => openList(VacancyApplicationStatus.hired),
         ),
       ],
-    );
-  }
-}
-
-class _StatTile extends StatelessWidget {
-  const _StatTile({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.tone,
-    this.onTap,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
-  final StatusTone tone;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colour = AppColors.status(tone, theme.brightness);
-
-    return Card(
-      margin: EdgeInsets.zero,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 11),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(icon, size: 17, color: colour),
-                  const Spacer(),
-                  // A quiet affordance rather than a button: the tile is the target, and three
-                  // of these in a row should not read as three calls to action.
-                  if (onTap != null)
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      size: 15,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                ],
-              ),
-              const SizedBox(height: 7),
-              Text(
-                value,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  height: 1,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontSize: 11,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

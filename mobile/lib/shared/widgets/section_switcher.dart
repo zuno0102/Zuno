@@ -1,23 +1,21 @@
 import 'package:flutter/material.dart';
 
-/// One half of a [SectionSwitcher]: its button, and what it shows when chosen.
+/// One part of a [SectionSwitcher]: its tab, and what it shows when chosen.
 class SwitcherSection {
-  const SwitcherSection({
-    required this.icon,
-    required this.label,
-    required this.builder,
-  });
+  const SwitcherSection({required this.label, required this.builder});
 
-  final IconData icon;
   final String label;
   final WidgetBuilder builder;
 }
 
-/// A full-width two-or-more-way switch over a screen's sections — "Service | Full-time jobs".
+/// A full-width row of tabs over a screen's sections — "Service | Full-time jobs".
 ///
-/// Used where a screen already has its own tabs underneath, so the choice above them reads as a
-/// different level rather than as a second row of tabs. One widget for every such screen, so they
-/// all look and behave the same.
+/// Drawn exactly like the business's "Active workers | Hire post | Full-time jobs" tabs, so the
+/// worker and business panels read alike. Anything a section filters below it uses chips, not a
+/// second row of tabs, so the two levels never look the same.
+///
+/// Changed by tapping only, not by swiping: a section can hold a map or a sideways-scrolling chip
+/// row, and a swipe there must move the map or the chips rather than the whole section.
 class SectionSwitcher extends StatefulWidget {
   const SectionSwitcher({
     required this.sections,
@@ -32,32 +30,31 @@ class SectionSwitcher extends StatefulWidget {
   State<SectionSwitcher> createState() => _SectionSwitcherState();
 }
 
-class _SectionSwitcherState extends State<SectionSwitcher> {
-  late int _index = widget.initialIndex;
+class _SectionSwitcherState extends State<SectionSwitcher>
+    with SingleTickerProviderStateMixin {
+  late final TabController _controller = TabController(
+    length: widget.sections.length,
+    initialIndex: widget.initialIndex,
+    vsync: this,
+  )..addListener(() => setState(() {}));
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => Column(
     children: [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-        child: SizedBox(
-          width: double.infinity,
-          child: SegmentedButton<int>(
-            showSelectedIcon: false,
-            segments: [
-              for (final (i, s) in widget.sections.indexed)
-                ButtonSegment(
-                  value: i,
-                  icon: Icon(s.icon),
-                  label: Text(s.label),
-                ),
-            ],
-            selected: {_index},
-            onSelectionChanged: (s) => setState(() => _index = s.first),
-          ),
+      Material(
+        color: Theme.of(context).colorScheme.surface,
+        child: TabBar(
+          controller: _controller,
+          tabs: [for (final s in widget.sections) Tab(text: s.label)],
         ),
       ),
-      Expanded(child: widget.sections[_index].builder(context)),
+      Expanded(child: widget.sections[_controller.index].builder(context)),
     ],
   );
 }

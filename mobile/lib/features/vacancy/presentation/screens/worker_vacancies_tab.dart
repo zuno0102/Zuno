@@ -43,6 +43,7 @@ class _WorkerVacanciesTabState extends ConsumerState<WorkerVacanciesTab> {
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: ChoiceChip(
+                    showCheckmark: false,
                     label: const Text('All'),
                     selected: _jobTypeId == null,
                     onSelected: (_) => setState(() => _jobTypeId = null),
@@ -52,6 +53,7 @@ class _WorkerVacanciesTabState extends ConsumerState<WorkerVacanciesTab> {
                   Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: ChoiceChip(
+                      showCheckmark: false,
                       label: Text(t.name),
                       selected: _jobTypeId == t.id,
                       onSelected: (_) => setState(() => _jobTypeId = t.id),
@@ -107,9 +109,16 @@ class _WorkerVacanciesTabState extends ConsumerState<WorkerVacanciesTab> {
   }
 }
 
+/// The stage [v]'s application is at. One the server sent without a stage has only been sent.
+String applicationStage(Vacancy v) =>
+    v.myApplicationStatus ?? VacancyApplicationStatus.applied;
+
 /// My jobs › My applications: the full-time jobs this worker applied for, and where each stands.
 class MyVacancyApplicationsList extends ConsumerWidget {
-  const MyVacancyApplicationsList({super.key});
+  const MyVacancyApplicationsList({this.status, super.key});
+
+  /// Only applications at this stage, or all of them when null.
+  final String? status;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -123,20 +132,46 @@ class MyVacancyApplicationsList extends ConsumerWidget {
           child: ErrorBanner(message: error.toString()),
         ),
       ),
-      data: (items) => items.isEmpty
-          ? const EmptyState(
-              icon: Icons.send_outlined,
-              title: 'No applications yet',
-              message:
-                  'Full-time jobs you apply for appear here, with the job poster\'s answer.',
-            )
-          : RefreshIndicator(
-              onRefresh: () =>
-                  ref.refresh(myVacancyApplicationsProvider.future),
-              child: _VacancyList(items: items),
-            ),
+      data: (all) {
+        final items = status == null
+            ? all
+            : [
+                for (final v in all)
+                  if (applicationStage(v) == status) v,
+              ];
+        return items.isEmpty
+            ? EmptyState(
+                icon: Icons.send_outlined,
+                title: status == null ? 'No applications yet' : 'None here yet',
+                message:
+                    'Full-time jobs you apply for appear here, with the job poster\'s answer.',
+              )
+            : RefreshIndicator(
+                onRefresh: () =>
+                    ref.refresh(myVacancyApplicationsProvider.future),
+                child: _VacancyList(items: items),
+              );
+      },
     );
   }
+}
+
+/// The applications at one stage, opened from a full-time tile on the worker's home.
+class MyVacancyApplicationsScreen extends StatelessWidget {
+  const MyVacancyApplicationsScreen({
+    required this.status,
+    required this.title,
+    super.key,
+  });
+
+  final String status;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: Text(title)),
+    body: MyVacancyApplicationsList(status: status),
+  );
 }
 
 class _VacancyList extends StatelessWidget {

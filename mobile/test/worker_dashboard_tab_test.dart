@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:zuno/features/vacancy/presentation/providers/worker_vacancies_notifier.dart';
 import 'package:zuno/features/worker/domain/entities/worker_dashboard.dart';
 import 'package:zuno/features/worker/domain/entities/worker_profile.dart';
 import 'package:zuno/features/worker/presentation/providers/worker_dashboard_notifier.dart';
@@ -89,10 +90,10 @@ void main() {
       ProviderScope(
         overrides: [
           workerDashboardProvider.overrideWith(() => _FakeDashboard(data)),
+          // No full-time applications: the section still draws its tiles, at zero.
+          myVacancyApplicationsProvider.overrideWith((_) async => const []),
         ],
-        child: const MaterialApp(
-          home: Scaffold(body: WorkerDashboardTab()),
-        ),
+        child: const MaterialApp(home: Scaffold(body: WorkerDashboardTab())),
       ),
     );
     await tester.pumpAndSettle();
@@ -105,7 +106,10 @@ void main() {
         profile: profile(),
         inProgressCount: 2,
         upcomingCount: 5,
-        pendingPayments: [payment(id: 'p1'), payment(id: 'p2', amount: 900)],
+        pendingPayments: [
+          payment(id: 'p1'),
+          payment(id: 'p2', amount: 900),
+        ],
         pendingPaymentTotal: 1700,
         trend: trend([0, 1, 3, 2, 4, 2]),
       ),
@@ -164,7 +168,10 @@ void main() {
         tester,
         WorkerDashboard(
           profile: profile(),
-          pendingPayments: [payment(id: 'p1'), payment(id: 'p2', amount: 900)],
+          pendingPayments: [
+            payment(id: 'p1'),
+            payment(id: 'p2', amount: 900),
+          ],
           pendingPaymentTotal: 1700,
         ),
       );
@@ -262,15 +269,12 @@ void main() {
       // Nothing for the worker to do here, so it must not read as an action.
       await pump(
         tester,
-        WorkerDashboard(
-          profile: profile(canReceivePayouts: false),
-        ),
+        WorkerDashboard(profile: profile(canReceivePayouts: false)),
       );
 
       expect(find.text('Your UPI is being checked'), findsOneWidget);
       expect(find.text('Add UPI'), findsNothing);
     });
-
   });
 
   group('the profile card', () {
@@ -288,20 +292,23 @@ void main() {
       expect(find.text('Experience'), findsNothing);
     });
 
-    testWidgets('names what is missing rather than counting it', (tester) async {
+    testWidgets('names what is missing rather than counting it', (
+      tester,
+    ) async {
       // A worker nobody can phone will not go hunting through a profile page, so the nudge stays on
       // the home screen even though the field it refers to does not.
       await pump(tester, WorkerDashboard(profile: profile(phoneNumber: null)));
 
-      expect(
-        find.text('Add your phone number — tap to fix'),
-        findsOneWidget,
-      );
+      expect(find.text('Add your phone number — tap to fix'), findsOneWidget);
     });
 
-    testWidgets('opens the profile page, where the detail lives', (tester) async {
+    testWidgets('opens the profile page, where the detail lives', (
+      tester,
+    ) async {
       await pump(tester, WorkerDashboard(profile: profile(phoneNumber: null)));
 
+      await tester.ensureVisible(find.text('YOUR PROFILE'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('YOUR PROFILE'));
       await tester.pumpAndSettle();
 

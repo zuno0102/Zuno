@@ -12,12 +12,10 @@ class WorkerFindWorkTab extends StatelessWidget {
   Widget build(BuildContext context) => SectionSwitcher(
     sections: [
       SwitcherSection(
-        icon: Icons.handyman_outlined,
         label: 'Service',
         builder: (_) => const WorkerHiringPostsTab(),
       ),
       SwitcherSection(
-        icon: Icons.badge_outlined,
         label: 'Full-time jobs',
         builder: (_) => const WorkerVacanciesTab(),
       ),

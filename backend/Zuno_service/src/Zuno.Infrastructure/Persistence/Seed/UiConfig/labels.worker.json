@@ -33,6 +33,18 @@
       "Accepted": { "label": "You took this job", "tone": "success", "sort": 3 },
       "Declined": { "label": "You turned this down", "tone": "waiting", "sort": 4 },
       "Rejected": { "label": "Not taken forward", "tone": "waiting", "sort": 5 }
+    },
+    "Dashboard.Section": {
+      "Service": { "label": "Service jobs", "icon": "handyman_outlined", "sort": 1 },
+      "FullTime": { "label": "Full-time jobs", "icon": "badge_outlined", "sort": 2 }
+    },
+    "Dashboard.WorkerTile": {
+      "OnTheJob": { "label": "On the job", "detail": "Nothing under way right now.", "tone": "progress", "icon": "play_circle_outline", "sort": 1 },
+      "ComingUp": { "label": "Coming up", "detail": "No work booked in yet.", "tone": "waiting", "icon": "event_outlined", "sort": 2 },
+      "Completed": { "label": "Completed", "detail": "No finished work yet.", "tone": "success", "icon": "check_circle_outline", "sort": 3 },
+      "NeedsYou": { "label": "Needs you", "detail": "Nothing waiting on you.", "tone": "danger", "icon": "notifications_active_outlined", "sort": 4 },
+      "MyRole": { "label": "My role", "detail": "No role on any job yet. A business gives you one when it puts you on an order — Lead runs the work, Supervisor watches it, Support sorts out what it needs.", "tone": "waiting", "icon": "badge_outlined", "sort": 5 },
+      "Leading": { "label": "Leading", "tone": "progress", "icon": "star_outline", "sort": 6 }
     }
   }
 }

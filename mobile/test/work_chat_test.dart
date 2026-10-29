@@ -282,11 +282,13 @@ void main() {
     ) async {
       await _pumpWorker(tester, threads: [_thread('Demo Painters', 2)]);
 
-      expect(find.text('Messages (2)'), findsOneWidget);
-      // Four tabs fit a 360dp phone.
+      expect(find.text('Messages 2'), findsOneWidget);
+      // Four chips on a 360dp phone: the row scrolls sideways rather than overflowing.
       expect(tester.takeException(), isNull);
 
-      await tester.tap(find.text('Messages (2)'));
+      await tester.ensureVisible(find.text('Messages 2'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Messages 2'));
       await tester.pumpAndSettle();
       expect(find.text('Demo Painters'), findsOneWidget);
     });

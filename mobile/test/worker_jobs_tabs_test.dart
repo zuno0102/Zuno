@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:zuno/shared/widgets/filter_chip_bar.dart';
 import 'package:zuno/features/booking/domain/entities/booking.dart';
 import 'package:zuno/features/booking/presentation/providers/worker_jobs_notifier.dart';
 import 'package:zuno/features/worker/presentation/screens/worker_jobs_tab.dart';
@@ -145,10 +146,10 @@ void main() {
     await pump(tester, [], offers: [_offer('Varkala cliff catering')]);
 
     expect(find.text('No jobs yet'), findsOneWidget);
-    expect(find.byType(TabBar), findsOneWidget);
-    expect(find.text('Invitations (1)'), findsOneWidget);
+    expect(find.byType(FilterChipBar), findsOneWidget);
+    expect(find.text('Invitations 1'), findsOneWidget);
 
-    await tester.tap(find.text('Invitations (1)'));
+    await tester.tap(find.text('Invitations 1'));
     await tester.pumpAndSettle();
     expect(find.text('Varkala cliff catering'), findsOneWidget);
   });
@@ -167,7 +168,7 @@ void main() {
     );
 
     // Two job offers and one team asking — the team already joined is not waiting on anything.
-    expect(find.text('Invitations (3)'), findsOneWidget);
+    expect(find.text('Invitations 3'), findsOneWidget);
   });
 
   testWidgets('a notification about an invitation opens straight on that tab', (
@@ -192,8 +193,8 @@ void main() {
       _job(service: 'Called off job', status: 'Cancelled'),
     ]);
 
-    expect(find.text('Current (2)'), findsOneWidget);
-    expect(find.text('History (2)'), findsOneWidget);
+    expect(find.text('Current 2'), findsOneWidget);
+    expect(find.text('History 2'), findsOneWidget);
   });
 
   group('Current', () {
@@ -255,7 +256,7 @@ void main() {
       await pump(tester, [_job(service: 'Done job', status: 'Completed')]);
 
       expect(find.text('Nothing on just now'), findsOneWidget);
-      expect(find.text('History (1)'), findsOneWidget);
+      expect(find.text('History 1'), findsOneWidget);
     });
   });
 
@@ -272,7 +273,7 @@ void main() {
         postJobs: [_postJob(title: 'Marriage catering (5 crew)')],
       );
 
-      expect(find.text('Current (1)'), findsOneWidget);
+      expect(find.text('Current 1'), findsOneWidget);
       expect(find.text('Jobs you took'), findsOneWidget);
       expect(find.text('Marriage catering (5 crew)'), findsOneWidget);
       expect(find.text('Boss T'), findsOneWidget);
@@ -287,7 +288,7 @@ void main() {
         postJobs: [_postJob(title: 'Marriage catering (5 crew)')],
       );
 
-      expect(find.text('Current (2)'), findsOneWidget);
+      expect(find.text('Current 2'), findsOneWidget);
       expect(find.text('Coming up job'), findsOneWidget);
       expect(find.text('Marriage catering (5 crew)'), findsOneWidget);
     });
@@ -311,11 +312,11 @@ void main() {
         postJobs: [_postJob(title: 'Done job', finished: true)],
       );
 
-      expect(find.text('Current (0)'), findsOneWidget);
-      expect(find.text('History (1)'), findsOneWidget);
+      expect(find.text('Current 0'), findsOneWidget);
+      expect(find.text('History 1'), findsOneWidget);
       expect(find.text('Nothing on just now'), findsOneWidget);
 
-      await tester.tap(find.text('History (1)'));
+      await tester.tap(find.text('History 1'));
       await tester.pumpAndSettle();
       expect(find.text('Done job'), findsOneWidget);
     });
@@ -329,7 +330,7 @@ void main() {
         _job(service: 'Called off job', status: 'Cancelled'),
       ]);
 
-      await tester.tap(find.text('History (2)'));
+      await tester.tap(find.text('History 2'));
       await tester.pumpAndSettle();
 
       // One list, no headings: history is looked things up in, not worked through, and splitting
@@ -342,7 +343,7 @@ void main() {
     testWidgets('says so when nothing is finished yet', (tester) async {
       await pump(tester, [_job(service: 'Coming up job', status: 'Confirmed')]);
 
-      await tester.tap(find.text('History (0)'));
+      await tester.tap(find.text('History 0'));
       await tester.pumpAndSettle();
 
       expect(find.text('Nothing finished yet'), findsOneWidget);

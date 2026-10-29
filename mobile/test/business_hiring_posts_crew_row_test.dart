@@ -81,16 +81,52 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    // The crew list opens itself only when something needs attention -- an application waiting on
-    // an answer, or a payment that failed. So whether it starts open depends on the fixture, and
-    // tapping unconditionally would CLOSE the ones that needed no tap.
-    final firstWorker = find.text(data.applications.first.workerName);
-    if (firstWorker.evaluate().isEmpty &&
-        find.text('Crew').evaluate().isNotEmpty) {
+    // The crew list always starts closed; open it to see the rows.
+    if (find.text('Crew').evaluate().isNotEmpty) {
       await tester.tap(find.text('Crew'));
       await tester.pumpAndSettle();
     }
   }
+
+  testWidgets('a failed payment flags the crew row but leaves it closed', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(720, 1600);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          businessHiringPostsProvider.overrideWith(
+            () => _FakePosts([
+              post(
+                applications: [
+                  application(
+                    id: '1',
+                    workerName: 'grape grape',
+                    paymentStatus: 'Failed',
+                  ),
+                ],
+              ),
+            ]),
+          ),
+        ],
+        child: const MaterialApp(
+          home: Scaffold(body: BusinessHiringPostsTab()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Reported from a phone: this one card opened by itself while the rest stayed closed.
+    expect(find.text('NEEDS YOU'), findsOneWidget);
+    expect(find.text('grape grape'), findsNothing);
+
+    await tester.tap(find.text('Crew'));
+    await tester.pumpAndSettle();
+    expect(find.text('grape grape'), findsOneWidget);
+  });
 
   testWidgets('a confirmed worker can be called, a phoneless one cannot', (
     tester,

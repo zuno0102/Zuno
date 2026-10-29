@@ -1,8 +1,8 @@
 {
   "groups": {
     "VacancyApplication.Worker": {
-      "Applied": { "label": "Application sent", "tone": "waiting", "icon": "send_outlined", "sort": 1 },
-      "Viewed": { "label": "Application viewed", "tone": "progress", "icon": "visibility_outlined", "sort": 2 },
+      "Applied": { "label": "Application sent", "short": "Sent", "tone": "waiting", "icon": "send_outlined", "sort": 1 },
+      "Viewed": { "label": "Application viewed", "short": "Viewed", "tone": "progress", "icon": "visibility_outlined", "sort": 2 },
       "Shortlisted": { "label": "Shortlisted", "tone": "progress", "icon": "star_outline", "sort": 3 },
       "Hired": { "label": "Hired", "tone": "success", "icon": "verified_outlined", "sort": 4 },
       "Rejected": { "label": "Rejected", "tone": "danger", "icon": "block", "sort": 5 },

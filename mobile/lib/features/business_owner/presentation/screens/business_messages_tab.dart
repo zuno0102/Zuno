@@ -10,7 +10,7 @@ import 'package:zuno/features/work_chat/presentation/providers/work_chat_provide
 import 'package:zuno/features/work_chat/presentation/widgets/work_threads_list.dart';
 import 'package:zuno/shared/widgets/empty_state.dart';
 import 'package:zuno/core/router/push_screen.dart';
-import 'package:zuno/features/business_owner/presentation/screens/business_order_filters.dart';
+import 'package:zuno/shared/widgets/filter_chip_bar.dart';
 
 /// Every order with a conversation on it.
 ///
@@ -59,7 +59,7 @@ class _BusinessMessagesTabState extends ConsumerState<BusinessMessagesTab> {
     return Column(
       children: [
         if (hasAnyThread)
-          OrderFilterChipBar(
+          FilterChipBar(
             key: const Key('businessMessagesAudience'),
             chips: [
               audienceChip('Customers', customerUnread, _Audience.customers),

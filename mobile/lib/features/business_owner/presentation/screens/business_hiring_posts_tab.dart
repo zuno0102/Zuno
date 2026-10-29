@@ -557,10 +557,11 @@ class _PostCardState extends ConsumerState<_PostCard> {
   }
 }
 
-/// Everyone on the job, folded away until it matters.
+/// Everyone on the job, folded away until the business opens it.
 ///
-/// Expands itself whenever somebody is waiting on the business — an unanswered applicant, or a
-/// payment that failed — so a tidy card never costs anyone a missed decision.
+/// Always starts closed, so every card on the list looks the same. When somebody is waiting on the
+/// business — an unanswered applicant, or a payment that failed — the NEEDS YOU pill says so on
+/// the closed row instead.
 class _CrewSection extends StatelessWidget {
   const _CrewSection({required this.post});
 
@@ -581,7 +582,6 @@ class _CrewSection extends StatelessWidget {
       // The default divider makes an ExpansionTile look like a separate card inside a card.
       data: theme.copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
-        initiallyExpanded: _needsAttention,
         tilePadding: EdgeInsets.zero,
         childrenPadding: EdgeInsets.zero,
         expandedCrossAxisAlignment: CrossAxisAlignment.start,

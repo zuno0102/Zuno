@@ -25,12 +25,10 @@ class WorkerMyJobsTab extends StatelessWidget {
     initialIndex: initialSection,
     sections: [
       SwitcherSection(
-        icon: Icons.work_outline,
         label: 'Service jobs',
         builder: (_) => WorkerJobsTab(initialTab: serviceStartTab),
       ),
       SwitcherSection(
-        icon: Icons.send_outlined,
         label: 'My applications',
         builder: (_) => const MyVacancyApplicationsList(),
       ),

@@ -2808,6 +2808,7 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                             IconName = "send_outlined",
                             IsDeleted = false,
                             Label = "Application sent",
+                            ShortLabel = "Sent",
                             SortOrder = 1,
                             Status = (short)1,
                             Tone = "waiting"
@@ -2821,6 +2822,7 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                             IconName = "visibility_outlined",
                             IsDeleted = false,
                             Label = "Application viewed",
+                            ShortLabel = "Viewed",
                             SortOrder = 2,
                             Status = (short)1,
                             Tone = "progress"
@@ -3429,6 +3431,113 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                             SortOrder = 5,
                             Status = (short)1,
                             Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("78c58580-4f28-7cd7-5ebd-2c7fdbda2fa1"),
+                            Code = "Service",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "Dashboard.Section",
+                            IconName = "handyman_outlined",
+                            IsDeleted = false,
+                            Label = "Service jobs",
+                            SortOrder = 1,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("5188d1f4-2f52-08f3-79ce-da80f797b41e"),
+                            Code = "FullTime",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "Dashboard.Section",
+                            IconName = "badge_outlined",
+                            IsDeleted = false,
+                            Label = "Full-time jobs",
+                            SortOrder = 2,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("e6bcb6a6-3a78-0c98-e505-6842add49dbd"),
+                            Code = "OnTheJob",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Detail = "Nothing under way right now.",
+                            Group = "Dashboard.WorkerTile",
+                            IconName = "play_circle_outline",
+                            IsDeleted = false,
+                            Label = "On the job",
+                            SortOrder = 1,
+                            Status = (short)1,
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Id = new Guid("949b7b0a-1869-44b7-d385-1147adb362ab"),
+                            Code = "ComingUp",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Detail = "No work booked in yet.",
+                            Group = "Dashboard.WorkerTile",
+                            IconName = "event_outlined",
+                            IsDeleted = false,
+                            Label = "Coming up",
+                            SortOrder = 2,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("2864e672-dd69-8300-2bf0-72c94aa15adb"),
+                            Code = "Completed",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Detail = "No finished work yet.",
+                            Group = "Dashboard.WorkerTile",
+                            IconName = "check_circle_outline",
+                            IsDeleted = false,
+                            Label = "Completed",
+                            SortOrder = 3,
+                            Status = (short)1,
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Id = new Guid("f74f827a-01dc-0d02-fbd0-fe3500df60f2"),
+                            Code = "NeedsYou",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Detail = "Nothing waiting on you.",
+                            Group = "Dashboard.WorkerTile",
+                            IconName = "notifications_active_outlined",
+                            IsDeleted = false,
+                            Label = "Needs you",
+                            SortOrder = 4,
+                            Status = (short)1,
+                            Tone = "danger"
+                        },
+                        new
+                        {
+                            Id = new Guid("aa0e33f8-b438-e409-b0ed-5cdb48ada162"),
+                            Code = "MyRole",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Detail = "No role on any job yet. A business gives you one when it puts you on an order — Lead runs the work, Supervisor watches it, Support sorts out what it needs.",
+                            Group = "Dashboard.WorkerTile",
+                            IconName = "badge_outlined",
+                            IsDeleted = false,
+                            Label = "My role",
+                            SortOrder = 5,
+                            Status = (short)1,
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Id = new Guid("43e84bf6-ed5a-2e48-ab95-76cae3dbbe00"),
+                            Code = "Leading",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "Dashboard.WorkerTile",
+                            IconName = "star_outline",
+                            IsDeleted = false,
+                            Label = "Leading",
+                            SortOrder = 6,
+                            Status = (short)1,
+                            Tone = "progress"
                         });
                 });
 

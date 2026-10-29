@@ -12,6 +12,10 @@ import 'package:zuno/features/worker/presentation/screens/worker_profile_screen.
 import 'package:zuno/features/worker/presentation/widgets/worker_profile_edit_sheet.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/section_header.dart';
+import 'package:zuno/shared/widgets/stat_tile.dart';
+import 'package:zuno/core/ui_config/ui_config.dart';
+import 'package:zuno/features/vacancy/presentation/providers/worker_vacancies_notifier.dart';
+import 'package:zuno/features/vacancy/presentation/screens/worker_vacancies_tab.dart';
 import 'package:zuno/shared/widgets/trust_cards.dart';
 import 'package:zuno/core/router/push_screen.dart';
 
@@ -79,7 +83,18 @@ class _Body extends StatelessWidget {
         _EarningsCard(dashboard: dashboard),
         const SizedBox(height: 12),
 
+        // Grouped and named the way the business home groups its tiles, so each set says which
+        // kind of work it counts. The names come from the label table.
+        SectionHeader(
+          title: UiConfig.current.label(dashboardSectionGroup, 'Service'),
+          padding: const EdgeInsets.fromLTRB(0, 6, 0, 8),
+        ),
         _WorkStats(dashboard: dashboard),
+        SectionHeader(
+          title: UiConfig.current.label(dashboardSectionGroup, 'FullTime'),
+          padding: const EdgeInsets.fromLTRB(0, 18, 0, 8),
+        ),
+        const _FullTimeStats(),
 
         if (profile != null) ...[
           const SizedBox(height: 12),
@@ -286,11 +301,17 @@ class _EarningsCard extends StatelessWidget {
   }
 }
 
-/// Where the work stands: running now, still to come, waiting on an answer.
+/// Where the service work stands: running now, still to come, waiting on an answer.
+///
+/// Names, icons, colours and empty-list messages come from the `Dashboard.WorkerTile` label group,
+/// so wording changes in the table rather than here. Laid out by the same grid as the business
+/// home, so a tile is the same size in both panels.
 class _WorkStats extends StatelessWidget {
   const _WorkStats({required this.dashboard});
 
   final WorkerDashboard dashboard;
+
+  static const _group = 'Dashboard.WorkerTile';
 
   /// Live jobs this worker holds a role on, newest first.
   ///
@@ -304,210 +325,119 @@ class _WorkStats extends StatelessWidget {
   int get _leadCount =>
       _roleJobs.where((j) => JobRole.grantsWorkControl(j.myRole)).length;
 
-  void _open(
-    BuildContext context,
-    String title,
-    List<WorkerJobSummary> jobs,
-    String emptyMessage,
-  ) {
-    pushScreen(
-      context,
-      WorkerJobListScreen(title: title, jobs: jobs, emptyMessage: emptyMessage),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Two rows of two rather than four across: at phone width four tiles leave no room for the
-    // number, which is the only thing on them worth reading.
-    //
-    // IntrinsicHeight, not CrossAxisAlignment.stretch: these sit in a ListView, so the column has no
-    // bounded height and stretch resolves to infinity — which fails the whole viewport.
-    return Column(
-      children: [
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: _StatTile(
-                  label: 'On the job',
-                  value: '${dashboard.inProgressCount}',
-                  icon: Icons.play_circle_outline,
-                  tone: StatusTone.progress,
-                  // Every tile opens its jobs. A count with no way in tells a worker how many but
-                  // never which, and which is the part they act on.
-                  onTap: () => _open(
-                    context,
-                    'On the job',
-                    dashboard.inProgress,
-                    'Nothing under way right now.',
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _StatTile(
-                  label: 'Coming up',
-                  value: '${dashboard.upcomingCount}',
-                  icon: Icons.event_outlined,
-                  tone: StatusTone.waiting,
-                  onTap: () => _open(
-                    context,
-                    'Coming up',
-                    dashboard.upcoming,
-                    'No work booked in yet.',
-                  ),
-                ),
-              ),
-            ],
+    final config = UiConfig.current;
+
+    /// One tile. [tone] overrides the table's colour where the count changes the meaning — a
+    /// "Needs you" of zero is good news, not a warning.
+    Widget tile(
+      String code,
+      int count,
+      List<WorkerJobSummary> jobs, {
+      StatusTone? tone,
+      String? emptyCode,
+    }) {
+      final entry = config.entry(_group, code);
+      return StatTile(
+        label: entry.label,
+        value: '$count',
+        icon: entry.iconData,
+        tone: tone ?? entry.statusTone,
+        // Every tile opens its jobs. A count with no way in tells a worker how many but never
+        // which, and which is the part they act on.
+        onTap: () => pushScreen(
+          context,
+          WorkerJobListScreen(
+            title: entry.label,
+            jobs: jobs,
+            emptyMessage: config.entry(_group, emptyCode ?? code).detail ?? '',
           ),
         ),
-        const SizedBox(height: 10),
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: _StatTile(
-                  label: 'Completed',
-                  value: '${dashboard.profile?.jobsCompleted ?? 0}',
-                  icon: Icons.check_circle_outline,
-                  tone: StatusTone.success,
-                  onTap: () => _open(
-                    context,
-                    'Completed work',
-                    dashboard.completed,
-                    'No finished work yet.',
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _StatTile(
-                  label: 'Needs you',
-                  value: '${dashboard.needsMyAnswerCount}',
-                  icon: Icons.notifications_active_outlined,
-                  tone: dashboard.needsMyAnswerCount > 0
-                      ? StatusTone.danger
-                      : StatusTone.success,
-                  onTap: () => _open(context, 'Waiting for your answer', [
-                    ...dashboard.upcoming.where((j) => j.needsMyAnswer),
-                    ...dashboard.inProgress.where((j) => j.needsMyAnswer),
-                  ], 'Nothing waiting on you.'),
-                ),
-              ),
-            ],
-          ),
+      );
+    }
+
+    final waitingOnMe = [
+      ...dashboard.upcoming.where((j) => j.needsMyAnswer),
+      ...dashboard.inProgress.where((j) => j.needsMyAnswer),
+    ];
+
+    return StatTileGrid(
+      tiles: [
+        tile('OnTheJob', dashboard.inProgressCount, dashboard.inProgress),
+        tile('ComingUp', dashboard.upcomingCount, dashboard.upcoming),
+        tile(
+          'Completed',
+          dashboard.profile?.jobsCompleted ?? 0,
+          dashboard.completed,
         ),
-        const SizedBox(height: 10),
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: _StatTile(
-                  // Which jobs made them a Lead, a Supervisor or Support. The role was only ever
-                  // on the job's own screen, so a worker on several jobs had to open each one to
-                  // remember which of them they were running.
-                  label: _roleJobs.isEmpty
-                      ? 'My role'
-                      : _leadCount > 0
-                      ? 'Leading'
-                      : 'My role',
-                  value: '${_roleJobs.length}',
-                  icon: _leadCount > 0
-                      ? Icons.star_outline
-                      : Icons.badge_outlined,
-                  tone: _leadCount > 0
-                      ? StatusTone.progress
-                      : StatusTone.waiting,
-                  onTap: () => _open(
-                    context,
-                    'Jobs you have a role on',
-                    _roleJobs,
-                    'No role on any job yet. A business gives you one when it '
-                        'puts you on an order — Lead runs the work, Supervisor '
-                        'watches it, Support sorts out what it needs.',
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              // Holds the second half of the row empty, so this tile is the same width as the
-              // four above it. Stretched across the row it read as a banner rather than as one
-              // more of the same thing.
-              const Expanded(child: SizedBox.shrink()),
-            ],
-          ),
+        tile(
+          'NeedsYou',
+          dashboard.needsMyAnswerCount,
+          waitingOnMe,
+          tone: dashboard.needsMyAnswerCount > 0
+              ? StatusTone.danger
+              : StatusTone.success,
+        ),
+        // Which jobs made them a Lead, a Supervisor or Support. The role was only ever on the
+        // job's own screen, so a worker on several jobs had to open each one to remember which
+        // of them they were running.
+        tile(
+          _leadCount > 0 ? 'Leading' : 'MyRole',
+          _roleJobs.length,
+          _roleJobs,
+          emptyCode: 'MyRole',
         ),
       ],
     );
   }
 }
 
-class _StatTile extends StatelessWidget {
-  const _StatTile({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.tone,
-    this.onTap,
-  });
+/// Full-time jobs the worker applied for, one tile per stage an application can be at.
+///
+/// The stages, their names, icons and colours, and their order all come from the
+/// `VacancyApplication.Worker` label group — a stage added to the table becomes a tile here with
+/// no change to this code. A stage with nothing in it stays grey, the way the business's
+/// full-time tiles do.
+class _FullTimeStats extends ConsumerWidget {
+  const _FullTimeStats();
 
-  final String label;
-  final String value;
-  final IconData icon;
-  final StatusTone tone;
-
-  /// Opens the jobs behind the number. Null leaves the tile inert.
-  final VoidCallback? onTap;
+  static const _group = 'VacancyApplication.Worker';
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final accent = AppColors.status(tone, theme.brightness);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final applicationsAsync = ref.watch(myVacancyApplicationsProvider);
 
-    return Card(
-      margin: EdgeInsets.zero,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(icon, size: 18, color: accent),
-                  const Spacer(),
-                  // A chevron only where there is somewhere to go. A tile that looks tappable and
-                  // is not is worse than one that looks inert.
-                  if (onTap != null)
-                    Icon(
-                      Icons.chevron_right,
-                      size: 16,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                value,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              Text(
-                label,
-                maxLines: 2,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
+    if (applicationsAsync.hasError && !applicationsAsync.hasValue) {
+      return ErrorBanner(message: applicationsAsync.error.toString());
+    }
+
+    final items = applicationsAsync.value;
+
+    return StatTileGrid(
+      tiles: [
+        for (final code in UiConfig.current.codes(_group))
+          _tile(
+            context,
+            code,
+            items?.where((v) => applicationStage(v) == code).length,
           ),
-        ),
+      ],
+    );
+  }
+
+  /// [count] is null while the applications are loading.
+  Widget _tile(BuildContext context, String code, int? count) {
+    final entry = UiConfig.current.entry(_group, code);
+    return StatTile(
+      label: entry.shortLabel,
+      // A dash while loading rather than a spinner, so the section keeps its shape.
+      value: count == null ? '–' : '$count',
+      icon: entry.iconData,
+      tone: (count ?? 0) > 0 ? entry.statusTone : StatusTone.waiting,
+      onTap: () => pushScreen(
+        context,
+        MyVacancyApplicationsScreen(status: code, title: entry.label),
       ),
     );
   }

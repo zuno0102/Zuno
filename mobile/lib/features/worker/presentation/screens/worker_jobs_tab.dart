@@ -8,6 +8,7 @@ import 'package:zuno/features/worker/presentation/screens/worker_booking_detail_
 import 'package:zuno/shared/widgets/call_icon_button.dart';
 import 'package:zuno/shared/widgets/empty_state.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
+import 'package:zuno/shared/widgets/filter_chip_bar.dart';
 import 'package:zuno/shared/widgets/section_header.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
@@ -40,9 +41,11 @@ import 'package:zuno/core/router/push_screen.dart';
 /// teams asking them to join — the next jobs, so they sit beside the jobs rather than on a tab of
 /// their own in the bottom bar.
 ///
-/// The tab bar is always shown. A new worker with no jobs yet is exactly the one most likely to have
-/// an invitation, so "no jobs" can never be allowed to replace the screen.
-class WorkerJobsTab extends ConsumerWidget {
+/// The four are filter chips — "Current 3 · History 4 · …" — the same bar the business filters its
+/// orders with, so the two panels read alike. The bar is always shown. A new worker with no jobs
+/// yet is exactly the one most likely to have an invitation, so "no jobs" can never be allowed to
+/// replace the screen.
+class WorkerJobsTab extends ConsumerStatefulWidget {
   const WorkerJobsTab({this.initialTab = currentTab, super.key});
 
   static const currentTab = 0;
@@ -50,11 +53,18 @@ class WorkerJobsTab extends ConsumerWidget {
   static const invitationsTab = 2;
   static const messagesTab = 3;
 
-  /// Which tab opens first — the Invitations tab when a notification about one was tapped.
+  /// Which filter opens first — Invitations when a notification about one was tapped.
   final int initialTab;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<WorkerJobsTab> createState() => _WorkerJobsTabState();
+}
+
+class _WorkerJobsTabState extends ConsumerState<WorkerJobsTab> {
+  late int _tab = widget.initialTab;
+
+  @override
+  Widget build(BuildContext context) {
     final jobsAsync = ref.watch(workerJobsProvider);
 
     // The other half of a worker's work. Jobs taken through a hiring post never came through the
@@ -112,83 +122,70 @@ class WorkerJobsTab extends ConsumerWidget {
           ),
         );
 
-    String label(String name, int? count) =>
-        count == null ? name : '$name ($count)';
-
     // Unread messages from the businesses this worker works for.
     final messageCount = ref.watch(unreadWorkChatCountProvider);
 
-    // Four tabs on a phone: tight side padding and room for two lines, so a long name wraps
-    // rather than being cut off (the same treatment as the business's Orders tabs).
-    Tab tab(String text, {Key? key}) => Tab(
+    Widget chip(String name, int? count, int tab, {Key? key}) => CountChip(
       key: key,
-      height: 56,
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      ),
+      label: name,
+      count: count,
+      selected: _tab == tab,
+      onSelected: () => setState(() => _tab = tab),
     );
 
-    return DefaultTabController(
-      length: 4,
-      initialIndex: initialTab,
-      child: Column(
-        children: [
-          TabBar(
-            labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-            tabs: [
-              tab(
-                label(
-                  'Current',
-                  sections == null
-                      ? null
-                      : sections.currentCount + livePosts.length,
-                ),
-              ),
-              tab(
-                label(
-                  'History',
-                  sections == null
-                      ? null
-                      : sections.finished.length + donePosts.length,
-                ),
-              ),
-              tab(
-                label('Invitations', invitationCount),
-                key: const Key('workerInvitationsTab'),
-              ),
-              tab(
-                label('Messages', messageCount),
-                key: const Key('workerMessagesTab'),
-              ),
-            ],
-          ),
-          Expanded(
-            child: TabBarView(
-              children: [
-                jobsTab((s) => _CurrentJobs(sections: s, postJobs: livePosts)),
-                jobsTab(
-                  (s) => _JobHistory(jobs: s.finished, postJobs: donePosts),
-                ),
-                const WorkerInvitationsTab(),
-                // Conversations with the businesses this worker works for. Customers are never
-                // here: the business is the go-between for everything about a job.
-                const WorkThreadsList(
-                  emptyState: EmptyState(
-                    icon: Icons.chat_bubble_outline,
-                    title: 'No messages yet',
-                    message:
-                        'Once a business has taken you on for a job, you can message and call '
-                        'it from the job card.',
-                  ),
-                ),
-              ],
+    return Column(
+      children: [
+        FilterChipBar(
+          chips: [
+            chip(
+              'Current',
+              sections == null
+                  ? null
+                  : sections.currentCount + livePosts.length,
+              WorkerJobsTab.currentTab,
             ),
-          ),
-        ],
-      ),
+            chip(
+              'History',
+              sections == null
+                  ? null
+                  : sections.finished.length + donePosts.length,
+              WorkerJobsTab.historyTab,
+            ),
+            chip(
+              'Invitations',
+              invitationCount,
+              WorkerJobsTab.invitationsTab,
+              key: const Key('workerInvitationsTab'),
+            ),
+            chip(
+              'Messages',
+              messageCount,
+              WorkerJobsTab.messagesTab,
+              key: const Key('workerMessagesTab'),
+            ),
+          ],
+        ),
+        Expanded(
+          child: switch (_tab) {
+            WorkerJobsTab.historyTab => jobsTab(
+              (s) => _JobHistory(jobs: s.finished, postJobs: donePosts),
+            ),
+            WorkerJobsTab.invitationsTab => const WorkerInvitationsTab(),
+            // Conversations with the businesses this worker works for. Customers are never
+            // here: the business is the go-between for everything about a job.
+            WorkerJobsTab.messagesTab => const WorkThreadsList(
+              emptyState: EmptyState(
+                icon: Icons.chat_bubble_outline,
+                title: 'No messages yet',
+                message:
+                    'Once a business has taken you on for a job, you can message and call '
+                    'it from the job card.',
+              ),
+            ),
+            _ => jobsTab((s) => _CurrentJobs(sections: s, postJobs: livePosts)),
+          },
+        ),
+      ],
     );
   }
 }
