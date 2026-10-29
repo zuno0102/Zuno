@@ -116,9 +116,7 @@ class _WorkerDashboardShellState extends ConsumerState<WorkerDashboardShell> {
         );
 
       case NotificationTarget.payments:
-        Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (_) => const WorkerPaymentsScreen()));
+        pushScreen(context, const WorkerPaymentsScreen());
 
       default:
         setState(() => _index = _homeTab);

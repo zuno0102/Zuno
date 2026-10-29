@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zuno/core/router/push_screen.dart';
 import 'package:zuno/features/vacancy/domain/entities/vacancy.dart';
 import 'package:zuno/features/vacancy/presentation/providers/vacancy_providers.dart';
 import 'package:zuno/features/vacancy/presentation/providers/worker_vacancies_notifier.dart';
@@ -165,11 +166,8 @@ class _WorkerVacancyCard extends StatelessWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => WorkerVacancyDetailScreen(vacancyId: v.id),
-          ),
-        ),
+        onTap: () =>
+            pushScreen(context, WorkerVacancyDetailScreen(vacancyId: v.id)),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:zuno/core/router/push_screen.dart';
 import 'package:zuno/features/work_chat/presentation/screens/work_chat_screen.dart';
 import 'package:zuno/shared/widgets/call_icon_button.dart';
 
@@ -98,13 +99,12 @@ class CrewMemberSheet extends StatelessWidget {
                 leading: const Icon(Icons.chat_bubble_outline),
                 title: const Text('Message'),
                 onTap: () => run(
-                  () => Navigator.of(host).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => WorkChatScreen(
-                        counterpartId: id,
-                        counterpartName: name,
-                        subtitle: 'Work chat',
-                      ),
+                  () => pushScreen(
+                    host,
+                    WorkChatScreen(
+                      counterpartId: id,
+                      counterpartName: name,
+                      subtitle: 'Work chat',
                     ),
                   ),
                 ),

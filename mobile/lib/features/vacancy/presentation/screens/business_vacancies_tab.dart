@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zuno/core/router/push_screen.dart';
 import 'package:zuno/features/vacancy/domain/entities/vacancy.dart';
 import 'package:zuno/features/vacancy/presentation/providers/business_vacancies_notifier.dart';
 import 'package:zuno/features/vacancy/presentation/screens/vacancy_applicants_screen.dart';
@@ -149,11 +150,8 @@ class _VacancyCard extends ConsumerWidget {
                     ),
                   ),
                 OutlinedButton.icon(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => VacancyApplicantsScreen(vacancy: v),
-                    ),
-                  ),
+                  onPressed: () =>
+                      pushScreen(context, VacancyApplicantsScreen(vacancy: v)),
                   icon: const Icon(Icons.people_outline),
                   label: Text('Applicants (${v.applicantCount})'),
                 ),

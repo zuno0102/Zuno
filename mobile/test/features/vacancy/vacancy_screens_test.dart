@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:zuno/features/vacancy/data/models/vacancy_model.dart';
 import 'package:zuno/features/vacancy/domain/entities/vacancy.dart';
 import 'package:zuno/features/vacancy/domain/entities/vacancy_payment.dart';
 import 'package:zuno/features/vacancy/presentation/providers/vacancy_providers.dart';
 import 'package:zuno/features/vacancy/presentation/screens/business_vacancies_tab.dart';
+import 'package:zuno/features/vacancy/presentation/screens/vacancy_applicants_screen.dart';
 import 'package:zuno/features/vacancy/presentation/screens/worker_vacancies_tab.dart';
 import 'package:zuno/features/vacancy/presentation/screens/worker_vacancy_detail_screen.dart';
 
@@ -288,6 +290,52 @@ void main() {
 
       expect(repo.withdrawn, ['a-1']);
       expect(find.text('Application withdrawn.'), findsOneWidget);
+    });
+  });
+
+  group('the phone back button', () {
+    testWidgets('closes Applicants and returns to the jobs list', (
+      tester,
+    ) async {
+      repo.myVacancies = () async =>
+          VacancyPage(items: [vacancy(id: 'live', applicantCount: 2)]);
+      // The same /screen route the app uses, so pushes are seen by the router as they are there.
+      final router = GoRouter(
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => const Scaffold(body: BusinessVacanciesTab()),
+          ),
+          GoRoute(
+            path: '/screen',
+            builder: (_, state) => state.extra! as Widget,
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [vacancyRepositoryProvider.overrideWithValue(repo)],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Applicants (2)'));
+      await tester.pumpAndSettle();
+      expect(find.byType(VacancyApplicantsScreen), findsOneWidget);
+      // The router must know the page is open. A push it never saw leaves it on '/', and on the
+      // phone back then closed the app instead of the page.
+      expect(router.state.matchedLocation, '/screen');
+
+      // What Android sends on back.
+      final handled = await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(handled, isTrue);
+      expect(router.state.matchedLocation, '/');
+      expect(find.byType(VacancyApplicantsScreen), findsNothing);
+      expect(find.text('Applicants (2)'), findsOneWidget);
     });
   });
 }
