@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <!--
+      The same secrets store as the Service API, so on a developer's machine both read one JWT
+      signing key: a token from the shared login is valid here without copying secrets around.
+    -->
+    <UserSecretsId>4e5c30fb-10fa-4613-a907-38ad9e1b98d5</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.9">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Zuno.Rent.Application\Zuno.Rent.Application.csproj" />
+    <ProjectReference Include="..\Zuno.Rent.Infrastructure\Zuno.Rent.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Zuno.Rent.IntegrationTests" />
+  </ItemGroup>
+
+</Project>

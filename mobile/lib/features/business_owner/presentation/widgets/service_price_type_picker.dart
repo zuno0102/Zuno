@@ -53,7 +53,7 @@ class ServicePriceTypePicker extends StatelessWidget {
                 for (var column = 0; column < 2; column++) ...[
                   if (column == 1) const SizedBox(width: 10),
                   Expanded(
-                    child: _PriceTypeTile(
+                    child: PriceTypeTile(
                       option: options[row * 2 + column],
                       selected: value == options[row * 2 + column].$1,
                       onTap: onChanged,
@@ -70,11 +70,14 @@ class ServicePriceTypePicker extends StatelessWidget {
   }
 }
 
-class _PriceTypeTile extends StatelessWidget {
-  const _PriceTypeTile({
+/// One chooseable rate card: a radio mark, the name, and the line explaining it. Rent's rate
+/// picker draws the same card.
+class PriceTypeTile extends StatelessWidget {
+  const PriceTypeTile({
     required this.option,
     required this.selected,
     required this.onTap,
+    super.key,
   });
 
   /// Code, name, and the line explaining it.

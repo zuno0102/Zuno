@@ -122,10 +122,15 @@ class ServiceMediaSlots extends ConsumerStatefulWidget {
   const ServiceMediaSlots({
     required this.media,
     required this.onError,
+    this.mediaBaseUrl = ApiConstants.baseUrl,
     super.key,
   });
 
   final ServiceMediaSelection media;
+
+  /// The server the saved photos and video are fetched from. The main API unless another
+  /// service (Rent) keeps its own files.
+  final String mediaBaseUrl;
 
   /// A message for the form to show, or null to clear one after a successful pick.
   final ValueChanged<String?> onError;
@@ -271,7 +276,7 @@ class _ServiceMediaSlotsState extends ConsumerState<ServiceMediaSlots> {
       await showDialog<void>(
         context: context,
         builder: (context) => Dialog(
-          child: VideoPreviewPlayer(url: '${ApiConstants.baseUrl}$existingUrl'),
+          child: VideoPreviewPlayer(url: '${widget.mediaBaseUrl}$existingUrl'),
         ),
       );
     } else if (action == 'replace') {
@@ -295,7 +300,7 @@ class _ServiceMediaSlotsState extends ConsumerState<ServiceMediaSlots> {
       );
     } else if (existingUrl != null) {
       child = CachedNetworkImage(
-        imageUrl: '${ApiConstants.baseUrl}$existingUrl',
+        imageUrl: '${widget.mediaBaseUrl}$existingUrl',
         fit: BoxFit.cover,
         width: 88,
         height: 88,

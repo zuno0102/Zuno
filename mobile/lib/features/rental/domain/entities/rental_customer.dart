@@ -1,0 +1,126 @@
+import 'package:zuno/features/rental/domain/entities/rental_item.dart';
+
+/// Which side of a rent order is looking: the business that rents the item out, or the customer who
+/// rented it. The same order screens serve both; this picks the server routes and what may be done.
+enum RentalAudience { business, customer }
+
+/// A rent item on a customer card — photo, name, rate, where, and who rents it out.
+class RentalCard {
+  const RentalCard({
+    required this.id,
+    required this.name,
+    required this.categoryName,
+    required this.priceType,
+    required this.price,
+    required this.unitSuffix,
+    required this.businessName,
+    this.imageUrl,
+    this.districtName,
+  });
+
+  final String id;
+  final String name;
+  final String categoryName;
+  final String priceType;
+  final double price;
+
+  /// "/day", from the server's rate-type table.
+  final String unitSuffix;
+  final String businessName;
+  final String? imageUrl;
+  final String? districtName;
+}
+
+/// How a Rent home section lays out its items, as the server's section table says.
+enum RentalHomeLayout {
+  /// A row that scrolls sideways.
+  strip,
+
+  /// Two columns.
+  grid;
+
+  static RentalHomeLayout from(String value) =>
+      value.toLowerCase() == 'strip' ? strip : grid;
+}
+
+/// One section of the customer's Rent home — "Popular near you" as a strip, "Explore" as a grid.
+class RentalHomeSection {
+  const RentalHomeSection({
+    required this.code,
+    required this.title,
+    required this.layout,
+    required this.items,
+  });
+
+  final String code;
+  final String title;
+  final RentalHomeLayout layout;
+  final List<RentalCard> items;
+}
+
+/// A rent item as a customer opens it.
+class RentalItemDetail {
+  const RentalItemDetail({
+    required this.card,
+    required this.priceTypeName,
+    required this.quantityOwned,
+    this.description,
+    this.subCategoryName,
+    this.media = const [],
+    this.districts = const [],
+    this.questions = const [],
+    this.businessLogoUrl,
+    this.advanceType = 'None',
+    this.advanceAmount,
+  });
+
+  final RentalCard card;
+  final String? description;
+  final String? subCategoryName;
+
+  /// "Per day", from the rate-type table.
+  final String priceTypeName;
+  final int quantityOwned;
+  final List<RentalItemMedia> media;
+  final List<RentalItemDistrict> districts;
+  final List<RentalItemQuestion> questions;
+
+  /// A path on the Service server, where business profiles live.
+  final String? businessLogoUrl;
+
+  /// `None`, `PerOrder` or `PerPiece`.
+  final String advanceType;
+  final double? advanceAmount;
+
+  List<String> get imageUrls => [
+    for (final m in [
+      ...media,
+    ]..sort((a, b) => a.sortOrder.compareTo(b.sortOrder)))
+      if (!m.isVideo) m.url,
+  ];
+
+  RentalItemMedia? get video => media.where((m) => m.isVideo).firstOrNull;
+}
+
+/// What a customer fills in to book.
+class RentalBookingInput {
+  const RentalBookingInput({
+    required this.rentalItemId,
+    required this.quantity,
+    required this.startDate,
+    required this.endDate,
+    required this.deliveryAddress,
+    required this.districtId,
+    this.answers = const {},
+  });
+
+  final String rentalItemId;
+  final int quantity;
+  final DateTime startDate;
+  final DateTime endDate;
+  final String deliveryAddress;
+  final String districtId;
+
+  /// Question id → the customer's answer.
+  final Map<String, String> answers;
+}

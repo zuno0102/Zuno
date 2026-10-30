@@ -5,10 +5,10 @@ import 'package:zuno/features/work_chat/presentation/screens/work_chat_screen.da
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_profile_notifier.dart';
-import 'package:zuno/features/business_owner/presentation/screens/business_orders_tab.dart';
+import 'package:zuno/features/rental/presentation/screens/business_orders_hub_tab.dart';
 import 'package:zuno/features/business_owner/presentation/screens/business_dashboard_tab.dart';
-import 'package:zuno/features/business_owner/presentation/screens/business_services_tab.dart';
 import 'package:zuno/features/business_owner/presentation/screens/business_workers_tab.dart';
+import 'package:zuno/features/rental/presentation/screens/business_catalog_tab.dart';
 import 'package:zuno/features/booking/domain/entities/booking.dart';
 import 'package:zuno/features/booking/presentation/providers/booking_providers.dart';
 import 'package:zuno/features/booking/presentation/screens/booking_chat_screen.dart';
@@ -144,8 +144,9 @@ class _BusinessOwnerDashboardShellState
     /// is set up once and rarely returned to — unlike these, which are worked in all day.
     final tabs = <Widget>[
       const BusinessDashboardTab(),
-      const BusinessOrdersTab(),
-      const BusinessServicesTab(),
+      const BusinessOrdersHubTab(),
+      // Service | Rent. The Service tab inside is the services screen as it was.
+      const BusinessCatalogTab(),
       BusinessWorkersTab(initialIndex: _workersSubTab),
     ];
 

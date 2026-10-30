@@ -11,7 +11,7 @@ import 'package:zuno/features/auth/presentation/screens/register_screen.dart';
 import 'package:zuno/features/business_owner/presentation/screens/business_owner_dashboard_shell.dart';
 import 'package:zuno/features/customer/presentation/screens/business_detail_screen.dart';
 import 'package:zuno/features/customer/presentation/screens/service_detail_screen.dart';
-import 'package:zuno/features/customer/presentation/screens/customer_dashboard_shell.dart';
+import 'package:zuno/features/rental/presentation/screens/customer_app_shell.dart';
 import 'package:zuno/features/worker/presentation/screens/worker_dashboard_shell.dart';
 
 part 'app_router.g.dart';
@@ -80,7 +80,8 @@ GoRouter appRouter(Ref ref) {
       ),
       GoRoute(
         path: '/customer',
-        builder: (context, state) => const CustomerDashboardShell(),
+        // Service | Rent on top; the Service side is the customer app as it was.
+        builder: (context, state) => const CustomerAppShell(),
       ),
       GoRoute(
         path: '/customer/business/:id',

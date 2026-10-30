@@ -40,8 +40,17 @@ class ServiceQuestionsSection extends StatelessWidget {
     required this.onAdd,
     required this.onRemove,
     required this.onToggleRequired,
+    this.emptyHint =
+        'Add a box for anything you need to know before you can staff the job.',
+    this.filledHint = 'Every customer booking this service answers these.',
     super.key,
   });
+
+  /// The line under the heading while there are no questions — Rent words it for its items.
+  final String emptyHint;
+
+  /// The line under the heading once there are questions.
+  final String filledHint;
 
   final List<ServiceQuestionRow> rows;
   final VoidCallback onAdd;
@@ -77,9 +86,7 @@ class ServiceQuestionsSection extends StatelessWidget {
           ],
         ),
         Text(
-          rows.isEmpty
-              ? 'Add a box for anything you need to know before you can staff the job.'
-              : 'Every customer booking this service answers these.',
+          rows.isEmpty ? emptyHint : filledHint,
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
