@@ -55,6 +55,24 @@ public class RentSettings
     [Range(1, 1_440)]
     public int AdvanceHoldMinutes { get; set; } = 15;
 
+    /// <summary>The most cancellation steps one item can have — enough for "a week, 3 days, a day, same day".</summary>
+    [Range(1, 20)]
+    public int MaxCancelSteps { get; set; } = 5;
+
+    /// <summary>
+    /// How far ahead a cancellation step can start, in days (times 24 for an hourly item). Bookings
+    /// reach a year ahead, so a step further out than that could never apply.
+    /// </summary>
+    [Range(1, 3_660)]
+    public int MaxCancelDaysBefore { get; set; } = 366;
+
+    /// <summary>
+    /// The platform's ceiling on any cancellation charge, whatever a category's own limit says — a
+    /// mistyped category row can never let a business keep more than this.
+    /// </summary>
+    [Range(0, 100)]
+    public decimal CancelPercentCeiling { get; set; } = 20m;
+
     /// <summary>How long the category and rate-type lists are cached; they change rarely.</summary>
     [Range(0, 86_400)]
     public int CategoryCacheSeconds { get; set; } = 600;

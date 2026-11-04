@@ -340,6 +340,34 @@ class _RentalBookingSheetState extends ConsumerState<RentalBookingSheet> {
                           key: const ValueKey('booking-advance'),
                           style: theme.textTheme.bodySmall,
                         ),
+                        const SizedBox(height: 6),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.event_busy_rounded,
+                              size: 16,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                rentalBookingCancelLine(
+                                  item,
+                                  rentalUnits(
+                                    item.card.priceType,
+                                    _start,
+                                    _end,
+                                  ),
+                                ),
+                                key: const ValueKey('booking-cancel-policy'),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -357,4 +385,27 @@ class _RentalBookingSheetState extends ConsumerState<RentalBookingSheet> {
       ),
     );
   }
+}
+
+/// The cancellation terms under the booking total, worked out for the dates picked:
+/// "If you cancel: 1% for each rental day, 2% for these 2 days", or the steps by time left, or
+/// "Free cancellation".
+String rentalBookingCancelLine(RentalItemDetail item, int units) {
+  if (item.cancelChargeType == RentalCancelChargeType.perRentalDay &&
+      item.cancelPercentPerDay != null) {
+    final perDay = item.cancelPercentPerDay!;
+    final noun = item.cancelUnit == RentalCancelUnit.hour ? 'hour' : 'day';
+    final cap = item.maxCancelPercent > 0
+        ? item.maxCancelPercent
+        : perDay * units;
+    final total = rentalPerDayPercent(perDay, units, cap);
+    final capped = total < perDay * units;
+    return 'If you cancel: ${rentalPercent(perDay)} for each rental $noun, '
+        '${rentalPercent(total)} for ${units == 1 ? 'this 1 $noun' : 'these $units ${noun}s'}'
+        '${capped ? ' (the most for this item)' : ''} of the order';
+  }
+  return item.cancelSteps.isEmpty
+      ? 'Free cancellation'
+      : 'If you cancel: '
+            '${rentalCancelPolicy(item.cancelSteps, item.cancelUnit)} of the order';
 }

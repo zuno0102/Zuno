@@ -49,5 +49,15 @@ internal static class RentalItemMapper
             .OrderBy(q => q.SortOrder)
             .Select(q => new RentalItemQuestionDto { Id = q.Id, Prompt = q.Prompt, IsRequired = q.IsRequired })
             .ToList(),
+        CancelSteps = item.CancelSteps.ToDto(),
+        CancelUnit = RentalCancellation.UnitOf(item.PriceType),
+        CancelChargeType = item.CancelChargeType.ToString(),
+        CancelPercentPerDay = item.CancelPercentPerDay,
     };
+
+    public static List<RentalCancelStepDto> ToDto(this IEnumerable<RentalCancelStep> steps) =>
+        steps
+            .OrderBy(s => s.UnitsBefore)
+            .Select(s => new RentalCancelStepDto { UnitsBefore = s.UnitsBefore, Percent = s.Percent })
+            .ToList();
 }

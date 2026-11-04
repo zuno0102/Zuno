@@ -140,3 +140,44 @@ final class RentalPaymentWindowProvider
 
 String _$rentalPaymentWindowHash() =>
     r'f4097ab336d7b4ec679cdbe4e60c5c58bd211b5f';
+
+@ProviderFor(rentalUpiPay)
+final rentalUpiPayProvider = RentalUpiPayProvider._();
+
+final class RentalUpiPayProvider
+    extends $FunctionalProvider<RentalUpiPay, RentalUpiPay, RentalUpiPay>
+    with $Provider<RentalUpiPay> {
+  RentalUpiPayProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'rentalUpiPayProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$rentalUpiPayHash();
+
+  @$internal
+  @override
+  $ProviderElement<RentalUpiPay> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  RentalUpiPay create(Ref ref) {
+    return rentalUpiPay(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(RentalUpiPay value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<RentalUpiPay>(value),
+    );
+  }
+}
+
+String _$rentalUpiPayHash() => r'062d5c4e29862184a81b68d4fbbac1f9e7034e1b';

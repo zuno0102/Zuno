@@ -27,16 +27,44 @@ internal static class RentalMoney
         status == RentalOrderStatus.Cancelled ? 0 : Math.Max(0, amount - netPaid);
 
     /// <summary>
+    /// What a cancelled order still owes the customer: what they paid, less refunds already given and
+    /// the cancellation charge the business keeps. Nothing on an order that is not cancelled.
+    /// </summary>
+    public static decimal RefundOwed(RentalOrderStatus status, decimal netPaid, decimal cancellationCharge) =>
+        status == RentalOrderStatus.Cancelled ? Math.Max(0, netPaid - cancellationCharge) : 0;
+
+    /// <summary>Paid through the gateway, less refunds already sent back that way — all an online refund can return.</summary>
+    public static decimal OnlinePaid(IEnumerable<RentalOrderPayment> payments) =>
+        NetPaid(payments.Where(p => p.Method == RentalPaymentMethod.Online));
+
+    /// <summary>
+    /// Why a refund cannot go back this way; null when it can. Online goes back to the card or UPI
+    /// the customer paid with, so it can return no more than they paid online.
+    /// </summary>
+    public static string? RefundModeRefusal(RentalRefundMode mode, decimal refundOwed, decimal onlinePaid) =>
+        mode == RentalRefundMode.Online && onlinePaid < refundOwed
+            ? onlinePaid <= 0
+                ? "The customer paid in cash or by UPI, so give the refund in hand."
+                : $"Only {Text(onlinePaid)} was paid online, so give the refund in hand."
+            : null;
+
+    /// <summary>
     /// Where the order stands with money; null when there is nothing to say (a cancelled order that
     /// never took any, or an old order with no price).
     /// </summary>
     public static RentalPaymentStatus? StatusOf(
-        RentalOrderStatus status, decimal amount, decimal advanceDue, decimal netPaid, bool anyRefund)
+        RentalOrderStatus status,
+        decimal amount,
+        decimal advanceDue,
+        decimal netPaid,
+        bool anyRefund,
+        decimal cancellationCharge = 0)
     {
         if (status == RentalOrderStatus.Cancelled)
         {
-            return netPaid > 0 ? RentalPaymentStatus.RefundDue
+            return RefundOwed(status, netPaid, cancellationCharge) > 0 ? RentalPaymentStatus.RefundDue
                 : anyRefund ? RentalPaymentStatus.Refunded
+                : netPaid > 0 ? RentalPaymentStatus.ChargeKept
                 : null;
         }
 
@@ -73,7 +101,9 @@ internal static class RentalMoney
         Guid userId,
         RentalMessageSenderRole role,
         string? providerOrderId = null,
-        string? providerPaymentId = null)
+        string? providerPaymentId = null,
+        string? reference = null,
+        string? payeeUpiId = null)
     {
         dbContext.RentalOrderPayments.Add(new RentalOrderPayment
         {
@@ -83,6 +113,8 @@ internal static class RentalMoney
             Amount = amount,
             ProviderOrderId = providerOrderId,
             ProviderPaymentId = providerPaymentId,
+            Reference = reference,
+            PayeeUpiId = payeeUpiId,
             RecordedByUserId = userId,
             RecordedByRole = role,
         });

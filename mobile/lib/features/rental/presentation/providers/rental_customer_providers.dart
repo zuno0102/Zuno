@@ -1,7 +1,9 @@
 import 'dart:math';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
+import 'package:zuno/features/auth/presentation/providers/auth_state.dart';
 import 'package:zuno/features/customer/presentation/providers/customer_search_filter_provider.dart';
 import 'package:zuno/features/rental/domain/entities/rental_customer.dart';
 import 'package:zuno/features/rental/presentation/providers/rental_order_providers.dart';
@@ -11,36 +13,25 @@ part 'rental_customer_providers.g.dart';
 /// Which business line the customer is browsing: Service (the app as it was) or Rent.
 enum CustomerPanel { service, rent }
 
-/// The panel the customer has open, remembered on this phone so the app opens where they left it.
+/// The panel the customer has open. Every login opens on Service; Rent is one tap away and holds
+/// only until the next login, so a customer never lands on Rent without choosing it.
 @Riverpod(keepAlive: true)
 class CustomerPanelChoice extends _$CustomerPanelChoice {
-  static const _key = 'customer.panel';
-
   @override
   CustomerPanel build() {
-    _restore();
+    // Rebuilt, so back to Service, when someone logs out or in; a profile refresh keeps the choice.
+    ref.watch(
+      authProvider.select(
+        (auth) => switch (auth.value) {
+          AuthAuthenticated(:final user) => user.id,
+          _ => null,
+        },
+      ),
+    );
     return CustomerPanel.service;
   }
 
-  Future<void> _restore() async {
-    try {
-      final saved = (await SharedPreferences.getInstance()).getString(_key);
-      if (saved == CustomerPanel.rent.name && ref.mounted) {
-        state = CustomerPanel.rent;
-      }
-    } catch (_) {
-      // A phone that cannot read its settings opens on Service, as before.
-    }
-  }
-
-  Future<void> choose(CustomerPanel panel) async {
-    state = panel;
-    try {
-      await (await SharedPreferences.getInstance()).setString(_key, panel.name);
-    } catch (_) {
-      // Not remembered this once; the choice still holds for the session.
-    }
-  }
+  void choose(CustomerPanel panel) => state = panel;
 }
 
 /// Which shuffle the Rent home is showing. A pull to refresh rolls a new one.

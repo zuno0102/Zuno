@@ -112,6 +112,8 @@ public class CustomerRentalOrderHandlers(
             .AsNoTracking()
             .Include(i => i.Districts)
             .Include(i => i.Questions)
+            .Include(i => i.RentalCategory)
+            .Include(i => i.RentalSubCategory)
             .FirstOrDefaultAsync(i => i.Id == request.RentalItemId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(RentalItem), request.RentalItemId);
 
@@ -164,6 +166,15 @@ public class CustomerRentalOrderHandlers(
             };
             order.PriceFrom(item.PriceType, item.Price);
             order.AdvanceDue = RentalCharge.Advance(item.AdvanceType, item.AdvanceAmount, order.Quantity, order.Amount);
+
+            // The cancellation terms the customer agreed to, kept with the order.
+            order.CancelSteps = item.CancelSteps
+                .Select(s => new RentalCancelStep { UnitsBefore = s.UnitsBefore, Percent = s.Percent })
+                .ToList();
+            order.CancelChargeType = item.CancelChargeType;
+            order.CancelPercentPerDay = item.CancelPercentPerDay;
+            // The limit as it stands now: a per-day charge on a long rental never adds up past it.
+            order.CancelPercentCap = RentalCancelLimits.For(item.RentalCategory, item.RentalSubCategory, settings.Value);
             if (order.AdvanceDue > 0)
             {
                 order.Status = RentalOrderStatus.AwaitingAdvance;
@@ -208,7 +219,7 @@ public class CustomerRentalOrderHandlers(
 
     public Task<RentalOrderDto> Handle(CancelMyRentalCommand request, CancellationToken cancellationToken) =>
         ChangeRentalOrderStatusCommandHandler.TakeStepAsync(
-            dbContext, request.Id, RentalOrderStatus.Cancelled, currentUser.OwnerId(), RentalAudience.Customer, cancellationToken);
+            dbContext, clock, request.Id, RentalOrderStatus.Cancelled, currentUser.OwnerId(), RentalAudience.Customer, cancellationToken);
 
     public async Task<RentalBusinessDto> Handle(SyncRentalBusinessCommand request, CancellationToken cancellationToken)
     {

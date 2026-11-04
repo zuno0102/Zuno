@@ -55,6 +55,19 @@ public class BusinessRentalOrdersController(ISender mediator) : ControllerBase
         return Ok(await mediator.Send(command, cancellationToken));
     }
 
+    /// <summary>What cancelling now gives back — all of it, as the business is the one cancelling.</summary>
+    [HttpGet("{id:guid}/cancel-quote")]
+    public async Task<IActionResult> CancelQuote(Guid id, CancellationToken cancellationToken) =>
+        Ok(await mediator.Send(new GetRentalCancelQuoteQuery { Id = id }, cancellationToken));
+
+    /// <summary>How a cancelled order's refund goes back: online or in hand.</summary>
+    [HttpPost("{id:guid}/refund-mode")]
+    public async Task<IActionResult> SetRefundMode(Guid id, [FromBody] SetRentalRefundModeCommand command, CancellationToken cancellationToken)
+    {
+        command.Id = id;
+        return Ok(await mediator.Send(command, cancellationToken));
+    }
+
     /// <summary>Moves the order one step, e.g. Booked → On rent ("Send out").</summary>
     [HttpPost("{id:guid}/status")]
     public async Task<IActionResult> ChangeStatus(Guid id, [FromBody] ChangeRentalOrderStatusCommand command, CancellationToken cancellationToken)

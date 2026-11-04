@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Zuno.Rent.Domain.Entities;
+using Zuno.Rent.Domain.Enums;
 using Zuno.Rent.Infrastructure.Persistence.Seed;
 
 namespace Zuno.Rent.Infrastructure.Persistence;
@@ -9,7 +10,9 @@ public class RentalCategoryConfiguration : IEntityTypeConfiguration<RentalCatego
 {
     public void Configure(EntityTypeBuilder<RentalCategory> builder)
     {
-        builder.ToTable("rental_categories");
+        builder.ToTable("rental_categories", t =>
+            t.HasCheckConstraint("ck_rental_categories_max_cancel_percent", "max_cancel_percent >= 0 AND max_cancel_percent <= 100"));
+        builder.Property(c => c.MaxCancelPercent).HasPrecision(5, 2);
         builder.Property(c => c.Name).HasMaxLength(100).IsRequired();
         builder.Property(c => c.Slug).HasMaxLength(100).IsRequired();
         builder.Property(c => c.IconName).HasMaxLength(50);
@@ -22,7 +25,11 @@ public class RentalSubCategoryConfiguration : IEntityTypeConfiguration<RentalSub
 {
     public void Configure(EntityTypeBuilder<RentalSubCategory> builder)
     {
-        builder.ToTable("rental_sub_categories");
+        builder.ToTable("rental_sub_categories", t =>
+            t.HasCheckConstraint(
+                "ck_rental_sub_categories_max_cancel_percent",
+                "max_cancel_percent IS NULL OR (max_cancel_percent >= 0 AND max_cancel_percent <= 100)"));
+        builder.Property(s => s.MaxCancelPercent).HasPrecision(5, 2);
         builder.Property(s => s.Name).HasMaxLength(100).IsRequired();
         builder.Property(s => s.Slug).HasMaxLength(100).IsRequired();
         builder.HasIndex(s => new { s.RentalCategoryId, s.Slug }).IsUnique();
@@ -47,8 +54,22 @@ public class RentalItemConfiguration : IEntityTypeConfiguration<RentalItem>
             t.HasCheckConstraint(
                 "ck_rental_items_advance",
                 "(advance_type = 0 AND advance_amount IS NULL) OR (advance_type IN (1, 2) AND advance_amount > 0)");
+            // One way of working out the charge: a per-day percent goes with the per-day type only.
+            t.HasCheckConstraint(
+                "ck_rental_items_cancel_charge",
+                "(cancel_charge_type = 1 AND cancel_percent_per_day IS NULL) "
+                + "OR (cancel_charge_type = 2 AND cancel_percent_per_day > 0 AND cancel_percent_per_day <= 100)");
         });
         builder.Property(i => i.AdvanceAmount).HasPrecision(12, 2);
+        builder.Property(i => i.CancelChargeType).HasDefaultValue(RentalCancelChargeType.ByTimeLeft).HasSentinel(RentalCancelChargeType.ByTimeLeft);
+        builder.Property(i => i.CancelPercentPerDay).HasPrecision(5, 2);
+
+        // A handful of steps read and written with the item, never queried on their own: one JSON column.
+        builder.OwnsMany(i => i.CancelSteps, steps =>
+        {
+            steps.ToJson("cancel_steps");
+            steps.Property(s => s.Percent).HasPrecision(5, 2);
+        });
         builder.Property(i => i.Name).HasMaxLength(200).IsRequired();
         builder.Property(i => i.Description).HasMaxLength(1000);
         builder.Property(i => i.Price).HasPrecision(12, 2);
@@ -149,6 +170,26 @@ public class RentalOrderConfiguration : IEntityTypeConfiguration<RentalOrder>
             t.HasCheckConstraint("ck_rental_orders_dates", "end_date >= start_date");
             t.HasCheckConstraint("ck_rental_orders_amounts", "amount >= 0 AND advance_due >= 0 AND advance_due <= amount");
             t.HasCheckConstraint("ck_rental_orders_units", "units >= 1");
+            t.HasCheckConstraint(
+                "ck_rental_orders_cancellation_charge", "cancellation_charge >= 0 AND cancellation_charge <= amount");
+            t.HasCheckConstraint("ck_rental_orders_cancelled_by", "cancelled_by IS NULL OR cancelled_by IN (1, 2)");
+            t.HasCheckConstraint("ck_rental_orders_refund_mode", "refund_mode IS NULL OR refund_mode IN (1, 2)");
+            t.HasCheckConstraint("ck_rental_orders_cancel_charge_type", "cancel_charge_type IN (1, 2)");
+            t.HasCheckConstraint(
+                "ck_rental_orders_cancel_percents",
+                "cancel_percent_cap >= 0 AND cancel_percent_cap <= 100 "
+                + "AND (cancel_percent_per_day IS NULL OR (cancel_percent_per_day > 0 AND cancel_percent_per_day <= 100))");
+        });
+        builder.Property(o => o.CancellationCharge).HasPrecision(14, 2);
+        builder.Property(o => o.CancelChargeType).HasDefaultValue(RentalCancelChargeType.ByTimeLeft).HasSentinel(RentalCancelChargeType.ByTimeLeft);
+        builder.Property(o => o.CancelPercentPerDay).HasPrecision(5, 2);
+        builder.Property(o => o.CancelPercentCap).HasPrecision(5, 2);
+
+        // The terms as booked, kept with the order: one JSON column, like the item's.
+        builder.OwnsMany(o => o.CancelSteps, steps =>
+        {
+            steps.ToJson("cancel_steps");
+            steps.Property(s => s.Percent).HasPrecision(5, 2);
         });
         builder.Property(o => o.UnitPrice).HasPrecision(12, 2);
         builder.Property(o => o.Amount).HasPrecision(14, 2);
@@ -335,6 +376,8 @@ public class RentalOrderPaymentConfiguration : IEntityTypeConfiguration<RentalOr
         builder.Property(p => p.Amount).HasPrecision(14, 2);
         builder.Property(p => p.ProviderOrderId).HasMaxLength(100);
         builder.Property(p => p.ProviderPaymentId).HasMaxLength(100);
+        builder.Property(p => p.Reference).HasMaxLength(RentalPaymentFields.ReferenceMaxLength);
+        builder.Property(p => p.PayeeUpiId).HasMaxLength(RentalPaymentFields.UpiIdMaxLength);
 
         // An order's payments, in order; and one gateway payment counted once, ever.
         builder.HasIndex(p => new { p.RentalOrderId, p.CreatedDate });
@@ -376,6 +419,20 @@ public class RentalAdvanceTypeOptionConfiguration : IEntityTypeConfiguration<Ren
     }
 }
 
+public class RentalCancelChargeTypeOptionConfiguration : IEntityTypeConfiguration<RentalCancelChargeTypeOption>
+{
+    public void Configure(EntityTypeBuilder<RentalCancelChargeTypeOption> builder)
+    {
+        builder.ToTable("ref_rental_cancel_charge_types", t =>
+            t.HasCheckConstraint("ck_ref_rental_cancel_charge_types_code", "code IN (1, 2)"));
+        builder.HasKey(c => c.Code);
+        builder.Property(c => c.Code).ValueGeneratedNever();
+        builder.Property(c => c.Name).HasMaxLength(50).IsRequired();
+        builder.Property(c => c.Detail).HasMaxLength(120).IsRequired();
+        builder.HasData(RentalPaymentSeedData.CancelChargeTypes);
+    }
+}
+
 public class RentalPaymentMethodOptionConfiguration : IEntityTypeConfiguration<RentalPaymentMethodOption>
 {
     public void Configure(EntityTypeBuilder<RentalPaymentMethodOption> builder)
@@ -398,5 +455,20 @@ public class RentalPaymentStatusOptionConfiguration : IEntityTypeConfiguration<R
         builder.Property(s => s.Name).HasMaxLength(50).IsRequired();
         builder.Property(s => s.Tone).HasMaxLength(20).IsRequired();
         builder.HasData(RentalPaymentSeedData.Statuses);
+    }
+}
+
+public class RentalRefundModeOptionConfiguration : IEntityTypeConfiguration<RentalRefundModeOption>
+{
+    public void Configure(EntityTypeBuilder<RentalRefundModeOption> builder)
+    {
+        builder.ToTable("ref_rental_refund_modes", t =>
+            t.HasCheckConstraint("ck_ref_rental_refund_modes_code", "code IN (1, 2)"));
+        builder.HasKey(m => m.Code);
+        builder.Property(m => m.Code).ValueGeneratedNever();
+        builder.Property(m => m.Name).HasMaxLength(50).IsRequired();
+        builder.Property(m => m.CustomerText).HasMaxLength(300).IsRequired();
+        builder.Property(m => m.BusinessText).HasMaxLength(300).IsRequired();
+        builder.HasData(RentalPaymentSeedData.RefundModes);
     }
 }

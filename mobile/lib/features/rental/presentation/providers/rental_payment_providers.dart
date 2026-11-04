@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:zuno/core/payments/razorpay_checkout.dart';
+import 'package:zuno/core/payments/upi_pay.dart';
 import 'package:zuno/features/rental/domain/entities/rental_payment.dart';
 import 'package:zuno/features/rental/presentation/providers/rental_providers.dart';
 
@@ -29,3 +30,10 @@ RentalPaymentWindow rentalPaymentWindow(Ref ref) =>
       description: checkout.description,
       businessName: payee,
     );
+
+/// Pays by UPI through the phone's UPI app and resolves with what it reported. A provider, so
+/// tests answer it without a UPI app.
+typedef RentalUpiPay = Future<UpiPayResult> Function(String uri);
+
+@Riverpod(keepAlive: true)
+RentalUpiPay rentalUpiPay(Ref ref) => UpiPay.pay;

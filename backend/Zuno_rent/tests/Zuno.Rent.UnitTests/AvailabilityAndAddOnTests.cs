@@ -103,7 +103,7 @@ public class AvailabilityAndAddOnTests : IDisposable
         var chairs = await ChairsAsync(2000);
         await Create.Handle(Book(chairs, 500, customer: "A"), default);
         var b = await Create.Handle(Book(chairs, 300, customer: "B"), default);
-        await new ChangeRentalOrderStatusCommandHandler(_rent.User, _rent.Db)
+        await new ChangeRentalOrderStatusCommandHandler(_rent.User, _rent.Db, TimeProvider.System)
             .Handle(new ChangeRentalOrderStatusCommand { Id = b.Id, ToStatus = "OnRent" }, default);
 
         var addOn = await Create.Handle(new AddRentalOrderAddOnCommand { ParentOrderId = b.Id, Quantity = 200 }, default);

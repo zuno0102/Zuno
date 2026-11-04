@@ -1,4 +1,5 @@
 import 'package:zuno/features/rental/domain/entities/rental_item.dart';
+import 'package:zuno/features/rental/domain/entities/rental_payment.dart';
 
 /// Which side of a rent order is looking: the business that rents the item out, or the customer who
 /// rented it. The same order screens serve both; this picks the server routes and what may be done.
@@ -72,6 +73,11 @@ class RentalItemDetail {
     this.businessLogoUrl,
     this.advanceType = 'None',
     this.advanceAmount,
+    this.cancelSteps = const [],
+    this.cancelUnit = RentalCancelUnit.day,
+    this.cancelChargeType = RentalCancelChargeType.byTimeLeft,
+    this.cancelPercentPerDay,
+    this.maxCancelPercent = 0,
   });
 
   final RentalCard card;
@@ -91,6 +97,21 @@ class RentalItemDetail {
   /// `None`, `PerOrder` or `PerPiece`.
   final String advanceType;
   final double? advanceAmount;
+
+  /// What cancelling costs by time left; empty is free cancellation.
+  final List<RentalCancelStep> cancelSteps;
+
+  /// [RentalCancelUnit.day] or [RentalCancelUnit.hour].
+  final String cancelUnit;
+
+  /// [RentalCancelChargeType.byTimeLeft] (the steps) or [RentalCancelChargeType.perRentalDay].
+  final String cancelChargeType;
+
+  /// For a per-rental-day charge: the percent for each day (or hour) rented.
+  final double? cancelPercentPerDay;
+
+  /// The most the charge can add up to for this kind of item.
+  final double maxCancelPercent;
 
   List<String> get imageUrls => [
     for (final m in [

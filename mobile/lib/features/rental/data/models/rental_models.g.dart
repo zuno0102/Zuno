@@ -41,45 +41,53 @@ RentalPriceTypeModel _$RentalPriceTypeModelFromJson(
   unitSuffix: json['unitSuffix'] as String,
 );
 
-RentalItemModel _$RentalItemModelFromJson(Map<String, dynamic> json) =>
-    RentalItemModel(
-      id: json['id'] as String,
-      rentalCategoryId: json['rentalCategoryId'] as String,
-      rentalCategoryName: json['rentalCategoryName'] as String,
-      name: json['name'] as String,
-      priceType: json['priceType'] as String,
-      price: (json['price'] as num).toDouble(),
-      quantityOwned: (json['quantityOwned'] as num).toInt(),
-      isAvailable: json['isAvailable'] as bool,
-      rentalSubCategoryId: json['rentalSubCategoryId'] as String?,
-      rentalSubCategoryName: json['rentalSubCategoryName'] as String?,
-      description: json['description'] as String?,
-      media:
-          (json['media'] as List<dynamic>?)
-              ?.map(
-                (e) => RentalItemMediaModel.fromJson(e as Map<String, dynamic>),
-              )
-              .toList() ??
-          const [],
-      districts:
-          (json['districts'] as List<dynamic>?)
-              ?.map(
-                (e) =>
-                    RentalItemDistrictModel.fromJson(e as Map<String, dynamic>),
-              )
-              .toList() ??
-          const [],
-      questions:
-          (json['questions'] as List<dynamic>?)
-              ?.map(
-                (e) =>
-                    RentalItemQuestionModel.fromJson(e as Map<String, dynamic>),
-              )
-              .toList() ??
-          const [],
-      advanceType: json['advanceType'] as String? ?? 'None',
-      advanceAmount: (json['advanceAmount'] as num?)?.toDouble(),
-    );
+RentalItemModel _$RentalItemModelFromJson(
+  Map<String, dynamic> json,
+) => RentalItemModel(
+  id: json['id'] as String,
+  rentalCategoryId: json['rentalCategoryId'] as String,
+  rentalCategoryName: json['rentalCategoryName'] as String,
+  name: json['name'] as String,
+  priceType: json['priceType'] as String,
+  price: (json['price'] as num).toDouble(),
+  quantityOwned: (json['quantityOwned'] as num).toInt(),
+  isAvailable: json['isAvailable'] as bool,
+  rentalSubCategoryId: json['rentalSubCategoryId'] as String?,
+  rentalSubCategoryName: json['rentalSubCategoryName'] as String?,
+  description: json['description'] as String?,
+  media:
+      (json['media'] as List<dynamic>?)
+          ?.map((e) => RentalItemMediaModel.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const [],
+  districts:
+      (json['districts'] as List<dynamic>?)
+          ?.map(
+            (e) => RentalItemDistrictModel.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const [],
+  questions:
+      (json['questions'] as List<dynamic>?)
+          ?.map(
+            (e) => RentalItemQuestionModel.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const [],
+  advanceType: json['advanceType'] as String? ?? 'None',
+  advanceAmount: (json['advanceAmount'] as num?)?.toDouble(),
+  cancelSteps:
+      (json['cancelSteps'] as List<dynamic>?)
+          ?.map(
+            (e) => RentalCancelStepModel.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const [],
+  cancelUnit: json['cancelUnit'] as String? ?? RentalCancelUnit.day,
+  cancelChargeType:
+      json['cancelChargeType'] as String? ?? RentalCancelChargeType.byTimeLeft,
+  cancelPercentPerDay: (json['cancelPercentPerDay'] as num?)?.toDouble(),
+);
 
 RentalItemPageModel _$RentalItemPageModelFromJson(Map<String, dynamic> json) =>
     RentalItemPageModel(
@@ -104,6 +112,7 @@ RentalSubCategoryModel _$RentalSubCategoryModelFromJson(
 ) => RentalSubCategoryModel(
   id: json['id'] as String,
   name: json['name'] as String,
+  maxCancelPercent: (json['maxCancelPercent'] as num?)?.toDouble() ?? 0,
 );
 
 RentalCategoryModel _$RentalCategoryModelFromJson(Map<String, dynamic> json) =>
@@ -119,4 +128,12 @@ RentalCategoryModel _$RentalCategoryModelFromJson(Map<String, dynamic> json) =>
               )
               .toList() ??
           const [],
+      maxCancelPercent: (json['maxCancelPercent'] as num?)?.toDouble() ?? 0,
     );
+
+RentalCancelStepModel _$RentalCancelStepModelFromJson(
+  Map<String, dynamic> json,
+) => RentalCancelStepModel(
+  unitsBefore: (json['unitsBefore'] as num).toInt(),
+  percent: (json['percent'] as num).toDouble(),
+);

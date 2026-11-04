@@ -4,12 +4,14 @@ import 'package:zuno/core/payments/razorpay_checkout.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/rental/domain/entities/rental_customer.dart';
 import 'package:zuno/features/rental/domain/entities/rental_item.dart';
+import 'package:zuno/features/rental/domain/entities/rental_payment.dart';
 import 'package:zuno/features/rental/domain/entities/rental_stock.dart';
 import 'package:zuno/features/rental/presentation/providers/rental_order_providers.dart';
 import 'package:zuno/features/rental/presentation/providers/rental_payment_providers.dart';
 import 'package:zuno/features/rental/presentation/providers/rental_providers.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_collect_sheet.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_order_card.dart';
+import 'package:zuno/features/rental/presentation/widgets/rental_refund_note.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
 
@@ -103,6 +105,19 @@ class RentalPaymentCard extends ConsumerWidget {
                 strong: order.balance > 0,
                 key: const ValueKey('payment-balance'),
               ),
+            if (order.cancellationCharge > 0)
+              line(
+                'Cancellation charge',
+                rupees(order.cancellationCharge),
+                key: const ValueKey('payment-cancel-charge'),
+              ),
+            if (order.refundOwed > 0)
+              line(
+                isBusiness ? 'To give back' : 'Refund due to you',
+                rupees(order.refundOwed),
+                strong: true,
+                key: const ValueKey('payment-refund-owed'),
+              ),
             if (order.payments.isNotEmpty) ...[
               const SizedBox(height: 8),
               for (final p in order.payments)
@@ -121,8 +136,13 @@ class RentalPaymentCard extends ConsumerWidget {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          '${_kindName(p.kind)} · ${p.methodName} · '
-                          '${formatDayMonth(p.at)}',
+                          [
+                            _kindName(p.kind),
+                            p.methodName,
+                            if (p.reference case final reference?)
+                              'ref $reference',
+                            formatDayMonth(p.at),
+                          ].join(' · '),
                           style: muted,
                         ),
                       ),
@@ -144,6 +164,8 @@ class RentalPaymentCard extends ConsumerWidget {
                 style: muted?.copyWith(color: theme.colorScheme.error),
               ),
             ],
+            if (order.status == 'Cancelled')
+              RentalRefundNote(order: order, audience: audience),
             if (isBusiness && order.canCollect) ...[
               const SizedBox(height: 12),
               FilledButton.icon(
@@ -160,7 +182,7 @@ class RentalPaymentCard extends ConsumerWidget {
                 onPressed: () =>
                     showRentalCollectSheet(context, order, refund: true),
                 icon: const Icon(Icons.undo_rounded),
-                label: Text('Record refund of ${rupees(order.paid)}'),
+                label: Text('Record refund of ${rupees(order.refundOwed)}'),
               ),
             ],
             if (!isBusiness &&
@@ -206,16 +228,35 @@ String rentalRateLine(RentalOrder order) {
 
 /// The order card's money line: "₹500 paid · ₹1,500 due", "Paid ₹2,000", "Advance ₹200 due" — or
 /// null for an order with nothing to say.
-String? rentalMoneyLine(RentalOrder order) {
+String? rentalMoneyLine(RentalOrder order, {RentalAudience? audience}) {
   if (order.paymentStatus == null) return null;
   return switch (order.paymentStatus) {
     'AdvanceDue' => 'Advance ${rupees(order.payNowAmount)} due',
     'Paid' => 'Paid ${rupees(order.paid)}',
-    'RefundDue' => 'Refund due ${rupees(order.paid)}',
+    'RefundDue' when audience != null => _refundLine(order, audience),
+    'RefundDue' => 'Refund due ${rupees(order.refundOwed)}',
+    'ChargeKept' => 'Charge kept ${rupees(order.cancellationCharge)}',
     'Refunded' => 'Refunded',
     _ when order.paid <= 0 => '${rupees(order.balance)} due',
     _ => '${rupees(order.paid)} paid · ${rupees(order.balance)} due',
   };
+}
+
+/// "Give back ₹500 · you cancelled", "Refund ₹380 online · you cancelled" — what is owed back on a
+/// cancelled order and who cancelled it, as [audience] reads it.
+String _refundLine(RentalOrder order, RentalAudience audience) {
+  final business = audience == RentalAudience.business;
+  final amount = rupees(order.refundOwed);
+  final online = order.refundMode == RentalRefundMode.online;
+  final what = business
+      ? (online ? 'Refund $amount goes back online' : 'Give back $amount')
+      : (online ? 'Refund $amount online' : 'Refund due $amount');
+  final who = switch (order.cancelledBy) {
+    'Business' => business ? 'you cancelled' : 'business cancelled',
+    'Customer' => business ? 'customer cancelled' : 'you cancelled',
+    _ => null,
+  };
+  return who == null ? what : '$what · $who';
 }
 
 /// Pays online for [order]: the advance while it is awaited, otherwise what is due. The payment
@@ -251,7 +292,13 @@ Future<RentalOrder?> payRentalOnline(
     );
     reloadRentals(ref);
 
-    if (paid.status == 'Cancelled') {
+    if (checkout.nothingToCollect) {
+      // Never a plain "Paid": no window opened and no money moved, so say so.
+      messenger.showInfo(
+        'Test mode: marked ${rupees(checkout.amount)} as paid. '
+        'No payment app opened and no money was taken.',
+      );
+    } else if (paid.status == 'Cancelled') {
       // The hold ran out while paying and the pieces went to someone else: the money is recorded.
       messenger.showInfo(
         'Paid ${rupees(checkout.amount)}, but the pieces were booked by someone else meanwhile. '

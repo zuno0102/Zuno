@@ -1,5 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:zuno/features/booking/domain/entities/booking_message.dart';
+import 'package:zuno/features/rental/data/models/rental_models.dart';
 import 'package:zuno/features/rental/domain/entities/rental_payment.dart';
 import 'package:zuno/features/rental/domain/entities/rental_stock.dart';
 
@@ -224,6 +225,20 @@ class RentalOrderModel {
     this.canRefund = false,
     this.canPayOnline = false,
     this.upiId,
+    this.cancelSteps = const [],
+    this.cancelUnit = RentalCancelUnit.day,
+    this.cancelledBy,
+    this.cancellationCharge = 0,
+    this.refundOwed = 0,
+    this.refundMode,
+    this.refundModeName,
+    this.refundModeText,
+    this.canChooseRefundMode = false,
+    this.refundModes = const [],
+    this.needsRefund = false,
+    this.cancelChargeType = RentalCancelChargeType.byTimeLeft,
+    this.cancelPercentPerDay,
+    this.cancelPercentCap = 0,
   });
 
   factory RentalOrderModel.fromJson(Map<String, dynamic> json) =>
@@ -268,6 +283,20 @@ class RentalOrderModel {
   final bool canRefund;
   final bool canPayOnline;
   final String? upiId;
+  final List<RentalCancelStepModel> cancelSteps;
+  final String cancelUnit;
+  final String? cancelledBy;
+  final double cancellationCharge;
+  final double refundOwed;
+  final String? refundMode;
+  final String? refundModeName;
+  final String? refundModeText;
+  final bool canChooseRefundMode;
+  final List<RentalRefundModeChoiceModel> refundModes;
+  final bool needsRefund;
+  final String cancelChargeType;
+  final double? cancelPercentPerDay;
+  final double cancelPercentCap;
 
   RentalOrder toEntity() => RentalOrder(
     id: id,
@@ -310,6 +339,20 @@ class RentalOrderModel {
     canRefund: canRefund,
     canPayOnline: canPayOnline,
     upiId: upiId,
+    cancelSteps: cancelSteps.map((s) => s.toEntity()).toList(),
+    cancelUnit: cancelUnit,
+    cancelledBy: cancelledBy,
+    cancellationCharge: cancellationCharge,
+    refundOwed: refundOwed,
+    refundMode: refundMode,
+    refundModeName: refundModeName,
+    refundModeText: refundModeText,
+    canChooseRefundMode: canChooseRefundMode,
+    refundModes: refundModes.map((m) => m.toEntity()).toList(),
+    needsRefund: needsRefund,
+    cancelChargeType: cancelChargeType,
+    cancelPercentPerDay: cancelPercentPerDay,
+    cancelPercentCap: cancelPercentCap,
   );
 }
 
@@ -331,6 +374,7 @@ class RentalOrderStatusCountModel {
     required this.name,
     required this.tone,
     required this.count,
+    this.countsInAll = true,
   });
 
   factory RentalOrderStatusCountModel.fromJson(Map<String, dynamic> json) =>
@@ -340,12 +384,14 @@ class RentalOrderStatusCountModel {
   final String name;
   final String tone;
   final int count;
+  final bool countsInAll;
 
   RentalOrderStatusCount toEntity() => RentalOrderStatusCount(
     status: status,
     name: name,
     tone: tone,
     count: count,
+    countsInAll: countsInAll,
   );
 }
 
@@ -436,6 +482,7 @@ class RentalOrderPaymentModel {
     required this.kind,
     required this.methodName,
     required this.amount,
+    this.reference,
   });
 
   factory RentalOrderPaymentModel.fromJson(Map<String, dynamic> json) =>
@@ -446,6 +493,7 @@ class RentalOrderPaymentModel {
   final String kind;
   final String methodName;
   final double amount;
+  final String? reference;
 
   RentalOrderPayment toEntity() => RentalOrderPayment(
     id: id,
@@ -453,6 +501,7 @@ class RentalOrderPaymentModel {
     kind: kind,
     methodName: methodName,
     amount: amount,
+    reference: reference,
   );
 }
 
@@ -508,6 +557,7 @@ class RentalPaymentOptionsModel {
   const RentalPaymentOptionsModel({
     this.advanceTypes = const [],
     this.methods = const [],
+    this.cancelChargeTypes = const [],
   });
 
   factory RentalPaymentOptionsModel.fromJson(Map<String, dynamic> json) =>
@@ -515,9 +565,76 @@ class RentalPaymentOptionsModel {
 
   final List<RentalPaymentOptionModel> advanceTypes;
   final List<RentalPaymentOptionModel> methods;
+  final List<RentalPaymentOptionModel> cancelChargeTypes;
 
   RentalPaymentOptions toEntity() => RentalPaymentOptions(
     advanceTypes: advanceTypes.map((o) => o.toEntity()).toList(),
     methods: methods.map((o) => o.toEntity()).toList(),
+    cancelChargeTypes: cancelChargeTypes.map((o) => o.toEntity()).toList(),
+  );
+}
+
+@JsonSerializable(createToJson: false)
+class RentalRefundModeChoiceModel {
+  const RentalRefundModeChoiceModel({
+    required this.code,
+    required this.name,
+    this.text = '',
+    this.disabledReason,
+  });
+
+  factory RentalRefundModeChoiceModel.fromJson(Map<String, dynamic> json) =>
+      _$RentalRefundModeChoiceModelFromJson(json);
+
+  final String code;
+  final String name;
+  final String text;
+  final String? disabledReason;
+
+  RentalRefundModeChoice toEntity() => RentalRefundModeChoice(
+    code: code,
+    name: name,
+    text: text,
+    disabledReason: disabledReason,
+  );
+}
+
+@JsonSerializable(createToJson: false)
+class RentalCancelQuoteModel {
+  const RentalCancelQuoteModel({
+    required this.unitsBefore,
+    required this.unit,
+    required this.percent,
+    required this.charge,
+    required this.paid,
+    required this.refund,
+    this.refundModes = const [],
+    this.basis = RentalCancelChargeType.byTimeLeft,
+    this.rentalUnits = 1,
+  });
+
+  factory RentalCancelQuoteModel.fromJson(Map<String, dynamic> json) =>
+      _$RentalCancelQuoteModelFromJson(json);
+
+  final int unitsBefore;
+  final String unit;
+  final double percent;
+  final double charge;
+  final double paid;
+  final double refund;
+  final List<RentalRefundModeChoiceModel> refundModes;
+  final String basis;
+  final int rentalUnits;
+
+  RentalCancelQuote toEntity() => RentalCancelQuote(
+    basis: basis,
+    rentalUnits: rentalUnits,
+    unitsBefore: unitsBefore,
+    unit: unit,
+    percent: percent,
+    charge: charge,
+    paid: paid,
+    refund: refund,
+    refundModes: refundModes.map((m) => m.toEntity()).toList(),
   );
 }

@@ -124,6 +124,64 @@ public class RentalOrderDto
 
     /// <summary>The business's UPI ID for the payment QR — shown to the business only; null until it is set.</summary>
     public string? UpiId { get; set; }
+
+    /// <summary>The cancellation charge by time left, as booked — a later change to the item never touches it.</summary>
+    public List<RentalCancelStepDto> CancelSteps { get; set; } = [];
+
+    /// <summary><c>Day</c>, or <c>Hour</c> for an hourly order: what the steps count.</summary>
+    public string CancelUnit { get; set; } = string.Empty;
+
+    /// <summary><c>ByTimeLeft</c> (the steps) or <c>PerRentalDay</c>, as booked.</summary>
+    public string CancelChargeType { get; set; } = string.Empty;
+
+    /// <summary>For <c>PerRentalDay</c>: the percent for each day (or hour) rented.</summary>
+    public decimal? CancelPercentPerDay { get; set; }
+
+    /// <summary>The most a per-day charge adds up to, as booked.</summary>
+    public decimal CancelPercentCap { get; set; }
+
+    /// <summary><c>Business</c> or <c>Customer</c> on an order one of them cancelled; null otherwise.</summary>
+    public string? CancelledBy { get; set; }
+
+    /// <summary>What the business keeps because the customer cancelled; 0 when the business cancelled.</summary>
+    public decimal CancellationCharge { get; set; }
+
+    /// <summary>Still to go back to the customer on a cancelled order.</summary>
+    public decimal RefundOwed { get; set; }
+
+    /// <summary><c>Online</c> or <c>InHand</c> once the business has chosen; null before.</summary>
+    public string? RefundMode { get; set; }
+
+    public string? RefundModeName { get; set; }
+
+    /// <summary>What this side is told about the refund, e.g. "in 1 to 5 working days" — from the refund-mode table.</summary>
+    public string? RefundModeText { get; set; }
+
+    /// <summary>
+    /// The business still has money to give back here: owed, and not going back online by Zuno.
+    /// Such an order sits in the business's to-do list until it is settled.
+    /// </summary>
+    public bool NeedsRefund { get; set; }
+
+    /// <summary>The business may still choose or change how the refund goes back (none given yet).</summary>
+    public bool CanChooseRefundMode { get; set; }
+
+    /// <summary>The refund methods to choose from, when <see cref="CanChooseRefundMode"/>.</summary>
+    public List<RentalRefundModeChoiceDto> RefundModes { get; set; } = [];
+}
+
+/// <summary>One way to give a refund back, as the business chooses it.</summary>
+public class RentalRefundModeChoiceDto
+{
+    /// <summary><c>Online</c> or <c>InHand</c>.</summary>
+    public string Code { get; set; } = string.Empty;
+
+    public string Name { get; set; } = string.Empty;
+
+    public string Text { get; set; } = string.Empty;
+
+    /// <summary>Why it cannot be chosen, e.g. the customer paid in cash; null when it can.</summary>
+    public string? DisabledReason { get; set; }
 }
 
 /// <summary>One payment line on an order.</summary>
@@ -140,6 +198,9 @@ public class RentalOrderPaymentDto
     public string MethodName { get; set; } = string.Empty;
 
     public decimal Amount { get; set; }
+
+    /// <summary>The UPI transaction reference, when one was recorded.</summary>
+    public string? Reference { get; set; }
 }
 
 public class RentalOrderAnswerDto

@@ -67,6 +67,11 @@ internal static class RentalOrderReader
 
         var paymentStatuses = await dbContext.RentalPaymentStatuses.AsNoTracking().ToDictionaryAsync(s => s.Code, cancellationToken);
         var methods = await dbContext.RentalPaymentMethods.AsNoTracking().ToDictionaryAsync(m => m.Code, m => m.Name, cancellationToken);
+        var refundModes = await dbContext.RentalRefundModes
+            .AsNoTracking()
+            .Where(m => m.IsActive)
+            .OrderBy(m => m.DisplayOrder)
+            .ToListAsync(cancellationToken);
 
         // Unread means what the other side wrote that this side has not opened.
         var otherSide = audience == RentalAudience.Business ? RentalMessageSenderRole.Customer : RentalMessageSenderRole.Business;
@@ -101,6 +106,13 @@ internal static class RentalOrderReader
                 District = o.District == null ? null : o.District.Name,
                 o.Status,
                 o.Source,
+                o.CancelSteps,
+                o.CancelChargeType,
+                o.CancelPercentPerDay,
+                o.CancelPercentCap,
+                o.CancelledBy,
+                o.CancellationCharge,
+                o.RefundMode,
                 Unread = dbContext.RentalOrderMessages.Count(m =>
                     m.RentalOrderId == o.Id && m.SenderRole == otherSide && m.ReadAt == null),
                 o.ParentOrderId,
@@ -132,11 +144,17 @@ internal static class RentalOrderReader
             var lines = payments[o.Id].ToList();
             var paid = RentalMoney.NetPaid(lines);
             var balance = RentalMoney.Balance(o.Status, o.Amount, paid);
+            var anyRefund = lines.Any(p => p.Kind == RentalPaymentKind.Refund);
             var paymentStatus = RentalMoney.StatusOf(
-                o.Status, o.Amount, o.AdvanceDue, paid, lines.Any(p => p.Kind == RentalPaymentKind.Refund));
+                o.Status, o.Amount, o.AdvanceDue, paid, anyRefund, o.CancellationCharge);
             var paymentOption = paymentStatus is { } ps ? paymentStatuses.GetValueOrDefault(ps) : null;
             var awaiting = o.Status == RentalOrderStatus.AwaitingAdvance;
             var open = o.Status is not (RentalOrderStatus.Cancelled or RentalOrderStatus.Returned);
+            var business = audience == RentalAudience.Business;
+            var refundOwed = RentalMoney.RefundOwed(o.Status, paid, o.CancellationCharge);
+            var refundMode = o.RefundMode is { } rm ? refundModes.FirstOrDefault(m => m.Code == rm) : null;
+            var canChooseRefundMode = business && refundOwed > 0 && !anyRefund;
+            var onlinePaid = RentalMoney.OnlinePaid(lines);
             return new RentalOrderDto
             {
                 Id = o.Id,
@@ -202,12 +220,38 @@ internal static class RentalOrderReader
                         Kind = p.Kind.ToString(),
                         MethodName = methods.GetValueOrDefault(p.Method) ?? p.Method.ToString(),
                         Amount = p.Amount,
+                        Reference = p.Reference,
                     })
                     .ToList(),
                 HoldUntil = awaiting ? o.HoldUntil : null,
                 PayNowAmount = awaiting ? Math.Max(0, o.AdvanceDue - paid) : open ? balance : 0,
                 CanCollect = audience == RentalAudience.Business && open && balance > 0,
-                CanRefund = audience == RentalAudience.Business && o.Status == RentalOrderStatus.Cancelled && paid > 0,
+                // Recorded by hand only when the business gives it back itself; an online refund is Zuno's to send.
+                CanRefund = business && refundOwed > 0 && o.RefundMode != RentalRefundMode.Online,
+                CancelSteps = o.CancelSteps.ToDto(),
+                CancelUnit = RentalCancellation.UnitOf(o.PriceType),
+                CancelChargeType = o.CancelChargeType.ToString(),
+                CancelPercentPerDay = o.CancelPercentPerDay,
+                CancelPercentCap = o.CancelPercentCap,
+                CancelledBy = o.CancelledBy?.ToString(),
+                CancellationCharge = o.CancellationCharge,
+                RefundOwed = refundOwed,
+                RefundMode = o.RefundMode?.ToString(),
+                RefundModeName = refundMode?.Name,
+                RefundModeText = refundMode is null ? null : business ? refundMode.BusinessText : refundMode.CustomerText,
+                CanChooseRefundMode = canChooseRefundMode,
+                NeedsRefund = business && refundOwed > 0 && o.RefundMode != RentalRefundMode.Online,
+                RefundModes = canChooseRefundMode
+                    ? refundModes
+                        .Select(m => new RentalRefundModeChoiceDto
+                        {
+                            Code = m.Code.ToString(),
+                            Name = m.Name,
+                            Text = m.BusinessText,
+                            DisabledReason = RentalMoney.RefundModeRefusal(m.Code, refundOwed, onlinePaid),
+                        })
+                        .ToList()
+                    : [],
                 CanPayOnline = audience == RentalAudience.Customer && open && balance > 0,
 
                 // The QR is the business's to show; a customer pays the business in front of them.

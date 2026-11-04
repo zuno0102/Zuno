@@ -40,6 +40,26 @@ public class RentalItemDto
 
     /// <summary>In display order.</summary>
     public List<RentalItemQuestionDto> Questions { get; set; } = [];
+
+    /// <summary>The cancellation charge by time left, nearest the start first. Empty is free cancellation.</summary>
+    public List<RentalCancelStepDto> CancelSteps { get; set; } = [];
+
+    /// <summary><c>Day</c>, or <c>Hour</c> for an hourly item: what the steps count.</summary>
+    public string CancelUnit { get; set; } = string.Empty;
+
+    /// <summary><c>ByTimeLeft</c> (the steps) or <c>PerRentalDay</c>.</summary>
+    public string CancelChargeType { get; set; } = string.Empty;
+
+    /// <summary>For <c>PerRentalDay</c>: the percent for each day (or hour) rented.</summary>
+    public decimal? CancelPercentPerDay { get; set; }
+}
+
+/// <summary>"<see cref="UnitsBefore"/>+ days before → <see cref="Percent"/>% of the order".</summary>
+public class RentalCancelStepDto
+{
+    public int UnitsBefore { get; set; }
+
+    public decimal Percent { get; set; }
 }
 
 public class RentalItemQuestionDto
@@ -109,6 +129,9 @@ public class RentalCategoryDto
 
     public string? IconName { get; set; }
 
+    /// <summary>The most a business may keep on a cancellation, in percent — set per category by the super admin.</summary>
+    public decimal MaxCancelPercent { get; set; }
+
     public List<RentalSubCategoryDto> SubCategories { get; set; } = [];
 }
 
@@ -119,4 +142,7 @@ public class RentalSubCategoryDto
     public string Name { get; set; } = string.Empty;
 
     public string Slug { get; set; } = string.Empty;
+
+    /// <summary>The limit for items under this sub-category: its own, or its category's.</summary>
+    public decimal MaxCancelPercent { get; set; }
 }

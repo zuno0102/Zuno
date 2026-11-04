@@ -106,6 +106,13 @@ class RentalCustomerRemoteDataSource {
     return RentalOrderModel.fromJson(response.data!);
   });
 
+  Future<RentalCancelQuoteModel> cancelQuote(String id) => _run(() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      RentApi.myRentalCancelQuotePath(id),
+    );
+    return RentalCancelQuoteModel.fromJson(response.data!);
+  });
+
   Future<RentalCheckoutModel> checkout(String id) => _run(() async {
     final response = await _dio.post<Map<String, dynamic>>(
       RentApi.myRentalCheckoutPath(id),

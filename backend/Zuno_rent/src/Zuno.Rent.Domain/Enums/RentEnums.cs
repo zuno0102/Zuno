@@ -96,6 +96,22 @@ public enum RentalPaymentStatus : short
 
     /// <summary>Cancelled, and the money given back.</summary>
     Refunded = 7,
+
+    /// <summary>Cancelled by the customer; everything paid was kept as the cancellation charge.</summary>
+    ChargeKept = 8,
+}
+
+/// <summary>
+/// How the money owed back on a cancelled order reaches the customer — the business chooses. Stored
+/// as a number and appended, never reordered; words come from its label table.
+/// </summary>
+public enum RentalRefundMode : short
+{
+    /// <summary>Back to the card or UPI the customer paid with, through the payment gateway.</summary>
+    Online = 1,
+
+    /// <summary>Handed back by the business directly — cash or UPI QR.</summary>
+    InHand = 2,
 }
 
 /// <summary>What a rent order history step records. Stored as a number and appended, never reordered.</summary>
@@ -124,6 +140,12 @@ public enum RentalOrderEventKind : short
 
     /// <summary>The advance was not paid in time, so the booking was let go.</summary>
     AdvanceLapsed = 8,
+
+    /// <summary>The customer cancelled late enough that part of the money is kept as a charge.</summary>
+    CancellationCharged = 9,
+
+    /// <summary>The business chose how the refund is given — online or in hand.</summary>
+    RefundModeChosen = 10,
 }
 
 /// <summary>Where a rent order came from.</summary>
@@ -157,4 +179,14 @@ public enum RentalMediaType : short
 {
     Image = 1,
     Video = 2,
+}
+
+/// <summary>How a rent item's cancellation charge is worked out. Stored as a number and appended, never reordered.</summary>
+public enum RentalCancelChargeType : short
+{
+    /// <summary>Steps by time left before the start: 5+ days 0.5%, on the day 2%.</summary>
+    ByTimeLeft = 1,
+
+    /// <summary>One percent for each day rented (each hour, for an hourly item): 1% a day, a 2-day order 2%.</summary>
+    PerRentalDay = 2,
 }

@@ -203,7 +203,7 @@ public class CustomerRentalTests : IDisposable
         var sentOut = await Orders.Handle(Book(chairs, 10), default);
 
         _rent.As(TestRent.OwnerA);
-        await new ChangeRentalOrderStatusCommandHandler(_rent.User, _rent.Db)
+        await new ChangeRentalOrderStatusCommandHandler(_rent.User, _rent.Db, TimeProvider.System)
             .Handle(new ChangeRentalOrderStatusCommand { Id = sentOut.Id, ToStatus = "OnRent" }, default);
         AsCustomer();
 

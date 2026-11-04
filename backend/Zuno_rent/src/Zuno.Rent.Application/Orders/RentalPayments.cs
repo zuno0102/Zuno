@@ -25,6 +25,12 @@ public class RecordRentalPaymentCommand : IRequest<RentalOrderDto>
 
     /// <summary>Money given back rather than taken in.</summary>
     public bool IsRefund { get; set; }
+
+    /// <summary>The UPI transaction reference the UPI app reported; only with UPI.</summary>
+    public string? Reference { get; set; }
+
+    /// <summary>The customer's UPI ID a refund was paid to; only with UPI.</summary>
+    public string? PayeeUpiId { get; set; }
 }
 
 /// <summary>The customer starts paying online — the advance while it is awaited, otherwise what is due.</summary>
@@ -88,6 +94,9 @@ public class RentalPaymentOptionsDto
 
     /// <summary>The ways a business may record money taken, in order — UPI QR first.</summary>
     public List<RentalOptionDto> Methods { get; set; } = [];
+
+    /// <summary>The ways a cancellation charge can be worked out, for the item form.</summary>
+    public List<RentalOptionDto> CancelChargeTypes { get; set; } = [];
 }
 
 public class RentalOptionDto
@@ -119,6 +128,21 @@ public class RecordRentalPaymentCommandValidator : AbstractValidator<RecordRenta
         RuleFor(x => x.Amount)
             .GreaterThan(0).WithMessage("Enter the amount.")
             .PrecisionScale(14, 2, ignoreTrailingZeros: true).WithMessage("Enter the amount in rupees and paise.");
+
+        RuleFor(x => x.Reference)
+            .Matches(RentalPaymentFields.ReferencePattern)
+            .WithMessage("Enter the UPI reference as the UPI app shows it: letters and digits.")
+            .When(x => !string.IsNullOrWhiteSpace(x.Reference));
+        RuleFor(x => x.PayeeUpiId)
+            .MaximumLength(RentalPaymentFields.UpiIdMaxLength)
+            .Matches(RentalPaymentFields.UpiIdPattern)
+            .WithMessage("Enter a UPI ID like name@bank.")
+            .When(x => !string.IsNullOrWhiteSpace(x.PayeeUpiId));
+        RuleFor(x => x)
+            .Must(x => RentalPayments.ParseMethod(x.Method) == RentalPaymentMethod.UpiQr)
+            .When(x => !string.IsNullOrWhiteSpace(x.Reference) || !string.IsNullOrWhiteSpace(x.PayeeUpiId))
+            .WithName("Reference")
+            .WithMessage("A UPI reference goes with a UPI payment, not cash.");
     }
 }
 
@@ -135,13 +159,13 @@ public class CompleteRentalPaymentCommandValidator : AbstractValidator<CompleteR
 
 public class UpdateRentalPaymentSettingsCommandValidator : AbstractValidator<UpdateRentalPaymentSettingsCommand>
 {
-    public const int UpiIdMaxLength = 100;
+    public const int UpiIdMaxLength = RentalPaymentFields.UpiIdMaxLength;
 
     public UpdateRentalPaymentSettingsCommandValidator()
     {
         RuleFor(x => x.UpiId)
             .MaximumLength(UpiIdMaxLength)
-            .Matches(@"^[a-zA-Z0-9._-]{2,256}@[a-zA-Z][a-zA-Z0-9]{1,63}$")
+            .Matches(RentalPaymentFields.UpiIdPattern)
             .WithMessage("Enter a UPI ID like name@bank.")
             .When(x => !string.IsNullOrWhiteSpace(x.UpiId));
     }
@@ -204,12 +228,25 @@ public class RentalPaymentHandlers(
                     throw new DomainException("Money is given back only on a cancelled order.");
                 }
 
-                if (request.Amount > paid)
+                if (order.RefundMode == RentalRefundMode.Online)
                 {
-                    throw new DomainException($"Only {RentalMoney.Text(paid)} was paid on this order, so no more can be given back.");
+                    throw new DomainException("This refund goes back online. Change it to in hand to give it back yourself.");
                 }
 
-                RentalMoney.Record(dbContext, order, RentalPaymentKind.Refund, method, request.Amount, ownerId, RentalMessageSenderRole.Business);
+                // What the customer paid, less the cancellation charge the business keeps.
+                var owed = RentalMoney.RefundOwed(order.Status, paid, order.CancellationCharge);
+                if (request.Amount > owed)
+                {
+                    throw new DomainException(owed <= 0
+                        ? "Nothing is owed back on this order."
+                        : $"Only {RentalMoney.Text(owed)} is owed back on this order.");
+                }
+
+                // Giving it back by hand settles how it goes back.
+                order.RefundMode ??= RentalRefundMode.InHand;
+                RentalMoney.Record(
+                    dbContext, order, RentalPaymentKind.Refund, method, request.Amount, ownerId, RentalMessageSenderRole.Business,
+                    reference: Clean(request.Reference), payeeUpiId: Clean(request.PayeeUpiId));
                 await dbContext.SaveChangesAsync(cancellationToken);
                 return true;
             }
@@ -227,7 +264,9 @@ public class RentalPaymentHandlers(
 
             // Money towards an advance still awaited counts as the advance — the customer paid at the counter.
             var kind = paid < order.AdvanceDue ? RentalPaymentKind.Advance : RentalPaymentKind.Balance;
-            RentalMoney.Record(dbContext, order, kind, method, request.Amount, ownerId, RentalMessageSenderRole.Business);
+            RentalMoney.Record(
+                dbContext, order, kind, method, request.Amount, ownerId, RentalMessageSenderRole.Business,
+                reference: Clean(request.Reference));
             await BookIfAdvancePaidAsync(order, paid + request.Amount, ownerId, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
             return true;
@@ -235,6 +274,8 @@ public class RentalPaymentHandlers(
 
         return await RentalOrderReader.ReadOneAsync(dbContext, request.Id, ownerId, cancellationToken);
     }
+
+    private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     public async Task<RentalCheckoutDto> Handle(StartRentalPaymentCommand request, CancellationToken cancellationToken)
     {
@@ -377,12 +418,17 @@ public class RentalPaymentHandlers(
             .Where(m => m.BusinessMayRecord)
             .OrderBy(m => m.DisplayOrder)
             .ToListAsync(cancellationToken);
+        var chargeTypes = await dbContext.RentalCancelChargeTypes.AsNoTracking()
+            .Where(c => c.IsActive)
+            .OrderBy(c => c.DisplayOrder)
+            .ToListAsync(cancellationToken);
 
         // Mapped after the read: codes go out by name ("PerPiece"), which the database cannot write.
         return new RentalPaymentOptionsDto
         {
             AdvanceTypes = advanceTypes.Select(a => new RentalOptionDto { Code = a.Code.ToString(), Name = a.Name, Detail = a.Detail }).ToList(),
             Methods = methods.Select(m => new RentalOptionDto { Code = m.Code.ToString(), Name = m.Name }).ToList(),
+            CancelChargeTypes = chargeTypes.Select(c => new RentalOptionDto { Code = c.Code.ToString(), Name = c.Name, Detail = c.Detail }).ToList(),
         };
     }
 

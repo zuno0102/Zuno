@@ -32,7 +32,7 @@ public class PaymentTests : IDisposable
 
     private CustomerRentalOrderHandlers CustomerOrders => new(_rent.User, _rent.Db, new Directory(), _rent.Settings, TimeProvider.System);
 
-    private ChangeRentalOrderStatusCommandHandler Change => new(_rent.User, _rent.Db);
+    private ChangeRentalOrderStatusCommandHandler Change => new(_rent.User, _rent.Db, TimeProvider.System);
 
     /// <summary>Tomorrow 00:00 to the day after, 23:59 — two days, as the app sends them.</summary>
     private static (DateTimeOffset Start, DateTimeOffset End) TwoDays()
@@ -112,10 +112,10 @@ public class PaymentTests : IDisposable
         return Queries.Handle(new GetRentalOrderQuery { Id = order }, default);
     }
 
-    private Task<RentalOrderDto> MoveAsync(Guid order, string to)
+    private Task<RentalOrderDto> MoveAsync(Guid order, string to, string? refundMode = null)
     {
         _rent.As(TestRent.OwnerA);
-        return Change.Handle(new ChangeRentalOrderStatusCommand { Id = order, ToStatus = to }, default);
+        return Change.Handle(new ChangeRentalOrderStatusCommand { Id = order, ToStatus = to, RefundMode = refundMode }, default);
     }
 
     [Theory]
@@ -433,7 +433,7 @@ public class PaymentTests : IDisposable
     public async Task A_cancelled_order_with_its_advance_paid_shows_a_refund_due_until_it_is_given_back()
     {
         var order = await OfflineAsync(await ChairsAsync("PerOrder", 500), 100, "Cash");
-        var cancelled = await MoveAsync(order.Id, "Cancelled");
+        var cancelled = await MoveAsync(order.Id, "Cancelled", "InHand");
 
         cancelled.PaymentStatus.Should().Be("RefundDue");
         cancelled.Balance.Should().Be(0);
@@ -441,7 +441,7 @@ public class PaymentTests : IDisposable
         cancelled.CanCollect.Should().BeFalse();
 
         var tooMuch = () => CollectAsync(order.Id, 600, "Cash", refund: true);
-        await tooMuch.Should().ThrowAsync<DomainException>().WithMessage("Only ₹500 was paid*");
+        await tooMuch.Should().ThrowAsync<DomainException>().WithMessage("Only ₹500 is owed back on this order.");
 
         var refunded = await CollectAsync(order.Id, 500, "Cash", refund: true);
         refunded.PaymentStatus.Should().Be("Refunded");

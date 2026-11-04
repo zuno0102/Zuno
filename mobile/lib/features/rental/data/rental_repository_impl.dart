@@ -82,8 +82,15 @@ class RentalRepositoryImpl implements RentalRepository {
       (await _remote.getOrder(id)).toEntity();
 
   @override
-  Future<RentalOrder> changeOrderStatus(String id, String toStatus) async =>
-      (await _remote.changeOrderStatus(id, toStatus)).toEntity();
+  Future<RentalOrder> changeOrderStatus(
+    String id,
+    String toStatus, {
+    String? refundMode,
+  }) async => (await _remote.changeOrderStatus(
+    id,
+    toStatus,
+    refundMode: refundMode,
+  )).toEntity();
 
   @override
   Future<List<RentalOrderThread>> getOrderThreads() async =>
@@ -115,6 +122,14 @@ class RentalRepositoryImpl implements RentalRepository {
     String id,
     RentalPaymentInput input,
   ) async => (await _remote.recordPayment(id, input)).toEntity();
+
+  @override
+  Future<RentalCancelQuote> getCancelQuote(String id) async =>
+      (await _remote.getCancelQuote(id)).toEntity();
+
+  @override
+  Future<RentalOrder> setRefundMode(String id, String mode) async =>
+      (await _remote.setRefundMode(id, mode)).toEntity();
 
   @override
   Future<RentalSummary> getSummary() async =>

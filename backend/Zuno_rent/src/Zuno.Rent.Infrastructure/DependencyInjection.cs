@@ -43,6 +43,17 @@ public static class DependencyInjection
                 (settings, environment) => !settings.SimulateCollection || environment.IsDevelopment(),
                 "RentPayments:SimulateCollection must be false outside Development: it marks payments as made without taking money.")
             .ValidateOnStart();
+
+        // One merchant account for the whole platform: without Rent keys of its own, Rent takes
+        // payments with the Service API's Razorpay keys (same secrets store, same host settings).
+        services.PostConfigure<RentPaymentSettings>(settings =>
+        {
+            if (string.IsNullOrWhiteSpace(settings.KeyId) && string.IsNullOrWhiteSpace(settings.KeySecret))
+            {
+                settings.KeyId = configuration["Razorpay:KeyId"] ?? string.Empty;
+                settings.KeySecret = configuration["Razorpay:KeySecret"] ?? string.Empty;
+            }
+        });
         services.AddHttpClient<IRentPaymentGateway, RazorpayRentGateway>((sp, client) =>
         {
             client.BaseAddress = new Uri(sp.GetRequiredService<IOptions<RentPaymentSettings>>().Value.BaseUrl);

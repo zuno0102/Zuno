@@ -28,6 +28,8 @@ public static class RentalOrderStatusSeedData
         new() { Code = RentalOrderEventKind.PaymentReceived, Name = "Payment received" },
         new() { Code = RentalOrderEventKind.Refunded, Name = "Refunded" },
         new() { Code = RentalOrderEventKind.AdvanceLapsed, Name = "Advance not paid in time" },
+        new() { Code = RentalOrderEventKind.CancellationCharged, Name = "Cancellation charge" },
+        new() { Code = RentalOrderEventKind.RefundModeChosen, Name = "Refund method chosen" },
     ];
 
     public static RentalHomeSection[] HomeSections =>

@@ -44,6 +44,10 @@ public interface IRentDbContext
 
     DbSet<RentalPaymentStatusOption> RentalPaymentStatuses { get; }
 
+    DbSet<RentalRefundModeOption> RentalRefundModes { get; }
+
+    DbSet<RentalCancelChargeTypeOption> RentalCancelChargeTypes { get; }
+
     DbSet<RentalCategory> RentalCategories { get; }
 
     DbSet<RentalSubCategory> RentalSubCategories { get; }

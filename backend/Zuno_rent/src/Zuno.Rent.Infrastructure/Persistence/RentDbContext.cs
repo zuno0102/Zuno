@@ -47,6 +47,10 @@ public class RentDbContext(DbContextOptions<RentDbContext> options) : DbContext(
 
     public DbSet<RentalPaymentStatusOption> RentalPaymentStatuses => Set<RentalPaymentStatusOption>();
 
+    public DbSet<RentalRefundModeOption> RentalRefundModes => Set<RentalRefundModeOption>();
+
+    public DbSet<RentalCancelChargeTypeOption> RentalCancelChargeTypes => Set<RentalCancelChargeTypeOption>();
+
     public DbSet<RentalCategory> RentalCategories => Set<RentalCategory>();
 
     public DbSet<RentalSubCategory> RentalSubCategories => Set<RentalSubCategory>();

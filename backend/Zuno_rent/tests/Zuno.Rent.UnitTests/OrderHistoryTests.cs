@@ -17,7 +17,7 @@ public class OrderHistoryTests : IDisposable
 
     private RentalOrderCreateHandlers Create => new(_rent.User, _rent.Db, TimeProvider.System);
 
-    private ChangeRentalOrderStatusCommandHandler Change => new(_rent.User, _rent.Db);
+    private ChangeRentalOrderStatusCommandHandler Change => new(_rent.User, _rent.Db, TimeProvider.System);
 
     private GetRentalOrderHistoryQueryHandler History => new(_rent.User, _rent.Db);
 

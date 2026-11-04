@@ -10,7 +10,10 @@ namespace Zuno.Rent.Application.Orders;
 /// <summary>The business's rent orders across every item, newest first; narrowed to one status if given.</summary>
 public class GetMyRentalOrdersQuery : IRequest<RentalOrderPageDto>
 {
-    /// <summary><c>Booked</c>, <c>OnRent</c>, <c>Returned</c>, <c>Cancelled</c>, or null for all.</summary>
+    /// <summary>
+    /// <c>Booked</c>, <c>OnRent</c>, <c>Returned</c>, <c>Cancelled</c>, or null for all — or <c>RefundDue</c>:
+    /// cancelled orders that still owe the customer money back.
+    /// </summary>
     public string? Status { get; set; }
 
     public int Page { get; set; } = 1;
@@ -36,6 +39,9 @@ public class RentalOrderStatusCountDto
     public string Tone { get; set; } = string.Empty;
 
     public int Count { get; set; }
+
+    /// <summary>False for a filter that cuts across statuses, like <c>RefundDue</c>: not added into "All".</summary>
+    public bool CountsInAll { get; set; } = true;
 }
 
 public class RentalOrderQueryHandlers(
@@ -46,6 +52,19 @@ public class RentalOrderQueryHandlers(
     IRequestHandler<GetRentalOrderQuery, RentalOrderDto>,
     IRequestHandler<GetRentalOrderCountsQuery, List<RentalOrderStatusCountDto>>
 {
+    /// <summary>The filter for cancelled orders still owing money back, named after the payment status.</summary>
+    public static readonly string RefundDueFilter = RentalPaymentStatus.RefundDue.ToString();
+
+    /// <summary>
+    /// Cancelled orders where what was paid, less refunds and the cancellation charge kept, is still
+    /// above zero — the same sum as <see cref="RentalMoney.RefundOwed"/>, in the database.
+    /// </summary>
+    private IQueryable<Domain.Entities.RentalOrder> OwingRefund(IQueryable<Domain.Entities.RentalOrder> orders) =>
+        orders.Where(o => o.Status == RentalOrderStatus.Cancelled
+            && dbContext.RentalOrderPayments
+                .Where(p => p.RentalOrderId == o.Id)
+                .Sum(p => p.Kind == RentalPaymentKind.Refund ? -p.Amount : p.Amount) > o.CancellationCharge);
+
     public async Task<RentalOrderPageDto> Handle(GetMyRentalOrdersQuery request, CancellationToken cancellationToken)
     {
         var ownerId = currentUser.OwnerId();
@@ -53,7 +72,11 @@ public class RentalOrderQueryHandlers(
 
         // Served by the (owner_user_id, start_date) index.
         var orders = dbContext.RentalOrders.Where(o => o.OwnerUserId == ownerId);
-        if (!string.IsNullOrWhiteSpace(request.Status))
+        if (string.Equals(request.Status, RefundDueFilter, StringComparison.OrdinalIgnoreCase))
+        {
+            orders = OwingRefund(orders);
+        }
+        else if (!string.IsNullOrWhiteSpace(request.Status))
         {
             // An unknown status name matches nothing rather than failing the screen.
             if (!Enum.TryParse<RentalOrderStatus>(request.Status, ignoreCase: true, out var status)
@@ -88,7 +111,7 @@ public class RentalOrderQueryHandlers(
 
         // Every status in the table, in its order, even the empty ones — the chips stay in place.
         var statuses = await dbContext.RentalOrderStatuses.AsNoTracking().OrderBy(s => s.DisplayOrder).ToListAsync(cancellationToken);
-        return statuses
+        var result = statuses
             .Select(s => new RentalOrderStatusCountDto
             {
                 Status = s.Code.ToString(),
@@ -97,5 +120,20 @@ public class RentalOrderQueryHandlers(
                 Count = counts.GetValueOrDefault(s.Code),
             })
             .ToList();
+
+        // First, so money owed back is one tap away; named and coloured by the payment-status table.
+        // It is a cut across statuses, so it is not added into "All".
+        var refundDue = await dbContext.RentalPaymentStatuses.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Code == RentalPaymentStatus.RefundDue, cancellationToken);
+        result.Insert(0, new RentalOrderStatusCountDto
+        {
+            Status = RefundDueFilter,
+            Name = refundDue?.Name ?? RefundDueFilter,
+            Tone = refundDue?.Tone ?? "danger",
+            Count = await OwingRefund(dbContext.RentalOrders.Where(o => o.OwnerUserId == ownerId)).CountAsync(cancellationToken),
+            CountsInAll = false,
+        });
+
+        return result;
     }
 }

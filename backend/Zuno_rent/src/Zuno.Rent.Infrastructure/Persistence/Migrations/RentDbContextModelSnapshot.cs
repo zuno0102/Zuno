@@ -4935,6 +4935,59 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                     b.ToTable("rental_businesses", (string)null);
                 });
 
+            modelBuilder.Entity("Zuno.Rent.Domain.Entities.RentalCancelChargeTypeOption", b =>
+                {
+                    b.Property<short>("Code")
+                        .HasColumnType("smallint")
+                        .HasColumnName("code");
+
+                    b.Property<string>("Detail")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("detail");
+
+                    b.Property<short>("DisplayOrder")
+                        .HasColumnType("smallint")
+                        .HasColumnName("display_order");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Code")
+                        .HasName("pk_ref_rental_cancel_charge_types");
+
+                    b.ToTable("ref_rental_cancel_charge_types", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_ref_rental_cancel_charge_types_code", "code IN (1, 2)");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Code = (short)1,
+                            Detail = "More as the start comes closer, e.g. 5+ days 0.5%, on the day 2%",
+                            DisplayOrder = (short)1,
+                            IsActive = true,
+                            Name = "By time left"
+                        },
+                        new
+                        {
+                            Code = (short)2,
+                            Detail = "A percent for each day rented, e.g. 1% a day: a 2-day order costs 2%",
+                            DisplayOrder = (short)2,
+                            IsActive = true,
+                            Name = "Per rental day"
+                        });
+                });
+
             modelBuilder.Entity("Zuno.Rent.Domain.Entities.RentalCategory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4967,6 +5020,11 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
 
+                    b.Property<decimal>("MaxCancelPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("max_cancel_percent");
+
                     b.Property<Guid?>("ModifiedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("modified_by");
@@ -4994,7 +5052,10 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_rental_categories_slug");
 
-                    b.ToTable("rental_categories", (string)null);
+                    b.ToTable("rental_categories", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_rental_categories_max_cancel_percent", "max_cancel_percent >= 0 AND max_cancel_percent <= 100");
+                        });
 
                     b.HasData(
                         new
@@ -5005,6 +5066,7 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                             IconName = "chair",
                             IsActive = true,
                             IsDeleted = false,
+                            MaxCancelPercent = 5m,
                             Name = "Furniture & seating",
                             Slug = "furniture-seating"
                         },
@@ -5016,6 +5078,7 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                             IconName = "tent",
                             IsActive = true,
                             IsDeleted = false,
+                            MaxCancelPercent = 10m,
                             Name = "Tents & shamiana",
                             Slug = "tents-shamiana"
                         },
@@ -5027,6 +5090,7 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                             IconName = "speaker",
                             IsActive = true,
                             IsDeleted = false,
+                            MaxCancelPercent = 10m,
                             Name = "Sound & lights",
                             Slug = "sound-lights"
                         },
@@ -5038,6 +5102,7 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                             IconName = "decoration",
                             IsActive = true,
                             IsDeleted = false,
+                            MaxCancelPercent = 10m,
                             Name = "Decoration",
                             Slug = "decoration"
                         },
@@ -5049,6 +5114,7 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                             IconName = "kitchen",
                             IsActive = true,
                             IsDeleted = false,
+                            MaxCancelPercent = 5m,
                             Name = "Kitchen & catering equipment",
                             Slug = "kitchen-catering"
                         },
@@ -5060,6 +5126,7 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                             IconName = "tools",
                             IsActive = true,
                             IsDeleted = false,
+                            MaxCancelPercent = 5m,
                             Name = "Tools & machines",
                             Slug = "tools-machines"
                         },
@@ -5071,6 +5138,7 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                             IconName = "generator",
                             IsActive = true,
                             IsDeleted = false,
+                            MaxCancelPercent = 10m,
                             Name = "Generators & power",
                             Slug = "generators-power"
                         });
@@ -5176,6 +5244,17 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                         .HasColumnType("smallint")
                         .HasColumnName("advance_type");
 
+                    b.Property<short>("CancelChargeType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)1)
+                        .HasColumnName("cancel_charge_type");
+
+                    b.Property<decimal?>("CancelPercentPerDay")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("cancel_percent_per_day");
+
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
@@ -5251,6 +5330,8 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                     b.ToTable("rental_items", null, t =>
                         {
                             t.HasCheckConstraint("ck_rental_items_advance", "(advance_type = 0 AND advance_amount IS NULL) OR (advance_type IN (1, 2) AND advance_amount > 0)");
+
+                            t.HasCheckConstraint("ck_rental_items_cancel_charge", "(cancel_charge_type = 1 AND cancel_percent_per_day IS NULL) OR (cancel_charge_type = 2 AND cancel_percent_per_day > 0 AND cancel_percent_per_day <= 100)");
 
                             t.HasCheckConstraint("ck_rental_items_price", "price > 0");
 
@@ -5434,6 +5515,31 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                         .HasColumnType("numeric(14,2)")
                         .HasColumnName("amount");
 
+                    b.Property<short>("CancelChargeType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)1)
+                        .HasColumnName("cancel_charge_type");
+
+                    b.Property<decimal>("CancelPercentCap")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("cancel_percent_cap");
+
+                    b.Property<decimal?>("CancelPercentPerDay")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("cancel_percent_per_day");
+
+                    b.Property<decimal>("CancellationCharge")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)")
+                        .HasColumnName("cancellation_charge");
+
+                    b.Property<short?>("CancelledBy")
+                        .HasColumnType("smallint")
+                        .HasColumnName("cancelled_by");
+
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
@@ -5503,6 +5609,10 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("quantity");
 
+                    b.Property<short?>("RefundMode")
+                        .HasColumnType("smallint")
+                        .HasColumnName("refund_mode");
+
                     b.Property<Guid>("RentalItemId")
                         .HasColumnType("uuid")
                         .HasColumnName("rental_item_id");
@@ -5556,9 +5666,19 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("ck_rental_orders_amounts", "amount >= 0 AND advance_due >= 0 AND advance_due <= amount");
 
+                            t.HasCheckConstraint("ck_rental_orders_cancel_charge_type", "cancel_charge_type IN (1, 2)");
+
+                            t.HasCheckConstraint("ck_rental_orders_cancel_percents", "cancel_percent_cap >= 0 AND cancel_percent_cap <= 100 AND (cancel_percent_per_day IS NULL OR (cancel_percent_per_day > 0 AND cancel_percent_per_day <= 100))");
+
+                            t.HasCheckConstraint("ck_rental_orders_cancellation_charge", "cancellation_charge >= 0 AND cancellation_charge <= amount");
+
+                            t.HasCheckConstraint("ck_rental_orders_cancelled_by", "cancelled_by IS NULL OR cancelled_by IN (1, 2)");
+
                             t.HasCheckConstraint("ck_rental_orders_dates", "end_date >= start_date");
 
                             t.HasCheckConstraint("ck_rental_orders_quantity", "quantity >= 1");
+
+                            t.HasCheckConstraint("ck_rental_orders_refund_mode", "refund_mode IS NULL OR refund_mode IN (1, 2)");
 
                             t.HasCheckConstraint("ck_rental_orders_units", "units >= 1");
                         });
@@ -5749,6 +5869,16 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                         {
                             Code = (short)8,
                             Name = "Advance not paid in time"
+                        },
+                        new
+                        {
+                            Code = (short)9,
+                            Name = "Cancellation charge"
+                        },
+                        new
+                        {
+                            Code = (short)10,
+                            Name = "Refund method chosen"
                         });
                 });
 
@@ -5850,6 +5980,11 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("modified_date");
 
+                    b.Property<string>("PayeeUpiId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("payee_upi_id");
+
                     b.Property<string>("ProviderOrderId")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
@@ -5867,6 +6002,11 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("RecordedByUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("recorded_by_user_id");
+
+                    b.Property<string>("Reference")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("reference");
 
                     b.Property<Guid>("RentalOrderId")
                         .HasColumnType("uuid")
@@ -6244,6 +6384,12 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                             Code = (short)7,
                             Name = "Refunded",
                             Tone = "success"
+                        },
+                        new
+                        {
+                            Code = (short)8,
+                            Name = "Cancellation charge kept",
+                            Tone = "waiting"
                         });
                 });
 
@@ -6314,6 +6460,67 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Zuno.Rent.Domain.Entities.RentalRefundModeOption", b =>
+                {
+                    b.Property<short>("Code")
+                        .HasColumnType("smallint")
+                        .HasColumnName("code");
+
+                    b.Property<string>("BusinessText")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("business_text");
+
+                    b.Property<string>("CustomerText")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("customer_text");
+
+                    b.Property<short>("DisplayOrder")
+                        .HasColumnType("smallint")
+                        .HasColumnName("display_order");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Code")
+                        .HasName("pk_ref_rental_refund_modes");
+
+                    b.ToTable("ref_rental_refund_modes", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_ref_rental_refund_modes_code", "code IN (1, 2)");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Code = (short)1,
+                            BusinessText = "Zuno sends it back to the customer's card or UPI. Nothing for you to hand over.",
+                            CustomerText = "Your refund goes back to the card or UPI you paid with, in 1 to 5 working days.",
+                            DisplayOrder = (short)1,
+                            IsActive = true,
+                            Name = "Online"
+                        },
+                        new
+                        {
+                            Code = (short)2,
+                            BusinessText = "You give it back yourself, in cash or by UPI, then record it here.",
+                            CustomerText = "Collect your refund directly from the business.",
+                            DisplayOrder = (short)2,
+                            IsActive = true,
+                            Name = "In hand"
+                        });
+                });
+
             modelBuilder.Entity("Zuno.Rent.Domain.Entities.RentalSubCategory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -6340,6 +6547,11 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
+
+                    b.Property<decimal?>("MaxCancelPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("max_cancel_percent");
 
                     b.Property<Guid?>("ModifiedBy")
                         .HasColumnType("uuid")
@@ -6372,7 +6584,10 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_rental_sub_categories_rental_category_id_slug");
 
-                    b.ToTable("rental_sub_categories", (string)null);
+                    b.ToTable("rental_sub_categories", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_rental_sub_categories_max_cancel_percent", "max_cancel_percent IS NULL OR (max_cancel_percent >= 0 AND max_cancel_percent <= 100)");
+                        });
 
                     b.HasData(
                         new
@@ -6382,6 +6597,7 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                             DisplayOrder = (short)1,
                             IsActive = true,
                             IsDeleted = false,
+                            MaxCancelPercent = 2m,
                             Name = "Plastic chairs",
                             RentalCategoryId = new Guid("b2222222-0000-0000-0000-000000000001"),
                             Slug = "plastic-chairs"
@@ -6393,6 +6609,7 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                             DisplayOrder = (short)2,
                             IsActive = true,
                             IsDeleted = false,
+                            MaxCancelPercent = 2m,
                             Name = "Tables",
                             RentalCategoryId = new Guid("b2222222-0000-0000-0000-000000000001"),
                             Slug = "tables"
@@ -6404,6 +6621,7 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                             DisplayOrder = (short)3,
                             IsActive = true,
                             IsDeleted = false,
+                            MaxCancelPercent = 5m,
                             Name = "Sofas",
                             RentalCategoryId = new Guid("b2222222-0000-0000-0000-000000000001"),
                             Slug = "sofas"
@@ -6415,6 +6633,7 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                             DisplayOrder = (short)4,
                             IsActive = true,
                             IsDeleted = false,
+                            MaxCancelPercent = 10m,
                             Name = "Stage",
                             RentalCategoryId = new Guid("b2222222-0000-0000-0000-000000000001"),
                             Slug = "stage"
@@ -6657,6 +6876,36 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_rental_items_rental_sub_categories_rental_sub_category_id");
 
+                    b.OwnsMany("Zuno.Rent.Domain.Entities.RentalCancelStep", "CancelSteps", b1 =>
+                        {
+                            b1.Property<Guid>("RentalItemId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("integer");
+
+                            b1.Property<decimal>("Percent")
+                                .HasPrecision(5, 2)
+                                .HasColumnType("numeric(5,2)");
+
+                            b1.Property<int>("UnitsBefore")
+                                .HasColumnType("integer");
+
+                            b1.HasKey("RentalItemId", "__synthesizedOrdinal")
+                                .HasName("pk_rental_items");
+
+                            b1.ToTable("rental_items");
+
+                            b1.ToJson("cancel_steps");
+
+                            b1.WithOwner()
+                                .HasForeignKey("RentalItemId")
+                                .HasConstraintName("fk_rental_items_rental_items_rental_item_id");
+                        });
+
+                    b.Navigation("CancelSteps");
+
                     b.Navigation("RentalCategory");
 
                     b.Navigation("RentalSubCategory");
@@ -6727,6 +6976,36 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_rental_orders_rental_items_rental_item_id");
+
+                    b.OwnsMany("Zuno.Rent.Domain.Entities.RentalCancelStep", "CancelSteps", b1 =>
+                        {
+                            b1.Property<Guid>("RentalOrderId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("integer");
+
+                            b1.Property<decimal>("Percent")
+                                .HasPrecision(5, 2)
+                                .HasColumnType("numeric(5,2)");
+
+                            b1.Property<int>("UnitsBefore")
+                                .HasColumnType("integer");
+
+                            b1.HasKey("RentalOrderId", "__synthesizedOrdinal")
+                                .HasName("pk_rental_orders");
+
+                            b1.ToTable("rental_orders");
+
+                            b1.ToJson("cancel_steps");
+
+                            b1.WithOwner()
+                                .HasForeignKey("RentalOrderId")
+                                .HasConstraintName("fk_rental_orders_rental_orders_rental_order_id");
+                        });
+
+                    b.Navigation("CancelSteps");
 
                     b.Navigation("District");
 

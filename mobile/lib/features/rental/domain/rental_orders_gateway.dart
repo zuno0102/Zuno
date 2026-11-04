@@ -1,4 +1,5 @@
 import 'package:zuno/features/booking/domain/entities/booking_message.dart';
+import 'package:zuno/features/rental/domain/entities/rental_payment.dart';
 import 'package:zuno/features/rental/domain/entities/rental_stock.dart';
 
 /// A rent order's shared screens — the list, the page, its history, the chat — as one side sees
@@ -11,8 +12,16 @@ abstract class RentalOrdersGateway {
 
   Future<List<RentalOrderEvent>> history(String id);
 
+  /// What cancelling now would cost this side and give back.
+  Future<RentalCancelQuote> cancelQuote(String id);
+
   /// One step from the order's actions — the business sends out; a customer cancels.
-  Future<RentalOrder> takeStep(String id, String toStatus);
+  /// [refundMode] is how the money goes back when the business cancels a paid order.
+  Future<RentalOrder> takeStep(
+    String id,
+    String toStatus, {
+    String? refundMode,
+  });
 
   Future<List<RentalOrderThread>> threads();
 

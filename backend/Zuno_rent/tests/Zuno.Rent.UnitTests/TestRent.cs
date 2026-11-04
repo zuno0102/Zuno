@@ -37,7 +37,7 @@ internal sealed class TestRent : IDisposable
 
     public IOptions<RentSettings> Settings { get; } = Options.Create(new RentSettings());
 
-    public SaveRentalItemHandlers SaveHandlers => new(User, Db);
+    public SaveRentalItemHandlers SaveHandlers => new(User, Db, Settings);
 
     public RentalItemMediaHandlers MediaHandlers => new(User, Db, Storage);
 

@@ -130,7 +130,8 @@ class RentalOrderCard extends ConsumerWidget {
                         Expanded(child: Text(order.placeLine, style: muted)),
                       ],
                     ),
-                    if (rentalMoneyLine(order) case final money?) ...[
+                    if (rentalMoneyLine(order, audience: audience)
+                        case final money?) ...[
                       const SizedBox(height: 4),
                       Row(
                         children: [
@@ -159,6 +160,31 @@ class RentalOrderCard extends ConsumerWidget {
                             ),
                           ),
                         ],
+                      ),
+                    ],
+                    // Money still to give back: the to-do on a cancelled order, straight to its page.
+                    if (showActions && order.needsRefund) ...[
+                      const SizedBox(height: 10),
+                      FilledButton.icon(
+                        key: ValueKey('give-back-${order.id}'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: theme.colorScheme.error,
+                          foregroundColor: theme.colorScheme.onError,
+                        ),
+                        onPressed: () => pushScreen(
+                          context,
+                          RentalOrderDetailScreen(
+                            order: order,
+                            audience: audience,
+                          ),
+                        ),
+                        icon: const Icon(Icons.undo_rounded),
+                        // A customer's cancel leaves the method to choose; once chosen, it is to be given.
+                        label: Text(
+                          order.refundMode == null
+                              ? 'Choose how to refund ${rupees(order.refundOwed)}'
+                              : 'Give back ${rupees(order.refundOwed)}',
+                        ),
                       ),
                     ],
                     if (showActions && order.actions.isNotEmpty) ...[
@@ -217,6 +243,10 @@ class RentalOrderCard extends ConsumerWidget {
     );
   }
 }
+
+/// Whether the business has something to do on [order]: a next step, or money to give back.
+bool rentalNeedsBusinessStep(RentalOrder order) =>
+    order.actions.isNotEmpty || order.needsRefund;
 
 /// The app's colour for a status table tone name; an unknown name reads as waiting.
 StatusTone rentalStatusTone(String tone) =>

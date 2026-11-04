@@ -10,6 +10,9 @@ import 'package:zuno/features/auth/presentation/providers/auth_state.dart';
 import 'package:zuno/features/booking/domain/entities/booking_message.dart';
 import 'package:zuno/features/booking/presentation/screens/booking_chat_screen.dart';
 import 'package:zuno/features/customer/presentation/providers/customer_search_filter_provider.dart';
+import 'package:zuno/features/rental/presentation/widgets/rental_payment_card.dart';
+import 'package:zuno/features/rental/presentation/widgets/rental_order_actions.dart';
+import 'package:zuno/features/rental/data/models/rental_stock_models.dart';
 import 'package:zuno/features/rental/domain/entities/rental_customer.dart';
 import 'package:zuno/features/rental/domain/entities/rental_item.dart';
 import 'package:zuno/features/rental/domain/entities/rental_payment.dart';
@@ -25,6 +28,7 @@ import 'package:zuno/features/rental/presentation/screens/customer_app_shell.dar
 import 'package:zuno/features/rental/presentation/screens/rental_home_tab.dart';
 import 'package:zuno/features/rental/presentation/screens/rental_item_screen.dart';
 import 'package:zuno/features/rental/presentation/screens/rental_order_detail_screen.dart';
+import 'package:zuno/features/rental/presentation/widgets/rental_booking_sheet.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_item_card.dart';
 
 const _ekm = RentalItemDistrict(
@@ -61,6 +65,10 @@ class _FakeCustomerRepository implements RentalCustomerRepository {
   /// The item's advance, as the business set it.
   String advanceType = RentalAdvanceType.none;
   double? advanceAmount;
+  List<RentalCancelStep> cancelSteps = const [];
+  String cancelChargeType = RentalCancelChargeType.byTimeLeft;
+  double? cancelPercentPerDay;
+  double maxCancelPercent = 0;
 
   /// Development's simulated collection: no payment window.
   bool simulated = false;
@@ -122,6 +130,10 @@ class _FakeCustomerRepository implements RentalCustomerRepository {
     description: 'White armless chairs.',
     advanceType: advanceType,
     advanceAmount: advanceAmount,
+    cancelSteps: cancelSteps,
+    cancelChargeType: cancelChargeType,
+    cancelPercentPerDay: cancelPercentPerDay,
+    maxCancelPercent: maxCancelPercent,
     districts: const [_ekm],
     questions: const [
       RentalItemQuestion(
@@ -197,7 +209,21 @@ RentalOrder _order(
   double amount = 0,
   double advanceDue = 0,
   double paid = 0,
+  String? cancelledBy,
+  double cancellationCharge = 0,
+  double refundOwed = 0,
+  String? refundMode,
+  String? refundModeName,
+  String? refundModeText,
+  String? paymentStatus,
+  String? paymentStatusName,
 }) => RentalOrder(
+  cancelledBy: cancelledBy,
+  cancellationCharge: cancellationCharge,
+  refundOwed: refundOwed,
+  refundMode: refundMode,
+  refundModeName: refundModeName,
+  refundModeText: refundModeText,
   amount: amount,
   advanceDue: advanceDue,
   paid: paid,
@@ -207,20 +233,24 @@ RentalOrder _order(
   payNowAmount: status == 'AwaitingAdvance' ? advanceDue - paid : amount - paid,
   canPayOnline: amount - paid > 0 && status != 'Cancelled',
   holdUntil: status == 'AwaitingAdvance' ? DateTime(2026, 11, 1, 15, 45) : null,
-  paymentStatus: status == 'AwaitingAdvance'
-      ? 'AdvanceDue'
-      : amount <= 0
-      ? null
-      : paid >= amount
-      ? 'Paid'
-      : paid > 0
-      ? 'AdvancePaid'
-      : 'Unpaid',
-  paymentStatusName: status == 'AwaitingAdvance'
-      ? 'Advance due'
-      : paid > 0
-      ? 'Advance paid'
-      : 'Unpaid',
+  paymentStatus:
+      paymentStatus ??
+      (status == 'AwaitingAdvance'
+          ? 'AdvanceDue'
+          : amount <= 0
+          ? null
+          : paid >= amount
+          ? 'Paid'
+          : paid > 0
+          ? 'AdvancePaid'
+          : 'Unpaid'),
+  paymentStatusName:
+      paymentStatusName ??
+      (status == 'AwaitingAdvance'
+          ? 'Advance due'
+          : paid > 0
+          ? 'Advance paid'
+          : 'Unpaid'),
   paymentStatusTone: 'progress',
   id: id,
   rentalItemId: 'chairs',
@@ -288,8 +318,29 @@ class _FakeCustomerGateway implements RentalOrdersGateway {
     ),
   ];
 
+  /// What the server would quote for cancelling now; nothing paid unless a test sets it.
+  RentalCancelQuote quote = const RentalCancelQuote(
+    unitsBefore: 2,
+    unit: RentalCancelUnit.day,
+    percent: 0,
+    charge: 0,
+    paid: 0,
+    refund: 0,
+  );
+  int quotes = 0;
+
   @override
-  Future<RentalOrder> takeStep(String id, String toStatus) async {
+  Future<RentalCancelQuote> cancelQuote(String id) async {
+    quotes++;
+    return quote;
+  }
+
+  @override
+  Future<RentalOrder> takeStep(
+    String id,
+    String toStatus, {
+    String? refundMode,
+  }) async {
     calls.add('step:$id:$toStatus');
     final index = list.indexWhere((o) => o.id == id);
     list[index] = _order(id, toStatus);
@@ -345,6 +396,27 @@ class _SignedInCustomer extends AuthNotifier {
   );
 }
 
+/// A login that the test can sign out of and into again.
+class _SwitchableAuth extends AuthNotifier {
+  @override
+  Future<AuthState> build() async => _user('u1');
+
+  static AuthState _user(String id) => AuthAuthenticated(
+    User(
+      id: id,
+      firstName: 'Rahul',
+      lastName: 'Nair',
+      role: 'Customer',
+      emailConfirmed: true,
+      phoneNumberConfirmed: true,
+    ),
+  );
+
+  void signIn(String id) => state = AsyncData(_user(id));
+
+  void signOut() => state = const AsyncData(AuthState.unauthenticated());
+}
+
 Future<(_FakeCustomerRepository, _FakeCustomerGateway, ProviderContainer)>
 _pump(
   WidgetTester tester,
@@ -352,6 +424,7 @@ _pump(
   Size size = const Size(400, 900),
   RentalPaymentWindow? window,
   void Function(_FakeCustomerRepository repository)? setUp,
+  void Function(_FakeCustomerGateway gateway)? setUpGateway,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -361,6 +434,7 @@ _pump(
   final repository = _FakeCustomerRepository();
   setUp?.call(repository);
   final gateway = _FakeCustomerGateway();
+  setUpGateway?.call(gateway);
   // A scope that closes with the widget tree, so the chat polls stop before the test ends.
   await tester.pumpWidget(
     ProviderScope(
@@ -816,7 +890,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(repository.payments.last, 'pay:new:order_1:sim_order_1:simulated');
-      expect(find.textContaining('booking confirmed'), findsOneWidget);
+      // Says plainly that no money moved, never a bare "Paid".
+      expect(find.textContaining('Test mode'), findsOneWidget);
+      expect(find.textContaining('no money was taken'), findsOneWidget);
     });
   });
 
@@ -856,24 +932,509 @@ void main() {
       },
     );
 
-    test('is remembered on the phone', () async {
-      SharedPreferences.setMockInitialValues({});
-      final container = ProviderContainer();
+    test('opens on Service, even when Rent was open the last time', () async {
+      // What the earlier build saved on the phone is no longer read.
+      SharedPreferences.setMockInitialValues({'customer.panel': 'rent'});
+      final container = ProviderContainer(
+        overrides: [authProvider.overrideWith(_SwitchableAuth.new)],
+      );
       addTearDown(container.dispose);
+      await container.read(authProvider.future);
 
+      container.read(customerPanelChoiceProvider);
+      await Future<void>.delayed(Duration.zero);
       expect(
         container.read(customerPanelChoiceProvider),
         CustomerPanel.service,
       );
-      await container
+    });
+
+    test('Rent holds until the next login, then it is Service again', () async {
+      final container = ProviderContainer(
+        overrides: [authProvider.overrideWith(_SwitchableAuth.new)],
+      );
+      addTearDown(container.dispose);
+      final listen = container.listen(customerPanelChoiceProvider, (_, _) {});
+      addTearDown(listen.close);
+      await container.read(authProvider.future);
+
+      container
           .read(customerPanelChoiceProvider.notifier)
           .choose(CustomerPanel.rent);
+      expect(container.read(customerPanelChoiceProvider), CustomerPanel.rent);
 
-      final again = ProviderContainer();
-      addTearDown(again.dispose);
-      again.read(customerPanelChoiceProvider);
-      await Future<void>.delayed(Duration.zero);
-      expect(again.read(customerPanelChoiceProvider), CustomerPanel.rent);
+      final auth = container.read(authProvider.notifier) as _SwitchableAuth;
+      auth.signOut();
+      auth.signIn('u2');
+      expect(
+        container.read(customerPanelChoiceProvider),
+        CustomerPanel.service,
+      );
+
+      // The same person logging in again opens on Service too.
+      container
+          .read(customerPanelChoiceProvider.notifier)
+          .choose(CustomerPanel.rent);
+      auth.signOut();
+      auth.signIn('u2');
+      expect(
+        container.read(customerPanelChoiceProvider),
+        CustomerPanel.service,
+      );
+    });
+
+    test('a refresh of the signed-in user keeps Rent open', () async {
+      final container = ProviderContainer(
+        overrides: [authProvider.overrideWith(_SwitchableAuth.new)],
+      );
+      addTearDown(container.dispose);
+      final listen = container.listen(customerPanelChoiceProvider, (_, _) {});
+      addTearDown(listen.close);
+      await container.read(authProvider.future);
+
+      container
+          .read(customerPanelChoiceProvider.notifier)
+          .choose(CustomerPanel.rent);
+      (container.read(authProvider.notifier) as _SwitchableAuth).signIn('u1');
+      expect(container.read(customerPanelChoiceProvider), CustomerPanel.rent);
+    });
+
+    testWidgets('the customer app shows the Service side after login', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({'customer.panel': 'rent'});
+      final container = ProviderContainer(
+        overrides: [authProvider.overrideWith(_SwitchableAuth.new)],
+      );
+      addTearDown(container.dispose);
+      await tester.runAsync(() => container.read(authProvider.future));
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Consumer(
+              builder: (context, ref, _) => CustomerPanelSwitch(
+                value: ref.watch(customerPanelChoiceProvider),
+                onChanged: (p) =>
+                    ref.read(customerPanelChoiceProvider.notifier).choose(p),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      bool selected(String panel) => tester
+          .widget<Semantics>(
+            find
+                .descendant(
+                  of: find.byKey(ValueKey('customer-panel-$panel')),
+                  matching: find.byType(Semantics),
+                )
+                .first,
+          )
+          .properties
+          .selected!;
+      expect(selected('service'), isTrue);
+      expect(selected('rent'), isFalse);
+
+      await tester.tap(find.byKey(const ValueKey('customer-panel-rent')));
+      await tester.pump();
+      expect(selected('rent'), isTrue);
+    });
+  });
+  group('Cancelling a paid rental: charge by time left, refund', () {
+    /// ₹3,600 paid online, then the customer cancelled: ₹72 (2%) kept, ₹3,528 owed back.
+    RentalOrder cancelled({String? mode, String? text}) => _order(
+      'o1',
+      'Cancelled',
+      amount: 3600,
+      paid: 3600,
+      cancelledBy: 'Customer',
+      cancellationCharge: 72,
+      refundOwed: 3528,
+      refundMode: mode,
+      refundModeName: mode == null
+          ? null
+          : mode == RentalRefundMode.online
+          ? 'Online'
+          : 'In hand',
+      refundModeText: text,
+      paymentStatus: 'RefundDue',
+      paymentStatusName: 'Refund due',
+    );
+
+    Future<void> openCancelled(WidgetTester tester, RentalOrder order) async {
+      await _pump(
+        tester,
+        RentalOrderDetailScreen(
+          order: order,
+          audience: RentalAudience.customer,
+        ),
+        size: const Size(400, 1400),
+        setUpGateway: (gateway) => gateway.list[0] = order,
+      );
+    }
+
+    testWidgets('the cancel dialog says what is kept and what comes back', (
+      tester,
+    ) async {
+      final (_, gateway, _) = await _pump(
+        tester,
+        const RentOrdersTabs(audience: RentalAudience.customer),
+        setUpGateway: (gateway) => gateway.quote = const RentalCancelQuote(
+          unitsBefore: 1,
+          unit: RentalCancelUnit.day,
+          percent: 2,
+          charge: 72,
+          paid: 3600,
+          refund: 3528,
+        ),
+      );
+      await tester.tap(find.text('Joy Rentals').first);
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Cancel order'));
+      await tester.tap(find.text('Cancel order'));
+      await tester.pumpAndSettle();
+
+      expect(gateway.quotes, 1);
+      expect(
+        find.textContaining(
+          'Cancelling now, 1 day before the start, keeps ${rupees(72)} (2%) '
+          'as the cancellation charge. ${rupees(3528)} of the ${rupees(3600)} '
+          'you paid comes back.',
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Keep order'));
+      await tester.pumpAndSettle();
+      expect(gateway.calls, isEmpty, reason: 'backing out cancels nothing');
+    });
+
+    testWidgets('an online refund: back in 1 to 5 working days', (
+      tester,
+    ) async {
+      await openCancelled(
+        tester,
+        cancelled(
+          mode: RentalRefundMode.online,
+          text:
+              'Your refund goes back to the card or UPI you paid with, '
+              'in 1 to 5 working days.',
+        ),
+      );
+
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('payment-refund-owed')))
+            .data,
+        rupees(3528),
+      );
+      expect(find.text('Refund due to you'), findsOneWidget);
+      expect(
+        find.text(
+          'You cancelled: ${rupees(72)} is kept as the cancellation charge.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('in 1 to 5 working days', findRichText: true),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('refund-mode-Online')), findsNothing);
+      expect(find.byKey(const ValueKey('record-refund')), findsNothing);
+    });
+
+    testWidgets('an in-hand refund: collect it from the business', (
+      tester,
+    ) async {
+      await openCancelled(
+        tester,
+        cancelled(
+          mode: RentalRefundMode.inHand,
+          text: 'Collect your refund directly from the business.',
+        ),
+      );
+
+      expect(
+        find.textContaining(
+          'Collect your refund directly from the business.',
+          findRichText: true,
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('before the business chooses, the customer is told so', (
+      tester,
+    ) async {
+      await openCancelled(tester, cancelled());
+
+      expect(
+        find.text(
+          'The business will choose how your ${rupees(3528)} comes back: '
+          'online or in hand.',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('the business cancelling gives everything back', (
+      tester,
+    ) async {
+      await openCancelled(
+        tester,
+        _order(
+          'o1',
+          'Cancelled',
+          amount: 3600,
+          paid: 3600,
+          cancelledBy: 'Business',
+          refundOwed: 3600,
+          paymentStatus: 'RefundDue',
+          paymentStatusName: 'Refund due',
+        ),
+      );
+
+      expect(
+        find.text('The business cancelled, so all you paid comes back to you.'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('payment-cancel-charge')), findsNothing);
+    });
+
+    testWidgets('the booking sheet shows the cancellation policy', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        const RentalItemScreen(itemId: 'chairs'),
+        setUp: (repository) => repository.cancelSteps = const [
+          RentalCancelStep(unitsBefore: 0, percent: 2),
+          RentalCancelStep(unitsBefore: 2, percent: 1),
+          RentalCancelStep(unitsBefore: 5, percent: 0.5),
+        ],
+      );
+      await tester.tap(find.byKey(const ValueKey('rent-book')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('order-quantity')),
+        '300',
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('booking-cancel-policy')))
+            .data,
+        'If you cancel: 5+ days before: 0.5% · 2+ days before: 1% · '
+        'On the day: 2% of the order',
+      );
+    });
+
+    testWidgets('an item with no steps books with free cancellation', (
+      tester,
+    ) async {
+      await _pump(tester, const RentalItemScreen(itemId: 'chairs'));
+      await tester.tap(find.byKey(const ValueKey('rent-book')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('order-quantity')),
+        '300',
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('booking-cancel-policy')))
+            .data,
+        'Free cancellation',
+      );
+    });
+
+    testWidgets('the booking sheet works out a per-day charge for the dates', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        const RentalItemScreen(itemId: 'chairs'),
+        setUp: (repository) => repository
+          ..cancelChargeType = RentalCancelChargeType.perRentalDay
+          ..cancelPercentPerDay = 1
+          ..maxCancelPercent = 2,
+      );
+      await tester.tap(find.byKey(const ValueKey('rent-book')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('order-quantity')),
+        '300',
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('booking-cancel-policy')))
+            .data,
+        'If you cancel: 1% for each rental day, 1% for this 1 day of the order',
+      );
+    });
+
+    test('a per-day charge reads by the days rented', () {
+      RentalItemDetail perDay() => RentalItemDetail(
+        card: _chairs,
+        priceTypeName: 'Per day',
+        quantityOwned: 2000,
+        cancelChargeType: RentalCancelChargeType.perRentalDay,
+        cancelPercentPerDay: 1,
+        maxCancelPercent: 2,
+      );
+
+      expect(
+        rentalBookingCancelLine(perDay(), 2),
+        'If you cancel: 1% for each rental day, 2% for these 2 days of the order',
+      );
+      expect(
+        rentalBookingCancelLine(perDay(), 5),
+        'If you cancel: 1% for each rental day, 2% for these 5 days '
+        '(the most for this item) of the order',
+      );
+      expect(
+        rentalCancelMoneyLine(
+          const RentalCancelQuote(
+            unitsBefore: 9,
+            unit: RentalCancelUnit.day,
+            percent: 2,
+            charge: 100,
+            paid: 5000,
+            refund: 4900,
+            basis: RentalCancelChargeType.perRentalDay,
+            rentalUnits: 2,
+          ),
+          RentalAudience.customer,
+        ),
+        'Cancelling keeps ${rupees(100)} (2% for 2 rental days) as the '
+        'cancellation charge. ${rupees(4900)} of the ${rupees(5000)} you paid '
+        'comes back.',
+      );
+    });
+
+    test('the policy, the percent and the dialog line read right', () {
+      expect(rentalPercent(2), '2%');
+      expect(rentalPercent(0.5), '0.5%');
+      expect(rentalPercent(1.25), '1.25%');
+      expect(rentalPercent(10), '10%');
+      expect(
+        rentalCancelPolicy(const [], RentalCancelUnit.day),
+        'Free cancellation',
+      );
+      expect(
+        rentalCancelPolicy(const [
+          RentalCancelStep(unitsBefore: 0, percent: 2),
+          RentalCancelStep(unitsBefore: 1, percent: 1),
+        ], RentalCancelUnit.hour),
+        '1+ hour before: 1% · In the last hour: 2%',
+      );
+      expect(
+        rentalCancelMoneyLine(
+          const RentalCancelQuote(
+            unitsBefore: 0,
+            unit: RentalCancelUnit.day,
+            percent: 2,
+            charge: 100,
+            paid: 5000,
+            refund: 4900,
+          ),
+          RentalAudience.customer,
+        ),
+        'Cancelling now, on the start day, keeps ${rupees(100)} (2%) as the '
+        'cancellation charge. ${rupees(4900)} of the ${rupees(5000)} you paid '
+        'comes back.',
+      );
+      expect(
+        rentalCancelMoneyLine(
+          const RentalCancelQuote(
+            unitsBefore: 9,
+            unit: RentalCancelUnit.day,
+            percent: 0,
+            charge: 0,
+            paid: 5000,
+            refund: 5000,
+          ),
+          RentalAudience.customer,
+        ),
+        'No cancellation charge now: all ${rupees(5000)} you paid comes back.',
+      );
+      expect(
+        rentalCancelMoneyLine(
+          const RentalCancelQuote(
+            unitsBefore: 1,
+            unit: RentalCancelUnit.day,
+            percent: 0,
+            charge: 0,
+            paid: 0,
+            refund: 0,
+          ),
+          RentalAudience.customer,
+        ),
+        isNull,
+        reason: 'nothing paid, nothing to say',
+      );
+    });
+
+    test('the server order reads with its charge, refund and choices', () {
+      final order = RentalOrderModel.fromJson({
+        'id': 'o1',
+        'customerName': 'Rahul',
+        'quantity': 250,
+        'startDate': '2026-11-11T00:00:00Z',
+        'endDate': '2026-11-12T23:59:00Z',
+        'deliveryAddress': 'Hall',
+        'status': 'Cancelled',
+        'statusName': 'Cancelled',
+        'statusTone': 'waiting',
+        'isOut': false,
+        'paymentStatus': 'RefundDue',
+        'cancelSteps': [
+          {'unitsBefore': 0, 'percent': 2},
+          {'unitsBefore': 5, 'percent': 0.5},
+        ],
+        'cancelUnit': 'Day',
+        'cancelledBy': 'Customer',
+        'cancellationCharge': 100,
+        'refundOwed': 4900,
+        'refundMode': 'Online',
+        'refundModeName': 'Online',
+        'refundModeText': 'in 1 to 5 working days',
+        'canChooseRefundMode': true,
+        'refundModes': [
+          {'code': 'Online', 'name': 'Online', 'text': 'Zuno sends it'},
+          {
+            'code': 'InHand',
+            'name': 'In hand',
+            'text': 'You give it back',
+            'disabledReason': null,
+          },
+        ],
+      }).toEntity();
+
+      expect(order.cancelledByCustomer, isTrue);
+      expect(order.cancellationCharge, 100);
+      expect(order.refundOwed, 4900);
+      expect(order.cancelSteps.map((s) => s.percent), [2, 0.5]);
+      expect(order.refundModes.map((m) => m.code), ['Online', 'InHand']);
+      expect(rentalMoneyLine(order), 'Refund due ${rupees(4900)}');
+
+      final quote = RentalCancelQuoteModel.fromJson({
+        'unitsBefore': 3,
+        'unit': 'Day',
+        'percent': 1,
+        'charge': 50,
+        'paid': 5000,
+        'refund': 4950,
+      }).toEntity();
+      expect(quote.refund, 4950);
     });
   });
 }

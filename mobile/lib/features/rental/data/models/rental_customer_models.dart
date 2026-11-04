@@ -2,6 +2,7 @@ import 'package:json_annotation/json_annotation.dart';
 import 'package:zuno/features/rental/data/models/rental_models.dart';
 import 'package:zuno/features/rental/domain/entities/rental_customer.dart';
 import 'package:zuno/features/rental/domain/entities/rental_item.dart';
+import 'package:zuno/features/rental/domain/entities/rental_payment.dart';
 
 part 'rental_customer_models.g.dart';
 
@@ -84,6 +85,11 @@ class RentalItemDetailModel {
     this.businessLogoUrl,
     this.advanceType = 'None',
     this.advanceAmount,
+    this.cancelSteps = const [],
+    this.cancelUnit = RentalCancelUnit.day,
+    this.cancelChargeType = RentalCancelChargeType.byTimeLeft,
+    this.cancelPercentPerDay,
+    this.maxCancelPercent = 0,
   });
 
   factory RentalItemDetailModel.fromJson(Map<String, dynamic> json) =>
@@ -100,6 +106,11 @@ class RentalItemDetailModel {
   final String? businessLogoUrl;
   final String advanceType;
   final double? advanceAmount;
+  final List<RentalCancelStepModel> cancelSteps;
+  final String cancelUnit;
+  final String cancelChargeType;
+  final double? cancelPercentPerDay;
+  final double maxCancelPercent;
 
   RentalItemDetail toEntity() => RentalItemDetail(
     card: card.toEntity(),
@@ -113,5 +124,10 @@ class RentalItemDetailModel {
     businessLogoUrl: businessLogoUrl,
     advanceType: advanceType,
     advanceAmount: advanceAmount,
+    cancelSteps: cancelSteps.map((s) => s.toEntity()).toList(),
+    cancelUnit: cancelUnit,
+    cancelChargeType: cancelChargeType,
+    cancelPercentPerDay: cancelPercentPerDay,
+    maxCancelPercent: maxCancelPercent,
   );
 }

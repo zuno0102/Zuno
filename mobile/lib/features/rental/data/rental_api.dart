@@ -45,6 +45,10 @@ class RentApi {
 
   static String myRentalCancelPath(String id) => '$myRentalsPath/$id/cancel';
 
+  /// What cancelling now would cost and give back.
+  static String myRentalCancelQuotePath(String id) =>
+      '$myRentalsPath/$id/cancel-quote';
+
   static String myRentalHistoryPath(String id) => '$myRentalsPath/$id/history';
 
   static String myRentalMessagesPath(String id) =>
@@ -71,6 +75,12 @@ class RentApi {
       '$myItemsPath/$id/availability';
 
   static String orderStatusPath(String id) => '$ordersPath/$id/status';
+
+  static String orderCancelQuotePath(String id) =>
+      '$ordersPath/$id/cancel-quote';
+
+  /// How a cancelled order's refund goes back: online or in hand.
+  static String orderRefundModePath(String id) => '$ordersPath/$id/refund-mode';
 
   /// Money taken for an order — cash or UPI QR — or given back.
   static String orderPaymentsPath(String id) => '$ordersPath/$id/payments';

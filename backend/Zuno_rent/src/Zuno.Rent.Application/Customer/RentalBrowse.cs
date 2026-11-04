@@ -71,6 +71,21 @@ public class RentalItemDetailDto
     /// <summary>What the business asks before renting it out, in order.</summary>
     public List<RentalItemQuestionDto> Questions { get; set; } = [];
 
+    /// <summary>What cancelling costs by time left, shown before booking. Empty is free cancellation.</summary>
+    public List<RentalCancelStepDto> CancelSteps { get; set; } = [];
+
+    /// <summary><c>Day</c> or <c>Hour</c>.</summary>
+    public string CancelUnit { get; set; } = string.Empty;
+
+    /// <summary><c>ByTimeLeft</c> (the steps) or <c>PerRentalDay</c>.</summary>
+    public string CancelChargeType { get; set; } = string.Empty;
+
+    /// <summary>For <c>PerRentalDay</c>: the percent for each day (or hour) rented.</summary>
+    public decimal? CancelPercentPerDay { get; set; }
+
+    /// <summary>The most the charge can add up to for this kind of item.</summary>
+    public decimal MaxCancelPercent { get; set; }
+
     public string? BusinessLogoUrl { get; set; }
 }
 
@@ -318,6 +333,11 @@ public class RentalBrowseHandlers(IRentDbContext dbContext, IOptions<RentSetting
             Media = dto.Media,
             Districts = dto.Districts,
             Questions = dto.Questions,
+            CancelSteps = dto.CancelSteps,
+            CancelUnit = dto.CancelUnit,
+            CancelChargeType = dto.CancelChargeType,
+            CancelPercentPerDay = dto.CancelPercentPerDay,
+            MaxCancelPercent = item.RentalCategory is null ? 0 : RentalCancelLimits.For(item.RentalCategory, item.RentalSubCategory, settings.Value),
             BusinessLogoUrl = logo,
         };
     }

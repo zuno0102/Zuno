@@ -73,6 +73,47 @@ public class RentalOrder : BaseEntity
     /// </summary>
     public DateTimeOffset? HoldUntil { get; set; }
 
+    /// <summary>The item's cancellation steps when booked, kept so a later change does not touch this order.</summary>
+    public List<RentalCancelStep> CancelSteps { get; set; } = [];
+
+    /// <summary>How the charge is worked out, as the item had it when booked.</summary>
+    public RentalCancelChargeType CancelChargeType { get; set; } = RentalCancelChargeType.ByTimeLeft;
+
+    /// <summary>For a per-rental-day charge: the percent for each day (or hour) rented.</summary>
+    public decimal? CancelPercentPerDay { get; set; }
+
+    /// <summary>The limit for the kind of item when booked: a per-day charge never adds up past it.</summary>
+    public decimal CancelPercentCap { get; set; }
+
+    /// <summary>Who cancelled it; null while it is not cancelled (or for one the advance timer let go).</summary>
+    public RentalMessageSenderRole? CancelledBy { get; private set; }
+
+    /// <summary>What was kept from the customer's money when they cancelled; 0 when the business cancelled.</summary>
+    public decimal CancellationCharge { get; private set; }
+
+    /// <summary>How the refund reaches the customer, as the business chose; null until it chooses.</summary>
+    public RentalRefundMode? RefundMode { get; set; }
+
+    /// <summary>
+    /// Cancels the order and works out the charge: the customer pays the step for how early they
+    /// cancelled, never more than they paid; the business cancelling charges nothing.
+    /// </summary>
+    public void Cancel(RentalMessageSenderRole by, DateTimeOffset now, decimal netPaid)
+    {
+        Status = RentalOrderStatus.Cancelled;
+        HoldUntil = null;
+        CancelledBy = by;
+        CancellationCharge = by == RentalMessageSenderRole.Customer
+            ? RentalCancellation.Charge(Amount, ChargePercentAt(now), netPaid)
+            : 0;
+    }
+
+    /// <summary>The percent a customer cancelling at <paramref name="now"/> would be charged.</summary>
+    public decimal ChargePercentAt(DateTimeOffset now) =>
+        CancelChargeType == RentalCancelChargeType.PerRentalDay && CancelPercentPerDay is { } perDay
+            ? RentalCancellation.PerRentalDay(perDay, Units, CancelPercentCap)
+            : RentalCancellation.PercentFor(CancelSteps, RentalCancellation.UnitsBefore(PriceType, StartDate, now));
+
     /// <summary>Prices the order from the item's rate, for its pieces and dates.</summary>
     public void PriceFrom(RentalPriceType priceType, decimal unitPrice)
     {
@@ -141,10 +182,33 @@ public class RentalOrderPayment : BaseEntity
     /// <summary>The gateway's payment — unique, so the same payment can never count twice.</summary>
     public string? ProviderPaymentId { get; set; }
 
+    /// <summary>
+    /// The UPI transaction reference the business's UPI app reported, e.g. for a refund paid to the
+    /// customer's UPI ID — the evidence if the customer says it never came.
+    /// </summary>
+    public string? Reference { get; set; }
+
+    /// <summary>The UPI ID the money was sent to, for a refund paid by UPI.</summary>
+    public string? PayeeUpiId { get; set; }
+
     /// <summary>Who recorded it: the business for cash or UPI, the customer for an online payment.</summary>
     public Guid RecordedByUserId { get; set; }
 
     public RentalMessageSenderRole RecordedByRole { get; set; }
+}
+
+/// <summary>The shape of what a business types about a UPI payment, checked the same way everywhere.</summary>
+public static class RentalPaymentFields
+{
+    public const int UpiIdMaxLength = 100;
+
+    public const int ReferenceMaxLength = 50;
+
+    /// <summary>A UPI ID like <c>name@bank</c>.</summary>
+    public const string UpiIdPattern = @"^[a-zA-Z0-9._-]{2,256}@[a-zA-Z][a-zA-Z0-9]{1,63}$";
+
+    /// <summary>A UPI transaction reference: letters, digits and dashes, as UPI apps show it.</summary>
+    public const string ReferencePattern = @"^[A-Za-z0-9-]{4,50}$";
 }
 
 /// <summary>

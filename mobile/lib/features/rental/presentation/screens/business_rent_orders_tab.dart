@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/router/push_screen.dart';
+import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/rental/domain/entities/rental_customer.dart';
 import 'package:zuno/features/rental/domain/entities/rental_stock.dart';
@@ -37,7 +38,7 @@ class RentOrdersTabs extends ConsumerWidget {
         ref
             .watch(rentalOrdersProvider(null, audience))
             .value
-            ?.where((o) => o.actions.isNotEmpty)
+            ?.where(rentalNeedsBusinessStep)
             .length ??
         0;
     final unread = ref.watch(rentalUnreadMessageCountProvider(audience));
@@ -53,8 +54,8 @@ class RentOrdersTabs extends ConsumerWidget {
             onlyActionable: true,
             showActions: true,
             emptyText:
-                'Nothing to do right now. Booked orders to send out and rented '
-                'items to bring back show here.',
+                'Nothing to do right now. Booked orders to send out, rented '
+                'items to bring back and money to give back show here.',
           ),
         ),
       ] else
@@ -109,7 +110,10 @@ class _BookingsTabState extends ConsumerState<_BookingsTab>
     final counts =
         ref.watch(rentalOrderCountsProvider).value ??
         const <RentalOrderStatusCount>[];
-    final total = counts.fold<int>(0, (sum, c) => sum + c.count);
+    // "Refund due" cuts across statuses, so it is not added in twice.
+    final total = counts
+        .where((c) => c.countsInAll)
+        .fold<int>(0, (sum, c) => sum + c.count);
 
     return Scaffold(
       // Orders that come by phone, at the shop or by message; app orders arrive on their own.
@@ -131,14 +135,27 @@ class _BookingsTabState extends ConsumerState<_BookingsTab>
                   selected: _status == null,
                   onSelected: (_) => setState(() => _status = null),
                 ),
-                for (final c in counts) ...[
-                  const SizedBox(width: 8),
-                  ChoiceChip(
-                    label: Text('${c.name} · ${c.count}'),
-                    selected: _status == c.status,
-                    onSelected: (_) => setState(() => _status = c.status),
-                  ),
-                ],
+                for (final c in counts)
+                  // Money owed back shows only while there is some, or while it is the chosen filter.
+                  if (!c.isRefundDue || c.count > 0 || _status == c.status) ...[
+                    const SizedBox(width: 8),
+                    ChoiceChip(
+                      key: ValueKey('rent-filter-${c.status}'),
+                      avatar: c.isRefundDue
+                          ? Icon(
+                              Icons.undo_rounded,
+                              size: 18,
+                              color: AppColors.status(
+                                rentalStatusTone(c.tone),
+                                Theme.of(context).brightness,
+                              ),
+                            )
+                          : null,
+                      label: Text('${c.name} · ${c.count}'),
+                      selected: _status == c.status,
+                      onSelected: (_) => setState(() => _status = c.status),
+                    ),
+                  ],
               ],
             ),
           ),
@@ -149,6 +166,8 @@ class _BookingsTabState extends ConsumerState<_BookingsTab>
               emptyText: _status == null
                   ? 'No rent orders yet. Tap "Offline order" for a customer who phoned or came in, '
                         'or wait for customers to book from the app.'
+                  : _status == RentalOrderStatusCount.refundDue
+                  ? 'Nothing to give back. Cancelled orders that still owe the customer money show here.'
                   : 'No orders in this status.',
             ),
           ),
@@ -198,7 +217,7 @@ class _OrderList extends ConsumerWidget {
       ),
       data: (all) {
         final orders = onlyActionable
-            ? all.where((o) => o.actions.isNotEmpty).toList()
+            ? all.where(rentalNeedsBusinessStep).toList()
             : all;
 
         return RefreshIndicator(

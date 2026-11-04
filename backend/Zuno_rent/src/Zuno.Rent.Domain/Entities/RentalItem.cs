@@ -52,6 +52,52 @@ public class RentalItem : BaseEntity
     /// <summary>What the business asks every customer renting this item, in display order.</summary>
     public ICollection<RentalItemQuestion> Questions { get; set; } = new List<RentalItemQuestion>();
 
+    /// <summary>
+    /// What a customer cancelling is charged, by how long before the start — nearest the start
+    /// last. Empty: cancelling is free. Within the category's limit, always.
+    /// </summary>
+    public List<RentalCancelStep> CancelSteps { get; private set; } = [];
+
+    /// <summary>Sets the cancellation steps, refusing any above <paramref name="limitPercent"/> (the category's limit).</summary>
+    /// <summary>How the charge is worked out: steps by time left, or a percent per rental day.</summary>
+    public RentalCancelChargeType CancelChargeType { get; private set; } = RentalCancelChargeType.ByTimeLeft;
+
+    /// <summary>For a per-rental-day charge: the percent for each day (or hour) rented, e.g. 1%.</summary>
+    public decimal? CancelPercentPerDay { get; private set; }
+
+    public void SetCancelSteps(IEnumerable<RentalCancelStep> steps, decimal limitPercent) =>
+        SetCancelCharge(RentalCancelChargeType.ByTimeLeft, steps, null, limitPercent);
+
+    /// <summary>
+    /// Sets the charge one way only: steps (checked against the limit), or a percent per rental day
+    /// that is above zero and at most the limit. The other way is cleared.
+    /// </summary>
+    public void SetCancelCharge(
+        RentalCancelChargeType type, IEnumerable<RentalCancelStep> steps, decimal? percentPerDay, decimal limitPercent)
+    {
+        if (type == RentalCancelChargeType.PerRentalDay)
+        {
+            if (percentPerDay is not { } perDay || perDay <= 0)
+            {
+                throw new DomainException("Enter the charge for each rental day, e.g. 1%.");
+            }
+
+            if (perDay > limitPercent)
+            {
+                throw new DomainException($"This kind of item allows a cancellation charge of at most {limitPercent:0.##}%.");
+            }
+
+            CancelChargeType = type;
+            CancelPercentPerDay = perDay;
+            CancelSteps = [];
+            return;
+        }
+
+        CancelSteps = RentalCancellation.Validated(steps, limitPercent);
+        CancelChargeType = RentalCancelChargeType.ByTimeLeft;
+        CancelPercentPerDay = null;
+    }
+
     public void SetRate(RentalPriceType priceType, decimal price)
     {
         if (!Enum.IsDefined(priceType))

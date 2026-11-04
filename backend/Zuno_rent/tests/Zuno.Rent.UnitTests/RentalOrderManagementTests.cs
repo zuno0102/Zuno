@@ -15,7 +15,7 @@ public class RentalOrderManagementTests : IDisposable
 
     public void Dispose() => _rent.Dispose();
 
-    private ChangeRentalOrderStatusCommandHandler Change => new(_rent.User, _rent.Db);
+    private ChangeRentalOrderStatusCommandHandler Change => new(_rent.User, _rent.Db, TimeProvider.System);
 
     private RentalOrderQueryHandlers Queries => new(_rent.User, _rent.Db, _rent.Settings);
 
@@ -144,7 +144,7 @@ public class RentalOrderManagementTests : IDisposable
         var counts = await Queries.Handle(new GetRentalOrderCountsQuery(), default);
 
         counts.Select(c => (c.Name, c.Count)).Should().Equal(
-            ("Booked", 2), ("On rent", 1), ("Returned", 0), ("Cancelled", 0), ("Awaiting advance", 0));
+            ("Refund due", 0), ("Booked", 2), ("On rent", 1), ("Returned", 0), ("Cancelled", 0), ("Awaiting advance", 0));
         (await Queries.Handle(new GetMyRentalOrdersQuery { Status = "Booked" }, default)).TotalCount.Should().Be(2);
         (await Queries.Handle(new GetMyRentalOrdersQuery { Status = "Nonsense" }, default)).TotalCount.Should().Be(0);
     }

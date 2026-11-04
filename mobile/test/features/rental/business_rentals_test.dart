@@ -4,14 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:zuno/core/payments/upi_pay.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/business_owner/domain/entities/business_service.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_services_notifier.dart';
 import 'package:zuno/features/catalog/domain/entities/app_options.dart';
 import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
+import 'package:zuno/features/rental/domain/entities/rental_customer.dart';
 import 'package:zuno/features/rental/domain/entities/rental_item.dart';
 import 'package:zuno/features/rental/domain/entities/rental_payment.dart';
 import 'package:zuno/features/rental/domain/rental_repository.dart';
+import 'package:zuno/features/rental/presentation/providers/rental_payment_providers.dart';
 import 'package:zuno/features/rental/presentation/providers/rental_providers.dart';
 import 'package:zuno/features/rental/presentation/screens/business_catalog_tab.dart';
 import 'package:zuno/features/rental/presentation/screens/business_rentals_tab.dart';
@@ -23,7 +26,9 @@ import 'package:zuno/features/rental/presentation/screens/business_rent_orders_t
 import 'package:zuno/features/rental/presentation/screens/rental_stock_item_screen.dart';
 import 'package:zuno/features/rental/presentation/screens/rental_stock_screen.dart';
 import 'package:zuno/features/rental/presentation/widgets/rent_dashboard_tiles.dart';
+import 'package:zuno/features/rental/presentation/widgets/rental_cancel_steps_section.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_collect_sheet.dart';
+import 'package:zuno/features/rental/presentation/widgets/rental_order_actions.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_item_form_sheet.dart';
 import 'package:zuno/shared/widgets/stat_tile.dart';
 
@@ -37,7 +42,14 @@ const _tools = RentalCategory(
 const _furniture = RentalCategory(
   id: 'cat-furniture',
   name: 'Furniture & seating',
-  subCategories: [RentalSubCategory(id: 'sub-chairs', name: 'Plastic chairs')],
+  maxCancelPercent: 5,
+  subCategories: [
+    RentalSubCategory(
+      id: 'sub-chairs',
+      name: 'Plastic chairs',
+      maxCancelPercent: 2,
+    ),
+  ],
 );
 
 const _ernakulam = RentalItemDistrict(
@@ -69,6 +81,20 @@ const _paymentOptions = RentalPaymentOptions(
   methods: [
     RentalPaymentOption(code: RentalPaymentMethod.upiQr, name: 'UPI QR'),
     RentalPaymentOption(code: RentalPaymentMethod.cash, name: 'Cash'),
+  ],
+  cancelChargeTypes: [
+    RentalPaymentOption(
+      code: RentalCancelChargeType.byTimeLeft,
+      name: 'By time left',
+      detail:
+          'More as the start comes closer, e.g. 5+ days 0.5%, on the day 2%',
+    ),
+    RentalPaymentOption(
+      code: RentalCancelChargeType.perRentalDay,
+      name: 'Per rental day',
+      detail:
+          'A percent for each day rented, e.g. 1% a day: a 2-day order costs 2%',
+    ),
   ],
 );
 
@@ -104,7 +130,13 @@ RentalItem _item({
   List<RentalItemQuestion> questions = const [],
   String advanceType = RentalAdvanceType.none,
   double? advanceAmount,
+  List<RentalCancelStep> cancelSteps = const [],
+  String cancelChargeType = RentalCancelChargeType.byTimeLeft,
+  double? cancelPercentPerDay,
 }) => RentalItem(
+  cancelSteps: cancelSteps,
+  cancelChargeType: cancelChargeType,
+  cancelPercentPerDay: cancelPercentPerDay,
   id: id,
   rentalCategoryId: _furniture.id,
   rentalCategoryName: _furniture.name,
@@ -209,15 +241,26 @@ class _FakeRentalRepository implements RentalRepository {
     String status, {
     double? paid,
     List<RentalOrderPayment>? payments,
+    String? refundMode,
   }) {
     final paidNow = paid ?? o.paid;
+    final lines = payments ?? o.payments;
+    final mode = refundMode ?? o.refundMode;
+    final owed = status == 'Cancelled'
+        ? (paidNow - o.cancellationCharge).clamp(0, double.infinity).toDouble()
+        : 0.0;
+    final canChoose = owed > 0 && !lines.any((p) => p.isRefund);
     final balance = status == 'Cancelled'
         ? 0.0
         : (o.amount - paidNow).clamp(0, double.infinity).toDouble();
     final standing = !o.isPriced
         ? null
         : status == 'Cancelled'
-        ? (paidNow > 0 ? 'RefundDue' : null)
+        ? (owed > 0
+              ? 'RefundDue'
+              : lines.any((p) => p.isRefund)
+              ? 'Refunded'
+              : null)
         : paidNow >= o.amount
         ? 'Paid'
         : paidNow <= 0
@@ -278,10 +321,44 @@ class _FakeRentalRepository implements RentalRepository {
       paymentStatusTone: standing == 'Paid' ? 'success' : 'progress',
       payments: payments ?? o.payments,
       canCollect: balance > 0 && status != 'Returned',
-      canRefund: status == 'Cancelled' && paidNow > 0,
+      canRefund: owed > 0 && mode != RentalRefundMode.online,
       upiId: upiId,
+      cancelledBy: status == 'Cancelled' ? (o.cancelledBy ?? 'Business') : null,
+      cancellationCharge: o.cancellationCharge,
+      refundOwed: owed,
+      refundMode: mode,
+      refundModeName: _refundModes[mode]?.$1,
+      refundModeText: _refundModes[mode]?.$2,
+      canChooseRefundMode: canChoose,
+      needsRefund: owed > 0 && mode != RentalRefundMode.online,
+      refundModes: canChoose
+          ? [
+              for (final entry in _refundModes.entries)
+                RentalRefundModeChoice(
+                  code: entry.key,
+                  name: entry.value.$1,
+                  text: entry.value.$2,
+                  disabledReason:
+                      entry.key == RentalRefundMode.online &&
+                          !lines.any((p) => p.methodName == 'Online')
+                      ? 'The customer paid in cash or by UPI, so give the refund in hand.'
+                      : null,
+                ),
+            ]
+          : const [],
     );
   }
+
+  static const _refundModes = {
+    RentalRefundMode.online: (
+      'Online',
+      "Zuno sends it back to the customer's card or UPI. Nothing for you to hand over.",
+    ),
+    RentalRefundMode.inHand: (
+      'In hand',
+      'You give it back yourself, in cash or by UPI, then record it here.',
+    ),
+  };
 
   static const _paymentNames = {
     'Unpaid': 'Unpaid',
@@ -289,6 +366,7 @@ class _FakeRentalRepository implements RentalRepository {
     'PartPaid': 'Part paid',
     'Paid': 'Paid',
     'RefundDue': 'Refund due',
+    'Refunded': 'Refunded',
   };
 
   /// The business's UPI ID, as payment settings hold it.
@@ -310,7 +388,9 @@ class _FakeRentalRepository implements RentalRepository {
   Future<RentalOrder> recordPayment(String id, RentalPaymentInput input) async {
     calls.add(
       'payment:$id:${input.method}:${input.amount.toStringAsFixed(0)}'
-      '${input.isRefund ? ':refund' : ''}',
+      '${input.isRefund ? ':refund' : ''}'
+      '${input.payeeUpiId == null ? '' : ':to=${input.payeeUpiId}'}'
+      '${input.reference == null ? '' : ':ref=${input.reference}'}',
     );
     for (final list in orders.values) {
       final index = list.indexWhere((o) => o.id == id);
@@ -323,6 +403,10 @@ class _FakeRentalRepository implements RentalRepository {
           o,
           o.status,
           paid: input.isRefund ? o.paid - input.amount : o.paid + input.amount,
+          // Giving it back by hand settles how it goes back, as on the server.
+          refundMode: input.isRefund
+              ? (o.refundMode ?? RentalRefundMode.inHand)
+              : null,
           payments: [
             ...o.payments,
             RentalOrderPayment(
@@ -351,11 +435,21 @@ class _FakeRentalRepository implements RentalRepository {
   @override
   Future<List<RentalOrder>> getOrders({String? status}) async => [
     for (final o in _allOrders)
-      if (status == null || o.status == status) o,
+      if (status == null ||
+          o.status == status ||
+          (status == RentalOrderStatusCount.refundDue && o.refundOwed > 0))
+        o,
   ];
 
   @override
   Future<List<RentalOrderStatusCount>> getOrderCounts() async => [
+    RentalOrderStatusCount(
+      status: RentalOrderStatusCount.refundDue,
+      name: 'Refund due',
+      tone: 'danger',
+      count: _allOrders.where((o) => o.refundOwed > 0).length,
+      countsInAll: false,
+    ),
     for (final entry in _names.entries)
       RentalOrderStatusCount(
         status: entry.key,
@@ -370,12 +464,67 @@ class _FakeRentalRepository implements RentalRepository {
       _allOrders.firstWhere((o) => o.id == id);
 
   @override
-  Future<RentalOrder> changeOrderStatus(String id, String toStatus) async {
-    calls.add('order:$id:$toStatus');
+  Future<RentalCancelQuote> getCancelQuote(String id) async {
+    final o = await getOrder(id);
+    return RentalCancelQuote(
+      unitsBefore: 2,
+      unit: RentalCancelUnit.day,
+      percent: 0,
+      charge: 0,
+      paid: o.paid,
+      refund: o.paid,
+      refundModes: o.paid <= 0
+          ? const []
+          : [
+              for (final entry in _refundModes.entries)
+                RentalRefundModeChoice(
+                  code: entry.key,
+                  name: entry.value.$1,
+                  text: entry.value.$2,
+                  disabledReason:
+                      entry.key == RentalRefundMode.online &&
+                          !o.payments.any((p) => p.methodName == 'Online')
+                      ? 'The customer paid in cash or by UPI, so give the refund in hand.'
+                      : null,
+                ),
+            ],
+    );
+  }
+
+  @override
+  Future<RentalOrder> setRefundMode(String id, String mode) async {
+    calls.add('refund-mode:$id:$mode');
     for (final list in orders.values) {
       final index = list.indexWhere((o) => o.id == id);
       if (index >= 0) {
-        list[index] = _withState(list[index], toStatus);
+        list[index] = _withState(
+          list[index],
+          list[index].status,
+          refundMode: mode,
+        );
+        return list[index];
+      }
+    }
+    throw StateError('no order $id');
+  }
+
+  @override
+  Future<RentalOrder> changeOrderStatus(
+    String id,
+    String toStatus, {
+    String? refundMode,
+  }) async {
+    calls.add('order:$id:$toStatus${refundMode == null ? '' : ':$refundMode'}');
+    for (final list in orders.values) {
+      final index = list.indexWhere((o) => o.id == id);
+      if (index >= 0) {
+        // As on the server: cancelling a paid order needs the way the money goes back.
+        if (toStatus == 'Cancelled' &&
+            list[index].paid > 0 &&
+            refundMode == null) {
+          throw Exception('Choose how it goes back: online or in hand.');
+        }
+        list[index] = _withState(list[index], toStatus, refundMode: refundMode);
         _step(id, _names[toStatus]!.$1, list[index].quantity);
         return list[index];
       }
@@ -865,6 +1014,9 @@ void main() {
 
     Future<void> save(WidgetTester tester, String label) async {
       final button = find.widgetWithText(FilledButton, label.toUpperCase());
+      // The keyboard closed first, as a person does: a focused box keeps pulling itself into view.
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
       await tester.ensureVisible(button.last);
       await tester.tap(button.last);
       await tester.pump();
@@ -902,8 +1054,13 @@ void main() {
           expect(find.text(rate.detail), findsOneWidget);
         }
         expect(find.text('Fixed'), findsNothing);
-        expect(find.byIcon(Icons.radio_button_checked), findsNWidgets(2));
+        // One chosen card each: the rate, the advance and how the cancellation charge is worked out.
+        expect(find.byIcon(Icons.radio_button_checked), findsNWidgets(3));
         expect(find.text('Advance before renting'), findsOneWidget);
+        expect(
+          find.text('How the cancellation charge is worked out'),
+          findsOneWidget,
+        );
         expect(find.text('Rate per day (INR)'), findsOneWidget);
         expect(find.text('Quantity you have'), findsOneWidget);
         expect(find.text('e.g. 1000'), findsOneWidget);
@@ -1011,7 +1168,6 @@ void main() {
       await tester.ensureVisible(find.text('Available now'));
       await tester.tap(find.text('Available now'));
       await tester.pump();
-
       await save(tester, 'Save changes');
 
       expect(repository.calls, ['update:item-1']);
@@ -1238,6 +1394,270 @@ void main() {
       await save(tester, 'Save changes');
 
       expect(repository.calls, isEmpty);
+    });
+
+    testWidgets(
+      'the cancellation charge shows the admin limit and saves the steps',
+      (tester) async {
+        final repository = await _pump(
+          tester,
+          const BusinessRentalsTab(),
+          items: [_item()],
+        );
+        await openForm(tester, existing: _item());
+
+        final limit = find.byKey(const ValueKey('cancel-steps-limit'));
+        await tester.ensureVisible(limit);
+        expect(
+          tester.widget<Text>(limit).data,
+          contains('Up to 2% of the order for Plastic chairs'),
+        );
+        expect(find.textContaining('Free cancellation.'), findsOneWidget);
+
+        // The first step is the start day itself, filled in.
+        await tester.tap(find.byKey(const ValueKey('cancel-step-add')));
+        await tester.pump();
+        expect(
+          tester
+              .widget<TextFormField>(
+                find.byKey(const ValueKey('cancel-step-0-units')),
+              )
+              .controller!
+              .text,
+          '0',
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('cancel-step-0-percent')),
+          '2',
+        );
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('cancel-step-add')),
+        );
+        await tester.tap(find.byKey(const ValueKey('cancel-step-add')));
+        await tester.pump();
+        await tester.enterText(
+          find.byKey(const ValueKey('cancel-step-1-units')),
+          '5',
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('cancel-step-1-percent')),
+          '0.5',
+        );
+
+        await save(tester, 'Save changes');
+
+        expect(repository.calls, ['update:item-1']);
+        expect(
+          [
+            for (final s in repository.lastInput!.cancelSteps)
+              (s.unitsBefore, s.percent),
+          ],
+          [(0, 2.0), (5, 0.5)],
+        );
+        expect(repository.lastInput!.toJson()['cancelSteps'], [
+          {'unitsBefore': 0, 'percent': 2.0},
+          {'unitsBefore': 5, 'percent': 0.5},
+        ]);
+      },
+    );
+
+    testWidgets('plastic chairs allow 2%, so 5% is refused before any call', (
+      tester,
+    ) async {
+      final repository = await _pump(
+        tester,
+        const BusinessRentalsTab(),
+        items: [_item()],
+      );
+      await openForm(tester, existing: _item());
+
+      await tester.ensureVisible(find.byKey(const ValueKey('cancel-step-add')));
+      await tester.tap(find.byKey(const ValueKey('cancel-step-add')));
+      await tester.pump();
+      await tester.enterText(
+        find.byKey(const ValueKey('cancel-step-0-percent')),
+        '5',
+      );
+      await save(tester, 'Save changes');
+
+      expect(find.text('At most 2%.'), findsOneWidget);
+      expect(repository.calls, isEmpty);
+    });
+
+    testWidgets('steps without a same-day step are refused', (tester) async {
+      final repository = await _pump(
+        tester,
+        const BusinessRentalsTab(),
+        items: [_item()],
+      );
+      await openForm(tester, existing: _item());
+
+      await tester.ensureVisible(find.byKey(const ValueKey('cancel-step-add')));
+      await tester.tap(find.byKey(const ValueKey('cancel-step-add')));
+      await tester.pump();
+      await tester.enterText(
+        find.byKey(const ValueKey('cancel-step-0-units')),
+        '3',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('cancel-step-0-percent')),
+        '1',
+      );
+      await save(tester, 'Save changes');
+
+      expect(
+        find.text('Add a step for cancelling on the start day itself (0).'),
+        findsOneWidget,
+      );
+      expect(repository.calls, isEmpty);
+    });
+
+    testWidgets('an hourly item counts its steps in hours', (tester) async {
+      final item = _item(
+        priceType: RentalPriceType.hourly,
+        cancelSteps: const [
+          RentalCancelStep(unitsBefore: 0, percent: 2),
+          RentalCancelStep(unitsBefore: 6, percent: 1),
+        ],
+      );
+      await _pump(tester, const BusinessRentalsTab(), items: [item]);
+      await openForm(tester, existing: item);
+
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('cancel-steps-section')),
+      );
+      expect(find.text('Hours before'), findsNWidgets(2));
+      // Farthest first, as the business reads it.
+      expect(
+        tester
+            .widget<TextFormField>(
+              find.byKey(const ValueKey('cancel-step-0-units')),
+            )
+            .controller!
+            .text,
+        '6',
+      );
+    });
+
+    testWidgets('removing every step saves free cancellation', (tester) async {
+      final item = _item(
+        cancelSteps: const [RentalCancelStep(unitsBefore: 0, percent: 2)],
+      );
+      final repository = await _pump(
+        tester,
+        const BusinessRentalsTab(),
+        items: [item],
+      );
+      await openForm(tester, existing: item);
+
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('cancel-step-0-remove')),
+      );
+      await tester.tap(find.byKey(const ValueKey('cancel-step-0-remove')));
+      await tester.pump();
+      await save(tester, 'Save changes');
+
+      expect(repository.calls, ['update:item-1']);
+      expect(repository.lastInput!.cancelSteps, isEmpty);
+    });
+
+    testWidgets(
+      'a charge per rental day is one box, checked against the limit',
+      (tester) async {
+        final repository = await _pump(
+          tester,
+          const BusinessRentalsTab(),
+          items: [_item()],
+        );
+        await openForm(tester, existing: _item());
+
+        final perDay = find.text('Per rental day');
+        await tester.ensureVisible(perDay);
+        await tester.tap(perDay);
+        await tester.pump();
+        expect(
+          find.byKey(const ValueKey('cancel-steps-section')),
+          findsNothing,
+          reason: 'one way of working it out: no steps with a per-day charge',
+        );
+        final box = find.byKey(const ValueKey('cancel-per-day'));
+        expect(box, findsOneWidget);
+        expect(
+          find.textContaining('a 2-day order cancelled costs 2%'),
+          findsOneWidget,
+        );
+        expect(
+          find.textContaining('Never above 2% for Plastic chairs'),
+          findsOneWidget,
+        );
+
+        await tester.enterText(box, '3');
+        await save(tester, 'Save changes');
+        expect(find.text('At most 2%.'), findsOneWidget);
+        expect(repository.calls, isEmpty);
+
+        await tester.enterText(box, '1');
+        await save(tester, 'Save changes');
+
+        expect(repository.calls, ['update:item-1']);
+        final input = repository.lastInput!;
+        expect(input.cancelChargeType, RentalCancelChargeType.perRentalDay);
+        expect(input.cancelPercentPerDay, 1);
+        expect(input.cancelSteps, isEmpty);
+        expect(input.toJson()['cancelChargeType'], 'PerRentalDay');
+      },
+    );
+
+    testWidgets('an hourly item is charged per rental hour', (tester) async {
+      final item = _item(
+        priceType: RentalPriceType.hourly,
+        cancelChargeType: RentalCancelChargeType.perRentalDay,
+        cancelPercentPerDay: 0.5,
+      );
+      await _pump(tester, const BusinessRentalsTab(), items: [item]);
+      await openForm(tester, existing: item);
+
+      final box = find.byKey(const ValueKey('cancel-per-day'));
+      await tester.ensureVisible(box);
+      expect(find.text('Charge for each rental hour'), findsOneWidget);
+      expect(
+        tester.widget<TextFormField>(box).controller!.text,
+        '0.5',
+        reason: 'the saved per-day charge opens as it was',
+      );
+    });
+
+    test('a per-day charge adds up by the days, never past the limit', () {
+      expect(rentalPerDayPercent(1, 1, 2), 1);
+      expect(rentalPerDayPercent(1, 2, 2), 2);
+      expect(rentalPerDayPercent(1, 5, 2), 2);
+      expect(rentalPerDayPercent(0.5, 3, 2), 1.5);
+    });
+
+    test('step rules match the server', () {
+      expect(rentalCancelStepsProblem(const []), isNull);
+      expect(
+        rentalCancelStepsProblem(const [
+          RentalCancelStep(unitsBefore: 0, percent: 2),
+          RentalCancelStep(unitsBefore: 0, percent: 1),
+        ]),
+        'Each cancellation step needs its own number of days or hours.',
+      );
+      expect(
+        rentalCancelStepsProblem(const [
+          RentalCancelStep(unitsBefore: 0, percent: 1),
+          RentalCancelStep(unitsBefore: 3, percent: 2),
+        ]),
+        'Cancelling earlier cannot cost more than cancelling later.',
+      );
+      expect(
+        rentalCancelStepsProblem(const [
+          RentalCancelStep(unitsBefore: 0, percent: 2),
+          RentalCancelStep(unitsBefore: 2, percent: 1),
+          RentalCancelStep(unitsBefore: 5, percent: 0.5),
+        ]),
+        isNull,
+      );
     });
 
     test('the rate box is named after the chosen card', () {
@@ -2350,6 +2770,7 @@ void main() {
     Future<_FakeRentalRepository> pumpPayments(
       WidgetTester tester,
       List<RentalOrder> list, {
+      RentalUpiPay? upiPay,
       String? upiId = 'joy@okhdfcbank',
       List<RentalItem>? items,
       Size size = const Size(400, 900),
@@ -2373,7 +2794,13 @@ void main() {
       ];
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [rentalRepositoryProvider.overrideWithValue(repository)],
+          overrides: [
+            rentalRepositoryProvider.overrideWithValue(repository),
+            rentalUpiPayProvider.overrideWithValue(
+              upiPay ??
+                  (_) async => throw StateError('No UPI app should open here.'),
+            ),
+          ],
           child: const MaterialApp(
             home: Scaffold(body: BusinessRentOrdersTab()),
           ),
@@ -2558,12 +2985,622 @@ void main() {
 
       expect(find.text('Give money back'), findsOneWidget);
       expect(find.byType(QrImageView), findsNothing);
+      // Cash: handed over, then recorded.
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('payment-method')),
+          matching: find.text('Cash'),
+        ),
+      );
+      await tester.pumpAndSettle();
       final record = primary('Record ${rupees(500)} given back');
       await tester.ensureVisible(record);
       await tester.tap(record);
       await tester.pumpAndSettle();
 
-      expect(repository.calls, ['payment:o1:UpiQr:500:refund']);
+      expect(repository.calls, ['payment:o1:Cash:500:refund']);
+    });
+
+    /// Paid ₹2,000 online, then cancelled by the customer the day before: ₹40 (2%) kept.
+    RentalOrder cancelledByCustomer({String method = 'Online'}) => RentalOrder(
+      id: 'o1',
+      rentalItemId: 'chairs',
+      itemName: 'Plastic chair',
+      customerName: 'Rahul',
+      quantity: 100,
+      startDate: today,
+      endDate: today.add(const Duration(days: 2)),
+      deliveryAddress: 'Kakkanad',
+      status: 'Cancelled',
+      statusName: 'Cancelled',
+      statusTone: 'waiting',
+      isOut: false,
+      priceType: RentalPriceType.daily,
+      unitPrice: 10,
+      units: 2,
+      amount: 2000,
+      paid: 2000,
+      payments: [
+        RentalOrderPayment(
+          id: 'pay',
+          at: today,
+          kind: 'Balance',
+          methodName: method,
+          amount: 2000,
+        ),
+      ],
+      cancelledBy: 'Customer',
+      cancellationCharge: 40,
+    );
+
+    testWidgets(
+      'a customer cancellation shows the charge kept and what to give back',
+      (tester) async {
+        await pumpPayments(tester, [cancelledByCustomer()]);
+        await openOrder(tester);
+
+        final owed = find.byKey(const ValueKey('payment-refund-owed'));
+        await tester.ensureVisible(owed);
+        expect(tester.widget<Text>(owed).data, rupees(1960));
+        expect(
+          tester
+              .widget<Text>(find.byKey(const ValueKey('payment-cancel-charge')))
+              .data,
+          rupees(40),
+        );
+        expect(
+          find.text(
+            'The customer cancelled: you keep ${rupees(40)} as the cancellation charge.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('How will ${rupees(1960)} go back?'), findsOneWidget);
+        expect(
+          find.text('Record refund of ${rupees(1960)}'),
+          findsOneWidget,
+          reason: 'until online is chosen, it can be given back by hand',
+        );
+      },
+    );
+
+    testWidgets(
+      'choosing online: Zuno sends it, and nothing is recorded by hand',
+      (tester) async {
+        final repository = await pumpPayments(tester, [cancelledByCustomer()]);
+        await openOrder(tester);
+
+        final online = find.byKey(const ValueKey('refund-mode-Online'));
+        await tester.ensureVisible(online);
+        await tester.tap(online);
+        await tester.pumpAndSettle();
+
+        // Asked first: what happens to the money, and to whom.
+        expect(find.text('Refund ${rupees(1960)} online?'), findsOneWidget);
+        expect(
+          find.textContaining('${rupees(1960)} to Rahul. Zuno sends it back'),
+          findsOneWidget,
+        );
+        expect(repository.calls, isEmpty, reason: 'nothing is set before yes');
+        await tester.tap(find.widgetWithText(FilledButton, 'Refund online'));
+        await tester.pumpAndSettle();
+
+        expect(repository.calls, ['refund-mode:o1:Online']);
+        expect(
+          find.textContaining('Nothing for you to hand over'),
+          findsOneWidget,
+        );
+        expect(find.byKey(const ValueKey('record-refund')), findsNothing);
+        expect(
+          tester.widget<ChoiceChip>(online).selected,
+          isTrue,
+          reason: 'it can still be changed until money goes back',
+        );
+      },
+    );
+
+    testWidgets('choosing in hand records the refund owed, not all paid', (
+      tester,
+    ) async {
+      final opened = <String>[];
+      final repository = await pumpPayments(
+        tester,
+        [cancelledByCustomer()],
+        upiPay: (uri) async {
+          opened.add(uri);
+          return const UpiPayResult(
+            UpiPayStatus.success,
+            reference: '431256789012',
+          );
+        },
+      );
+      await openOrder(tester);
+
+      final inHand = find.byKey(const ValueKey('refund-mode-InHand'));
+      await tester.ensureVisible(inHand);
+      await tester.tap(inHand);
+      await tester.pumpAndSettle();
+      expect(find.text('Give ${rupees(1960)} back in hand?'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, 'Give in hand'));
+      await tester.pumpAndSettle();
+      final refund = find.byKey(const ValueKey('record-refund'));
+      await tester.ensureVisible(refund);
+      await tester.tap(refund);
+      await tester.pumpAndSettle();
+      // UPI: pay the customer's UPI ID from the business's UPI app; SUCCESS records it.
+      await tester.enterText(
+        find.byKey(const ValueKey('refund-upi-id')),
+        'rahul@okaxis',
+      );
+      final pay = primary('Pay ${rupees(1960)} by UPI');
+      await tester.ensureVisible(pay);
+      await tester.tap(pay);
+      await tester.pumpAndSettle();
+
+      final uri = Uri.parse(opened.single);
+      expect(uri.queryParameters['pa'], 'rahul@okaxis');
+      expect(uri.queryParameters['am'], '1960.00');
+      expect(repository.calls, [
+        'refund-mode:o1:InHand',
+        'payment:o1:UpiQr:1960:refund:to=rahul@okaxis:ref=431256789012',
+      ]);
+      expect(find.byKey(const ValueKey('refund-mode-InHand')), findsNothing);
+    });
+
+    testWidgets('backing out of the refund question sets nothing', (
+      tester,
+    ) async {
+      final repository = await pumpPayments(tester, [cancelledByCustomer()]);
+      await openOrder(tester);
+
+      final online = find.byKey(const ValueKey('refund-mode-Online'));
+      await tester.ensureVisible(online);
+      await tester.tap(online);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Not now'));
+      await tester.pumpAndSettle();
+
+      expect(repository.calls, isEmpty);
+      expect(tester.widget<ChoiceChip>(online).selected, isFalse);
+      expect(find.byKey(const ValueKey('record-refund')), findsOneWidget);
+    });
+
+    testWidgets('changing the refund method asks again', (tester) async {
+      final repository = await pumpPayments(tester, [cancelledByCustomer()]);
+      await openOrder(tester);
+
+      final online = find.byKey(const ValueKey('refund-mode-Online'));
+      await tester.ensureVisible(online);
+      await tester.tap(online);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Refund online'));
+      await tester.pumpAndSettle();
+
+      final inHand = find.byKey(const ValueKey('refund-mode-InHand'));
+      await tester.ensureVisible(inHand);
+      await tester.tap(inHand);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Change the refund to in hand?'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, 'Give in hand'));
+      await tester.pumpAndSettle();
+      expect(repository.calls, [
+        'refund-mode:o1:Online',
+        'refund-mode:o1:InHand',
+      ]);
+    });
+
+    testWidgets(
+      'cancelling a paid order asks online or in hand, and waits for a choice',
+      (tester) async {
+        final repository = await pumpPayments(tester, [
+          priced('o1', 'Booked'),
+        ], size: const Size(400, 1400));
+        await openOrder(tester);
+
+        await tester.ensureVisible(find.text('Cancel order'));
+        await tester.tap(find.text('Cancel order'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('How will ${rupees(500)} go back?'), findsOneWidget);
+        expect(find.text('Choose one to cancel the order.'), findsOneWidget);
+        final confirm = find.byKey(const ValueKey('cancel-refund-confirm'));
+        expect(
+          tester.widget<FilledButton>(confirm).onPressed,
+          isNull,
+          reason: 'cancel stays off until a way back is chosen',
+        );
+        // Paid in cash: online is not offered, and says why.
+        expect(
+          tester
+              .widget<ListTile>(
+                find.byKey(const ValueKey('cancel-refund-Online')),
+              )
+              .enabled,
+          isFalse,
+        );
+        expect(
+          find.text(
+            'The customer paid in cash or by UPI, so give the refund in hand.',
+          ),
+          findsOneWidget,
+        );
+        await tester.tap(find.byKey(const ValueKey('cancel-refund-Online')));
+        await tester.pump();
+        expect(tester.widget<FilledButton>(confirm).onPressed, isNull);
+
+        await tester.tap(find.byKey(const ValueKey('cancel-refund-InHand')));
+        await tester.pump();
+        expect(find.text('Choose one to cancel the order.'), findsNothing);
+        await tester.tap(confirm);
+        await tester.pumpAndSettle();
+
+        expect(repository.calls, ['order:o1:Cancelled:InHand']);
+      },
+    );
+
+    testWidgets('keeping the order from the refund question changes nothing', (
+      tester,
+    ) async {
+      final repository = await pumpPayments(tester, [
+        priced('o1', 'Booked'),
+      ], size: const Size(400, 1400));
+      await openOrder(tester);
+
+      await tester.ensureVisible(find.text('Cancel order'));
+      await tester.tap(find.text('Cancel order'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('cancel-refund-InHand')));
+      await tester.pump();
+      await tester.tap(find.text('Keep order'));
+      await tester.pumpAndSettle();
+
+      expect(repository.calls, isEmpty);
+    });
+
+    testWidgets('an unpaid order cancels with the plain question', (
+      tester,
+    ) async {
+      final repository = await pumpPayments(tester, [
+        priced('o1', 'Booked', paid: 0),
+      ], size: const Size(400, 1400));
+      await openOrder(tester);
+
+      await tester.ensureVisible(find.text('Cancel order'));
+      await tester.tap(find.text('Cancel order'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('cancel-refund-confirm')), findsNothing);
+      await tester.tap(find.widgetWithText(FilledButton, 'Cancel order'));
+      await tester.pumpAndSettle();
+      expect(repository.calls, ['order:o1:Cancelled']);
+    });
+
+    /// S7-like: in hand chosen, the refund sheet open on UPI.
+    Future<_FakeRentalRepository> openUpiRefund(
+      WidgetTester tester,
+      RentalUpiPay upiPay,
+    ) async {
+      final repository = await pumpPayments(tester, [
+        cancelledByCustomer(),
+      ], upiPay: upiPay);
+      await openOrder(tester);
+      final inHand = find.byKey(const ValueKey('refund-mode-InHand'));
+      await tester.ensureVisible(inHand);
+      await tester.tap(inHand);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Give in hand'));
+      await tester.pumpAndSettle();
+      final refund = find.byKey(const ValueKey('record-refund'));
+      await tester.ensureVisible(refund);
+      await tester.tap(refund);
+      await tester.pumpAndSettle();
+      repository.calls.clear();
+      return repository;
+    }
+
+    Future<void> payToRahul(WidgetTester tester) async {
+      await tester.enterText(
+        find.byKey(const ValueKey('refund-upi-id')),
+        'rahul@okaxis',
+      );
+      final pay = primary('Pay ${rupees(1960)} by UPI');
+      await tester.ensureVisible(pay);
+      await tester.tap(pay);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a UPI refund needs the customer UPI ID before paying', (
+      tester,
+    ) async {
+      var opened = 0;
+      final repository = await openUpiRefund(tester, (_) async {
+        opened++;
+        return const UpiPayResult(UpiPayStatus.success);
+      });
+
+      final pay = primary('Pay ${rupees(1960)} by UPI');
+      await tester.ensureVisible(pay);
+      await tester.tap(pay);
+      await tester.pumpAndSettle();
+      expect(find.text("Scan or type the customer's UPI ID."), findsOneWidget);
+
+      await tester.enterText(
+        find.byKey(const ValueKey('refund-upi-id')),
+        'rahul',
+      );
+      await tester.tap(pay);
+      await tester.pumpAndSettle();
+      expect(find.text('Enter a UPI ID like name@bank.'), findsOneWidget);
+      expect(opened, 0);
+      expect(repository.calls, isEmpty);
+      expect(
+        find.byKey(const ValueKey('refund-upi-scan')),
+        findsOneWidget,
+        reason: 'the camera can read it off the customer\'s UPI QR',
+      );
+    });
+
+    testWidgets('an unclear UPI answer asks the business to confirm', (
+      tester,
+    ) async {
+      final repository = await openUpiRefund(
+        tester,
+        (_) async =>
+            const UpiPayResult(UpiPayStatus.unknown, reference: 'AXI98765'),
+      );
+
+      await payToRahul(tester);
+
+      expect(repository.calls, isEmpty, reason: 'nothing recorded unasked');
+      expect(
+        find.text(
+          'Did ${rupees(1960)} reach Rahul? Check your UPI app before you confirm.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<TextFormField>(
+              find.byKey(const ValueKey('refund-upi-reference')),
+            )
+            .controller!
+            .text,
+        'AXI98765',
+      );
+      final yes = primary('Yes, record ${rupees(1960)} given back');
+      await tester.ensureVisible(yes);
+      await tester.tap(yes);
+      await tester.pumpAndSettle();
+
+      expect(repository.calls, [
+        'payment:o1:UpiQr:1960:refund:to=rahul@okaxis:ref=AXI98765',
+      ]);
+    });
+
+    testWidgets('a failed UPI payment records nothing', (tester) async {
+      final repository = await openUpiRefund(
+        tester,
+        (_) async => const UpiPayResult(UpiPayStatus.failure),
+      );
+
+      await payToRahul(tester);
+
+      expect(
+        find.text(
+          'The UPI app says ${rupees(1960)} did not go. Nothing was recorded.',
+        ),
+        findsOneWidget,
+      );
+      expect(repository.calls, isEmpty);
+      expect(primary('Pay ${rupees(1960)} by UPI'), findsOneWidget);
+    });
+
+    test('UPI app answers are read leniently', () {
+      final ok = UpiPay.parse(
+        'txnId=AXI123456&responseCode=00&Status=SUCCESS&txnRef=ZR42',
+      );
+      expect(ok.status, UpiPayStatus.success);
+      expect(ok.reference, 'AXI123456');
+      expect(
+        UpiPay.parse('status=success&ApprovalRefNo=431256789012').reference,
+        '431256789012',
+        reason: 'the bank approval number wins',
+      );
+      expect(
+        UpiPay.parse('Status=FAILURE&txnId=AXI1').status,
+        UpiPayStatus.failure,
+      );
+      expect(UpiPay.parse(null).status, UpiPayStatus.unknown);
+      expect(UpiPay.parse(null, cancelled: true).status, UpiPayStatus.failure);
+      expect(
+        UpiPay.parse('Status=SUBMITTED&txnId=AXI9').status,
+        UpiPayStatus.unknown,
+      );
+      expect(
+        UpiPay.parse('Status=SUCCESS&txnId=a b').reference,
+        isNull,
+        reason: 'only a usable reference is kept',
+      );
+    });
+
+    test('the customer UPI ID is read from their QR or as typed', () {
+      expect(
+        rentalUpiIdFrom('upi://pay?pa=rahul@okaxis&pn=Rahul%20Nair&cu=INR'),
+        'rahul@okaxis',
+      );
+      expect(rentalUpiIdFrom(' anu.k@ybl '), 'anu.k@ybl');
+      expect(rentalUpiIdFrom('https://example.com/menu'), isNull);
+      expect(rentalUpiIdFrom('upi://pay?pn=NoId'), isNull);
+    });
+
+    testWidgets('money paid in cash cannot go back online', (tester) async {
+      final repository = await pumpPayments(tester, [
+        cancelledByCustomer(method: 'Cash'),
+      ]);
+      await openOrder(tester);
+
+      final online = find.byKey(const ValueKey('refund-mode-Online'));
+      await tester.ensureVisible(online);
+      expect(tester.widget<ChoiceChip>(online).onSelected, isNull);
+      expect(
+        find.text(
+          'The customer paid in cash or by UPI, so give the refund in hand.',
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(online);
+      await tester.pumpAndSettle();
+      expect(repository.calls, isEmpty);
+    });
+
+    testWidgets('the business cancelling is told everything goes back', (
+      tester,
+    ) async {
+      await pumpPayments(tester, [
+        priced('o1', 'Booked'),
+      ], size: const Size(400, 1400));
+      await openOrder(tester);
+
+      await tester.ensureVisible(find.text('Cancel order'));
+      await tester.tap(find.text('Cancel order'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining(
+          'The customer gets back all ${rupees(500)} they paid.',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets(
+      'a paid order the business cancels is easy to find and give back',
+      (tester) async {
+        await pumpPayments(tester, [
+          priced('o1', 'Booked'),
+        ], size: const Size(400, 1400));
+        expect(
+          find.byKey(const ValueKey('rent-filter-RefundDue')),
+          findsNothing,
+          reason: 'the filter shows only while money is owed back',
+        );
+        await openOrder(tester);
+
+        await tester.ensureVisible(find.text('Cancel order'));
+        await tester.tap(find.text('Cancel order'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('cancel-refund-InHand')));
+        await tester.pump();
+        await tester.tap(find.byKey(const ValueKey('cancel-refund-confirm')));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text(
+            'Order cancelled. Give back ${rupees(500)} to Rahul: it waits '
+            'under Status management and the Refund due filter.',
+          ),
+          findsOneWidget,
+        );
+
+        await tester.pageBack();
+        await tester.pumpAndSettle();
+        final filter = find.byKey(const ValueKey('rent-filter-RefundDue'));
+        expect(
+          find.descendant(of: filter, matching: find.text('Refund due · 1')),
+          findsOneWidget,
+        );
+        expect(
+          find.text('All · 1'),
+          findsOneWidget,
+          reason: 'Refund due is not added into All',
+        );
+        await tester.tap(filter);
+        await tester.pumpAndSettle();
+        expect(
+          find.text('Give back ${rupees(500)} · you cancelled'),
+          findsOneWidget,
+        );
+
+        await tester.tap(find.text('Status management'));
+        await tester.pumpAndSettle();
+        final giveBack = find.byKey(const ValueKey('give-back-o1'));
+        expect(giveBack, findsOneWidget);
+        await tester.tap(giveBack);
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const ValueKey('refund-mode-InHand')),
+          findsOneWidget,
+          reason: 'the button opens the order, where the refund is given',
+        );
+      },
+    );
+
+    testWidgets(
+      'once the refund goes online it leaves the to-do but stays refund due',
+      (tester) async {
+        await pumpPayments(tester, [
+          cancelledByCustomer(),
+        ], size: const Size(400, 1400));
+
+        await tester.tap(find.text('Status management'));
+        await tester.pumpAndSettle();
+        expect(
+          find.text('Choose how to refund ${rupees(1960)}'),
+          findsOneWidget,
+        );
+
+        await tester.tap(find.byKey(const ValueKey('give-back-o1')));
+        await tester.pumpAndSettle();
+        final online = find.byKey(const ValueKey('refund-mode-Online'));
+        await tester.ensureVisible(online);
+        await tester.tap(online);
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(FilledButton, 'Refund online'));
+        await tester.pumpAndSettle();
+        await tester.pageBack();
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const ValueKey('give-back-o1')), findsNothing);
+        await tester.tap(find.text('Bookings'));
+        await tester.pumpAndSettle();
+        expect(
+          find.text(
+            'Refund ${rupees(1960)} goes back online · customer cancelled',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Refund due · 1'), findsOneWidget);
+      },
+    );
+
+    test('the customer is told what comes back right after cancelling', () {
+      RentalOrder cancelled({double charge = 0}) => RentalOrder(
+        id: 'o1',
+        customerName: 'Rahul',
+        quantity: 1,
+        startDate: DateTime(2026, 11, 5),
+        endDate: DateTime(2026, 11, 6),
+        deliveryAddress: 'Hall',
+        status: 'Cancelled',
+        statusName: 'Cancelled',
+        statusTone: 'waiting',
+        isOut: false,
+        refundOwed: 380,
+        cancellationCharge: charge,
+      );
+
+      expect(
+        rentalCancelledMoneyNote(
+          cancelled(charge: 120),
+          RentalAudience.customer,
+        ),
+        'Cancelled. ${rupees(380)} comes back to you; ${rupees(120)} is kept '
+        'as the cancellation charge.',
+      );
+      expect(
+        rentalCancelledMoneyNote(cancelled(), RentalAudience.customer),
+        'Cancelled. All ${rupees(380)} you paid comes back to you.',
+      );
     });
 
     testWidgets(
@@ -2791,9 +3828,14 @@ void main() {
           find.text('At least ${rupees(500)}: the item asks it.'),
           findsOneWidget,
         );
+        // No QR to scan, nor a summary, for an amount the order cannot take.
+        expect(find.byType(RentalUpiQr), findsNothing);
+        expect(find.byKey(const ValueKey('offline-advance')), findsNothing);
 
         await tester.enterText(advanceField, '2500');
         await book(tester);
+        expect(find.byType(RentalUpiQr), findsNothing);
+        expect(find.byKey(const ValueKey('offline-advance')), findsNothing);
         expect(
           find.text('Not more than the total, ${rupees(2000)}.'),
           findsOneWidget,

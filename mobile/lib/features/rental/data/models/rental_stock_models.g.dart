@@ -77,78 +77,103 @@ RentalAvailabilityModel _$RentalAvailabilityModelFromJson(
   available: (json['available'] as num).toInt(),
 );
 
-RentalOrderModel _$RentalOrderModelFromJson(Map<String, dynamic> json) =>
-    RentalOrderModel(
-      id: json['id'] as String,
-      customerName: json['customerName'] as String,
-      quantity: (json['quantity'] as num).toInt(),
-      startDate: DateTime.parse(json['startDate'] as String),
-      endDate: DateTime.parse(json['endDate'] as String),
-      deliveryAddress: json['deliveryAddress'] as String,
-      status: json['status'] as String,
-      statusName: json['statusName'] as String,
-      statusTone: json['statusTone'] as String,
-      isOut: json['isOut'] as bool,
-      rentalItemId: json['rentalItemId'] as String? ?? '',
-      itemName: json['itemName'] as String? ?? '',
-      customerPhone: json['customerPhone'] as String?,
-      districtName: json['districtName'] as String?,
-      unreadMessages: (json['unreadMessages'] as num?)?.toInt() ?? 0,
-      actions:
-          (json['actions'] as List<dynamic>?)
-              ?.map(
-                (e) =>
-                    RentalOrderActionModel.fromJson(e as Map<String, dynamic>),
-              )
-              .toList() ??
-          const [],
-      parentOrderId: json['parentOrderId'] as String?,
-      addOns:
-          (json['addOns'] as List<dynamic>?)
-              ?.map(
-                (e) =>
-                    RentalOrderAddOnModel.fromJson(e as Map<String, dynamic>),
-              )
-              .toList() ??
-          const [],
-      canAddPieces: json['canAddPieces'] as bool? ?? false,
-      businessName: json['businessName'] as String?,
-      source: json['source'] as String? ?? '',
-      answers:
-          (json['answers'] as List<dynamic>?)
-              ?.map(
-                (e) =>
-                    RentalOrderAnswerModel.fromJson(e as Map<String, dynamic>),
-              )
-              .toList() ??
-          const [],
-      priceType: json['priceType'] as String? ?? '',
-      unitPrice: (json['unitPrice'] as num?)?.toDouble() ?? 0,
-      units: (json['units'] as num?)?.toInt() ?? 1,
-      amount: (json['amount'] as num?)?.toDouble() ?? 0,
-      advanceDue: (json['advanceDue'] as num?)?.toDouble() ?? 0,
-      paid: (json['paid'] as num?)?.toDouble() ?? 0,
-      balance: (json['balance'] as num?)?.toDouble() ?? 0,
-      paymentStatus: json['paymentStatus'] as String?,
-      paymentStatusName: json['paymentStatusName'] as String?,
-      paymentStatusTone: json['paymentStatusTone'] as String?,
-      payments:
-          (json['payments'] as List<dynamic>?)
-              ?.map(
-                (e) =>
-                    RentalOrderPaymentModel.fromJson(e as Map<String, dynamic>),
-              )
-              .toList() ??
-          const [],
-      holdUntil: json['holdUntil'] == null
-          ? null
-          : DateTime.parse(json['holdUntil'] as String),
-      payNowAmount: (json['payNowAmount'] as num?)?.toDouble() ?? 0,
-      canCollect: json['canCollect'] as bool? ?? false,
-      canRefund: json['canRefund'] as bool? ?? false,
-      canPayOnline: json['canPayOnline'] as bool? ?? false,
-      upiId: json['upiId'] as String?,
-    );
+RentalOrderModel _$RentalOrderModelFromJson(
+  Map<String, dynamic> json,
+) => RentalOrderModel(
+  id: json['id'] as String,
+  customerName: json['customerName'] as String,
+  quantity: (json['quantity'] as num).toInt(),
+  startDate: DateTime.parse(json['startDate'] as String),
+  endDate: DateTime.parse(json['endDate'] as String),
+  deliveryAddress: json['deliveryAddress'] as String,
+  status: json['status'] as String,
+  statusName: json['statusName'] as String,
+  statusTone: json['statusTone'] as String,
+  isOut: json['isOut'] as bool,
+  rentalItemId: json['rentalItemId'] as String? ?? '',
+  itemName: json['itemName'] as String? ?? '',
+  customerPhone: json['customerPhone'] as String?,
+  districtName: json['districtName'] as String?,
+  unreadMessages: (json['unreadMessages'] as num?)?.toInt() ?? 0,
+  actions:
+      (json['actions'] as List<dynamic>?)
+          ?.map(
+            (e) => RentalOrderActionModel.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const [],
+  parentOrderId: json['parentOrderId'] as String?,
+  addOns:
+      (json['addOns'] as List<dynamic>?)
+          ?.map(
+            (e) => RentalOrderAddOnModel.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const [],
+  canAddPieces: json['canAddPieces'] as bool? ?? false,
+  businessName: json['businessName'] as String?,
+  source: json['source'] as String? ?? '',
+  answers:
+      (json['answers'] as List<dynamic>?)
+          ?.map(
+            (e) => RentalOrderAnswerModel.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const [],
+  priceType: json['priceType'] as String? ?? '',
+  unitPrice: (json['unitPrice'] as num?)?.toDouble() ?? 0,
+  units: (json['units'] as num?)?.toInt() ?? 1,
+  amount: (json['amount'] as num?)?.toDouble() ?? 0,
+  advanceDue: (json['advanceDue'] as num?)?.toDouble() ?? 0,
+  paid: (json['paid'] as num?)?.toDouble() ?? 0,
+  balance: (json['balance'] as num?)?.toDouble() ?? 0,
+  paymentStatus: json['paymentStatus'] as String?,
+  paymentStatusName: json['paymentStatusName'] as String?,
+  paymentStatusTone: json['paymentStatusTone'] as String?,
+  payments:
+      (json['payments'] as List<dynamic>?)
+          ?.map(
+            (e) => RentalOrderPaymentModel.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const [],
+  holdUntil: json['holdUntil'] == null
+      ? null
+      : DateTime.parse(json['holdUntil'] as String),
+  payNowAmount: (json['payNowAmount'] as num?)?.toDouble() ?? 0,
+  canCollect: json['canCollect'] as bool? ?? false,
+  canRefund: json['canRefund'] as bool? ?? false,
+  canPayOnline: json['canPayOnline'] as bool? ?? false,
+  upiId: json['upiId'] as String?,
+  cancelSteps:
+      (json['cancelSteps'] as List<dynamic>?)
+          ?.map(
+            (e) => RentalCancelStepModel.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const [],
+  cancelUnit: json['cancelUnit'] as String? ?? RentalCancelUnit.day,
+  cancelledBy: json['cancelledBy'] as String?,
+  cancellationCharge: (json['cancellationCharge'] as num?)?.toDouble() ?? 0,
+  refundOwed: (json['refundOwed'] as num?)?.toDouble() ?? 0,
+  refundMode: json['refundMode'] as String?,
+  refundModeName: json['refundModeName'] as String?,
+  refundModeText: json['refundModeText'] as String?,
+  canChooseRefundMode: json['canChooseRefundMode'] as bool? ?? false,
+  refundModes:
+      (json['refundModes'] as List<dynamic>?)
+          ?.map(
+            (e) =>
+                RentalRefundModeChoiceModel.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const [],
+  needsRefund: json['needsRefund'] as bool? ?? false,
+  cancelChargeType:
+      json['cancelChargeType'] as String? ?? RentalCancelChargeType.byTimeLeft,
+  cancelPercentPerDay: (json['cancelPercentPerDay'] as num?)?.toDouble(),
+  cancelPercentCap: (json['cancelPercentCap'] as num?)?.toDouble() ?? 0,
+);
 
 RentalOrderPageModel _$RentalOrderPageModelFromJson(
   Map<String, dynamic> json,
@@ -166,6 +191,7 @@ RentalOrderStatusCountModel _$RentalOrderStatusCountModelFromJson(
   name: json['name'] as String,
   tone: json['tone'] as String,
   count: (json['count'] as num).toInt(),
+  countsInAll: json['countsInAll'] as bool? ?? true,
 );
 
 RentalOrderThreadModel _$RentalOrderThreadModelFromJson(
@@ -205,6 +231,7 @@ RentalOrderPaymentModel _$RentalOrderPaymentModelFromJson(
   kind: json['kind'] as String,
   methodName: json['methodName'] as String,
   amount: (json['amount'] as num).toDouble(),
+  reference: json['reference'] as String?,
 );
 
 RentalCheckoutModel _$RentalCheckoutModelFromJson(Map<String, dynamic> json) =>
@@ -241,4 +268,41 @@ RentalPaymentOptionsModel _$RentalPaymentOptionsModelFromJson(
           )
           .toList() ??
       const [],
+  cancelChargeTypes:
+      (json['cancelChargeTypes'] as List<dynamic>?)
+          ?.map(
+            (e) => RentalPaymentOptionModel.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const [],
+);
+
+RentalRefundModeChoiceModel _$RentalRefundModeChoiceModelFromJson(
+  Map<String, dynamic> json,
+) => RentalRefundModeChoiceModel(
+  code: json['code'] as String,
+  name: json['name'] as String,
+  text: json['text'] as String? ?? '',
+  disabledReason: json['disabledReason'] as String?,
+);
+
+RentalCancelQuoteModel _$RentalCancelQuoteModelFromJson(
+  Map<String, dynamic> json,
+) => RentalCancelQuoteModel(
+  unitsBefore: (json['unitsBefore'] as num).toInt(),
+  unit: json['unit'] as String,
+  percent: (json['percent'] as num).toDouble(),
+  charge: (json['charge'] as num).toDouble(),
+  paid: (json['paid'] as num).toDouble(),
+  refund: (json['refund'] as num).toDouble(),
+  refundModes:
+      (json['refundModes'] as List<dynamic>?)
+          ?.map(
+            (e) =>
+                RentalRefundModeChoiceModel.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const [],
+  basis: json['basis'] as String? ?? RentalCancelChargeType.byTimeLeft,
+  rentalUnits: (json['rentalUnits'] as num?)?.toInt() ?? 1,
 );

@@ -1,3 +1,5 @@
+import 'package:zuno/features/rental/domain/entities/rental_payment.dart';
+
 /// How a rent item is charged — the server's enum names, matched as written.
 class RentalPriceType {
   const RentalPriceType._();
@@ -90,6 +92,10 @@ class RentalItem {
     this.questions = const [],
     this.advanceType = 'None',
     this.advanceAmount,
+    this.cancelSteps = const [],
+    this.cancelUnit = RentalCancelUnit.day,
+    this.cancelChargeType = RentalCancelChargeType.byTimeLeft,
+    this.cancelPercentPerDay,
   });
 
   final String id;
@@ -114,6 +120,18 @@ class RentalItem {
 
   /// For the whole order or for each piece; null when no advance is asked.
   final double? advanceAmount;
+
+  /// The cancellation charge by time left; empty is free cancellation.
+  final List<RentalCancelStep> cancelSteps;
+
+  /// [RentalCancelUnit.day] or [RentalCancelUnit.hour].
+  final String cancelUnit;
+
+  /// [RentalCancelChargeType.byTimeLeft] (the steps) or [RentalCancelChargeType.perRentalDay].
+  final String cancelChargeType;
+
+  /// For a per-rental-day charge: the percent for each day (or hour) rented.
+  final double? cancelPercentPerDay;
 
   bool get asksAdvance => advanceType != 'None' && (advanceAmount ?? 0) > 0;
 
@@ -148,10 +166,17 @@ class RentalSummary {
 }
 
 class RentalSubCategory {
-  const RentalSubCategory({required this.id, required this.name});
+  const RentalSubCategory({
+    required this.id,
+    required this.name,
+    this.maxCancelPercent = 0,
+  });
 
   final String id;
   final String name;
+
+  /// The most a business may keep on a cancellation, set by the super admin.
+  final double maxCancelPercent;
 }
 
 class RentalCategory {
@@ -160,12 +185,24 @@ class RentalCategory {
     required this.name,
     this.iconName,
     this.subCategories = const [],
+    this.maxCancelPercent = 0,
   });
 
   final String id;
   final String name;
   final String? iconName;
   final List<RentalSubCategory> subCategories;
+
+  /// The most a business may keep on a cancellation, set by the super admin.
+  final double maxCancelPercent;
+
+  /// The limit for an item under [subCategoryId]: the sub-category's, or this one's.
+  double cancelLimitFor(String? subCategoryId) =>
+      subCategories
+          .where((s) => s.id == subCategoryId)
+          .map((s) => s.maxCancelPercent)
+          .firstOrNull ??
+      maxCancelPercent;
 }
 
 /// What the business fills in for a rent item — the same for adding and editing.
@@ -183,6 +220,9 @@ class RentalItemInput {
     this.questions = const [],
     this.advanceType = 'None',
     this.advanceAmount,
+    this.cancelSteps = const [],
+    this.cancelChargeType = RentalCancelChargeType.byTimeLeft,
+    this.cancelPercentPerDay,
   });
 
   final String rentalCategoryId;
@@ -204,6 +244,15 @@ class RentalItemInput {
   /// Ignored by the server when no advance is asked.
   final double? advanceAmount;
 
+  /// The whole cancellation charge; empty is free cancellation.
+  final List<RentalCancelStep> cancelSteps;
+
+  /// [RentalCancelChargeType.byTimeLeft] or [RentalCancelChargeType.perRentalDay].
+  final String cancelChargeType;
+
+  /// For a per-rental-day charge: the percent for each day (or hour) rented.
+  final double? cancelPercentPerDay;
+
   Map<String, dynamic> toJson() => {
     'rentalCategoryId': rentalCategoryId,
     'rentalSubCategoryId': rentalSubCategoryId,
@@ -217,5 +266,8 @@ class RentalItemInput {
     'questions': questions,
     'advanceType': advanceType,
     'advanceAmount': advanceAmount,
+    'cancelSteps': cancelSteps.map((s) => s.toJson()).toList(),
+    'cancelChargeType': cancelChargeType,
+    'cancelPercentPerDay': cancelPercentPerDay,
   };
 }

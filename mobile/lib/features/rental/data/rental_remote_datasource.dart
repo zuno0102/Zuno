@@ -147,14 +147,17 @@ class RentalRemoteDataSource {
     return RentalOrderModel.fromJson(response.data!);
   });
 
-  Future<RentalOrderModel> changeOrderStatus(String id, String toStatus) =>
-      _run(() async {
-        final response = await _dio.post<Map<String, dynamic>>(
-          RentApi.orderStatusPath(id),
-          data: {'toStatus': toStatus},
-        );
-        return RentalOrderModel.fromJson(response.data!);
-      });
+  Future<RentalOrderModel> changeOrderStatus(
+    String id,
+    String toStatus, {
+    String? refundMode,
+  }) => _run(() async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      RentApi.orderStatusPath(id),
+      data: {'toStatus': toStatus, 'refundMode': ?refundMode},
+    );
+    return RentalOrderModel.fromJson(response.data!);
+  });
 
   Future<List<RentalOrderThreadModel>> getOrderThreads() => _run(() async {
     final response = await _dio.get<List<dynamic>>(RentApi.orderThreadsPath);
@@ -215,6 +218,22 @@ class RentalRemoteDataSource {
     );
     return response.data!['upiId'] as String?;
   });
+
+  Future<RentalCancelQuoteModel> getCancelQuote(String id) => _run(() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      RentApi.orderCancelQuotePath(id),
+    );
+    return RentalCancelQuoteModel.fromJson(response.data!);
+  });
+
+  Future<RentalOrderModel> setRefundMode(String id, String mode) =>
+      _run(() async {
+        final response = await _dio.post<Map<String, dynamic>>(
+          RentApi.orderRefundModePath(id),
+          data: {'mode': mode},
+        );
+        return RentalOrderModel.fromJson(response.data!);
+      });
 
   Future<RentalOrderModel> recordPayment(String id, RentalPaymentInput input) =>
       _run(() async {

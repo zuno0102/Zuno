@@ -62,4 +62,16 @@ RentalItemDetailModel _$RentalItemDetailModelFromJson(
   businessLogoUrl: json['businessLogoUrl'] as String?,
   advanceType: json['advanceType'] as String? ?? 'None',
   advanceAmount: (json['advanceAmount'] as num?)?.toDouble(),
+  cancelSteps:
+      (json['cancelSteps'] as List<dynamic>?)
+          ?.map(
+            (e) => RentalCancelStepModel.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const [],
+  cancelUnit: json['cancelUnit'] as String? ?? RentalCancelUnit.day,
+  cancelChargeType:
+      json['cancelChargeType'] as String? ?? RentalCancelChargeType.byTimeLeft,
+  cancelPercentPerDay: (json['cancelPercentPerDay'] as num?)?.toDouble(),
+  maxCancelPercent: (json['maxCancelPercent'] as num?)?.toDouble() ?? 0,
 );

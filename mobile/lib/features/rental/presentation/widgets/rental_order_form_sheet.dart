@@ -627,7 +627,9 @@ class _OfflineMoney extends ConsumerWidget {
     final theme = Theme.of(context);
     final (:total, :required) = money;
     final now = double.tryParse(advance.text.trim()) ?? 0;
-    final takes = now > 0 && now <= total;
+    // An amount the order cannot take shows no summary and no QR, so nobody scans to pay it.
+    final allowed = now >= required && now <= total;
+    final takes = now > 0 && allowed;
     final methods =
         ref.watch(rentalPaymentOptionsProvider).value?.methods ??
         const <RentalPaymentOption>[];
@@ -648,13 +650,14 @@ class _OfflineMoney extends ConsumerWidget {
                 fontWeight: FontWeight.w800,
               ),
             ),
-            Text(
-              takes
-                  ? 'Advance ${rupees(now)} now · ${rupees(total - now)} before the return'
-                  : 'No advance: everything is paid before the return.',
-              key: const ValueKey('offline-advance'),
-              style: theme.textTheme.bodySmall,
-            ),
+            if (allowed)
+              Text(
+                takes
+                    ? 'Advance ${rupees(now)} now · ${rupees(total - now)} before the return'
+                    : 'No advance: everything is paid before the return.',
+                key: const ValueKey('offline-advance'),
+                style: theme.textTheme.bodySmall,
+              ),
             const SizedBox(height: 12),
             Text('Advance payment', style: theme.textTheme.labelLarge),
             const SizedBox(height: 8),

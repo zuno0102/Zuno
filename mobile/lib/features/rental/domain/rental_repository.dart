@@ -52,7 +52,12 @@ abstract class RentalRepository {
   });
 
   /// Takes one step from the order's actions, e.g. to `OnRent` ("Send out").
-  Future<RentalOrder> changeOrderStatus(String id, String toStatus);
+  /// [refundMode] — `Online` or `InHand` — is required when cancelling an order the customer paid for.
+  Future<RentalOrder> changeOrderStatus(
+    String id,
+    String toStatus, {
+    String? refundMode,
+  });
 
   /// Rent orders with a conversation, latest first.
   Future<List<RentalOrderThread>> getOrderThreads();
@@ -77,6 +82,12 @@ abstract class RentalRepository {
 
   /// Money taken for an order, or given back on a cancelled one — never more than is due or was paid.
   Future<RentalOrder> recordPayment(String id, RentalPaymentInput input);
+
+  /// What cancelling now gives back — everything, as the business is the one cancelling.
+  Future<RentalCancelQuote> getCancelQuote(String id);
+
+  /// How a cancelled order's refund goes back: [RentalRefundMode.online] or [RentalRefundMode.inHand].
+  Future<RentalOrder> setRefundMode(String id, String mode);
 
   /// The counts behind the Rent tiles on the business home screen.
   Future<RentalSummary> getSummary();

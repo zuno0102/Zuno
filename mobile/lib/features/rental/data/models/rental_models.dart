@@ -1,5 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:zuno/features/rental/domain/entities/rental_item.dart';
+import 'package:zuno/features/rental/domain/entities/rental_payment.dart';
 
 part 'rental_models.g.dart';
 
@@ -116,6 +117,10 @@ class RentalItemModel {
     this.questions = const [],
     this.advanceType = 'None',
     this.advanceAmount,
+    this.cancelSteps = const [],
+    this.cancelUnit = RentalCancelUnit.day,
+    this.cancelChargeType = RentalCancelChargeType.byTimeLeft,
+    this.cancelPercentPerDay,
   });
 
   factory RentalItemModel.fromJson(Map<String, dynamic> json) =>
@@ -137,6 +142,10 @@ class RentalItemModel {
   final List<RentalItemQuestionModel> questions;
   final String advanceType;
   final double? advanceAmount;
+  final List<RentalCancelStepModel> cancelSteps;
+  final String cancelUnit;
+  final String cancelChargeType;
+  final double? cancelPercentPerDay;
 
   RentalItem toEntity() => RentalItem(
     id: id,
@@ -155,6 +164,10 @@ class RentalItemModel {
     questions: questions.map((q) => q.toEntity()).toList(),
     advanceType: advanceType,
     advanceAmount: advanceAmount,
+    cancelSteps: cancelSteps.map((s) => s.toEntity()).toList(),
+    cancelUnit: cancelUnit,
+    cancelChargeType: cancelChargeType,
+    cancelPercentPerDay: cancelPercentPerDay,
   );
 }
 
@@ -203,15 +216,21 @@ class RentalSummaryModel {
 
 @JsonSerializable(createToJson: false)
 class RentalSubCategoryModel {
-  const RentalSubCategoryModel({required this.id, required this.name});
+  const RentalSubCategoryModel({
+    required this.id,
+    required this.name,
+    this.maxCancelPercent = 0,
+  });
 
   factory RentalSubCategoryModel.fromJson(Map<String, dynamic> json) =>
       _$RentalSubCategoryModelFromJson(json);
 
   final String id;
   final String name;
+  final double maxCancelPercent;
 
-  RentalSubCategory toEntity() => RentalSubCategory(id: id, name: name);
+  RentalSubCategory toEntity() =>
+      RentalSubCategory(id: id, name: name, maxCancelPercent: maxCancelPercent);
 }
 
 @JsonSerializable(createToJson: false)
@@ -221,6 +240,7 @@ class RentalCategoryModel {
     required this.name,
     this.iconName,
     this.subCategories = const [],
+    this.maxCancelPercent = 0,
   });
 
   factory RentalCategoryModel.fromJson(Map<String, dynamic> json) =>
@@ -230,11 +250,30 @@ class RentalCategoryModel {
   final String name;
   final String? iconName;
   final List<RentalSubCategoryModel> subCategories;
+  final double maxCancelPercent;
 
   RentalCategory toEntity() => RentalCategory(
     id: id,
     name: name,
     iconName: iconName,
     subCategories: subCategories.map((s) => s.toEntity()).toList(),
+    maxCancelPercent: maxCancelPercent,
   );
+}
+
+@JsonSerializable(createToJson: false)
+class RentalCancelStepModel {
+  const RentalCancelStepModel({
+    required this.unitsBefore,
+    required this.percent,
+  });
+
+  factory RentalCancelStepModel.fromJson(Map<String, dynamic> json) =>
+      _$RentalCancelStepModelFromJson(json);
+
+  final int unitsBefore;
+  final double percent;
+
+  RentalCancelStep toEntity() =>
+      RentalCancelStep(unitsBefore: unitsBefore, percent: percent);
 }

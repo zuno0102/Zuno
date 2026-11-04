@@ -13,6 +13,7 @@ import 'package:zuno/features/rental/domain/entities/rental_item.dart';
 import 'package:zuno/features/rental/domain/entities/rental_payment.dart';
 import 'package:zuno/features/rental/presentation/providers/rental_payment_providers.dart';
 import 'package:zuno/features/rental/presentation/providers/rental_providers.dart';
+import 'package:zuno/features/rental/presentation/widgets/rental_cancel_steps_section.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_price_type_picker.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
@@ -90,6 +91,23 @@ class _RentalItemFormSheetState extends ConsumerState<RentalItemFormSheet> {
       ServiceQuestionRow(id: q.id, prompt: q.prompt, isRequired: q.isRequired),
   ];
 
+  /// How the charge is worked out: steps by time left, or a percent per rental day.
+  late String _cancelChargeType =
+      widget.existing?.cancelChargeType ?? RentalCancelChargeType.byTimeLeft;
+  late final _perDayController = TextEditingController(
+    text: _plainNumber(widget.existing?.cancelPercentPerDay),
+  );
+
+  bool get _perDay => _cancelChargeType == RentalCancelChargeType.perRentalDay;
+
+  /// The cancellation charge by time left, farthest first as the business reads it.
+  late final List<RentalCancelStepRow> _cancelRows = [
+    for (final s in [
+      ...?widget.existing?.cancelSteps,
+    ]..sort((a, b) => b.unitsBefore.compareTo(a.unitsBefore)))
+      RentalCancelStepRow(unitsBefore: s.unitsBefore, percent: s.percent),
+  ];
+
   /// Picked and removed photos and video, uploaded once the item itself is saved.
   late final _media = ServiceMediaSelection(
     slotCount: rentalImageSlots,
@@ -118,6 +136,10 @@ class _RentalItemFormSheetState extends ConsumerState<RentalItemFormSheet> {
     for (final row in _questions) {
       row.dispose();
     }
+    for (final row in _cancelRows) {
+      row.dispose();
+    }
+    _perDayController.dispose();
     _media.dispose();
     super.dispose();
   }
@@ -139,6 +161,14 @@ class _RentalItemFormSheetState extends ConsumerState<RentalItemFormSheet> {
     advanceAmount: _advanceType == RentalAdvanceType.none
         ? null
         : double.tryParse(_advanceController.text.trim()),
+    // One way only: a per-day charge sends no steps, steps send no per-day percent.
+    cancelSteps: _perDay
+        ? const []
+        : [for (final row in _cancelRows) ?row.toStep()],
+    cancelChargeType: _cancelChargeType,
+    cancelPercentPerDay: _perDay
+        ? double.tryParse(_perDayController.text.trim())
+        : null,
   );
 
   /// Whether anything on the item itself differs from what is saved; media is checked apart.
@@ -153,6 +183,12 @@ class _RentalItemFormSheetState extends ConsumerState<RentalItemFormSheet> {
       existing.isAvailable != input.isAvailable ||
       existing.advanceType != input.advanceType ||
       existing.advanceAmount != input.advanceAmount ||
+      existing.cancelChargeType != input.cancelChargeType ||
+      existing.cancelPercentPerDay != input.cancelPercentPerDay ||
+      !const DeepCollectionEquality().equals(
+        _stepPairs(existing.cancelSteps),
+        _stepPairs(input.cancelSteps),
+      ) ||
       !const SetEquality<String>().equals(
         existing.districts.map((d) => d.id).toSet(),
         input.districtIds.toSet(),
@@ -162,6 +198,14 @@ class _RentalItemFormSheetState extends ConsumerState<RentalItemFormSheet> {
           {'id': q.id, 'prompt': q.prompt, 'isRequired': q.isRequired},
       ], input.questions);
 
+  /// Steps as comparable pairs, nearest the start first.
+  static List<List<num>> _stepPairs(List<RentalCancelStep> steps) => [
+    for (final s in [
+      ...steps,
+    ]..sort((a, b) => a.unitsBefore.compareTo(b.unitsBefore)))
+      [s.unitsBefore, s.percent],
+  ];
+
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
     final fieldsValid = _formKey.currentState!.validate();
@@ -169,6 +213,8 @@ class _RentalItemFormSheetState extends ConsumerState<RentalItemFormSheet> {
         ? 'Select a category.'
         : _districtIds.isEmpty
         ? 'Select at least one district where this item can be rented.'
+        : fieldsValid
+        ? (_perDay ? null : rentalCancelStepsProblem(_input().cancelSteps))
         : null;
     if (!fieldsValid || problem != null) {
       setState(() => _errorMessage = problem);
@@ -332,6 +378,13 @@ class _RentalItemFormSheetState extends ConsumerState<RentalItemFormSheet> {
       (o) => o.code == _priceType,
     );
     final isEditing = widget.existing != null;
+    // The super admin's limit for the chosen kind of item, and the name it goes by.
+    final category = categoriesAsync.value?.firstWhereOrNull(
+      (c) => c.id == _categoryId,
+    );
+    final subCategory = category?.subCategories.firstWhereOrNull(
+      (s) => s.id == _subCategoryId,
+    );
 
     return Stack(
       children: [
@@ -550,6 +603,48 @@ class _RentalItemFormSheetState extends ConsumerState<RentalItemFormSheet> {
                       },
                     ),
                   ],
+                  const SizedBox(height: 16),
+                  // Two ways of working out the charge, from the server's table.
+                  if (ref
+                          .watch(rentalPaymentOptionsProvider)
+                          .value
+                          ?.cancelChargeTypes
+                      case final types? when types.isNotEmpty) ...[
+                    RentalChoiceCards(
+                      title: 'How the cancellation charge is worked out',
+                      options: [
+                        for (final t in types) (t.code, t.name, t.detail),
+                      ],
+                      value: _cancelChargeType,
+                      onChanged: (code) =>
+                          setState(() => _cancelChargeType = code),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (_perDay)
+                    RentalCancelPerDayField(
+                      controller: _perDayController,
+                      unit: RentalCancelUnit.of(_priceType),
+                      limit: category?.cancelLimitFor(_subCategoryId),
+                      limitName: subCategory?.name ?? category?.name,
+                    )
+                  else
+                    RentalCancelStepsSection(
+                      rows: _cancelRows,
+                      unit: RentalCancelUnit.of(_priceType),
+                      limit: category?.cancelLimitFor(_subCategoryId),
+                      limitName: subCategory?.name ?? category?.name,
+                      onAdd: () => setState(
+                        () => _cancelRows.add(
+                          // The first step is the start day itself; later ones go further out.
+                          RentalCancelStepRow(
+                            unitsBefore: _cancelRows.isEmpty ? 0 : null,
+                          ),
+                        ),
+                      ),
+                      onRemove: (index) =>
+                          setState(() => _cancelRows.removeAt(index).dispose()),
+                    ),
                   const SizedBox(height: 4),
                   SwitchListTile(
                     dense: true,

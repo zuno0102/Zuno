@@ -99,6 +99,20 @@ class RentalOrder {
     this.canRefund = false,
     this.canPayOnline = false,
     this.upiId,
+    this.cancelSteps = const [],
+    this.cancelUnit = RentalCancelUnit.day,
+    this.cancelledBy,
+    this.cancellationCharge = 0,
+    this.refundOwed = 0,
+    this.refundMode,
+    this.refundModeName,
+    this.refundModeText,
+    this.canChooseRefundMode = false,
+    this.refundModes = const [],
+    this.needsRefund = false,
+    this.cancelChargeType = RentalCancelChargeType.byTimeLeft,
+    this.cancelPercentPerDay,
+    this.cancelPercentCap = 0,
   });
 
   final String id;
@@ -196,6 +210,47 @@ class RentalOrder {
 
   /// The business's UPI ID for the payment QR — for the business only.
   final String? upiId;
+
+  /// The cancellation charge by time left, as booked.
+  final List<RentalCancelStep> cancelSteps;
+
+  /// [RentalCancelUnit.day] or [RentalCancelUnit.hour]: what [cancelSteps] count.
+  final String cancelUnit;
+
+  /// [RentalCancelChargeType.byTimeLeft] (the steps) or [RentalCancelChargeType.perRentalDay], as booked.
+  final String cancelChargeType;
+
+  /// For a per-rental-day charge: the percent for each day (or hour) rented.
+  final double? cancelPercentPerDay;
+
+  /// The most a per-day charge adds up to, as booked.
+  final double cancelPercentCap;
+
+  /// `Business` or `Customer` on a cancelled order; null otherwise.
+  final String? cancelledBy;
+
+  /// What the business keeps because the customer cancelled.
+  final double cancellationCharge;
+
+  /// Still to go back to the customer on a cancelled order.
+  final double refundOwed;
+
+  /// [RentalRefundMode.online] or [RentalRefundMode.inHand] once the business has chosen.
+  final String? refundMode;
+  final String? refundModeName;
+
+  /// What this side is told about the refund — "in 1 to 5 working days" — from the server's table.
+  final String? refundModeText;
+
+  /// The business still has money to give back here — owed, and not going back online by Zuno.
+  /// Such an order waits in Status management until it is settled.
+  final bool needsRefund;
+
+  /// The business may still choose how the refund goes back.
+  final bool canChooseRefundMode;
+  final List<RentalRefundModeChoice> refundModes;
+
+  bool get cancelledByCustomer => cancelledBy == 'Customer';
 
   bool get isAwaitingAdvance => status == 'AwaitingAdvance';
 
@@ -346,12 +401,21 @@ class RentalOrderStatusCount {
     required this.name,
     required this.tone,
     required this.count,
+    this.countsInAll = true,
   });
 
+  /// A status name, or `RefundDue`: cancelled orders still owing money back.
   final String status;
   final String name;
   final String tone;
   final int count;
+
+  /// False for a filter across statuses, like `RefundDue`: not added into "All".
+  final bool countsInAll;
+
+  bool get isRefundDue => status == RentalOrderStatusCount.refundDue;
+
+  static const refundDue = 'RefundDue';
 }
 
 /// A rent order with a conversation on it, as the Rent Messages list shows it.

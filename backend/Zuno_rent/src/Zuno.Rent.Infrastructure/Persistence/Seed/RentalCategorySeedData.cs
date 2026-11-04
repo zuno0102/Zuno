@@ -20,22 +20,27 @@ public static class RentalCategorySeedData
 
     public static RentalCategory[] Categories =>
     [
-        Category(FurnitureSeating, "Furniture & seating", "furniture-seating", "chair", 1),
-        Category(TentsShamiana, "Tents & shamiana", "tents-shamiana", "tent", 2),
-        Category(SoundLights, "Sound & lights", "sound-lights", "speaker", 3),
-        Category(Decoration, "Decoration", "decoration", "decoration", 4),
-        Category(KitchenCatering, "Kitchen & catering equipment", "kitchen-catering", "kitchen", 5),
-        Category(ToolsMachines, "Tools & machines", "tools-machines", "tools", 6),
-        Category(GeneratorsPower, "Generators & power", "generators-power", "generator", 7),
+        Category(FurnitureSeating, "Furniture & seating", "furniture-seating", "chair", 1, maxCancelPercent: 5m),
+        Category(TentsShamiana, "Tents & shamiana", "tents-shamiana", "tent", 2, maxCancelPercent: 10m),
+        Category(SoundLights, "Sound & lights", "sound-lights", "speaker", 3, maxCancelPercent: 10m),
+        Category(Decoration, "Decoration", "decoration", "decoration", 4, maxCancelPercent: 10m),
+        Category(KitchenCatering, "Kitchen & catering equipment", "kitchen-catering", "kitchen", 5, maxCancelPercent: 5m),
+        Category(ToolsMachines, "Tools & machines", "tools-machines", "tools", 6, maxCancelPercent: 5m),
+        Category(GeneratorsPower, "Generators & power", "generators-power", "generator", 7, maxCancelPercent: 10m),
     ];
 
+    /// <remarks>
+    /// <c>maxCancelPercent</c> on a category is the most a business may charge a customer who cancels
+    /// (e.g. Furniture 5%); a sub-category can set its own (Plastic chairs 2%). Never above
+    /// <c>RentSettings.CancelPercentCeiling</c> (20%).
+    /// </remarks>
     /// <remarks>Ids encode category and order (<c>c3333333-0000-0000-00cc-0000000000oo</c>), so a new row never collides.</remarks>
     public static RentalSubCategory[] SubCategories =>
     [
-        Sub(1, 1, FurnitureSeating, "Plastic chairs", "plastic-chairs"),
-        Sub(1, 2, FurnitureSeating, "Tables", "tables"),
-        Sub(1, 3, FurnitureSeating, "Sofas", "sofas"),
-        Sub(1, 4, FurnitureSeating, "Stage", "stage"),
+        Sub(1, 1, FurnitureSeating, "Plastic chairs", "plastic-chairs", maxCancelPercent: 2m),
+        Sub(1, 2, FurnitureSeating, "Tables", "tables", maxCancelPercent: 2m),
+        Sub(1, 3, FurnitureSeating, "Sofas", "sofas", maxCancelPercent: 5m),
+        Sub(1, 4, FurnitureSeating, "Stage", "stage", maxCancelPercent: 10m),
 
         Sub(2, 1, TentsShamiana, "Shamiana", "shamiana"),
         Sub(2, 2, TentsShamiana, "Pandal", "pandal"),
@@ -65,7 +70,8 @@ public static class RentalCategorySeedData
 
     public static Guid SubCategoryId(int category, int order) => new($"c3333333-0000-0000-{category:D4}-{order:D12}");
 
-    private static RentalCategory Category(Guid id, string name, string slug, string iconName, short displayOrder) =>
+    private static RentalCategory Category(
+        Guid id, string name, string slug, string iconName, short displayOrder, decimal maxCancelPercent) =>
         new()
         {
             Id = id,
@@ -74,10 +80,12 @@ public static class RentalCategorySeedData
             IconName = iconName,
             DisplayOrder = displayOrder,
             IsActive = true,
+            MaxCancelPercent = maxCancelPercent,
             CreatedDate = SeedDate,
         };
 
-    private static RentalSubCategory Sub(int category, short order, Guid categoryId, string name, string slug) =>
+    private static RentalSubCategory Sub(
+        int category, short order, Guid categoryId, string name, string slug, decimal? maxCancelPercent = null) =>
         new()
         {
             Id = SubCategoryId(category, order),
@@ -86,6 +94,7 @@ public static class RentalCategorySeedData
             Slug = slug,
             DisplayOrder = order,
             IsActive = true,
+            MaxCancelPercent = maxCancelPercent,
             CreatedDate = SeedDate,
         };
 }

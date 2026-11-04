@@ -32,6 +32,12 @@ public class CreateRentalItemCommand : IRequest<RentalItemDto>, IRentalItemField
     public List<Guid> DistrictIds { get; set; } = [];
 
     public List<RentalQuestionInput> Questions { get; set; } = [];
+
+    public List<RentalCancelStepInput> CancelSteps { get; set; } = [];
+
+    public string? CancelChargeType { get; set; }
+
+    public decimal? CancelPercentPerDay { get; set; }
 }
 
 /// <summary>Edits a rent item, including switching it off while it cannot be rented.</summary>
@@ -63,6 +69,12 @@ public class UpdateRentalItemCommand : IRequest<RentalItemDto>, IRentalItemField
     public List<Guid> DistrictIds { get; set; } = [];
 
     public List<RentalQuestionInput> Questions { get; set; } = [];
+
+    public List<RentalCancelStepInput> CancelSteps { get; set; } = [];
+
+    public string? CancelChargeType { get; set; }
+
+    public decimal? CancelPercentPerDay { get; set; }
 }
 
 public class CreateRentalItemCommandValidator : AbstractValidator<CreateRentalItemCommand>
@@ -82,7 +94,7 @@ public class UpdateRentalItemCommandValidator : AbstractValidator<UpdateRentalIt
     }
 }
 
-public class SaveRentalItemHandlers(ICurrentUser currentUser, IRentDbContext dbContext) :
+public class SaveRentalItemHandlers(ICurrentUser currentUser, IRentDbContext dbContext, IOptions<RentSettings> settings) :
     IRequestHandler<CreateRentalItemCommand, RentalItemDto>,
     IRequestHandler<UpdateRentalItemCommand, RentalItemDto>
 {
@@ -92,7 +104,7 @@ public class SaveRentalItemHandlers(ICurrentUser currentUser, IRentDbContext dbC
         var item = new RentalItem { OwnerUserId = currentUser.OwnerId() };
         dbContext.RentalItems.Add(item);
 
-        await RentalItemWriter.ApplyAsync(item, request, dbContext, cancellationToken);
+        await RentalItemWriter.ApplyAsync(item, request, dbContext, settings.Value, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return item.ToDto();
@@ -102,7 +114,7 @@ public class SaveRentalItemHandlers(ICurrentUser currentUser, IRentDbContext dbC
     {
         var item = await dbContext.OwnedItemAsync(request.Id, currentUser.OwnerId(), cancellationToken);
 
-        await RentalItemWriter.ApplyAsync(item, request, dbContext, cancellationToken);
+        await RentalItemWriter.ApplyAsync(item, request, dbContext, settings.Value, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return item.ToDto();

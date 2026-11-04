@@ -8,7 +8,11 @@ namespace Zuno.Rent.Application.Common;
 internal static class RentalItemWriter
 {
     public static async Task ApplyAsync(
-        RentalItem item, IRentalItemFields fields, IRentDbContext dbContext, CancellationToken cancellationToken)
+        RentalItem item,
+        IRentalItemFields fields,
+        IRentDbContext dbContext,
+        RentSettings settings,
+        CancellationToken cancellationToken)
     {
         // The validator has checked both; loading them here also sets the names the reply shows.
         item.RentalCategory = await dbContext.RentalCategories
@@ -36,6 +40,13 @@ internal static class RentalItemWriter
             ?? throw new DomainException("Choose no advance, a fixed advance for the order, or an advance per piece.");
         item.SetAdvance(advance, advance == Domain.Enums.RentalAdvanceType.None ? null : fields.AdvanceAmount);
         item.IsAvailable = fields.IsAvailable;
+        // The domain checks the limit again, so no path can save a charge above it.
+        item.SetCancelCharge(
+            RentalPricing.ParseCancelCharge(fields.CancelChargeType)
+                ?? throw new DomainException("Choose how the cancellation charge is worked out: by time left or per rental day."),
+            fields.CancelSteps.Select(s => new RentalCancelStep { UnitsBefore = s.UnitsBefore, Percent = s.Percent }),
+            fields.CancelPercentPerDay,
+            RentalCancelLimits.For(item.RentalCategory, item.RentalSubCategory, settings));
 
         await SetDistrictsAsync(item, fields.DistrictIds.ToHashSet(), dbContext, cancellationToken);
         SetQuestions(item, fields.Questions, dbContext);

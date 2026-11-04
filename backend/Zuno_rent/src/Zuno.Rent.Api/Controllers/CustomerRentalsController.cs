@@ -65,6 +65,11 @@ public class CustomerRentalOrdersController(ISender mediator) : ControllerBase
     public async Task<IActionResult> Get(Guid id, CancellationToken cancellationToken) =>
         Ok(await mediator.Send(new GetMyRentalQuery { Id = id }, cancellationToken));
 
+    /// <summary>What cancelling now would cost and give back, by the steps the order was booked with.</summary>
+    [HttpGet("{id:guid}/cancel-quote")]
+    public async Task<IActionResult> CancelQuote(Guid id, CancellationToken cancellationToken) =>
+        Ok(await mediator.Send(new GetMyRentalCancelQuoteQuery { Id = id }, cancellationToken));
+
     [HttpPost("{id:guid}/cancel")]
     public async Task<IActionResult> Cancel(Guid id, CancellationToken cancellationToken) =>
         Ok(await mediator.Send(new CancelMyRentalCommand { Id = id }, cancellationToken));

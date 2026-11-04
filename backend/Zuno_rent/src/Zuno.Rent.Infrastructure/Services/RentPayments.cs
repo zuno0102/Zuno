@@ -34,7 +34,9 @@ public class RentPaymentSettings
 
     /// <summary>
     /// Takes no real money: the app skips the payment window and payments are accepted unchecked, so
-    /// the whole flow can be walked on a phone. Refused outside Development when the API starts.
+    /// the whole flow can be walked without a merchant account. Off by default, even in Development —
+    /// turn it on only for scripted runs (<c>RentPayments__SimulateCollection=true</c>). Refused
+    /// outside Development when the API starts.
     /// </summary>
     public bool SimulateCollection { get; set; }
 }

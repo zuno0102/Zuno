@@ -23,6 +23,8 @@ public class GetRentalCategoriesQueryHandler(
             return cached;
         }
 
+        var ceiling = settings.Value.CancelPercentCeiling;
+
         // The same for every business, so read once and cached rather than per call.
         var categories = await dbContext.RentalCategories
             .AsNoTracking()
@@ -35,11 +37,20 @@ public class GetRentalCategoriesQueryHandler(
                 Name = c.Name,
                 Slug = c.Slug,
                 IconName = c.IconName,
+                MaxCancelPercent = c.MaxCancelPercent < ceiling ? c.MaxCancelPercent : ceiling,
                 SubCategories = c.SubCategories
                     .Where(s => s.IsActive && !s.IsDeleted)
                     .OrderBy(s => s.DisplayOrder)
                     .ThenBy(s => s.Name)
-                    .Select(s => new RentalSubCategoryDto { Id = s.Id, Name = s.Name, Slug = s.Slug })
+                    .Select(s => new RentalSubCategoryDto
+                    {
+                        Id = s.Id,
+                        Name = s.Name,
+                        Slug = s.Slug,
+                        MaxCancelPercent = (s.MaxCancelPercent ?? c.MaxCancelPercent) < ceiling
+                            ? s.MaxCancelPercent ?? c.MaxCancelPercent
+                            : ceiling,
+                    })
                     .ToList(),
             })
             .ToListAsync(cancellationToken);

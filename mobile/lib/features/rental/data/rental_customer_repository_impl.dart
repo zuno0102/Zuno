@@ -93,10 +93,17 @@ class CustomerRentalOrdersGateway implements RentalOrdersGateway {
   Future<List<RentalOrderEvent>> history(String id) async =>
       (await _remote.history(id)).map((e) => e.toEntity()).toList();
 
+  @override
+  Future<RentalCancelQuote> cancelQuote(String id) async =>
+      (await _remote.cancelQuote(id)).toEntity();
+
   /// A customer's one step is cancelling, while the order is only booked.
   @override
-  Future<RentalOrder> takeStep(String id, String toStatus) async =>
-      (await _remote.cancel(id)).toEntity();
+  Future<RentalOrder> takeStep(
+    String id,
+    String toStatus, {
+    String? refundMode,
+  }) async => (await _remote.cancel(id)).toEntity();
 
   @override
   Future<List<RentalOrderThread>> threads() async =>
@@ -129,8 +136,15 @@ class BusinessRentalOrdersGateway implements RentalOrdersGateway {
       _repository.getOrderHistory(id);
 
   @override
-  Future<RentalOrder> takeStep(String id, String toStatus) =>
-      _repository.changeOrderStatus(id, toStatus);
+  Future<RentalCancelQuote> cancelQuote(String id) =>
+      _repository.getCancelQuote(id);
+
+  @override
+  Future<RentalOrder> takeStep(
+    String id,
+    String toStatus, {
+    String? refundMode,
+  }) => _repository.changeOrderStatus(id, toStatus, refundMode: refundMode);
 
   @override
   Future<List<RentalOrderThread>> threads() => _repository.getOrderThreads();
