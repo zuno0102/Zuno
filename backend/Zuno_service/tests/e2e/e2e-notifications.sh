@@ -224,10 +224,12 @@ eq  "Opens its own profile, no id" "$(g RatingReceived)" "Profile/null"
 echo
 echo "==== 9. A chat message reaches the other side only ===="
 want_ok "Customer writes on the open order" "$(post_ /bookings/$BK/messages "$CT" '{"body":"Can you come at 5?"}')" ""
+# Kept off the bell on purpose (BellNotifications): the Messages tab counts chat, so a busy
+# conversation does not bury the notifications that need a decision.
 load "$BT"
-eq  "Business was told once" "$(k ChatMessage)" "1"
-has "Titled with the sender" "$(t ChatMessage)" "Cust T"
-eq  "Opens that thread"      "$(g ChatMessage)" "BookingChat/$BK"
+eq  "Kept off the business's bell"   "$(k ChatMessage)" "0"
+eq  "...and counted on its Messages" \
+    "$(get_ /bookings/threads "$BT" | tr '}' '\n' | grep -F "\"bookingId\":\"$BK\"" | grep -o '"unreadCount":[0-9]*' | cut -d: -f2 | head -1)" "1"
 load "$CT"
 eq  "Customer told itself nothing" "$(k ChatMessage)" "0"
 
