@@ -206,6 +206,10 @@ sql "update hiring_posts set event_date = now() - interval '5 hours' where id='$
 yes "Work started on the post"  "$(P /business/hiring-posts/$POST/start "$BT")" ""
 yes "Work finished on the post" "$(P /business/hiring-posts/$POST/complete "$BT")" ""
 eq  "Wages are now outstanding" "$(sql "select payment_status from hiring_post_applications where id='$APP'")" "1"
+# A verified destination to send it to, before the pay run: a worker with none is left out of
+# the run (the business is never charged for a wage that cannot be delivered), and a run with
+# nobody payable is refused. That rule is covered on its own in e2e-pay-on-mobile.sh.
+sql "insert into worker_payout_details (id,worker_profile_id,upi_vpa,account_holder_name,verification_status,verified_at,created_date,is_deleted,status) select gen_random_uuid(), '$WP2', 'anita$S@upi', 'Anita Menon', 1, now(), now(), false, 1" >/dev/null
 BATCH=$(P /business/hiring-posts/$POST/payouts "$BT" '{}' | j id)
 eq  "A pay run opened" "$([ -n "$BATCH" ] && echo yes)" "yes"
 eq  "...for the raised amount" "$(sql "select total_amount::int from payout_batches where id='$BATCH'")" "1100"
@@ -214,9 +218,6 @@ eq  "...for the raised amount" "$(sql "select total_amount::int from payout_batc
 # uncovered. Run the API with Razorpay__SimulateCollection=true and it is covered instead; the
 # refusal side — what happens when the signature does not check out — is e2e-pay-on-mobile.sh,
 # which has to run with simulation off.
-# A verified destination to send it to. Without one the disbursement fails with "no UPI ID on
-# file" — which is the app behaving correctly, and is covered on its own in e2e-pay-on-mobile.sh.
-sql "insert into worker_payout_details (id,worker_profile_id,upi_vpa,account_holder_name,verification_status,verified_at,created_date,is_deleted,status) select gen_random_uuid(), '$WP2', 'anita$S@upi', 'Anita Menon', 1, now(), now(), false, 1" >/dev/null
 
 FUND=$(P /business/hiring-posts/payouts/$BATCH/confirm "$BT" "{\"providerPaymentId\":\"pay_full$S\",\"signature\":\"sim\"}")
 if echo "$FUND" | grep -q '"success":true'; then
