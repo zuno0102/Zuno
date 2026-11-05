@@ -72,6 +72,7 @@ public class PaymentTests : IDisposable
             StartDate = start,
             EndDate = end,
             CustomerName = "Anu",
+            CustomerPhone = "9876543210",
             DeliveryAddress = "Kakkanad",
             AdvanceMethod = advanceMethod,
             AdvanceAmount = advanceAmount,
@@ -319,6 +320,7 @@ public class PaymentTests : IDisposable
             StartDate = start,
             EndDate = end,
             CustomerName = "Anu",
+            CustomerPhone = "9876543210",
             DeliveryAddress = "Kakkanad",
             AdvanceAmount = (decimal)amount,
         });

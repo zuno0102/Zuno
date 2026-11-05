@@ -63,7 +63,7 @@ const expect = (cond, what) => { if (!cond) throw new Error(what); };
     const from = slot; slot += 2;
     return call("POST", `${R}/business/rental-orders`, biz, {
       rentalItemId: i.id, quantity, startDate: day(from).toISOString(), endDate: dayEnd(from + 1).toISOString(),
-      customerName: name, deliveryAddress: "Town Hall, Kakkanad (demo)", ...extra,
+      customerName: name, customerPhone: "9000000000", deliveryAddress: "Town Hall, Kakkanad (demo)", ...extra,
     });
   };
   const move = (o, to) => call("POST", `${R}/business/rental-orders/${o.id}/status`, biz, { toStatus: to });

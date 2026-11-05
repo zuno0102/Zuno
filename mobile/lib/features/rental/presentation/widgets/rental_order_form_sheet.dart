@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/utils/formatting.dart';
+import 'package:zuno/core/utils/validators.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_profile_notifier.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/service_form_message_banner.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/service_form_pickers.dart';
@@ -12,6 +13,7 @@ import 'package:zuno/features/rental/domain/entities/rental_payment.dart';
 import 'package:zuno/features/rental/domain/entities/rental_stock.dart';
 import 'package:zuno/features/rental/presentation/providers/rental_payment_providers.dart';
 import 'package:zuno/features/rental/presentation/providers/rental_providers.dart';
+import 'package:zuno/features/rental/presentation/widgets/rental_advance_basis.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_availability_line.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_collect_sheet.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
@@ -64,6 +66,9 @@ class _RentalOrderFormSheetState extends ConsumerState<RentalOrderFormSheet> {
   bool _isSaving = false;
   String? _error;
 
+  /// Set by the first Book: from then on each field's message goes as soon as it is put right.
+  bool _submitted = false;
+
   int get _count => int.tryParse(_quantity.text.trim()) ?? 0;
   DateTime get _start => rentalDayStart(_dates.start);
   DateTime get _end => rentalDayEnd(_dates.end);
@@ -113,6 +118,7 @@ class _RentalOrderFormSheetState extends ConsumerState<RentalOrderFormSheet> {
     final next = (_count + delta).clamp(1, 100000);
     setState(() {
       _quantity.text = '$next';
+      _error = null;
       _syncAdvance();
     });
   }
@@ -129,6 +135,7 @@ class _RentalOrderFormSheetState extends ConsumerState<RentalOrderFormSheet> {
     if (picked != null) {
       setState(() {
         _dates = picked;
+        _error = null;
         _syncAdvance();
       });
     }
@@ -155,6 +162,8 @@ class _RentalOrderFormSheetState extends ConsumerState<RentalOrderFormSheet> {
     if (picked != null) {
       setState(() {
         _itemId = picked;
+        // "Choose the item." — or a server message about the old choice — no longer applies.
+        _error = null;
         _syncAdvance();
       });
     }
@@ -162,6 +171,7 @@ class _RentalOrderFormSheetState extends ConsumerState<RentalOrderFormSheet> {
 
   Future<void> _save() async {
     FocusScope.of(context).unfocus();
+    setState(() => _submitted = true);
     final fieldsValid = _formKey.currentState!.validate();
     if (_itemId == null) {
       setState(() => _error = 'Choose the item.');
@@ -205,9 +215,7 @@ class _RentalOrderFormSheetState extends ConsumerState<RentalOrderFormSheet> {
               startDate: _start,
               endDate: _end,
               customerName: _name.text.trim(),
-              customerPhone: _phone.text.trim().isEmpty
-                  ? null
-                  : _phone.text.trim(),
+              customerPhone: Validators.indianMobileDigits(_phone.text),
               deliveryAddress: _address.text.trim(),
               advanceMethod: advance > 0 ? _advanceMethod : null,
               advanceAmount: advance,
@@ -267,6 +275,9 @@ class _RentalOrderFormSheetState extends ConsumerState<RentalOrderFormSheet> {
       child: SingleChildScrollView(
         child: Form(
           key: _formKey,
+          autovalidateMode: _submitted
+              ? AutovalidateMode.always
+              : AutovalidateMode.disabled,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -359,11 +370,17 @@ class _RentalOrderFormSheetState extends ConsumerState<RentalOrderFormSheet> {
                 keyboardType: TextInputType.phone,
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'[0-9+ ]')),
-                  LengthLimitingTextInputFormatter(20),
+                  LengthLimitingTextInputFormatter(16),
                 ],
                 decoration: const InputDecoration(
-                  labelText: 'Phone (optional)',
+                  labelText: 'Customer mobile',
+                  hintText: '98765 43210',
                   border: OutlineInputBorder(),
+                ),
+                // Required: the business calls this number about delivery and return.
+                validator: (v) => Validators.requiredIndianMobile(
+                  v,
+                  missing: "Give the customer's mobile number.",
                 ),
               ),
               const SizedBox(height: 14),
@@ -717,9 +734,12 @@ class _OfflineMoney extends ConsumerWidget {
                 labelText: 'Advance amount',
                 hintText: 'Enter amount',
                 prefixText: '₹ ',
+                // Says how the item's advance is worked out, so a fixed ₹300 is not read as ₹300 a piece.
                 helperText: required > 0
-                    ? '${item.name} asks at least ${rupees(required)}'
+                    ? '${item.name} asks at least ${rupees(required)}: '
+                          '${rentalAdvanceBasis(item.advanceType, item.advanceAmount, quantity)}'
                     : 'Leave empty for no advance',
+                helperMaxLines: 2,
                 border: const OutlineInputBorder(),
               ),
               validator: (v) {

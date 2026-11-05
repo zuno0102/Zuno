@@ -35,6 +35,7 @@ public class AvailabilityAndAddOnTests : IDisposable
         StartDate = start ?? Nov1,
         EndDate = end ?? Nov3,
         CustomerName = customer,
+        CustomerPhone = "98765 43210",
         DeliveryAddress = "Kakkanad",
     };
 
@@ -175,8 +176,42 @@ public class AvailabilityAndAddOnTests : IDisposable
         c => c.DeliveryAddress = "",
         c => c.DeliveryAddress = new string('x', 501),
         c => c.CustomerPhone = "call me",
+        c => c.CustomerPhone = null,
+        c => c.CustomerPhone = "  ",
+        c => c.CustomerPhone = "12345",
+        c => c.CustomerPhone = "5876543210",
+        c => c.CustomerPhone = "98765432101",
         c => c.DistrictId = Guid.NewGuid(),
     };
+
+    [Theory]
+    [InlineData("9876543210", "9876543210")]
+    [InlineData("98765 43210", "9876543210")]
+    [InlineData("+91 98765 43210", "9876543210")]
+    [InlineData("+919876543210", "9876543210")]
+    [InlineData("919876543210", "9876543210")]
+    [InlineData("09876543210", "9876543210")]
+    [InlineData("98765-43210", "9876543210")]
+    [InlineData("5876543210", null)]
+    [InlineData("987654321", null)]
+    [InlineData("", null)]
+    [InlineData(null, null)]
+    public void A_mobile_is_kept_as_its_ten_digits(string? typed, string? kept)
+    {
+        RentalPhone.Normalize(typed).Should().Be(kept);
+    }
+
+    [Fact]
+    public async Task A_missing_mobile_says_so()
+    {
+        var command = Book(Guid.NewGuid(), 5);
+        command.CustomerPhone = null;
+
+        var result = await new CreateRentalOrderCommandValidator(_rent.Db, _rent.Settings, new FixedClock(Nov1.AddDays(-5)))
+            .ValidateAsync(command);
+
+        result.Errors.Select(e => e.ErrorMessage).Should().ContainSingle(m => m == RentalPhone.Missing);
+    }
 
     [Theory]
     [MemberData(nameof(BadOrders))]

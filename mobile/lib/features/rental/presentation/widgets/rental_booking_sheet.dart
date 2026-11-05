@@ -12,6 +12,7 @@ import 'package:zuno/features/rental/domain/entities/rental_payment.dart';
 import 'package:zuno/features/rental/presentation/providers/rental_order_providers.dart';
 import 'package:zuno/features/rental/presentation/providers/rental_providers.dart';
 import 'package:zuno/features/rental/presentation/screens/rental_order_detail_screen.dart';
+import 'package:zuno/features/rental/presentation/widgets/rental_advance_basis.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_availability_line.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_order_form_sheet.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_payment_card.dart';
@@ -340,6 +341,21 @@ class _RentalBookingSheetState extends ConsumerState<RentalBookingSheet> {
                           key: const ValueKey('booking-advance'),
                           style: theme.textTheme.bodySmall,
                         ),
+                        // How the advance is worked out: a fixed ₹300, or ₹300 a piece × 2.
+                        if (_advance > 0)
+                          if (rentalAdvanceBasis(
+                                widget.item.advanceType,
+                                widget.item.advanceAmount,
+                                _count,
+                              )
+                              case final basis?)
+                            Text(
+                              'Advance: $basis',
+                              key: const ValueKey('booking-advance-basis'),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
                         const SizedBox(height: 6),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,

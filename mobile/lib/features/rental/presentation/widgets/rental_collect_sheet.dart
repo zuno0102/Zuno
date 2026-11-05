@@ -537,10 +537,17 @@ class RentalUpiQr extends StatelessWidget {
                       ),
                       child: CircleAvatar(
                         backgroundColor: ink.primary,
-                        child: Icon(
-                          Icons.currency_rupee_rounded,
-                          color: ink.onPrimary,
-                          size: size * 0.09,
+                        // The ₹ as text, not an icon: it shows even where the icon font has not
+                        // loaded yet.
+                        child: Text(
+                          '₹',
+                          key: const ValueKey('rental-upi-qr-rupee'),
+                          style: TextStyle(
+                            color: ink.onPrimary,
+                            fontSize: size * 0.1,
+                            fontWeight: FontWeight.w800,
+                            height: 1,
+                          ),
                         ),
                       ),
                     ),

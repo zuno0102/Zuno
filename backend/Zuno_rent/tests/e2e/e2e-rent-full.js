@@ -256,7 +256,7 @@ const register = async (first, role) => {
   // ── An offline order whose advance is not in hand is never confirmed on a guess ─────────────
   const unpaid = await R_("POST", "/business/rental-orders", biz, {
     rentalItemId: chairs.data.id, quantity: 20, startDate: day(3).toISOString(), endDate: dayEnd(3).toISOString(),
-    customerName: "Walk-in later", deliveryAddress: "Shop counter", advanceMethod: "UpiQr",
+    customerName: "Walk-in later", customerPhone: "9000000001", deliveryAddress: "Shop counter", advanceMethod: "UpiQr",
   });
   ok("Advance not received: the order waits, not confirmed", unpaid.data?.status === "AwaitingAdvance",
     `${unpaid.status} ${unpaid.data?.status}`);

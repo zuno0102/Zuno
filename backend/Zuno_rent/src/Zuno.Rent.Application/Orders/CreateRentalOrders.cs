@@ -26,6 +26,7 @@ public class CreateRentalOrderCommand : IRequest<RentalOrderDto>
 
     public string CustomerName { get; set; } = string.Empty;
 
+    /// <summary>The customer's Indian mobile; required — the business calls it about delivery and return.</summary>
     public string? CustomerPhone { get; set; }
 
     public string DeliveryAddress { get; set; } = string.Empty;
@@ -96,8 +97,9 @@ public class CreateRentalOrderCommandValidator : AbstractValidator<CreateRentalO
             .Must(name => !string.IsNullOrWhiteSpace(name)).WithMessage("Give the customer's name.")
             .MaximumLength(200);
         RuleFor(x => x.CustomerPhone)
-            .Matches(@"^\+?[0-9 ]{6,20}$").WithMessage("Enter a phone number, digits only.")
-            .When(x => !string.IsNullOrWhiteSpace(x.CustomerPhone));
+            .Cascade(CascadeMode.Stop)
+            .Must(phone => !string.IsNullOrWhiteSpace(phone)).WithMessage(RentalPhone.Missing)
+            .Must(phone => RentalPhone.Normalize(phone) is not null).WithMessage(RentalPhone.Hint);
         RuleFor(x => x.DeliveryAddress)
             .Must(address => !string.IsNullOrWhiteSpace(address)).WithMessage("Say where the pieces go.")
             .MaximumLength(500);
@@ -182,7 +184,7 @@ public class RentalOrderCreateHandlers(ICurrentUser currentUser, IRentDbContext 
                 RentalItemId = item.Id,
                 OwnerUserId = ownerId,
                 CustomerName = request.CustomerName.Trim(),
-                CustomerPhone = string.IsNullOrWhiteSpace(request.CustomerPhone) ? null : request.CustomerPhone.Trim(),
+                CustomerPhone = RentalPhone.Normalize(request.CustomerPhone),
                 Quantity = request.Quantity,
 
                 // Stored in UTC: the app sends the business's own offset, which the database refuses.

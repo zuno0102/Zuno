@@ -57,7 +57,12 @@ void main() {
     for (final app in RentalUpiQr.apps) {
       expect(find.text(app), findsOneWidget);
     }
-    expect(find.byIcon(Icons.currency_rupee_rounded), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('rental-upi-qr-rupee')),
+      findsOneWidget,
+      reason:
+          'the ₹ in the middle is text, so it never shows as a blank circle',
+    );
     expect(tester.takeException(), isNull);
   });
 

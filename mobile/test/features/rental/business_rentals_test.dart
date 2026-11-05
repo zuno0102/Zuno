@@ -2431,6 +2431,98 @@ void main() {
 
     final bookButton = find.widgetWithText(FilledButton, 'BOOK');
 
+    Future<void> tapBook(WidgetTester tester) async {
+      await tester.ensureVisible(bookButton);
+      await tester.tap(bookButton);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('"Choose the item." goes away once an item is chosen', (
+      tester,
+    ) async {
+      final repository = await pumpScenario(tester);
+      await tester.tap(find.text('Offline order'));
+      await tester.pumpAndSettle();
+
+      await tapBook(tester);
+      expect(find.text('Choose the item.'), findsOneWidget);
+
+      await tester.ensureVisible(find.text('Choose the item'));
+      await tester.tap(find.text('Choose the item'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Plastic chair').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Choose the item.'), findsNothing);
+      expect(repository.calls, isEmpty);
+    });
+
+    testWidgets('each field message goes as soon as the field is filled', (
+      tester,
+    ) async {
+      await pumpScenario(tester);
+      await openNewOrder(tester);
+
+      await tapBook(tester);
+      expect(find.text("Give the customer's name."), findsOneWidget);
+      expect(find.text("Give the customer's mobile number."), findsOneWidget);
+      expect(find.text('Say where the pieces go.'), findsOneWidget);
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Customer name'),
+        'Anu',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Where it goes'),
+        'Town Hall',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text("Give the customer's name."), findsNothing);
+      expect(find.text('Say where the pieces go.'), findsNothing);
+      expect(
+        find.text("Give the customer's mobile number."),
+        findsOneWidget,
+        reason: 'still empty',
+      );
+    });
+
+    testWidgets(
+      'the mobile must be a 10-digit Indian mobile, sent as its digits',
+      (tester) async {
+        final repository = await pumpScenario(tester);
+        RentalOrderInput? sent;
+        repository.onCreate = (input) => sent = input;
+        await openNewOrder(tester);
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Customer name'),
+          'Anu',
+        );
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Where it goes'),
+          'Town Hall',
+        );
+        final mobile = find.widgetWithText(TextFormField, 'Customer mobile');
+
+        for (final wrong in ['12345', '5876543210', '98765 432109']) {
+          await tester.enterText(mobile, wrong);
+          await tapBook(tester);
+          expect(
+            find.text('Enter a 10-digit mobile number, like 98765 43210.'),
+            findsOneWidget,
+            reason: wrong,
+          );
+        }
+        expect(repository.calls, isEmpty);
+
+        await tester.enterText(mobile, '+91 98765 43210');
+        await tapBook(tester);
+
+        expect(repository.calls, ['create-order:chairs:1']);
+        expect(sent?.customerPhone, '9876543210');
+      },
+    );
+
     testWidgets(
       '500 when only 300 are left shows "Only 300" and cannot be booked',
       (tester) async {
@@ -2458,6 +2550,10 @@ void main() {
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Customer name'),
         'C',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Customer mobile'),
+        '98765 43210',
       );
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Where it goes'),
@@ -2499,6 +2595,10 @@ void main() {
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Customer name'),
         'C',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Customer mobile'),
+        '98765 43210',
       );
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Where it goes'),
@@ -3703,6 +3803,10 @@ void main() {
           'Anu',
         );
         await tester.enterText(
+          find.widgetWithText(TextFormField, 'Customer mobile'),
+          '98765 43210',
+        );
+        await tester.enterText(
           find.widgetWithText(TextFormField, 'Where it goes'),
           'Town Hall',
         );
@@ -3755,6 +3859,10 @@ void main() {
         await tester.enterText(
           find.widgetWithText(TextFormField, 'Customer name'),
           'Anu',
+        );
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Customer mobile'),
+          '98765 43210',
         );
         await tester.enterText(
           find.widgetWithText(TextFormField, 'Where it goes'),
@@ -3820,6 +3928,10 @@ void main() {
           'Anu',
         );
         await tester.enterText(
+          find.widgetWithText(TextFormField, 'Customer mobile'),
+          '98765 43210',
+        );
+        await tester.enterText(
           find.widgetWithText(TextFormField, 'Where it goes'),
           'Town Hall',
         );
@@ -3868,6 +3980,10 @@ void main() {
         'Anu',
       );
       await tester.enterText(
+        find.widgetWithText(TextFormField, 'Customer mobile'),
+        '98765 43210',
+      );
+      await tester.enterText(
         find.widgetWithText(TextFormField, 'Where it goes'),
         'Town Hall',
       );
@@ -3893,6 +4009,31 @@ void main() {
         await tester.tap(answer);
         await tester.pumpAndSettle();
       }
+    }
+
+    // ₹5 set on an item, 100 pieces (₹2,000 in all): per piece asks ₹500, fixed asks ₹5 — and the
+    // sheet says which, so a fixed amount is not mistaken for one a piece.
+    for (final (type, expectedAdvance, basis) in [
+      (
+        RentalAdvanceType.perPiece,
+        '500',
+        '${rupees(5)} a piece × 100 = ${rupees(500)}',
+      ),
+      (
+        RentalAdvanceType.perOrder,
+        '5',
+        '${rupees(5)} for the whole order, any number of pieces',
+      ),
+    ]) {
+      testWidgets(
+        '$type ₹5 for 100 pieces asks ₹$expectedAdvance and says why',
+        (tester) async {
+          await offlineChairs(tester, advanceType: type, advanceAmount: 5);
+
+          expect(typedAdvance(tester), expectedAdvance);
+          expect(find.textContaining(basis), findsOneWidget);
+        },
+      );
     }
 
     testWidgets(
