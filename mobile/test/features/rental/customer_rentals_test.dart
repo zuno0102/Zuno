@@ -869,7 +869,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(repository.payments, ['checkout:new']);
-      expect(find.textContaining('Nothing was charged'), findsOneWidget);
+      expect(find.textContaining('Payment not finished'), findsOneWidget);
+      expect(
+        find.textContaining('confirmed by itself within a few minutes'),
+        findsOneWidget,
+      );
       // The booking waits for its advance, with a way to pay it.
       expect(find.byKey(const ValueKey('pay-online')), findsOneWidget);
       expect(find.byKey(const ValueKey('advance-hold-note')), findsOneWidget);

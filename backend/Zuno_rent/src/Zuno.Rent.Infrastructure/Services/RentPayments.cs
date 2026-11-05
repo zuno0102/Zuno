@@ -116,6 +116,38 @@ public class RazorpayRentGateway(HttpClient http, IOptions<RentPaymentSettings> 
         return CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(expected), Encoding.UTF8.GetBytes(signature));
     }
 
+    public async Task<string?> FindCapturedPaymentAsync(string providerOrderId, CancellationToken cancellationToken)
+    {
+        if (IsSimulated || !IsReady || string.IsNullOrWhiteSpace(providerOrderId))
+        {
+            return null;
+        }
+
+        // Not answered (network, Razorpay down) throws: "could not ask" must never read as "not paid",
+        // or a paid booking would be let go. The lapse job asks again the next minute.
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"orders/{Uri.EscapeDataString(providerOrderId)}/payments");
+        request.Headers.Authorization = AuthHeader(_settings);
+        using var response = await http.SendAsync(request, cancellationToken);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            logger.LogWarning("[RentPayments] Could not read payments of {Order} ({Status}).", providerOrderId, (int)response.StatusCode);
+            throw new HttpRequestException($"Razorpay answered {(int)response.StatusCode} for the payments of an order.");
+        }
+
+        // Only "captured" is money in hand; "authorized" may still be given back by the bank.
+        using var json = JsonDocument.Parse(body);
+        foreach (var payment in json.RootElement.GetProperty("items").EnumerateArray())
+        {
+            if (payment.GetProperty("status").GetString() == "captured")
+            {
+                return payment.GetProperty("id").GetString();
+            }
+        }
+
+        return null;
+    }
+
     private static AuthenticationHeaderValue AuthHeader(RentPaymentSettings settings) =>
         new("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{settings.KeyId}:{settings.KeySecret}")));
 }

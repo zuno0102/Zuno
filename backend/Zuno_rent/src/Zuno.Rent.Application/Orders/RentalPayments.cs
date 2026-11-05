@@ -133,6 +133,12 @@ public class RentalOptionDto
 /// </summary>
 public class LapseRentalAdvancesCommand : IRequest<int>
 {
+    /// <summary>
+    /// How long past its hold a booking is kept while the gateway cannot say whether it was paid.
+    /// After that it is let go; a payment found later still shows as a refund due.
+    /// </summary>
+    public static readonly TimeSpan UnknownGrace = TimeSpan.FromMinutes(30);
+
     public int Take { get; set; } = 100;
 }
 
@@ -348,18 +354,28 @@ public class RentalPaymentHandlers(
             throw new DomainException("We could not confirm this payment. If money left your account, show the payment to the business.");
         }
 
-        var itemId = await dbContext.RentalOrders.Where(o => o.Id == request.Id).Select(o => o.RentalItemId).FirstAsync(cancellationToken);
+        await RecordGatewayPaymentAsync(checkout, request.PaymentId, customerId, cancellationToken);
+        return await RentalOrderReader.ReadOneAsync(dbContext, request.Id, customerId, cancellationToken, RentalAudience.Customer);
+    }
+
+    /// <summary>
+    /// Counts one proven gateway payment on its order — from the app's report or from asking the
+    /// gateway — and books the order once its advance is in. Reported twice, it counts once.
+    /// </summary>
+    private async Task RecordGatewayPaymentAsync(RentalPaymentCheckout checkout, string paymentId, Guid actorUserId, CancellationToken cancellationToken)
+    {
+        var itemId = await dbContext.RentalOrders.Where(o => o.Id == checkout.RentalOrderId).Select(o => o.RentalItemId).FirstAsync(cancellationToken);
         await dbContext.WithItemLockAsync(itemId, async () =>
         {
-            // Sent twice — a retry, or the window reporting again — it counts once.
+            // Sent twice — a retry, the window reporting again, or the lapse job asking — it counts once.
             var counted = await dbContext.RentalPaymentCheckouts.AnyAsync(c => c.Id == checkout.Id && c.CompletedAt != null, cancellationToken)
-                || await dbContext.RentalOrderPayments.AnyAsync(p => p.ProviderPaymentId == request.PaymentId, cancellationToken);
+                || await dbContext.RentalOrderPayments.AnyAsync(p => p.ProviderPaymentId == paymentId, cancellationToken);
             if (counted)
             {
                 return true;
             }
 
-            var order = await dbContext.RentalOrders.Include(o => o.RentalItem).FirstAsync(o => o.Id == request.Id, cancellationToken);
+            var order = await dbContext.RentalOrders.Include(o => o.RentalItem).FirstAsync(o => o.Id == checkout.RentalOrderId, cancellationToken);
             var paid = await dbContext.NetPaidAsync(order.Id, cancellationToken);
 
             // The money moved, so it is recorded whatever the order's state — a lapsed booking shows it as a refund due.
@@ -369,20 +385,66 @@ public class RentalPaymentHandlers(
                 checkout.Kind,
                 RentalPaymentMethod.Online,
                 checkout.Amount,
-                customerId,
+                actorUserId,
                 RentalMessageSenderRole.Customer,
                 checkout.ProviderOrderId,
-                request.PaymentId);
+                paymentId);
 
             var tracked = await dbContext.RentalPaymentCheckouts.FirstAsync(c => c.Id == checkout.Id, cancellationToken);
             tracked.CompletedAt = clock.GetUtcNow();
 
-            await BookIfAdvancePaidAsync(order, paid + checkout.Amount, customerId, cancellationToken);
+            await BookIfAdvancePaidAsync(order, paid + checkout.Amount, actorUserId, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
             return true;
         }, cancellationToken);
+    }
 
-        return await RentalOrderReader.ReadOneAsync(dbContext, request.Id, customerId, cancellationToken, RentalAudience.Customer);
+    /// <summary>
+    /// The customer paid in their UPI app, but the app closed before telling us: asks the gateway
+    /// about every open payment window of a booking still waiting for its advance, and books the paid
+    /// ones. Returns the orders the gateway could not be asked about — they are not let go yet.
+    /// </summary>
+    private async Task<HashSet<Guid>> ConfirmUnreportedAdvancesAsync(int take, CancellationToken cancellationToken)
+    {
+        var unknown = new HashSet<Guid>();
+        if (!gateway.IsReady || gateway.IsSimulated)
+        {
+            return unknown;
+        }
+
+        var open = await dbContext.RentalPaymentCheckouts
+            .AsNoTracking()
+            .Where(c => c.CompletedAt == null
+                && c.Kind == RentalPaymentKind.Advance
+                && dbContext.RentalOrders.Any(o => o.Id == c.RentalOrderId && o.Status == RentalOrderStatus.AwaitingAdvance))
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        foreach (var checkout in open)
+        {
+            string? paymentId;
+            try
+            {
+                paymentId = await gateway.FindCapturedPaymentAsync(checkout.ProviderOrderId, cancellationToken);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                unknown.Add(checkout.RentalOrderId);
+                continue;
+            }
+
+            if (paymentId is not null)
+            {
+                var customerId = await dbContext.RentalOrders
+                    .Where(o => o.Id == checkout.RentalOrderId)
+                    .Select(o => o.CustomerUserId)
+                    .FirstAsync(cancellationToken);
+                await RecordGatewayPaymentAsync(checkout, paymentId, customerId ?? Guid.Empty, cancellationToken);
+                dbContext.ChangeTrackerClear();
+            }
+        }
+
+        return unknown;
     }
 
     public async Task<RentalPaymentOptionsDto> Handle(GetRentalPaymentOptionsQuery request, CancellationToken cancellationToken)
@@ -411,18 +473,28 @@ public class RentalPaymentHandlers(
 
     public async Task<int> Handle(LapseRentalAdvancesCommand request, CancellationToken cancellationToken)
     {
+        // First the advances paid in a UPI app whose report never came: those are booked, not let go.
+        var unknown = await ConfirmUnreportedAdvancesAsync(request.Take, cancellationToken);
+
         var now = clock.GetUtcNow();
         var lapsed = await dbContext.RentalOrders
             .AsNoTracking()
             .Where(o => o.Status == RentalOrderStatus.AwaitingAdvance && o.HoldUntil != null && o.HoldUntil <= now)
             .OrderBy(o => o.HoldUntil)
-            .Select(o => new { o.Id, o.RentalItemId })
+            .Select(o => new { o.Id, o.RentalItemId, o.HoldUntil })
             .Take(request.Take)
             .ToListAsync(cancellationToken);
 
         var count = 0;
         foreach (var candidate in lapsed)
         {
+            // The gateway could not say whether it was paid: wait for an answer rather than let a
+            // paid booking go — but not for ever, or the pieces would stay held while Razorpay is down.
+            if (unknown.Contains(candidate.Id) && candidate.HoldUntil > now - LapseRentalAdvancesCommand.UnknownGrace)
+            {
+                continue;
+            }
+
             var done = await dbContext.WithItemLockAsync(candidate.RentalItemId, async () =>
             {
                 // Looked at again under the lock: the advance may have come in a moment ago.

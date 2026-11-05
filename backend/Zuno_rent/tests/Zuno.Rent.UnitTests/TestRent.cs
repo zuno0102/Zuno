@@ -135,4 +135,23 @@ internal sealed class FakePaymentGateway : IRentPaymentGateway
     }
 
     public bool VerifySignature(string providerOrderId, string paymentId, string signature) => signature == "good";
+
+    /// <summary>Payments the gateway holds as captured, by its order id — money taken in a UPI app.</summary>
+    public Dictionary<string, string> Captured { get; } = [];
+
+    /// <summary>The gateway does not answer (network, outage).</summary>
+    public bool Unreachable { get; set; }
+
+    public List<string> Asked { get; } = [];
+
+    public Task<string?> FindCapturedPaymentAsync(string providerOrderId, CancellationToken cancellationToken)
+    {
+        Asked.Add(providerOrderId);
+        if (Unreachable)
+        {
+            throw new HttpRequestException("Razorpay did not answer.");
+        }
+
+        return Task.FromResult(Captured.TryGetValue(providerOrderId, out var paymentId) ? paymentId : null);
+    }
 }

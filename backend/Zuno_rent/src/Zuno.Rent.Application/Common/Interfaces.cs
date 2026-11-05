@@ -128,4 +128,11 @@ public interface IRentPaymentGateway
 
     /// <summary>Whether the payment really completed against this order.</summary>
     bool VerifySignature(string providerOrderId, string paymentId, string signature);
+
+    /// <summary>
+    /// Asks the gateway itself whether this order was paid — for a customer whose UPI app took the money
+    /// but whose app closed before reporting back. The paid payment's id, or null when there is none.
+    /// Throws when the gateway could not be asked — that is not "not paid".
+    /// </summary>
+    Task<string?> FindCapturedPaymentAsync(string providerOrderId, CancellationToken cancellationToken);
 }

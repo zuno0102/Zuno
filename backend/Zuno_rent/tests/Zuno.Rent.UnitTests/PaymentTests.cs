@@ -482,6 +482,94 @@ public class PaymentTests : IDisposable
     }
 
     [Fact]
+    public async Task An_advance_paid_in_the_UPI_app_but_never_reported_is_found_and_the_order_booked()
+    {
+        var chairs = await ChairsAsync("PerOrder", 100, quantity: 100);
+        var booked = await BookInAppAsync(chairs, 100);
+        var checkout = await Payments.Handle(new StartRentalPaymentCommand { Id = booked.Id }, default);
+
+        // The money left the customer's UPI app; their app closed before it could say so.
+        _gateway.Captured[checkout.ProviderOrderId] = "pay_upi_1";
+
+        (await Payments.Handle(new LapseRentalAdvancesCommand(), default)).Should().Be(0);
+
+        var order = await ReadAsync(booked.Id);
+        order.Status.Should().Be("Booked");
+        order.Paid.Should().Be(100);
+        order.Payments.Should().ContainSingle(p => p.MethodName == "Online" && p.Kind == "Advance");
+
+        // The app reporting it later counts nothing twice.
+        _rent.As(Customer);
+        await Payments.Handle(new CompleteRentalPaymentCommand
+        {
+            Id = booked.Id,
+            ProviderOrderId = checkout.ProviderOrderId,
+            PaymentId = "pay_upi_1",
+            Signature = "good",
+        }, default);
+        (await ReadAsync(booked.Id)).Paid.Should().Be(100);
+    }
+
+    [Fact]
+    public async Task A_paid_advance_found_when_the_hold_has_just_run_out_still_books_the_order()
+    {
+        var chairs = await ChairsAsync("PerOrder", 100, quantity: 100);
+        var booked = await BookInAppAsync(chairs, 100);
+        var checkout = await Payments.Handle(new StartRentalPaymentCommand { Id = booked.Id }, default);
+        _gateway.Captured[checkout.ProviderOrderId] = "pay_upi_2";
+        var order = await _rent.Db.RentalOrders.SingleAsync(o => o.Id == booked.Id);
+        order.HoldUntil = DateTimeOffset.UtcNow.AddMinutes(-1);
+        await _rent.Db.SaveChangesAsync();
+        _rent.Db.ChangeTracker.Clear();
+
+        (await Payments.Handle(new LapseRentalAdvancesCommand(), default)).Should().Be(0, "it was paid, so it is not let go");
+
+        (await ReadAsync(booked.Id)).Status.Should().Be("Booked");
+    }
+
+    [Fact]
+    public async Task An_open_payment_window_with_no_money_lapses_as_before()
+    {
+        var chairs = await ChairsAsync("PerOrder", 100, quantity: 100);
+        var booked = await BookInAppAsync(chairs, 100);
+        var checkout = await Payments.Handle(new StartRentalPaymentCommand { Id = booked.Id }, default);
+        var order = await _rent.Db.RentalOrders.SingleAsync(o => o.Id == booked.Id);
+        order.HoldUntil = DateTimeOffset.UtcNow.AddMinutes(-1);
+        await _rent.Db.SaveChangesAsync();
+        _rent.Db.ChangeTracker.Clear();
+
+        (await Payments.Handle(new LapseRentalAdvancesCommand(), default)).Should().Be(1);
+
+        _gateway.Asked.Should().Contain(checkout.ProviderOrderId);
+        (await ReadAsync(booked.Id)).Status.Should().Be("Cancelled");
+    }
+
+    [Fact]
+    public async Task When_Razorpay_cannot_be_asked_a_booking_is_kept_for_a_while_then_let_go()
+    {
+        var chairs = await ChairsAsync("PerOrder", 100, quantity: 100);
+        var booked = await BookInAppAsync(chairs, 100);
+        await Payments.Handle(new StartRentalPaymentCommand { Id = booked.Id }, default);
+        _gateway.Unreachable = true;
+
+        var order = await _rent.Db.RentalOrders.SingleAsync(o => o.Id == booked.Id);
+        order.HoldUntil = DateTimeOffset.UtcNow.AddMinutes(-1);
+        await _rent.Db.SaveChangesAsync();
+        _rent.Db.ChangeTracker.Clear();
+
+        (await Payments.Handle(new LapseRentalAdvancesCommand(), default)).Should().Be(0, "it may have been paid");
+        (await ReadAsync(booked.Id)).Status.Should().Be("AwaitingAdvance");
+
+        order = await _rent.Db.RentalOrders.SingleAsync(o => o.Id == booked.Id);
+        order.HoldUntil = DateTimeOffset.UtcNow - LapseRentalAdvancesCommand.UnknownGrace - TimeSpan.FromMinutes(1);
+        await _rent.Db.SaveChangesAsync();
+        _rent.Db.ChangeTracker.Clear();
+
+        (await Payments.Handle(new LapseRentalAdvancesCommand(), default)).Should().Be(1, "not held for ever");
+        (await ReadAsync(booked.Id)).Status.Should().Be("Cancelled");
+    }
+
+    [Fact]
     public async Task Money_arriving_after_the_hold_ran_out_and_the_pieces_went_shows_as_a_refund_due()
     {
         var chairs = await ChairsAsync("PerOrder", 100, quantity: 100);

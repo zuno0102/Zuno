@@ -319,7 +319,13 @@ Future<RentalOrder?> payRentalOnline(
     return paid;
   } on RazorpayCancelled catch (e) {
     reloadRentals(ref);
-    messenger.showInfo(e.reason ?? 'Payment cancelled. Nothing was charged.');
+    // A UPI app can take the money and still come back as "closed"; the server asks Razorpay every
+    // minute and confirms a paid booking by itself, so never promise "nothing was charged".
+    messenger.showInfo(
+      e.reason ??
+          'Payment not finished. If money left your account, the booking is '
+              'confirmed by itself within a few minutes.',
+    );
     return null;
   } catch (e) {
     messenger.showFailure(e.toString());
