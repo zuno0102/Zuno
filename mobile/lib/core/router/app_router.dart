@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -26,6 +28,8 @@ GoRouter appRouter(Ref ref) {
   return GoRouter(
     initialLocation: '/login',
     refreshListenable: refreshNotifier,
+    // Lets the browser's back button bring a pushed screen back (see ScreenExtraCodec).
+    extraCodec: const ScreenExtraCodec(),
     redirect: (context, state) {
       final authState = ref.read(authProvider);
       final isPublicRoute = _publicPaths.contains(state.matchedLocation);
@@ -67,7 +71,12 @@ GoRouter appRouter(Ref ref) {
               ? _homeRouteForRole(user.user.role)
               : '/login';
         },
-        builder: (context, state) => state.extra! as Widget,
+        // Never `extra!`: a history entry the browser hands back after a reload has no screen in
+        // it, and a crash here is the grey page. Home instead.
+        builder: (context, state) => switch (state.extra) {
+          final Widget screen => screen,
+          _ => const _BackToHome(),
+        },
       ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
@@ -112,6 +121,85 @@ GoRouter appRouter(Ref ref) {
       ),
     ],
   );
+}
+
+/// Shown for a pushed screen that can no longer be found (the page was reloaded): goes to the
+/// login route, which sends a signed-in user straight to their home.
+class _BackToHome extends StatefulWidget {
+  const _BackToHome();
+
+  @override
+  State<_BackToHome> createState() => _BackToHomeState();
+}
+
+class _BackToHomeState extends State<_BackToHome> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) GoRouter.of(context).go('/login');
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
+}
+
+/// How a screen opened with `pushScreen` survives the browser's history.
+///
+/// The router writes every page into the browser's history so back and forward work, but a built
+/// screen cannot be written there: without a codec go_router silently stores nothing, and the
+/// browser's back button then handed `/screen` back with no screen — `extra!` threw, and the web
+/// app showed a grey page. This keeps each pushed screen in memory under a number and writes the
+/// number instead, so back finds the very same screen again. After a reload memory is empty and
+/// the number finds nothing: the route then goes home instead of crashing.
+class ScreenExtraCodec extends Codec<Object?, Object?> {
+  const ScreenExtraCodec();
+
+  /// Pushed screens by number. Bounded: the oldest are forgotten, as a browser forgets history.
+  static final _screens = <int, Widget>{};
+  static var _next = 0;
+  static const _keep = 100;
+
+  /// For tests: how many pushed screens are kept.
+  @visibleForTesting
+  static int get remembered => _screens.length;
+
+  @override
+  Converter<Object?, Object?> get encoder => const _ScreenEncoder();
+
+  @override
+  Converter<Object?, Object?> get decoder => const _ScreenDecoder();
+}
+
+class _ScreenEncoder extends Converter<Object?, Object?> {
+  const _ScreenEncoder();
+
+  @override
+  Object? convert(Object? input) {
+    if (input is! Widget) return null;
+    // The same screen written twice (go_router reports a page more than once) keeps one number.
+    for (final entry in ScreenExtraCodec._screens.entries) {
+      if (identical(entry.value, input)) return {'screen': entry.key};
+    }
+    final number = ScreenExtraCodec._next++;
+    ScreenExtraCodec._screens[number] = input;
+    if (ScreenExtraCodec._screens.length > ScreenExtraCodec._keep) {
+      ScreenExtraCodec._screens.remove(ScreenExtraCodec._screens.keys.first);
+    }
+    return {'screen': number};
+  }
+}
+
+class _ScreenDecoder extends Converter<Object?, Object?> {
+  const _ScreenDecoder();
+
+  @override
+  Object? convert(Object? input) {
+    if (input is! Map) return null;
+    final number = input['screen'];
+    return number is int ? ScreenExtraCodec._screens[number] : null;
+  }
 }
 
 String _homeRouteForRole(String role) => switch (role) {

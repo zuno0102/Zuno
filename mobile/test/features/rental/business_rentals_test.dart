@@ -3072,6 +3072,49 @@ void main() {
       },
     );
 
+    testWidgets('the UPI sheet (Stock) opens on the ID saved on the profile', (
+      tester,
+    ) async {
+      final repository = _FakeRentalRepository(const [])
+        ..upiId = 'shajil.0102-1@oksbi';
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            rentalRepositoryProvider.overrideWithValue(repository),
+            businessProfileProvider.overrideWith(
+              () => _FakeBusinessProfile(repository),
+            ),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => TextButton(
+                  onPressed: () => showRentalUpiSheet(context),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      final field = tester.widget<TextFormField>(
+        find.byKey(const ValueKey('upi-id-field')),
+      );
+      expect(field.controller!.text, 'shajil.0102-1@oksbi');
+
+      // Changed here, it is saved on the profile, so the profile shows it too.
+      await tester.enterText(
+        find.byKey(const ValueKey('upi-id-field')),
+        'shajil@okaxis',
+      );
+      await tester.tap(primary('Save'));
+      await tester.pumpAndSettle();
+      expect(repository.calls, ['profile-upi:shajil@okaxis']);
+    });
+
     testWidgets('with no UPI ID the sheet offers to add one, then shows the QR', (
       tester,
     ) async {

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:zuno/features/business_owner/domain/entities/business_profile.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_providers.dart';
+import 'package:zuno/features/rental/presentation/providers/rental_payment_providers.dart';
 
 part 'business_profile_notifier.g.dart';
 
@@ -48,6 +49,7 @@ class BusinessProfileNotifier extends _$BusinessProfileNotifier {
           country: country,
         );
     state = AsyncData(updated);
+    _upiIdChanged();
   }
 
   /// Sets only the UPI ID — from the quick "Add UPI ID" beside a payment QR.
@@ -56,7 +58,12 @@ class BusinessProfileNotifier extends _$BusinessProfileNotifier {
         .read(businessRepositoryProvider)
         .setUpiId(upiId.trim());
     state = AsyncData(updated);
+    _upiIdChanged();
   }
+
+  /// Rent's order QR is made from this profile's UPI ID: ask Rent again, so a change made here shows
+  /// on Stock and every QR at once rather than the ID the app read before.
+  void _upiIdChanged() => ref.invalidate(rentalUpiIdProvider);
 
   /// Sets the business's profile picture.
   ///

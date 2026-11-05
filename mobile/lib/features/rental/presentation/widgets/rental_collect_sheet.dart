@@ -673,11 +673,29 @@ class RentalUpiSheet extends ConsumerStatefulWidget {
 
 class _RentalUpiSheetState extends ConsumerState<RentalUpiSheet> {
   final _formKey = GlobalKey<FormState>();
-  late final _upi = TextEditingController(
-    text: ref.read(rentalUpiIdProvider).value ?? '',
-  );
+
+  /// Opens on the ID already saved — the business profile's first, the one place it is set — so
+  /// the business sees what its QRs pay, not an empty box.
+  late final _upi = TextEditingController(text: _saved() ?? '');
+
+  /// Set once the business types: an ID arriving late must not overwrite what it typed.
+  bool _typed = false;
   bool _isSaving = false;
   String? _error;
+
+  String? _saved() {
+    final fromProfile = ref.read(businessProfileProvider).value?.upiId;
+    if (fromProfile != null && fromProfile.trim().isNotEmpty) {
+      return fromProfile;
+    }
+    return ref.read(rentalUpiIdProvider).value;
+  }
+
+  /// The saved ID may still be loading when the sheet opens: fill it in when it comes.
+  void _fillIfEmpty(String? upiId) {
+    if (_typed || upiId == null || upiId.trim().isEmpty) return;
+    if (_upi.text.trim().isEmpty) _upi.text = upiId;
+  }
 
   @override
   void dispose() {
@@ -717,6 +735,15 @@ class _RentalUpiSheetState extends ConsumerState<RentalUpiSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    ref
+      ..listen(
+        businessProfileProvider.select((p) => p.value?.upiId),
+        (_, upiId) => _fillIfEmpty(upiId),
+      )
+      ..listen(
+        rentalUpiIdProvider.select((p) => p.value),
+        (_, upiId) => _fillIfEmpty(upiId),
+      );
     return Padding(
       padding: EdgeInsets.only(
         left: 20,
@@ -753,6 +780,7 @@ class _RentalUpiSheetState extends ConsumerState<RentalUpiSheet> {
             TextFormField(
               key: const ValueKey('upi-id-field'),
               controller: _upi,
+              onChanged: (_) => _typed = true,
               maxLength: 100,
               keyboardType: TextInputType.emailAddress,
               autocorrect: false,
