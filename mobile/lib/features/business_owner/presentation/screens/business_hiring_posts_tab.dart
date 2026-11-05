@@ -1,6 +1,7 @@
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:zuno/shared/widgets/stop_hiring_button.dart';
 import 'package:zuno/shared/widgets/detail_row.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
@@ -442,31 +443,17 @@ class _PostCardState extends ConsumerState<_PostCard> {
 
             // The way out of hiring: manage with the crew already on board. The post then
             // leaves this tab and every worker's feed.
-            // A bordered button in the warning colour, set apart from the hiring details above.
-            // As a bare text link it read as a label, and nobody could tell it was the way to
-            // close hiring. What it does sits behind the ⓘ beside it, shown on tap.
+            // The same bordered primary button as on a full-time job. What it does sits behind
+            // the ⓘ beside it, shown on tap.
             if (post.canStopHiring() && !_isDeleting)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    OutlinedButton.icon(
-                      onPressed: _isStopping ? null : _confirmAndStopHiring,
-                      icon: _isStopping
-                          ? const SizedBox.square(
-                              dimension: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.front_hand_outlined, size: 18),
-                      label: Text(_isStopping ? 'Stopping…' : 'Stop hiring'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: theme.colorScheme.error,
-                        side: BorderSide(
-                          color: theme.colorScheme.error.withValues(alpha: 0.5),
-                        ),
-                        visualDensity: VisualDensity.compact,
-                      ),
+                    StopHiringButton(
+                      onPressed: _confirmAndStopHiring,
+                      isStopping: _isStopping,
                     ),
                     Tooltip(
                       message: 'Close this post to new workers',

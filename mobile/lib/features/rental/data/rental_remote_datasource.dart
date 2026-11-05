@@ -211,14 +211,6 @@ class RentalRemoteDataSource {
     return response.data!['upiId'] as String?;
   });
 
-  Future<String?> setUpiId(String? upiId) => _run(() async {
-    final response = await _dio.put<Map<String, dynamic>>(
-      RentApi.paymentSettingsPath,
-      data: {'upiId': upiId},
-    );
-    return response.data!['upiId'] as String?;
-  });
-
   Future<RentalCancelQuoteModel> getCancelQuote(String id) => _run(() async {
     final response = await _dio.get<Map<String, dynamic>>(
       RentApi.orderCancelQuotePath(id),

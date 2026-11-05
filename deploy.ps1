@@ -52,7 +52,10 @@ function Run($what) { if ($LASTEXITCODE -ne 0) { Fail "$what failed (exit $LASTE
 Set-Location $Root
 
 # ---- Settings -----------------------------------------------------------------------------------
-$Settings = @{ API_BASE_URL = 'https://zuno-api-qon8.onrender.com' }
+$Settings = @{
+    API_BASE_URL      = 'https://zuno-api-qon8.onrender.com'
+    RENT_API_BASE_URL = 'https://zuno-rent-api.onrender.com'
+}
 $EnvFile = Join-Path $Root '.env.deploy'
 if (Test-Path $EnvFile) {
     foreach ($line in Get-Content $EnvFile) {
@@ -146,7 +149,7 @@ if ($webChanged) {
     Step "Vercel: building the web app against $($Settings.API_BASE_URL)"
     Push-Location (Join-Path $Root 'mobile')
     try {
-        flutter build web --release "--dart-define=API_BASE_URL=$($Settings.API_BASE_URL)"; Run 'flutter build web'
+        flutter build web --release "--dart-define=API_BASE_URL=$($Settings.API_BASE_URL)" "--dart-define=RENT_API_BASE_URL=$($Settings.RENT_API_BASE_URL)"; Run 'flutter build web'
         Set-Location 'build/web'
         if ($Settings.VERCEL_TOKEN) {
             # Deploy as the Zuno Vercel account, whoever the CLI happens to be signed in as.
@@ -180,7 +183,7 @@ if ($apkChanged) {
     Step "APK: building $tag against $($Settings.API_BASE_URL)"
     Push-Location (Join-Path $Root 'mobile')
     try {
-        flutter build apk --release "--dart-define=API_BASE_URL=$($Settings.API_BASE_URL)"; Run 'flutter build apk'
+        flutter build apk --release "--dart-define=API_BASE_URL=$($Settings.API_BASE_URL)" "--dart-define=RENT_API_BASE_URL=$($Settings.RENT_API_BASE_URL)"; Run 'flutter build apk'
         $built = Join-Path (Get-Location) 'build/app/outputs/flutter-apk/app-release.apk'
     } finally {
         Pop-Location

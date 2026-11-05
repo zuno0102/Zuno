@@ -1,3 +1,4 @@
+using Zuno.Application.Common;
 using Zuno.Domain.Entities;
 using Zuno.Domain.Enums;
 using Zuno.Domain.ValueObjects;
@@ -14,6 +15,8 @@ public static class BusinessMappingExtensions
         GstNumber = profile.GstNumber,
         Description = profile.Description,
         LogoUrl = profile.LogoUrl,
+        UpiId = profile.UpiId,
+        MissingDetails = ProfileCompleteness.Missing(profile.UpiId),
         VerificationStatus = profile.VerificationStatus.ToString(),
         AddressLine1 = profile.BusinessAddress?.Line1,
         AddressLine2 = profile.BusinessAddress?.Line2,

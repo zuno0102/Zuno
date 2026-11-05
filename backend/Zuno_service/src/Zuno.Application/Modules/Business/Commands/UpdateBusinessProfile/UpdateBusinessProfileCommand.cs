@@ -13,6 +13,13 @@ public class UpdateBusinessProfileCommand : IRequest<BusinessProfileDto>
 
     public string? Description { get; set; }
 
+    /// <summary>
+    /// Where customers pay by UPI, e.g. joyevents@okhdfcbank. Required: every payment QR the business
+    /// shows is made from it. Left out (null) by an app from before the profile held it: the saved
+    /// one is kept, so that app can still save the rest of the profile.
+    /// </summary>
+    public string? UpiId { get; set; }
+
     /// <summary>Accepted and ignored. The profile picture is set by uploading one.</summary>
     /// <remarks>
     /// Still bound so existing clients that echo the whole profile back keep working, but the

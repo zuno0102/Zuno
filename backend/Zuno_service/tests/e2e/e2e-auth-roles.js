@@ -127,6 +127,27 @@ const person = (first, role, extra = {}) => ({
   ok("A new business starts Pending", JSON.stringify(profile.data).includes("Pending"));
   no("A business cannot approve itself", await call("POST", `/admin/businesses/${profile.data?.id}/approve`, tokens.BusinessOwner));
 
+  // ── A profile is complete only with a UPI ID (business and worker) ──────────────────────────
+  ok("A new business is asked for its UPI ID", profile.data?.missingDetails?.includes("UPI ID"));
+  no("A business profile without a UPI ID is refused",
+    await call("PUT", "/business/profile", tokens.BusinessOwner, { businessName: `Boss ${run}` }), "UPI ID");
+  no("A malformed business UPI ID is refused",
+    await call("PUT", "/business/profile", tokens.BusinessOwner, { businessName: `Boss ${run}`, upiId: "boss" }), "UPI");
+  const bossUpi = await call("PUT", "/business/profile", tokens.BusinessOwner, { businessName: `Boss ${run}`, upiId: `boss.${run}@okaxis` });
+  ok("The business saves its profile with a UPI ID", bossUpi.status < 300 && bossUpi.data?.missingDetails?.length === 0, `${bossUpi.status} ${bossUpi.text}`);
+  code("A customer cannot set a business UPI ID", await call("PUT", "/business/profile/upi-id", tokens.Customer, { upiId: "c@okaxis" }), 403);
+  code("A worker cannot set a business UPI ID", await call("PUT", "/business/profile/upi-id", tokens.Worker, { upiId: "w@okaxis" }), 403);
+
+  const workerToken = (await login(people.Worker.email, "Newer@12345")).data?.accessToken;
+  const workerBefore = await call("GET", "/worker/profile", workerToken);
+  ok("A new worker is asked for a UPI ID", workerBefore.data?.missingDetails?.includes("UPI ID"));
+  no("A worker without a UPI ID cannot save other details",
+    await call("PUT", "/worker/profile", workerToken, { hourlyRate: 300 }), "UPI ID");
+  no("A malformed worker UPI ID is refused", await call("PUT", "/worker/profile", workerToken, { upiVpa: "ravi@12" }), "UPI");
+  const workerUpi = await call("PUT", "/worker/profile", workerToken, { upiVpa: `work.${run}@ybl`, hourlyRate: 300 });
+  ok("The worker saves a UPI ID and the rest with it", workerUpi.status < 300 && workerUpi.data?.missingDetails?.length === 0, `${workerUpi.status} ${workerUpi.text}`);
+  ok("…and can now change other details alone", (await call("PUT", "/worker/profile", workerToken, { experienceYears: 2 })).status < 300);
+
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error("CRASHED:", e.message); process.exit(2); });

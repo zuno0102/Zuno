@@ -120,8 +120,12 @@ public class PaymentFlowTests(RentApiFactory factory) : IClassFixture<RentApiFac
             deliveryAddress = "Kakkanad",
         };
 
-        var missing = await business.PostAsJsonAsync("/api/v1/business/rental-orders", offline);
-        missing.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        // No advance in hand yet: still confirmed, with nothing paid and the whole amount due.
+        var notYet = await Data(await business.PostAsJsonAsync("/api/v1/business/rental-orders", offline));
+        notYet.GetProperty("status").GetString().Should().Be("Booked");
+        notYet.GetProperty("paid").GetDecimal().Should().Be(0);
+        notYet.GetProperty("balance").GetDecimal().Should().Be(1000);
+        notYet.GetProperty("canCollect").GetBoolean().Should().BeTrue();
 
         var order = await Data(await business.PostAsJsonAsync("/api/v1/business/rental-orders", new
         {

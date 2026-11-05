@@ -1,3 +1,4 @@
+using Zuno.Application.Common;
 using Zuno.Domain.Entities;
 using Zuno.Domain.Enums;
 using Zuno.Domain.ValueObjects;
@@ -58,6 +59,7 @@ public static class WorkerMappingExtensions
                 levels, earnings.JobsCompleted, earnings.BusinessesWorkedFor, earnings.OffersDeclined),
 
             UpiVpa = payout?.UpiVpa,
+            MissingDetails = ProfileCompleteness.Missing(payout?.UpiVpa),
             HasPayoutDestination = payout?.HasDestination ?? false,
             CanReceivePayouts = payout?.CanReceivePayouts ?? false,
             PayoutVerificationStatus =

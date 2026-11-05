@@ -30,7 +30,11 @@ public class PaymentTests : IDisposable
 
     private RentalOrderQueryHandlers Queries => new(_rent.User, _rent.Db, _rent.Settings);
 
-    private CustomerRentalOrderHandlers CustomerOrders => new(_rent.User, _rent.Db, new Directory(), _rent.Settings, TimeProvider.System);
+    private readonly Directory _directory = new();
+
+    private RentalPaymentSettingsHandler Settings => new(_rent.User, _rent.Db, _directory, TimeProvider.System);
+
+    private CustomerRentalOrderHandlers CustomerOrders => new(_rent.User, _rent.Db, _directory, _rent.Settings, TimeProvider.System);
 
     private ChangeRentalOrderStatusCommandHandler Change => new(_rent.User, _rent.Db, TimeProvider.System);
 
@@ -57,7 +61,7 @@ public class PaymentTests : IDisposable
         return id;
     }
 
-    private Task<RentalOrderDto> OfflineAsync(Guid item, int quantity, string? advanceMethod = null, decimal? advanceAmount = null)
+    private Task<RentalOrderDto> OfflineAsync(Guid item, int quantity, string? advanceMethod = null, decimal? advanceAmount = null, bool? received = null)
     {
         _rent.As(TestRent.OwnerA);
         var (start, end) = TwoDays();
@@ -71,6 +75,8 @@ public class PaymentTests : IDisposable
             DeliveryAddress = "Kakkanad",
             AdvanceMethod = advanceMethod,
             AdvanceAmount = advanceAmount,
+            // Left out, the server reads a method given as the money taken at the counter.
+            AdvanceReceived = received,
         }, default);
     }
 
@@ -184,7 +190,7 @@ public class PaymentTests : IDisposable
     {
         var chairs = await ChairsAsync("PerOrder", 500);
 
-        var noMethod = () => OfflineAsync(chairs, 100);
+        var noMethod = () => OfflineAsync(chairs, 100, received: true);
         await noMethod.Should().ThrowAsync<DomainException>().WithMessage("*asks an advance of ₹500*");
         (await _rent.Db.RentalOrders.CountAsync()).Should().Be(0);
 
@@ -202,11 +208,66 @@ public class PaymentTests : IDisposable
     }
 
     [Fact]
+    public async Task An_offline_order_whose_advance_is_not_in_hand_is_still_confirmed()
+    {
+        var chairs = await ChairsAsync("PerOrder", 300);
+
+        var order = await OfflineAsync(chairs, 100, "UpiQr", received: false);
+
+        order.Status.Should().Be("Booked", "an offline order is the business's own word, confirmed at once");
+        order.HoldUntil.Should().BeNull("nothing lapses on an offline order");
+        order.AdvanceDue.Should().Be(300);
+        order.Paid.Should().Be(0, "nothing is recorded until the money is in hand");
+        order.Balance.Should().Be(order.Amount, "the whole amount is still due");
+        order.CanCollect.Should().BeTrue("the advance is collected from the order later");
+        order.Payments.Should().BeEmpty();
+        (await _rent.Db.RentalOrderPayments.CountAsync()).Should().Be(0);
+    }
+
+    [Theory]
+    [InlineData("Cash", "Booked", 300)]
+    [InlineData(null, "Booked", 0)]
+    public async Task An_app_from_before_the_received_choice_keeps_its_old_meaning(string? method, string status, decimal paid)
+    {
+        // An older app sends no "received" answer: a method said means the advance was taken.
+        var chairs = await ChairsAsync("PerOrder", 300);
+
+        var order = await OfflineAsync(chairs, 100, method, received: null);
+
+        order.Status.Should().Be(status);
+        order.Paid.Should().Be(paid);
+    }
+
+    [Fact]
+    public async Task An_offline_advance_collected_later_is_recorded_on_the_confirmed_order()
+    {
+        var chairs = await ChairsAsync("PerOrder", 300);
+        var order = await OfflineAsync(chairs, 100, received: false);
+
+        var paid = await Payments.Handle(
+            new RecordRentalPaymentCommand { Id = order.Id, Method = "UpiQr", Amount = 300 }, default);
+
+        paid.Status.Should().Be("Booked");
+        paid.Paid.Should().Be(300);
+        paid.Balance.Should().Be(order.Amount - 300);
+    }
+
+    [Fact]
+    public async Task An_offline_order_left_unpaid_is_never_let_go_by_the_advance_lapse()
+    {
+        var chairs = await ChairsAsync("PerOrder", 300);
+        var order = await OfflineAsync(chairs, 100, received: false);
+
+        (await Payments.Handle(new LapseRentalAdvancesCommand(), default)).Should().Be(0);
+        (await ReadAsync(order.Id)).Status.Should().Be("Booked");
+    }
+
+    [Fact]
     public async Task An_offline_advance_can_be_typed_even_when_the_item_asks_none()
     {
         var chairs = await ChairsAsync();
 
-        var noMethod = () => OfflineAsync(chairs, 100, advanceAmount: 300);
+        var noMethod = () => OfflineAsync(chairs, 100, advanceAmount: 300, received: true);
         await noMethod.Should().ThrowAsync<DomainException>().WithMessage("Say how the advance of ₹300 was paid*");
 
         var order = await OfflineAsync(chairs, 100, "UpiQr", 300);
@@ -334,13 +395,19 @@ public class PaymentTests : IDisposable
 
         var forged = () => Payments.Handle(new CompleteRentalPaymentCommand
         {
-            Id = booked.Id, ProviderOrderId = checkout.ProviderOrderId, PaymentId = "pay_1", Signature = "made-up",
+            Id = booked.Id,
+            ProviderOrderId = checkout.ProviderOrderId,
+            PaymentId = "pay_1",
+            Signature = "made-up",
         }, default);
         await forged.Should().ThrowAsync<DomainException>().WithMessage("*could not confirm*");
 
         var paid = await Payments.Handle(new CompleteRentalPaymentCommand
         {
-            Id = booked.Id, ProviderOrderId = checkout.ProviderOrderId, PaymentId = "pay_1", Signature = "good",
+            Id = booked.Id,
+            ProviderOrderId = checkout.ProviderOrderId,
+            PaymentId = "pay_1",
+            Signature = "good",
         }, default);
         paid.Status.Should().Be("Booked");
         paid.PaymentStatus.Should().Be("AdvancePaid");
@@ -351,7 +418,10 @@ public class PaymentTests : IDisposable
         _rent.Db.ChangeTracker.Clear();
         var again = await Payments.Handle(new CompleteRentalPaymentCommand
         {
-            Id = booked.Id, ProviderOrderId = checkout.ProviderOrderId, PaymentId = "pay_1", Signature = "good",
+            Id = booked.Id,
+            ProviderOrderId = checkout.ProviderOrderId,
+            PaymentId = "pay_1",
+            Signature = "good",
         }, default);
         again.Paid.Should().Be(600);
         (await _rent.Db.RentalOrderPayments.CountAsync()).Should().Be(1);
@@ -371,7 +441,10 @@ public class PaymentTests : IDisposable
 
         var misuse = () => Payments.Handle(new CompleteRentalPaymentCommand
         {
-            Id = other.Id, ProviderOrderId = checkout.ProviderOrderId, PaymentId = "pay_9", Signature = "good",
+            Id = other.Id,
+            ProviderOrderId = checkout.ProviderOrderId,
+            PaymentId = "pay_9",
+            Signature = "good",
         }, default);
 
         await misuse.Should().ThrowAsync<DomainException>().WithMessage("*not for this order*");
@@ -421,7 +494,10 @@ public class PaymentTests : IDisposable
         _rent.As(Customer);
         var paid = await Payments.Handle(new CompleteRentalPaymentCommand
         {
-            Id = booked.Id, ProviderOrderId = checkout.ProviderOrderId, PaymentId = "pay_late", Signature = "good",
+            Id = booked.Id,
+            ProviderOrderId = checkout.ProviderOrderId,
+            PaymentId = "pay_late",
+            Signature = "good",
         }, default);
 
         paid.Status.Should().Be("Cancelled");
@@ -546,20 +622,52 @@ public class PaymentTests : IDisposable
     }
 
     [Fact]
-    public async Task The_upi_id_is_checked_saved_and_shown_to_the_business_only()
+    public async Task The_upi_id_comes_from_the_business_profile_and_is_shown_to_the_business_only()
     {
-        var validator = new UpdateRentalPaymentSettingsCommandValidator();
-        (await validator.ValidateAsync(new UpdateRentalPaymentSettingsCommand { UpiId = "not a upi" })).IsValid.Should().BeFalse();
-        (await validator.ValidateAsync(new UpdateRentalPaymentSettingsCommand { UpiId = "joy.rentals@okhdfcbank" })).IsValid.Should().BeTrue();
-
         var chairs = await ChairsAsync("PerOrder", 100);
         _rent.As(TestRent.OwnerA);
-        (await Payments.Handle(new UpdateRentalPaymentSettingsCommand { UpiId = " Joy.Rentals@OkHdfcBank " }, default))
-            .UpiId.Should().Be("joy.rentals@okhdfcbank");
+        _directory.Business = new ServiceBusiness("Joy Rentals", null, IsVerified: true, UpiId: " Joy.Rentals@OkHdfcBank ");
+
+        (await Settings.Handle(new GetRentalPaymentSettingsQuery(), default)).UpiId.Should().Be("joy.rentals@okhdfcbank");
 
         var booked = await BookInAppAsync(chairs, 10);
-        booked.UpiId.Should().BeNull();
+        booked.UpiId.Should().BeNull("a customer never sees the business's UPI ID on the order");
         (await ReadAsync(booked.Id)).UpiId.Should().Be("joy.rentals@okhdfcbank");
+    }
+
+    [Fact]
+    public async Task A_changed_profile_upi_id_moves_the_qr_at_once()
+    {
+        _rent.As(TestRent.OwnerA);
+        _directory.Business = new ServiceBusiness("Joy Rentals", null, IsVerified: true, UpiId: "old@okaxis");
+        await Settings.Handle(new GetRentalPaymentSettingsQuery(), default);
+
+        _directory.Business = _directory.Business with { UpiId = "new@ybl" };
+
+        (await Settings.Handle(new GetRentalPaymentSettingsQuery(), default)).UpiId.Should().Be("new@ybl");
+    }
+
+    [Fact]
+    public async Task A_profile_without_a_upi_id_keeps_the_one_saved_in_rent_before()
+    {
+        _rent.As(TestRent.OwnerA);
+        _rent.Db.RentalBusinesses.Add(new RentalBusiness { OwnerUserId = TestRent.OwnerA, Name = "Joy Rentals", UpiId = "legacy@okhdfcbank" });
+        await _rent.Db.SaveChangesAsync();
+        _directory.Business = new ServiceBusiness("Joy Rentals", null, IsVerified: true);
+
+        (await Settings.Handle(new GetRentalPaymentSettingsQuery(), default)).UpiId.Should().Be("legacy@okhdfcbank");
+    }
+
+    [Fact]
+    public async Task Service_down_still_shows_the_upi_id_known_before()
+    {
+        _rent.As(TestRent.OwnerA);
+        _directory.Business = new ServiceBusiness("Joy Rentals", null, IsVerified: true, UpiId: "joy@okaxis");
+        await Settings.Handle(new GetRentalPaymentSettingsQuery(), default);
+
+        _directory.Business = null;
+
+        (await Settings.Handle(new GetRentalPaymentSettingsQuery(), default)).UpiId.Should().Be("joy@okaxis");
     }
 
     [Fact]
@@ -583,7 +691,9 @@ public class PaymentTests : IDisposable
         public Task<ServicePerson?> GetCurrentPersonAsync(CancellationToken cancellationToken) =>
             Task.FromResult<ServicePerson?>(new ServicePerson("Rahul Nair", "9876543210"));
 
+        public ServiceBusiness? Business { get; set; }
+
         public Task<ServiceBusiness?> GetCurrentBusinessAsync(CancellationToken cancellationToken) =>
-            Task.FromResult<ServiceBusiness?>(null);
+            Task.FromResult(Business);
     }
 }

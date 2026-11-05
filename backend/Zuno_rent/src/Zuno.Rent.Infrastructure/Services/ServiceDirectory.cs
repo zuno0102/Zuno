@@ -54,7 +54,8 @@ public class ServiceDirectory(
         return new ServiceBusiness(
             name,
             Text(profile, "logoUrl"),
-            string.Equals(Text(profile, "verificationStatus"), VerifiedStatus, StringComparison.OrdinalIgnoreCase));
+            string.Equals(Text(profile, "verificationStatus"), VerifiedStatus, StringComparison.OrdinalIgnoreCase),
+            Text(profile, "upiId"));
     }
 
     /// <summary>The <c>data</c> of the Service API's reply, or null on any failure — logged, never thrown.</summary>

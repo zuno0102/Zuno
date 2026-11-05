@@ -51,11 +51,15 @@ public class BusinessRentalsController(
     public async Task<IActionResult> SyncProfile(CancellationToken cancellationToken) =>
         Ok(await mediator.Send(new Application.Customer.SyncRentalBusinessCommand(), cancellationToken));
 
-    /// <summary>The UPI ID the business's order QR is made from.</summary>
+    /// <summary>
+    /// The UPI ID the business's order QR is made from — taken from its Service profile, where the
+    /// business sets it (PUT /business/profile/upi-id on the Service API).
+    /// </summary>
     [HttpGet("payment-settings")]
     public async Task<IActionResult> GetPaymentSettings(CancellationToken cancellationToken) =>
         Ok(await mediator.Send(new Application.Orders.GetRentalPaymentSettingsQuery(), cancellationToken));
 
+    /// <summary>Saves the UPI ID in Rent — only for the app before 1.10.1; newer apps use the profile.</summary>
     [HttpPut("payment-settings")]
     public async Task<IActionResult> UpdatePaymentSettings(
         [FromBody] Application.Orders.UpdateRentalPaymentSettingsCommand command, CancellationToken cancellationToken) =>

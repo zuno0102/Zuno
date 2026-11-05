@@ -68,7 +68,7 @@ BIZ=$(sql "select b.id from business_owner_profiles b join users u on u.id=b.use
 
 step "2. BUSINESS PROFILE AND ADMIN APPROVAL"
 have() { [ "$(sql "$1")" != "0" ]; }
-did "Profile filled in" "$(PU /business/profile "$BT" '{"businessName":"Demo Events & Catering","description":"Weddings, parties and office events in Kerala","yearsOfExperience":8}')"
+did "Profile filled in" "$(PU /business/profile "$BT" '{"businessName":"Demo Events & Catering","description":"Weddings, parties and office events in Kerala","upiId":"demo.events@okhdfcbank"}')"
 AT=$(login "$ADMIN_EMAIL" "$ADMIN_PW")
 if have "select count(*) from business_owner_profiles where id='$BIZ' and verification_status=1"; then echo "  --    already approved"
 elif [ -n "$AT" ]; then did "Admin approves the business" "$(P /admin/businesses/$BIZ/approve "$AT")"

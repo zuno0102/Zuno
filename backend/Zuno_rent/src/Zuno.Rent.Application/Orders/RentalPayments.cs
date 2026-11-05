@@ -71,18 +71,37 @@ public class CompleteRentalPaymentCommand : IRequest<RentalOrderDto>
     public string Signature { get; set; } = string.Empty;
 }
 
-/// <summary>The business's payment details: the UPI ID its order QR is made from.</summary>
+/// <summary>
+/// The business's payment details: the UPI ID its order QR is made from. It is set on the business's
+/// Service profile, so reading it first refreshes from there — an ID just added shows at once.
+/// </summary>
 public class GetRentalPaymentSettingsQuery : IRequest<RentalPaymentSettingsDto>;
 
+public class RentalPaymentSettingsDto
+{
+    public string? UpiId { get; set; }
+}
+
+/// <summary>
+/// Kept for the app before 1.10.1, which saves the UPI ID in Rent. Newer apps save it on the Service
+/// profile, and an ID there always wins over this one at the next refresh.
+/// </summary>
 public class UpdateRentalPaymentSettingsCommand : IRequest<RentalPaymentSettingsDto>
 {
     /// <summary>E.g. <c>joyrentals@okhdfcbank</c>; empty removes it.</summary>
     public string? UpiId { get; set; }
 }
 
-public class RentalPaymentSettingsDto
+public class UpdateRentalPaymentSettingsCommandValidator : AbstractValidator<UpdateRentalPaymentSettingsCommand>
 {
-    public string? UpiId { get; set; }
+    public UpdateRentalPaymentSettingsCommandValidator()
+    {
+        RuleFor(x => x.UpiId)
+            .MaximumLength(RentalPaymentFields.UpiIdMaxLength)
+            .Matches(RentalPaymentFields.UpiIdPattern)
+            .WithMessage("Enter a UPI ID like name@bank.")
+            .When(x => !string.IsNullOrWhiteSpace(x.UpiId));
+    }
 }
 
 /// <summary>The words for advances and payment methods, for the item form and the collect sheet.</summary>
@@ -157,20 +176,6 @@ public class CompleteRentalPaymentCommandValidator : AbstractValidator<CompleteR
     }
 }
 
-public class UpdateRentalPaymentSettingsCommandValidator : AbstractValidator<UpdateRentalPaymentSettingsCommand>
-{
-    public const int UpiIdMaxLength = RentalPaymentFields.UpiIdMaxLength;
-
-    public UpdateRentalPaymentSettingsCommandValidator()
-    {
-        RuleFor(x => x.UpiId)
-            .MaximumLength(UpiIdMaxLength)
-            .Matches(RentalPaymentFields.UpiIdPattern)
-            .WithMessage("Enter a UPI ID like name@bank.")
-            .When(x => !string.IsNullOrWhiteSpace(x.UpiId));
-    }
-}
-
 /// <summary>Reads payment methods, shared by the offline order and the payment commands.</summary>
 public static class RentalPayments
 {
@@ -196,8 +201,6 @@ public class RentalPaymentHandlers(
     IRequestHandler<RecordRentalPaymentCommand, RentalOrderDto>,
     IRequestHandler<StartRentalPaymentCommand, RentalCheckoutDto>,
     IRequestHandler<CompleteRentalPaymentCommand, RentalOrderDto>,
-    IRequestHandler<GetRentalPaymentSettingsQuery, RentalPaymentSettingsDto>,
-    IRequestHandler<UpdateRentalPaymentSettingsCommand, RentalPaymentSettingsDto>,
     IRequestHandler<GetRentalPaymentOptionsQuery, RentalPaymentOptionsDto>,
     IRequestHandler<LapseRentalAdvancesCommand, int>
 {
@@ -382,32 +385,6 @@ public class RentalPaymentHandlers(
         return await RentalOrderReader.ReadOneAsync(dbContext, request.Id, customerId, cancellationToken, RentalAudience.Customer);
     }
 
-    public async Task<RentalPaymentSettingsDto> Handle(GetRentalPaymentSettingsQuery request, CancellationToken cancellationToken)
-    {
-        var ownerId = currentUser.OwnerId();
-        var upiId = await dbContext.RentalBusinesses
-            .Where(b => b.OwnerUserId == ownerId)
-            .Select(b => b.UpiId)
-            .FirstOrDefaultAsync(cancellationToken);
-        return new RentalPaymentSettingsDto { UpiId = upiId };
-    }
-
-    public async Task<RentalPaymentSettingsDto> Handle(UpdateRentalPaymentSettingsCommand request, CancellationToken cancellationToken)
-    {
-        var ownerId = currentUser.OwnerId();
-        var row = await dbContext.RentalBusinesses.FirstOrDefaultAsync(b => b.OwnerUserId == ownerId, cancellationToken);
-        if (row is null)
-        {
-            // Not refreshed from Service yet: the name arrives with the next refresh.
-            row = new RentalBusiness { OwnerUserId = ownerId, RefreshedAt = clock.GetUtcNow() };
-            dbContext.RentalBusinesses.Add(row);
-        }
-
-        row.UpiId = string.IsNullOrWhiteSpace(request.UpiId) ? null : request.UpiId.Trim().ToLowerInvariant();
-        await dbContext.SaveChangesAsync(cancellationToken);
-        return new RentalPaymentSettingsDto { UpiId = row.UpiId };
-    }
-
     public async Task<RentalPaymentOptionsDto> Handle(GetRentalPaymentOptionsQuery request, CancellationToken cancellationToken)
     {
         var advanceTypes = await dbContext.RentalAdvanceTypes.AsNoTracking()
@@ -517,5 +494,37 @@ internal static class RentDbContextTracking
         {
             context.ChangeTracker.Clear();
         }
+    }
+}
+
+public class RentalPaymentSettingsHandler(
+    ICurrentUser currentUser,
+    IRentDbContext dbContext,
+    IServiceDirectory directory,
+    TimeProvider clock) :
+    IRequestHandler<GetRentalPaymentSettingsQuery, RentalPaymentSettingsDto>,
+    IRequestHandler<UpdateRentalPaymentSettingsCommand, RentalPaymentSettingsDto>
+{
+    public async Task<RentalPaymentSettingsDto> Handle(GetRentalPaymentSettingsQuery request, CancellationToken cancellationToken)
+    {
+        var row = await RentalBusinessRefresh.RefreshAsync(
+            dbContext, directory, currentUser.OwnerId(), clock.GetUtcNow(), cancellationToken);
+        return new RentalPaymentSettingsDto { UpiId = row?.UpiId };
+    }
+
+    public async Task<RentalPaymentSettingsDto> Handle(UpdateRentalPaymentSettingsCommand request, CancellationToken cancellationToken)
+    {
+        var ownerId = currentUser.OwnerId();
+        var row = await dbContext.RentalBusinesses.FirstOrDefaultAsync(b => b.OwnerUserId == ownerId, cancellationToken);
+        if (row is null)
+        {
+            // Not refreshed from Service yet: the name arrives with the next refresh.
+            row = new RentalBusiness { OwnerUserId = ownerId, RefreshedAt = clock.GetUtcNow() };
+            dbContext.RentalBusinesses.Add(row);
+        }
+
+        row.UpiId = string.IsNullOrWhiteSpace(request.UpiId) ? null : request.UpiId.Trim().ToLowerInvariant();
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return new RentalPaymentSettingsDto { UpiId = row.UpiId };
     }
 }

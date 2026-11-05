@@ -43,8 +43,9 @@ public class UpdateMyWorkerProfileCommandValidator : AbstractValidator<UpdateMyW
         {
             RuleFor(x => x.UpiVpa!)
                 .NotEmpty().WithMessage("Enter your UPI address, or leave the field untouched.")
-                .MaximumLength(100)
-                .Matches(UpiFormat.Pattern)
+                .Must(v => v.Trim().Length <= UpiFormat.MaxLength)
+                .WithMessage($"A UPI ID is at most {UpiFormat.MaxLength} characters.")
+                .Must(v => string.IsNullOrWhiteSpace(v) || UpiFormat.IsValid(v.Trim()))
                 .WithMessage(UpiFormat.Hint);
         });
 

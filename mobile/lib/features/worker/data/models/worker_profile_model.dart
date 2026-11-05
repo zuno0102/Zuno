@@ -21,6 +21,7 @@ class WorkerProfileModel {
     this.experienceYears,
     this.hourlyRate,
     this.upiVpa,
+    this.missingDetails = const [],
     this.hasPayoutDestination = false,
     this.canReceivePayouts = false,
     this.totalEarned = 0,
@@ -50,6 +51,7 @@ class WorkerProfileModel {
   final int? jobsToNextLevel;
   final String? nextLevelRequirement;
   final String? upiVpa;
+  final List<String> missingDetails;
   final bool hasPayoutDestination;
   final bool canReceivePayouts;
   final String payoutVerificationStatus;
@@ -77,6 +79,7 @@ class WorkerProfileModel {
     jobsToNextLevel: jobsToNextLevel,
     nextLevelRequirement: nextLevelRequirement,
     upiVpa: upiVpa,
+    missingDetails: missingDetails,
     hasPayoutDestination: hasPayoutDestination,
     canReceivePayouts: canReceivePayouts,
     payoutVerificationStatus: payoutVerificationStatus,

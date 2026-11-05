@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/utils/formatting.dart';
+import 'package:zuno/features/business_owner/presentation/providers/business_profile_notifier.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/service_form_message_banner.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/service_form_pickers.dart';
 import 'package:zuno/features/rental/domain/entities/rental_item.dart';
@@ -170,6 +171,26 @@ class _RentalOrderFormSheetState extends ConsumerState<RentalOrderFormSheet> {
 
     final messenger = AppMessenger.of(context);
     final advance = _typedAdvance;
+
+    // Never booked as paid on a guess: the business says whether the money is really in hand.
+    var received = false;
+    if (advance > 0) {
+      final methods =
+          ref.read(rentalPaymentOptionsProvider).value?.methods ??
+          const <RentalPaymentOption>[];
+      final methodName =
+          methods.firstWhereOrNull((m) => m.code == _advanceMethod)?.name ??
+          _advanceMethod;
+      final answer = await showRentalAdvanceReceivedDialog(
+        context,
+        amount: advance,
+        byUpi: _advanceMethod == RentalPaymentMethod.upiQr,
+        methodName: methodName,
+      );
+      if (answer == null || !mounted) return;
+      received = answer;
+    }
+
     setState(() {
       _isSaving = true;
       _error = null;
@@ -190,12 +211,19 @@ class _RentalOrderFormSheetState extends ConsumerState<RentalOrderFormSheet> {
               deliveryAddress: _address.text.trim(),
               advanceMethod: advance > 0 ? _advanceMethod : null,
               advanceAmount: advance,
+              advanceReceived: received,
             ),
           );
       reloadRentals(ref);
+      // An offline order is confirmed whether or not the advance is in hand yet.
+      final advanceNote = order.advanceDue <= 0
+          ? ''
+          : received
+          ? ' Advance ${rupees(order.advanceDue)} received.'
+          : ' Advance ${rupees(order.advanceDue)} to collect from the order.';
       messenger.showSuccess(
-        'Booked: ${order.quantity} × ${order.itemName} for ${order.customerName}.'
-        '${order.advanceDue > 0 ? ' Advance ${rupees(order.advanceDue)} taken.' : ''}',
+        'Order confirmed: ${order.quantity} × ${order.itemName} for ${order.customerName}.'
+        '$advanceNote',
       );
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
@@ -381,13 +409,26 @@ class RentalQuantityRow extends StatelessWidget {
   final ValueChanged<int> onStep;
   final VoidCallback onChanged;
 
+  /// The − and + buttons' look. At the lowest count the − is switched off but still drawn: the
+  /// default disabled colours left an empty grey circle on phones, with no − to be seen.
+  static ButtonStyle stepStyle(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return IconButton.styleFrom(
+      disabledBackgroundColor: scheme.surfaceContainerHighest,
+      disabledForegroundColor: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final count = int.tryParse(controller.text.trim()) ?? 0;
+    final style = stepStyle(context);
     return Row(
       children: [
         IconButton.filledTonal(
+          key: const ValueKey('order-quantity-less'),
           tooltip: 'One less',
+          style: style,
           onPressed: count > 1 ? () => onStep(-1) : null,
           icon: const Icon(Icons.remove),
         ),
@@ -411,7 +452,9 @@ class RentalQuantityRow extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         IconButton.filledTonal(
+          key: const ValueKey('order-quantity-more'),
           tooltip: 'One more',
+          style: style,
           onPressed: () => onStep(1),
           icon: const Icon(Icons.add),
         ),
@@ -713,7 +756,13 @@ class _OfflineMoney extends ConsumerWidget {
                 else
                   RentalUpiQr(
                     upiId: upiId,
-                    payee: 'Rent payment',
+                    // The name the customer's UPI app shows: the business's own.
+                    payee:
+                        ref
+                            .watch(businessProfileProvider)
+                            .value
+                            ?.businessName ??
+                        'Rent payment',
                     amount: now,
                     note: 'Advance for $quantity ${item.name}',
                   ),
@@ -725,3 +774,40 @@ class _OfflineMoney extends ConsumerWidget {
     );
   }
 }
+
+/// "Have you received ₹300 by UPI QR?" — asked before a walk-in order with an advance is booked.
+///
+/// True: the money is in hand, so it is recorded. False ("Not yet"): nothing is recorded, and the
+/// advance is collected from the order later. Either way the order is confirmed. Null: the business
+/// backed out, and nothing is booked.
+Future<bool?> showRentalAdvanceReceivedDialog(
+  BuildContext context, {
+  required double amount,
+  required bool byUpi,
+  required String methodName,
+}) => showDialog<bool>(
+  context: context,
+  builder: (dialogContext) => AlertDialog(
+    key: const ValueKey('advance-received-dialog'),
+    title: Text('Received ${rupees(amount)}?'),
+    content: Text(
+      byUpi
+          ? 'Check your UPI app shows ${rupees(amount)} from the customer before you say yes. '
+                'Not yet? The order is still confirmed; collect the advance from the order later.'
+          : 'Say yes only once the ${rupees(amount)} in $methodName is in your hand. '
+                'Not yet? The order is still confirmed; collect the advance from the order later.',
+    ),
+    actions: [
+      TextButton(
+        key: const ValueKey('advance-not-yet'),
+        onPressed: () => Navigator.pop(dialogContext, false),
+        child: const Text('Not yet'),
+      ),
+      FilledButton(
+        key: const ValueKey('advance-received'),
+        onPressed: () => Navigator.pop(dialogContext, true),
+        child: Text('Yes, received by $methodName'),
+      ),
+    ],
+  ),
+);

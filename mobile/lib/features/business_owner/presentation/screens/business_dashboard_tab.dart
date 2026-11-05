@@ -11,6 +11,7 @@ import 'package:zuno/features/business_owner/presentation/screens/business_profi
 import 'package:zuno/features/business_owner/presentation/screens/dashboard_detail_screens.dart';
 import 'package:zuno/shared/widgets/empty_state.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
+import 'package:zuno/shared/widgets/profile_incomplete_banner.dart';
 import 'package:zuno/shared/widgets/section_header.dart';
 import 'package:zuno/shared/widgets/stat_tile.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
@@ -67,6 +68,7 @@ class _Body extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
+        const _FinishProfileBanner(),
         // Named like the Full-time jobs section below, so each group of tiles says which kind of
         // work it counts. The names come from the label table, the same ones the worker home uses.
         SectionHeader(
@@ -195,6 +197,26 @@ class _CompletedCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// First on the home screen until the profile is complete — today that means a UPI ID, without
+/// which no payment QR can be shown. Nothing while the profile loads or once it is complete.
+class _FinishProfileBanner extends ConsumerWidget {
+  const _FinishProfileBanner();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(businessProfileProvider).value;
+    if (profile == null || profile.isComplete) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: ProfileIncompleteBanner(
+        missing: profile.missingDetails,
+        why: 'Customers pay you by scanning a QR made from it. Tap to add it.',
+        onTap: () => pushScreen(context, const BusinessProfileScreen()),
       ),
     );
   }

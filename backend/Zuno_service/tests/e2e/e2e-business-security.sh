@@ -87,17 +87,20 @@ eq "SuperAdmin cannot be self-registered" \
 
 cool
 
-# Its own window: this is the sixth auth call, and the limiter allows five a minute — run with the
-# others it measures the rate limiter rather than the rule.
-eq "An existing email is refused" \
-   "$(code POST /auth/register '' "{\"firstName\":\"X\",\"lastName\":\"Y\",\"email\":\"owner@zuno.local\",\"password\":\"E2e@12345\",\"phoneNumber\":\"$PA\",\"role\":\"Worker\"}")" "400"
-
 head_ "SETTING UP TWO BUSINESSES, A CUSTOMER AND A WORKER"
 AT=$(reg BossA "sec_a$S@zuno.local" "$(free_phone)" E2e@12345 BusinessOwner | j accessToken)
 BT=$(reg BossB "sec_b$S@zuno.local" "$(free_phone)" E2e@12345 BusinessOwner | j accessToken)
 CT=$(reg Cust  "sec_c$S@zuno.local" "$(free_phone)" E2e@12345 Customer     | j accessToken)
 WT=$(reg Work  "sec_w$S@zuno.local" "$(free_phone)" E2e@12345 Worker       | j accessToken)
 eq "Four accounts registered" "$([ -n "$AT" ] && [ -n "$BT" ] && [ -n "$CT" ] && [ -n "$WT" ] && echo yes)" "yes"
+
+cool
+
+# An email this run has just registered, so the check holds on any database — it once used a seeded
+# account that a fresh database does not have. In its own window, so it measures the rule and not
+# the five-a-minute sign-up limiter.
+eq "An existing email is refused" \
+   "$(code POST /auth/register '' "{\"firstName\":\"X\",\"lastName\":\"Y\",\"email\":\"sec_a$S@zuno.local\",\"password\":\"E2e@12345\",\"phoneNumber\":\"$(free_phone)\",\"role\":\"Worker\"}")" "400"
 [ -n "$AT" ] && [ -n "$BT" ] && [ -n "$CT" ] && [ -n "$WT" ] || { echo "ABORTED: setup failed"; exit 1; }
 
 BIZ_A=$(sql "select b.id from business_owner_profiles b join users u on u.id=b.user_id where u.email='sec_a$S@zuno.local'")

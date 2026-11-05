@@ -9,7 +9,7 @@ import 'package:zuno/features/worker/presentation/widgets/worker_profile_edit_sh
 /// The sheet saved and closed without a word. Two screens open it and neither said anything, so a
 /// worker who had just changed the account their wages are paid into watched it close with no sign
 /// it had worked — and the one thing they would want confirmed is exactly that one.
-WorkerProfile _profile() => const WorkerProfile(
+WorkerProfile _profile({String? upiVpa = 'test@oksbi'}) => WorkerProfile(
   id: 'w1',
   fullName: 'Test Worker',
   phoneNumber: '9100007530',
@@ -19,8 +19,9 @@ WorkerProfile _profile() => const WorkerProfile(
   level: 1,
   levelName: 'New',
   jobsToNextLevel: 2,
-  upiVpa: 'test@oksbi',
-  hasPayoutDestination: true,
+  upiVpa: upiVpa,
+  missingDetails: upiVpa == null ? const ['UPI ID'] : const [],
+  hasPayoutDestination: upiVpa != null,
   canReceivePayouts: true,
   payoutVerificationStatus: 'Verified',
   totalEarned: 0,
@@ -32,15 +33,20 @@ WorkerProfile _profile() => const WorkerProfile(
   openDisputes: 0,
 );
 
-Future<void> openSheet(WidgetTester tester) async {
+Future<void> openSheet(
+  WidgetTester tester, {
+  String? upiVpa = 'test@oksbi',
+}) async {
   await tester.pumpWidget(
     ProviderScope(
       child: MaterialApp(
         home: Scaffold(
           body: Builder(
             builder: (context) => TextButton(
-              onPressed: () =>
-                  showWorkerProfileEditSheet(context, profile: _profile()),
+              onPressed: () => showWorkerProfileEditSheet(
+                context,
+                profile: _profile(upiVpa: upiVpa),
+              ),
               child: const Text('open'),
             ),
           ),
@@ -63,7 +69,7 @@ void main() {
     expect(find.widgetWithText(TextFormField, 'First name'), findsOneWidget);
     expect(find.widgetWithText(TextFormField, 'Last name'), findsOneWidget);
     expect(find.widgetWithText(TextFormField, 'Phone number'), findsOneWidget);
-    expect(find.widgetWithText(TextFormField, 'UPI address'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'UPI ID'), findsOneWidget);
     expect(find.text('Save'), findsOneWidget);
   });
 
@@ -102,5 +108,51 @@ void main() {
     // Closed, with no claim of a save — and crucially no request either, since nothing changed.
     expect(find.text('Save'), findsNothing);
     expect(find.text('Profile updated.'), findsNothing);
+  });
+
+  testWidgets('a worker without a UPI ID cannot save until one is added', (
+    tester,
+  ) async {
+    await openSheet(tester, upiVpa: null);
+
+    // Changing the phone alone is not enough: the profile is not complete without a UPI ID.
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Phone number'),
+      '9100007531',
+    );
+    final save = find.text('Save');
+    await tester.ensureVisible(save);
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Add your UPI ID — it is how businesses pay your wages.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Save'),
+      findsOneWidget,
+      reason: 'still open, nothing saved',
+    );
+  });
+
+  testWidgets('a malformed UPI ID is refused before a round trip', (
+    tester,
+  ) async {
+    await openSheet(tester);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('worker-upi-id')),
+      'ravi@12',
+    );
+    final save = find.text('Save');
+    await tester.ensureVisible(save);
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('A UPI ID looks like name@bank, for example ravi@okhdfcbank.'),
+      findsOneWidget,
+    );
   });
 }

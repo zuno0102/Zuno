@@ -6,7 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:zuno/core/payments/upi_pay.dart';
 import 'package:zuno/core/utils/formatting.dart';
+import 'package:zuno/features/business_owner/domain/entities/business_profile.dart';
 import 'package:zuno/features/business_owner/domain/entities/business_service.dart';
+import 'package:zuno/features/business_owner/presentation/providers/business_profile_notifier.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_services_notifier.dart';
 import 'package:zuno/features/catalog/domain/entities/app_options.dart';
 import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
@@ -30,6 +32,7 @@ import 'package:zuno/features/rental/presentation/widgets/rental_cancel_steps_se
 import 'package:zuno/features/rental/presentation/widgets/rental_collect_sheet.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_order_actions.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_item_form_sheet.dart';
+import 'package:zuno/shared/domain/upi_id.dart';
 import 'package:zuno/shared/widgets/stat_tile.dart';
 
 const _tools = RentalCategory(
@@ -232,6 +235,7 @@ class _FakeRentalRepository implements RentalRepository {
     'OnRent': ('On rent', 'danger'),
     'Returned': ('Returned', 'success'),
     'Cancelled': ('Cancelled', 'waiting'),
+    'AwaitingAdvance': ('Awaiting advance', 'waiting'),
   };
 
   /// The order as the server would send it in [status]: its pieces, and its money — paid, what is
@@ -320,6 +324,9 @@ class _FakeRentalRepository implements RentalRepository {
       paymentStatusName: _paymentNames[standing],
       paymentStatusTone: standing == 'Paid' ? 'success' : 'progress',
       payments: payments ?? o.payments,
+      payNowAmount: status == 'AwaitingAdvance'
+          ? (o.advanceDue - paidNow).clamp(0, double.infinity).toDouble()
+          : balance,
       canCollect: balance > 0 && status != 'Returned',
       canRefund: owed > 0 && mode != RentalRefundMode.online,
       upiId: upiId,
@@ -377,12 +384,6 @@ class _FakeRentalRepository implements RentalRepository {
 
   @override
   Future<String?> getUpiId() async => upiId;
-
-  @override
-  Future<String?> setUpiId(String? value) async {
-    calls.add('upi:${value ?? '-'}');
-    return upiId = value;
-  }
 
   @override
   Future<RentalOrder> recordPayment(String id, RentalPaymentInput input) async {
@@ -664,7 +665,8 @@ class _FakeRentalRepository implements RentalRepository {
     onCreate?.call(input);
     calls.add(
       'create-order:${input.rentalItemId}:${input.quantity}'
-      '${input.advanceMethod == null ? '' : ':${input.advanceMethod}'}',
+      '${input.advanceMethod == null ? '' : ':${input.advanceMethod}'}'
+      '${input.advanceReceived ? ':received' : ''}',
     );
     if (refuseNextBooking case final reason?) {
       refuseNextBooking = null;
@@ -689,6 +691,9 @@ class _FakeRentalRepository implements RentalRepository {
     if (advance > 0 && input.advanceMethod == null) {
       throw Exception('${item.name} asks an advance. Say how it was paid.');
     }
+    // Like the server: an offline order is always confirmed. An advance not in hand yet is simply
+    // not recorded; it stays due and is collected from the order later.
+    final held = advance > 0 && !input.advanceReceived;
     final created = RentalOrder(
       id: 'new-${calls.length}',
       rentalItemId: item.id,
@@ -708,9 +713,9 @@ class _FakeRentalRepository implements RentalRepository {
       units: rentalUnits(item.priceType, input.startDate, input.endDate),
       amount: amount,
       advanceDue: advance,
-      paid: advance,
+      paid: held ? 0 : advance,
       payments: [
-        if (advance > 0)
+        if (advance > 0 && !held)
           RentalOrderPayment(
             id: 'adv',
             at: DateTime(2026, 11, 1),
@@ -722,7 +727,7 @@ class _FakeRentalRepository implements RentalRepository {
           ),
       ],
     );
-    final stored = _withState(created, 'Booked');
+    final stored = _withState(created, created.status);
     (orders[item.id] ??= []).add(stored);
     _step(created.id, 'Booked', created.quantity);
     return stored;
@@ -2464,7 +2469,7 @@ void main() {
 
       expect(repository.calls, ['create-order:chairs:300']);
       expect(
-        find.textContaining('Booked: 300 × Plastic chair for C'),
+        find.textContaining('Order confirmed: 300 × Plastic chair for C'),
         findsOneWidget,
       );
     });
@@ -2725,6 +2730,33 @@ void main() {
         'tn': 'Rent 100 chairs',
       });
     });
+
+    test(
+      'the UPI link keeps the @ and writes spaces as %20, as UPI apps read it',
+      () {
+        expect(
+          rentalUpiUri(
+            upiId: 'joy.rentals@okhdfcbank',
+            payee: 'Joy Rentals & Co',
+            amount: 1500,
+            note: 'Rent 100 chairs',
+          ),
+          'upi://pay?pa=joy.rentals@okhdfcbank&pn=Joy%20Rentals%20%26%20Co'
+          '&am=1500.00&cu=INR&tn=Rent%20100%20chairs',
+        );
+      },
+    );
+
+    test('a scanned business QR gives back its UPI ID', () {
+      final link = rentalUpiUri(
+        upiId: 'ravi-99@ybl',
+        payee: 'Ravi',
+        amount: 10.5,
+        note: 'Advance',
+      );
+      expect(rentalUpiIdFrom(link), 'ravi-99@ybl');
+      expect(Uri.parse(link).queryParameters['am'], '10.50');
+    });
   });
 
   group('Payments: advance, collect by UPI QR or cash, paid before return', () {
@@ -2796,6 +2828,9 @@ void main() {
         ProviderScope(
           overrides: [
             rentalRepositoryProvider.overrideWithValue(repository),
+            businessProfileProvider.overrideWith(
+              () => _FakeBusinessProfile(repository),
+            ),
             rentalUpiPayProvider.overrideWithValue(
               upiPay ??
                   (_) async => throw StateError('No UPI app should open here.'),
@@ -2937,37 +2972,51 @@ void main() {
       },
     );
 
-    testWidgets(
-      'with no UPI ID the sheet offers to add one, then shows the QR',
-      (tester) async {
-        final repository = await pumpPayments(tester, [
-          priced('o1', 'Booked'),
-        ], upiId: null);
-        await openCollect(tester);
+    testWidgets('with no UPI ID the sheet offers to add one, then shows the QR', (
+      tester,
+    ) async {
+      final repository = await pumpPayments(tester, [
+        priced('o1', 'Booked'),
+      ], upiId: null);
+      await openCollect(tester);
 
-        expect(find.byType(QrImageView), findsNothing);
-        await tester.tap(find.byKey(const ValueKey('add-upi-id')));
-        await tester.pumpAndSettle();
+      expect(find.byType(QrImageView), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('add-upi-id')));
+      await tester.pumpAndSettle();
 
-        await tester.enterText(
-          find.byKey(const ValueKey('upi-id-field')),
-          'not a upi',
-        );
-        await tester.tap(primary('Save'));
-        await tester.pumpAndSettle();
-        expect(find.text('Enter a UPI ID like name@bank.'), findsOneWidget);
+      await tester.enterText(
+        find.byKey(const ValueKey('upi-id-field')),
+        'not a upi',
+      );
+      await tester.tap(primary('Save'));
+      await tester.pumpAndSettle();
+      expect(find.text(upiIdHint), findsOneWidget);
 
-        await tester.enterText(
-          find.byKey(const ValueKey('upi-id-field')),
-          'joy@okhdfcbank',
-        );
-        await tester.tap(primary('Save'));
-        await tester.pumpAndSettle();
+      // Required: an empty ID is not "remove it", it is refused.
+      await tester.enterText(find.byKey(const ValueKey('upi-id-field')), '');
+      await tester.tap(primary('Save'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Enter your UPI ID — customers pay you by scanning it.'),
+        findsOneWidget,
+      );
+      expect(repository.calls, isEmpty);
 
-        expect(repository.calls, ['upi:joy@okhdfcbank']);
-        expect(find.byType(QrImageView), findsOneWidget);
-      },
-    );
+      await tester.enterText(
+        find.byKey(const ValueKey('upi-id-field')),
+        'joy@okhdfcbank',
+      );
+      await tester.tap(primary('Save'));
+      await tester.pumpAndSettle();
+
+      // Saved on the business profile — the one place it is kept — and the QR follows.
+      expect(repository.calls, ['profile-upi:joy@okhdfcbank']);
+      expect(find.byType(QrImageView), findsOneWidget);
+      expect(
+        find.textContaining('UPI ID saved on your business profile'),
+        findsOneWidget,
+      );
+    });
 
     testWidgets('a cancelled order holding the advance records the refund', (
       tester,
@@ -3662,11 +3711,88 @@ void main() {
         await tester.tap(book);
         await tester.pumpAndSettle();
 
-        expect(repository.calls, ['create-order:chairs:100:Cash']);
+        // Never booked as paid on a guess: the business is asked first.
+        expect(find.text('Received ${rupees(500)}?'), findsOneWidget);
+        expect(repository.calls, isEmpty);
+        await tester.tap(find.byKey(const ValueKey('advance-received')));
+        await tester.pumpAndSettle();
+
+        expect(repository.calls, ['create-order:chairs:100:Cash:received']);
         expect(
-          find.textContaining('Advance ${rupees(500)} taken.'),
+          find.textContaining('Advance ${rupees(500)} received.'),
           findsOneWidget,
         );
+      },
+    );
+
+    testWidgets(
+      'an advance not yet received still confirms the order, to collect later',
+      (tester) async {
+        final repository = await pumpPayments(
+          tester,
+          const [],
+          items: [
+            _item(
+              id: 'chairs',
+              name: 'Plastic chair',
+              quantity: 1000,
+              price: 10,
+              advanceType: RentalAdvanceType.perOrder,
+              advanceAmount: 500,
+            ),
+          ],
+        );
+        await tester.tap(find.text('Offline order'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Choose the item'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Plastic chair').last);
+        await tester.pumpAndSettle();
+        await tester.enterText(
+          find.byKey(const ValueKey('order-quantity')),
+          '100',
+        );
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Customer name'),
+          'Anu',
+        );
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Where it goes'),
+          'Town Hall',
+        );
+        await tester.pumpAndSettle();
+        final book = primary('Book');
+        await tester.ensureVisible(book);
+        await tester.tap(book);
+        await tester.pumpAndSettle();
+        expect(
+          find.textContaining('Check your UPI app shows ${rupees(500)}'),
+          findsOneWidget,
+        );
+        await tester.tap(find.byKey(const ValueKey('advance-not-yet')));
+        await tester.pumpAndSettle();
+
+        expect(repository.calls, ['create-order:chairs:100:UpiQr']);
+        expect(
+          find.textContaining(
+            'Order confirmed: 100 × Plastic chair for Anu. '
+            'Advance ${rupees(500)} to collect from the order.',
+          ),
+          findsOneWidget,
+        );
+        final booked = repository.orders['chairs']!.single;
+        expect(booked.status, 'Booked', reason: 'confirmed, not held');
+        expect(booked.holdUntil, isNull);
+        expect(booked.paid, 0);
+        expect(booked.payments, isEmpty);
+
+        // The business takes the money from the order once it arrives.
+        await tester.tap(find.text('Anu'));
+        await tester.pumpAndSettle();
+        final collect = find.byKey(const ValueKey('collect-payment'));
+        await tester.ensureVisible(collect);
+        // The whole order is due — the advance with the rest.
+        expect(find.text('Collect ${rupees(booked.amount)}'), findsOneWidget);
       },
     );
 
@@ -3754,11 +3880,19 @@ void main() {
     String typedAdvance(WidgetTester tester) =>
         tester.widget<TextFormField>(advanceField).controller!.text;
 
-    Future<void> book(WidgetTester tester) async {
+    /// Taps Book and, when asked whether the advance is in hand, answers [received].
+    Future<void> book(WidgetTester tester, {bool received = true}) async {
       final button = primary('Book');
       await tester.ensureVisible(button);
       await tester.tap(button);
       await tester.pumpAndSettle();
+      final answer = find.byKey(
+        ValueKey(received ? 'advance-received' : 'advance-not-yet'),
+      );
+      if (answer.evaluate().isNotEmpty) {
+        await tester.tap(answer);
+        await tester.pumpAndSettle();
+      }
     }
 
     testWidgets(
@@ -3799,6 +3933,8 @@ void main() {
         final qr = tester.widget<RentalUpiQr>(find.byType(RentalUpiQr));
         expect(qr.amount, 750);
         expect(qr.upiId, 'joy@okhdfcbank');
+        // The business's own name, as the customer's UPI app shows it.
+        expect(qr.payee, 'Joy Rentals');
 
         // Typing on: the pieces no longer reset it.
         await tester.enterText(
@@ -3809,7 +3945,7 @@ void main() {
         expect(typedAdvance(tester), '750');
 
         await book(tester);
-        expect(repository.calls, ['create-order:chairs:120:UpiQr']);
+        expect(repository.calls, ['create-order:chairs:120:UpiQr:received']);
       },
     );
 
@@ -3848,9 +3984,9 @@ void main() {
         await tester.tap(find.text('Cash'));
         await tester.pumpAndSettle();
         await book(tester);
-        expect(repository.calls, ['create-order:chairs:100:Cash']);
+        expect(repository.calls, ['create-order:chairs:100:Cash:received']);
         expect(
-          find.textContaining('Advance ${rupees(800)} taken.'),
+          find.textContaining('Advance ${rupees(800)} received.'),
           findsOneWidget,
         );
       },
@@ -3921,4 +4057,30 @@ class _ThrowingStockRepository extends _FakeRentalRepository {
     required int quantityOwned,
     required bool isAvailable,
   }) async => throw Exception('Rent is down');
+}
+
+/// The business profile, where the UPI ID is kept. Saving it is seen by Rent at once, as the server
+/// does by reading the profile when asked for the order QR's UPI ID.
+class _FakeBusinessProfile extends BusinessProfileNotifier {
+  _FakeBusinessProfile(this._rent);
+
+  final _FakeRentalRepository _rent;
+
+  @override
+  Future<BusinessProfile> build() async => _profile(_rent.upiId);
+
+  @override
+  Future<void> setUpiId(String upiId) async {
+    _rent.calls.add('profile-upi:$upiId');
+    _rent.upiId = upiId;
+    state = AsyncData(_profile(upiId));
+  }
+
+  static BusinessProfile _profile(String? upiId) => BusinessProfile(
+    id: 'b1',
+    businessName: 'Joy Rentals',
+    verificationStatus: 'Verified',
+    upiId: upiId,
+    missingDetails: upiId == null ? const ['UPI ID'] : const [],
+  );
 }

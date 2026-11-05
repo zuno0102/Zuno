@@ -7,6 +7,7 @@ import 'package:zuno/features/vacancy/presentation/screens/vacancy_applicants_sc
 import 'package:zuno/features/vacancy/presentation/widgets/vacancy_form_sheet.dart';
 import 'package:zuno/features/vacancy/presentation/widgets/vacancy_labels.dart';
 import 'package:zuno/features/vacancy/presentation/widgets/vacancy_payment_flow.dart';
+import 'package:zuno/shared/widgets/stop_hiring_button.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/confirm_dialog.dart';
 import 'package:zuno/shared/widgets/empty_state.dart';
@@ -156,10 +157,7 @@ class _VacancyCard extends ConsumerWidget {
                   label: Text('Applicants (${v.applicantCount})'),
                 ),
                 if (v.canStop)
-                  TextButton(
-                    onPressed: () => _stop(context, ref),
-                    child: const Text('Stop hiring'),
-                  ),
+                  StopHiringButton(onPressed: () => _stop(context, ref)),
                 // One tap, no form: free while the paid period lasts. After it, Renew shows instead.
                 if (v.isStopped && v.canResume)
                   FilledButton.icon(

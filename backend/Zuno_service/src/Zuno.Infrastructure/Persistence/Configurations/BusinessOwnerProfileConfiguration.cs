@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Zuno.Application.Modules.Worker.Common;
 using Zuno.Domain.Entities;
 
 namespace Zuno.Infrastructure.Persistence.Configurations;
@@ -15,6 +16,7 @@ public class BusinessOwnerProfileConfiguration : IEntityTypeConfiguration<Busine
         builder.Property(bp => bp.GstNumber).HasMaxLength(15);
         builder.Property(bp => bp.Description).HasMaxLength(1000);
         builder.Property(bp => bp.LogoUrl).HasMaxLength(500);
+        builder.Property(bp => bp.UpiId).HasMaxLength(UpiFormat.MaxLength);
 
         builder.HasIndex(bp => bp.UserId).IsUnique().HasDatabaseName("ux_business_owner_profiles_user_id");
 

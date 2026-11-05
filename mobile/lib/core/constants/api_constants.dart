@@ -52,6 +52,7 @@ class ApiConstants {
 
   /// The business's profile picture: POST to set it, DELETE to remove it.
   static const String businessProfileLogoPath = '$businessProfilePath/logo';
+  static const String businessProfileUpiIdPath = '$businessProfilePath/upi-id';
   static const String businessDashboardPath =
       '/api/$apiVersion/business/dashboard';
   static const String businessServicesPath =

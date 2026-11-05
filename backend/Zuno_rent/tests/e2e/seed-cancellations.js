@@ -166,7 +166,7 @@ const POLICIES = [
   let s12 = await call("POST", `${R}/business/rental-orders`, biz, {
     rentalItemId: item("Plastic chair (white)").id, quantity: 30, startDate: day(2).toISOString(), endDate: dayEnd(2).toISOString(),
     customerName: "Test · S12 cash, business cancelled", customerPhone: "9000000000",
-    deliveryAddress: "Town Hall, Kakkanad (test)", advanceMethod: "Cash",
+    deliveryAddress: "Town Hall, Kakkanad (test)", advanceMethod: "Cash", advanceReceived: true,
   });
   show("S12 Offline cash order, business cancelled — Online refund not offered", await businessCancels(s12, "InHand"));
 })().catch(e => { console.error("FAILED:", e.message); process.exit(1); });

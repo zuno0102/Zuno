@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:zuno/shared/widgets/stop_hiring_button.dart';
 import 'package:zuno/features/business_owner/presentation/screens/business_hiring_posts_tab.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
 import 'package:zuno/features/hiring_post/domain/entities/hiring_post_application.dart';
@@ -115,6 +116,11 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(stopButton, findsOneWidget);
+    expect(
+      find.widgetWithText(StopHiringButton, 'Stop hiring'),
+      findsOneWidget,
+      reason: 'the same bordered button as on a full-time job',
+    );
     expect(
       find.descendant(
         of: stopButton,

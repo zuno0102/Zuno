@@ -11,6 +11,8 @@ public class UpdateBusinessProfileCommandValidator : AbstractValidator<UpdateBus
         RuleFor(x => x.Description).MaximumLength(1000);
         RuleFor(x => x.LogoUrl).MaximumLength(500);
 
+        RuleFor(x => x.UpiId!).BusinessUpiId().When(x => x.UpiId is not null);
+
         When(x => !string.IsNullOrWhiteSpace(x.GstNumber), () =>
         {
             RuleFor(x => x.GstNumber!)

@@ -34,7 +34,7 @@ final class BusinessProfileNotifierProvider
 }
 
 String _$businessProfileNotifierHash() =>
-    r'd7d58daa09175eb9606b171a129fcdc82915ac50';
+    r'336b5e0ea2a3c704ba56ef70c62b78f6033b65a6';
 
 abstract class _$BusinessProfileNotifier
     extends $AsyncNotifier<BusinessProfile> {

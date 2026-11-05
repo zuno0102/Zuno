@@ -21,6 +21,7 @@ using Zuno.Application.Modules.Business.Commands.RemoveBusinessWorker;
 using Zuno.Application.Modules.Business.Commands.SetBusinessServiceMedia;
 using Zuno.Application.Modules.Business.Commands.SetBusinessServiceVariantImage;
 using Zuno.Application.Modules.Business.Commands.SetBusinessServiceVariantVideo;
+using Zuno.Application.Modules.Business.Commands.SetBusinessUpiId;
 using Zuno.Application.Modules.Business.Commands.UpdateBusinessProfile;
 using Zuno.Application.Modules.Business.Commands.UpdateBusinessService;
 using Zuno.Application.Modules.Business.Commands.UpdateBusinessServiceVariant;
@@ -66,6 +67,11 @@ public class BusinessController(
         var result = await mediator.Send(command, cancellationToken);
         return Ok(result);
     }
+
+    /// <summary>Sets only the UPI ID — the quick "Add UPI ID" beside a payment QR.</summary>
+    [HttpPut("profile/upi-id")]
+    public async Task<IActionResult> SetMyUpiId(SetBusinessUpiIdCommand command, CancellationToken cancellationToken) =>
+        Ok(await mediator.Send(command, cancellationToken));
 
     /// <summary>Sets the signed-in business's profile picture.</summary>
     /// <remarks>

@@ -20,6 +20,7 @@ class BusinessRepositoryImpl implements BusinessRepository {
   @override
   Future<BusinessProfile> updateMyProfile({
     required String businessName,
+    required String upiId,
     String? businessType,
     String? gstNumber,
     String? description,
@@ -33,6 +34,7 @@ class BusinessRepositoryImpl implements BusinessRepository {
   }) async {
     final model = await _remoteDataSource.updateMyProfile({
       'businessName': businessName,
+      'upiId': upiId,
       'businessType': businessType,
       'gstNumber': gstNumber,
       'description': description,
@@ -46,6 +48,10 @@ class BusinessRepositoryImpl implements BusinessRepository {
     });
     return model.toEntity();
   }
+
+  @override
+  Future<BusinessProfile> setUpiId(String upiId) async =>
+      (await _remoteDataSource.setUpiId(upiId)).toEntity();
 
   @override
   Future<BusinessProfile> uploadLogo(Uint8List imageBytes) async =>
@@ -123,8 +129,10 @@ class BusinessRepositoryImpl implements BusinessRepository {
   Future<BusinessService> setServiceQuestions(
     String serviceId,
     List<Map<String, dynamic>> questions,
-  ) async =>
-      (await _remoteDataSource.setServiceQuestions(serviceId, questions)).toEntity();
+  ) async => (await _remoteDataSource.setServiceQuestions(
+    serviceId,
+    questions,
+  )).toEntity();
 
   @override
   Future<BusinessService> uploadServiceImage(
@@ -248,10 +256,11 @@ class BusinessRepositoryImpl implements BusinessRepository {
       (await _remoteDataSource.getWorkers()).map((m) => m.toEntity()).toList();
 
   @override
-  Future<List<WorkerBusyPeriod>> getWorkerBusyDates(String workerProfileId) async =>
-      (await _remoteDataSource.getWorkerBusyDates(workerProfileId))
-          .map((p) => p.toEntity())
-          .toList();
+  Future<List<WorkerBusyPeriod>> getWorkerBusyDates(
+    String workerProfileId,
+  ) async => (await _remoteDataSource.getWorkerBusyDates(
+    workerProfileId,
+  )).map((p) => p.toEntity()).toList();
 
   @override
   Future<BusinessWorker> inviteWorker(String workerIdentifier) async =>

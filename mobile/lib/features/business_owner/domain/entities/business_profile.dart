@@ -9,6 +9,8 @@ class BusinessProfile {
     this.gstNumber,
     this.description,
     this.logoUrl,
+    this.upiId,
+    this.missingDetails = const [],
     this.addressLine1,
     this.addressLine2,
     this.city,
@@ -28,6 +30,14 @@ class BusinessProfile {
   final String? gstNumber;
   final String? description;
   final String? logoUrl;
+
+  /// Where customers pay by UPI. Every payment QR the business shows — Service and Rent — is made
+  /// from it. Null until the business finishes its profile.
+  final String? upiId;
+
+  /// What the business still has to fill in, in the server's words (e.g. "UPI ID").
+  final List<String> missingDetails;
+
   final String verificationStatus;
   final String? addressLine1;
   final String? addressLine2;
@@ -46,4 +56,7 @@ class BusinessProfile {
   final BusinessTrust trust;
 
   bool get hasAddress => addressLine1 != null && addressLine1!.isNotEmpty;
+
+  /// Whether every required detail is filled in.
+  bool get isComplete => missingDetails.isEmpty;
 }

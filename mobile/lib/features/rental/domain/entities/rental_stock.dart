@@ -352,7 +352,12 @@ class RentalOrderInput {
     this.customerPhone,
     this.advanceMethod,
     this.advanceAmount,
+    this.advanceReceived = false,
   });
+
+  /// The business says the advance is already in its hands. Only then is it recorded and the
+  /// order booked; otherwise the order waits for the advance, pieces held, nothing paid.
+  final bool advanceReceived;
 
   final String rentalItemId;
   final int quantity;
@@ -379,6 +384,7 @@ class RentalOrderInput {
     'deliveryAddress': deliveryAddress,
     'advanceMethod': ?advanceMethod,
     'advanceAmount': ?advanceAmount,
+    'advanceReceived': advanceReceived,
   };
 }
 

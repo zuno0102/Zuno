@@ -82,11 +82,19 @@ step "2. THE BUSINESS PROFILE"
 PROF=$(G /business/profile "$BT")
 has "Profile reads back"            "$PROF" '"success":true'
 has "...and starts unverified"      "$PROF" '"verificationStatus":"Pending"'
-R=$(PU /business/profile "$BT" '{"businessName":"Boss T Catering","description":"Weddings and events","yearsOfExperience":7}')
+has "...and asks for a UPI ID first" "$PROF" '"missingDetails":["UPI ID"]'
+no  "A profile without a UPI ID is refused" "$(PU /business/profile "$BT" '{"businessName":"Boss T Catering","description":"x"}')"
+no  "A malformed UPI ID is refused"      "$(PU /business/profile "$BT" '{"businessName":"Boss T Catering","upiId":"boss@12"}')"
+R=$(PU /business/profile "$BT" '{"businessName":"Boss T Catering","description":"Weddings and events","upiId":"BossT.Catering@OkAxis"}')
 yes "Profile changed" "$R" ""
 has "...and the new name came back"  "$R" 'Boss T Catering'
 eq  "...and it stuck in the database" "$(sql "select business_name from business_owner_profiles where id='$BIZ'")" "Boss T Catering"
-no  "A blank business name is refused" "$(PU /business/profile "$BT" '{"businessName":"","description":"x","yearsOfExperience":1}')"
+eq  "...with its UPI ID, lower-case"  "$(sql "select upi_id from business_owner_profiles where id='$BIZ'")" "bosst.catering@okaxis"
+has "...and the profile is complete"  "$R" '"missingDetails":[]'
+yes "The quick Add UPI ID changes it" "$(PU /business/profile/upi-id "$BT" '{"upiId":"bosst.pay@ybl"}')" ""
+eq  "...in the same place"            "$(sql "select upi_id from business_owner_profiles where id='$BIZ'")" "bosst.pay@ybl"
+no  "...and cannot clear it"          "$(PU /business/profile/upi-id "$BT" '{"upiId":""}')"
+no  "A blank business name is refused" "$(PU /business/profile "$BT" '{"businessName":"","description":"x","upiId":"bosst.pay@ybl"}')"
 
 # Verification is an admin act, not a business one. Done directly because an admin journey is a
 # different scenario; what matters here is that an unverified business cannot be found.

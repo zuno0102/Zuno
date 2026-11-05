@@ -19,6 +19,7 @@ class WorkerProfile {
     this.experienceYears,
     this.hourlyRate,
     this.upiVpa,
+    this.missingDetails = const [],
     this.hasPayoutDestination = false,
     this.canReceivePayouts = false,
     this.totalEarned = 0,
@@ -60,6 +61,13 @@ class WorkerProfile {
   final String? nextLevelRequirement;
 
   final String? upiVpa;
+
+  /// What the worker still has to fill in, in the server's words (e.g. "UPI ID").
+  final List<String> missingDetails;
+
+  /// Whether every required detail is filled in.
+  bool get isComplete => missingDetails.isEmpty;
+
   final bool hasPayoutDestination;
   final bool canReceivePayouts;
   final String payoutVerificationStatus;

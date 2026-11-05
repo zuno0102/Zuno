@@ -172,7 +172,11 @@ class RentalPaymentCard extends ConsumerWidget {
                 key: const ValueKey('collect-payment'),
                 onPressed: () => showRentalCollectSheet(context, order),
                 icon: const Icon(Icons.qr_code_2_rounded),
-                label: Text('Collect ${rupees(order.balance)}'),
+                label: Text(
+                  order.isAwaitingAdvance
+                      ? 'Collect advance ${rupees(order.payNowAmount)}'
+                      : 'Collect ${rupees(order.balance)}',
+                ),
               ),
             ],
             if (isBusiness && order.canRefund) ...[

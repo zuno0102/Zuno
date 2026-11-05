@@ -14,6 +14,15 @@ public class BusinessProfileDto
 
     public string? LogoUrl { get; set; }
 
+    /// <summary>Where customers pay by UPI; null until the business finishes its profile.</summary>
+    public string? UpiId { get; set; }
+
+    /// <summary>
+    /// What the business still has to fill in, in words, e.g. "UPI ID". Empty when the profile is
+    /// complete; the app asks for these before anything else.
+    /// </summary>
+    public List<string> MissingDetails { get; set; } = [];
+
     public string VerificationStatus { get; set; } = string.Empty;
 
     public string? AddressLine1 { get; set; }

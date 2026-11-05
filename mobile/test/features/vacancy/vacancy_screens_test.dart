@@ -12,6 +12,7 @@ import 'package:zuno/features/vacancy/presentation/screens/business_vacancies_ta
 import 'package:zuno/features/vacancy/presentation/screens/vacancy_applicants_screen.dart';
 import 'package:zuno/features/vacancy/presentation/screens/worker_vacancies_tab.dart';
 import 'package:zuno/features/vacancy/presentation/screens/worker_vacancy_detail_screen.dart';
+import 'package:zuno/shared/widgets/stop_hiring_button.dart';
 
 import 'vacancy_fixtures.dart';
 
@@ -68,6 +69,11 @@ void main() {
       expect(find.text('Not posted yet'), findsOneWidget);
       expect(find.text('Live'), findsOneWidget);
       expect(find.text('Stop hiring'), findsOneWidget);
+      expect(
+        find.widgetWithText(StopHiringButton, 'Stop hiring'),
+        findsOneWidget,
+        reason: 'the same bordered button as on a hire post',
+      );
       expect(find.text('Applicants (3)'), findsOneWidget);
     });
 

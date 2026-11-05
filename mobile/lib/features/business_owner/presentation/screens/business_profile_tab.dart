@@ -13,6 +13,8 @@ import 'package:zuno/shared/widgets/primary_button.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/app_permissions_link.dart';
 import 'package:zuno/shared/widgets/avatar_crop_screen.dart';
+import 'package:zuno/shared/domain/upi_id.dart';
+import 'package:zuno/shared/widgets/profile_incomplete_banner.dart';
 
 /// The profile as a page of its own, opened from the business home.
 ///
@@ -67,6 +69,9 @@ class _BusinessProfileFormState extends ConsumerState<_BusinessProfileForm> {
   late final _businessTypeController = TextEditingController(
     text: widget.profile.businessType,
   );
+  late final _upiIdController = TextEditingController(
+    text: widget.profile.upiId,
+  );
   late final _gstNumberController = TextEditingController(
     text: widget.profile.gstNumber,
   );
@@ -94,6 +99,7 @@ class _BusinessProfileFormState extends ConsumerState<_BusinessProfileForm> {
   void dispose() {
     _businessNameController.dispose();
     _businessTypeController.dispose();
+    _upiIdController.dispose();
     _gstNumberController.dispose();
     _descriptionController.dispose();
     _addressLine1Controller.dispose();
@@ -120,6 +126,7 @@ class _BusinessProfileFormState extends ConsumerState<_BusinessProfileForm> {
           .read(businessProfileProvider.notifier)
           .updateProfile(
             businessName: _businessNameController.text.trim(),
+            upiId: _upiIdController.text.trim(),
             businessType: _emptyToNull(_businessTypeController.text),
             gstNumber: _emptyToNull(_gstNumberController.text),
             description: _emptyToNull(_descriptionController.text),
@@ -141,6 +148,9 @@ class _BusinessProfileFormState extends ConsumerState<_BusinessProfileForm> {
       }
     }
   }
+
+  static const _incompleteWhy =
+      'Customers pay you by scanning a QR made from your UPI ID — for orders and rentals.';
 
   String? _emptyToNull(String value) =>
       value.trim().isEmpty ? null : value.trim();
@@ -178,6 +188,13 @@ class _BusinessProfileFormState extends ConsumerState<_BusinessProfileForm> {
                 ),
               ),
               const SizedBox(height: 16),
+              if (!widget.profile.isComplete) ...[
+                ProfileIncompleteBanner(
+                  missing: widget.profile.missingDetails,
+                  why: _incompleteWhy,
+                ),
+                const SizedBox(height: 16),
+              ],
               if (_errorMessage != null) ...[
                 ErrorBanner(message: _errorMessage!),
                 const SizedBox(height: 16),
@@ -189,6 +206,26 @@ class _BusinessProfileFormState extends ConsumerState<_BusinessProfileForm> {
                 validator: (value) => (value == null || value.trim().isEmpty)
                     ? 'Business name is required.'
                     : null,
+              ),
+              const SizedBox(height: 16),
+              _FieldLabel('UPI ID'),
+              TextFormField(
+                key: const ValueKey('business-upi-id'),
+                controller: _upiIdController,
+                keyboardType: TextInputType.emailAddress,
+                autocorrect: false,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: 'e.g. joyevents@okhdfcbank',
+                  helperText:
+                      'Required. Every payment QR you show customers is made from it.',
+                  helperMaxLines: 2,
+                ),
+                validator: (value) => upiIdProblem(
+                  value,
+                  missing:
+                      'Enter your UPI ID — customers pay you by scanning it.',
+                ),
               ),
               const SizedBox(height: 16),
               _FieldLabel('Business type'),

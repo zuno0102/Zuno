@@ -4,13 +4,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:zuno/features/business_owner/data/models/business_dashboard_model.dart';
 import 'package:zuno/features/business_owner/domain/entities/business_dashboard.dart';
 import 'package:zuno/features/business_owner/domain/entities/business_service.dart';
+import 'package:zuno/features/business_owner/domain/entities/business_profile.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_dashboard_notifier.dart';
+import 'package:zuno/features/business_owner/presentation/providers/business_profile_notifier.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_services_notifier.dart';
 import 'package:zuno/features/business_owner/presentation/screens/business_dashboard_tab.dart';
 import 'package:zuno/features/business_owner/presentation/screens/dashboard_detail_screens.dart';
 import 'package:zuno/features/catalog/domain/entities/order_stage.dart';
 import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
 import 'package:zuno/shared/domain/business_trust.dart';
+import 'package:zuno/shared/widgets/profile_incomplete_banner.dart';
 import 'package:zuno/features/vacancy/domain/entities/vacancy.dart';
 import 'package:zuno/features/vacancy/domain/entities/vacancy_payment.dart';
 import 'package:zuno/features/vacancy/domain/entities/vacancy_summary.dart';
@@ -116,7 +119,11 @@ void main() {
     trust: const BusinessTrust(),
   );
 
-  Future<void> pump(WidgetTester tester, BusinessDashboard data) async {
+  Future<void> pump(
+    WidgetTester tester,
+    BusinessDashboard data, {
+    BusinessProfile? profile,
+  }) async {
     // A narrow phone, where five tiles across would never have fitted. Tall enough that every
     // section is built: the list is lazy, and the Full-time jobs section pushed the last ones down.
     tester.view.physicalSize = const Size(720, 3200);
@@ -126,6 +133,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          if (profile != null)
+            businessProfileProvider.overrideWith(() => _Profile(profile)),
           businessDashboardProvider.overrideWith((ref) async => data),
           vacancySummaryProvider.overrideWith((ref) async => _summary),
           // A stage name that is not the live one: the row must show what the server sends.
@@ -140,6 +149,39 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  testWidgets('a profile without a UPI ID is asked for first on the home', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      dashboard,
+      profile: const BusinessProfile(
+        id: 'b1',
+        businessName: 'Joy Events',
+        verificationStatus: 'Verified',
+        missingDetails: ['UPI ID'],
+      ),
+    );
+
+    expect(find.byType(ProfileIncompleteBanner), findsOneWidget);
+    expect(find.text('Finish your profile: add your UPI ID'), findsOneWidget);
+  });
+
+  testWidgets('a complete profile shows no banner on the home', (tester) async {
+    await pump(
+      tester,
+      dashboard,
+      profile: const BusinessProfile(
+        id: 'b1',
+        businessName: 'Joy Events',
+        verificationStatus: 'Verified',
+        upiId: 'joyevents@okhdfcbank',
+      ),
+    );
+
+    expect(find.byType(ProfileIncompleteBanner), findsNothing);
+  });
 
   testWidgets('renders every section without a layout failure', (tester) async {
     await pump(tester, dashboard);
@@ -394,7 +436,13 @@ void main() {
         2,
         reason: 'Shortlisted is the third list',
       );
-      expect(find.text('Shortlisted (24)'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('applicants-tab-Shortlisted')),
+          matching: find.text('24'),
+        ),
+        findsOneWidget,
+      );
 
       // Active posts opens the jobs themselves.
       await tester.pageBack();
@@ -413,4 +461,13 @@ void main() {
 class _NoServices extends BusinessServicesNotifier {
   @override
   Future<List<BusinessService>> build() async => const [];
+}
+
+class _Profile extends BusinessProfileNotifier {
+  _Profile(this._profile);
+
+  final BusinessProfile _profile;
+
+  @override
+  Future<BusinessProfile> build() async => _profile;
 }

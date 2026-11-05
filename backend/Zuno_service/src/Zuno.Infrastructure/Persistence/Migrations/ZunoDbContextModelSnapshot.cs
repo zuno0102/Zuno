@@ -773,6 +773,11 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                         .HasColumnType("smallint")
                         .HasColumnName("status");
 
+                    b.Property<string>("UpiId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("upi_id");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");

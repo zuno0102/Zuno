@@ -23,6 +23,11 @@ WorkerProfileModel _$WorkerProfileModelFromJson(Map<String, dynamic> json) =>
       experienceYears: (json['experienceYears'] as num?)?.toInt(),
       hourlyRate: (json['hourlyRate'] as num?)?.toDouble(),
       upiVpa: json['upiVpa'] as String?,
+      missingDetails:
+          (json['missingDetails'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
       hasPayoutDestination: json['hasPayoutDestination'] as bool? ?? false,
       canReceivePayouts: json['canReceivePayouts'] as bool? ?? false,
       totalEarned: (json['totalEarned'] as num?)?.toDouble() ?? 0,

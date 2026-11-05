@@ -10,6 +10,7 @@ abstract interface class BusinessRepository {
 
   Future<BusinessProfile> updateMyProfile({
     required String businessName,
+    required String upiId,
     String? businessType,
     String? gstNumber,
     String? description,
@@ -21,6 +22,9 @@ abstract interface class BusinessRepository {
     String? postalCode,
     String? country,
   });
+
+  /// Sets only the UPI ID every payment QR is made from, returning the updated profile.
+  Future<BusinessProfile> setUpiId(String upiId);
 
   /// Sets the business's profile picture, returning the updated profile.
   Future<BusinessProfile> uploadLogo(Uint8List imageBytes);

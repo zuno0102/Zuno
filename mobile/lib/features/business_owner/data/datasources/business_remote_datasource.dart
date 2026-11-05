@@ -52,6 +52,19 @@ class BusinessRemoteDataSource {
     }
   }
 
+  /// Sets only the UPI ID — the quick "Add UPI ID" beside a payment QR.
+  Future<BusinessProfileModel> setUpiId(String upiId) async {
+    try {
+      final response = await _dio.put<Map<String, dynamic>>(
+        ApiConstants.businessProfileUpiIdPath,
+        data: {'upiId': upiId},
+      );
+      return BusinessProfileModel.fromJson(response.data!);
+    } on DioException catch (e) {
+      throw mapDioExceptionToAppException(e);
+    }
+  }
+
   /// Sets the business's profile picture and returns the profile the server now holds.
   ///
   /// The part name must be `file` — the endpoint binds by parameter name, so calling it

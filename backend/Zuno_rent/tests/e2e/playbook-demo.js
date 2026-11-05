@@ -97,7 +97,7 @@ const expect = (cond, what) => { if (!cond) throw new Error(what); };
     return `"abc" → ${bad.status}: ${bad.message}`;
   });
   await step("B5", "Offline 100 chairs takes the item's ₹200 advance", async () => {
-    const o = await must(offline(chair, 100, { advanceMethod: "UpiQr" }));
+    const o = await must(offline(chair, 100, { advanceMethod: "UpiQr", advanceReceived: true }));
     expect(o.advanceDue === 200 && o.paid === 200, `advance ${o.advanceDue}, paid ${o.paid}`);
     return `total ${rs(o.amount)} · advance ${rs(o.advanceDue)} by ${o.payments[0].methodName} · due ${rs(o.balance)}`;
   });
@@ -106,17 +106,17 @@ const expect = (cond, what) => { if (!cond) throw new Error(what); };
     return `${link}  — amount filled in (checked on screen by the app tests)`;
   });
   await step("B7", "A typed advance below what the item asks is refused", async () => {
-    const r = await offline(chair, 100, { advanceMethod: "Cash", advanceAmount: 150 });
+    const r = await offline(chair, 100, { advanceMethod: "Cash", advanceReceived: true, advanceAmount: 150 });
     expect(!r.ok && /at least/.test(r.message), `${r.status} ${r.message}`);
     return `${r.status}: ${r.message}`;
   });
   await step("B8", "A typed advance above the total is refused", async () => {
-    const r = await offline(chair, 100, { advanceMethod: "Cash", advanceAmount: 99999 });
+    const r = await offline(chair, 100, { advanceMethod: "Cash", advanceReceived: true, advanceAmount: 99999 });
     expect(!r.ok && /total/.test(r.message), `${r.status} ${r.message}`);
     return `${r.status}: ${r.message}`;
   });
   await step("B9", "Typed ₹500 in cash is taken", async () => {
-    const o = await must(offline(chair, 100, { advanceMethod: "Cash", advanceAmount: 500 }));
+    const o = await must(offline(chair, 100, { advanceMethod: "Cash", advanceReceived: true, advanceAmount: 500 }));
     expect(o.paid === 500, `paid ${o.paid}`);
     return `${o.paymentStatusName} · paid ${rs(o.paid)} (${o.payments[0].methodName}) · due ${rs(o.balance)}`;
   });
@@ -126,14 +126,14 @@ const expect = (cond, what) => { if (!cond) throw new Error(what); };
     return `${o.paymentStatusName} · due ${rs(o.balance)}`;
   });
   await step("B11", "Red carpet with ₹300 typed takes it by UPI QR", async () => {
-    const o = await must(offline(carpet, 2, { advanceMethod: "UpiQr", advanceAmount: 300 }));
+    const o = await must(offline(carpet, 2, { advanceMethod: "UpiQr", advanceReceived: true, advanceAmount: 300 }));
     expect(o.paid === 300, `paid ${o.paid}`);
     return `${o.paymentStatusName} · paid ${rs(o.paid)} · due ${rs(o.balance)}`;
   });
 
   let out;
   await step("B12", "Sent out with money due: Mark returned is greyed out", async () => {
-    out = await must(offline(chair, 50, { advanceMethod: "Cash" }));
+    out = await must(offline(chair, 50, { advanceMethod: "Cash", advanceReceived: true }));
     out = await must(move(out, "OnRent"));
     const action = out.actions.find(a => a.toStatus === "Returned");
     expect(action?.disabledReason, "Mark returned is not disabled");
@@ -166,7 +166,7 @@ const expect = (cond, what) => { if (!cond) throw new Error(what); };
   });
   await step("B17", "Cancelled with an advance: refund due, then recorded", async () => {
     const shamiana = item("Shamiana 20x40 ft");
-    let o = await must(offline(shamiana, 1, { advanceMethod: "Cash" }));
+    let o = await must(offline(shamiana, 1, { advanceMethod: "Cash", advanceReceived: true }));
     o = await must(move(o, "Cancelled"));
     expect(o.paymentStatus === "RefundDue" && o.canRefund, o.paymentStatus);
     const after = await must(collect(o, "Cash", o.paid, true));

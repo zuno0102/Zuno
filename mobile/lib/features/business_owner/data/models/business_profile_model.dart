@@ -15,6 +15,8 @@ class BusinessProfileModel {
     this.gstNumber,
     this.description,
     this.logoUrl,
+    this.upiId,
+    this.missingDetails = const [],
     this.addressLine1,
     this.addressLine2,
     this.city,
@@ -37,6 +39,8 @@ class BusinessProfileModel {
   final String? gstNumber;
   final String? description;
   final String? logoUrl;
+  final String? upiId;
+  final List<String> missingDetails;
   final String verificationStatus;
   final String? addressLine1;
   final String? addressLine2;
@@ -57,6 +61,8 @@ class BusinessProfileModel {
     gstNumber: gstNumber,
     description: description,
     logoUrl: logoUrl,
+    upiId: upiId,
+    missingDetails: missingDetails,
     verificationStatus: verificationStatus,
     addressLine1: addressLine1,
     addressLine2: addressLine2,

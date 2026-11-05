@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/features/worker/domain/entities/worker_profile.dart';
 import 'package:zuno/features/worker/presentation/providers/worker_dashboard_notifier.dart';
+import 'package:zuno/shared/domain/upi_id.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 
 /// Lets a worker change their own details.
@@ -266,18 +267,21 @@ class _WorkerProfileEditSheetState
                 controller: _upi,
                 keyboardType: TextInputType.emailAddress,
                 autocorrect: false,
+                key: const ValueKey('worker-upi-id'),
                 decoration: const InputDecoration(
-                  labelText: 'UPI address',
+                  labelText: 'UPI ID',
                   border: OutlineInputBorder(),
-                  helperText: 'Where your wages are sent. Checked before the first payment.',
+                  helperText:
+                      'Required. Where your wages are sent — checked before the first payment.',
+                  helperMaxLines: 2,
                 ),
-                validator: (value) {
-                  final v = value?.trim() ?? '';
-                  if (v.isEmpty) return null;
-                  return RegExp(r'^[\w.\-]{2,}@[A-Za-z]{2,}$').hasMatch(v)
-                      ? null
-                      : 'A UPI address looks like name@bank.';
-                },
+                // Required, like the server: without it the worker cannot be paid, so the profile
+                // is not complete and nothing else saves until it is added.
+                validator: (value) => upiIdProblem(
+                  value,
+                  missing:
+                      'Add your UPI ID — it is how businesses pay your wages.',
+                ),
               ),
               const SizedBox(height: 14),
 

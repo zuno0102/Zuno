@@ -14,6 +14,7 @@ class BusinessProfileNotifier extends _$BusinessProfileNotifier {
 
   Future<void> updateProfile({
     required String businessName,
+    required String upiId,
     String? businessType,
     String? gstNumber,
     String? description,
@@ -34,6 +35,7 @@ class BusinessProfileNotifier extends _$BusinessProfileNotifier {
         .read(businessRepositoryProvider)
         .updateMyProfile(
           businessName: businessName,
+          upiId: upiId,
           businessType: businessType,
           gstNumber: gstNumber,
           description: description,
@@ -45,6 +47,14 @@ class BusinessProfileNotifier extends _$BusinessProfileNotifier {
           postalCode: postalCode,
           country: country,
         );
+    state = AsyncData(updated);
+  }
+
+  /// Sets only the UPI ID — from the quick "Add UPI ID" beside a payment QR.
+  Future<void> setUpiId(String upiId) async {
+    final updated = await ref
+        .read(businessRepositoryProvider)
+        .setUpiId(upiId.trim());
     state = AsyncData(updated);
   }
 

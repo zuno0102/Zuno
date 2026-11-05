@@ -55,8 +55,14 @@ const register = async (first, role) => {
   const customer = await register("Renter", "Customer");
   const worker = await register("Rentworker", "Worker");
   const name = `E2E Rentals ${run}`, name2 = `E2E Other ${run}`;
-  yes("Business names itself", await S_("PUT", "/business/profile", biz, { businessName: name, description: "Chairs and tents", yearsOfExperience: 4 }));
-  yes("Second business names itself", await S_("PUT", "/business/profile", biz2, { businessName: name2, description: "Tools", yearsOfExperience: 2 }));
+  const before = (await S_("GET", "/business/profile", biz)).data;
+  ok("A new business profile asks for a UPI ID", before?.missingDetails?.includes("UPI ID") && !before?.upiId);
+  no("A profile without a UPI ID is refused", await S_("PUT", "/business/profile", biz, { businessName: name, description: "Chairs and tents" }), "UPI ID");
+  no("A profile with a malformed UPI ID is refused", await S_("PUT", "/business/profile", biz, { businessName: name, upiId: "joy@12" }), "UPI");
+  const named = await S_("PUT", "/business/profile", biz, { businessName: name, description: "Chairs and tents", upiId: ` E2E${run}@OkHdfcBank ` });
+  yes("Business names itself with its UPI ID", named);
+  ok("...kept trimmed and lower-case, and the profile is complete", named.data?.upiId === `e2e${run}@okhdfcbank` && named.data?.missingDetails?.length === 0);
+  yes("Second business names itself", await S_("PUT", "/business/profile", biz2, { businessName: name2, description: "Tools", upiId: `other${run}@ybl` }));
   const admin = (await S_("POST", "/auth/login", null, { emailOrPhone: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD })).data?.accessToken;
   ok("Super admin can sign in", !!admin);
   const list = (await S_("GET", "/admin/businesses?pageSize=200", admin)).data;
@@ -124,8 +130,13 @@ const register = async (first, role) => {
   const other = await R_("POST", "/business/rentals", biz2, chair({ name: "Other chair", questions: [], cancelSteps: [] }));
   yes("Second business lists its own chair", other);
   code("Another business cannot edit our chairs", await R_("PUT", `/business/rentals/${chairs.data?.id}`, biz2, chair({})), 403);
-  no("A bad UPI ID is refused", await R_("PUT", "/business/rentals/payment-settings", biz, { upiId: "abc" }), "UPI ID");
-  yes("Business sets its UPI ID", await R_("PUT", "/business/rentals/payment-settings", biz, { upiId: `e2e${run}@okhdfcbank` }));
+  ok("Rent order QR uses the profile UPI ID", (await R_("GET", "/business/rentals/payment-settings", biz)).data?.upiId === `e2e${run}@okhdfcbank`);
+  no("A bad UPI ID is refused by the quick Add UPI ID", await S_("PUT", "/business/profile/upi-id", biz, { upiId: "abc" }), "UPI");
+  no("An empty UPI ID cannot remove it", await S_("PUT", "/business/profile/upi-id", biz, { upiId: "" }), "UPI ID");
+  code("Rent no longer keeps its own UPI ID", await R_("PUT", "/business/rentals/payment-settings", biz, { upiId: "x@ybl" }), 405);
+  yes("Business changes its UPI ID from Rent (quick Add UPI ID)", await S_("PUT", "/business/profile/upi-id", biz, { upiId: `e2e${run}.new@okhdfcbank` }));
+  ok("...and Rent QR moves to the new one at once", (await R_("GET", "/business/rentals/payment-settings", biz)).data?.upiId === `e2e${run}.new@okhdfcbank`);
+  ok("Second business QR has its own UPI ID", (await R_("GET", "/business/rentals/payment-settings", biz2)).data?.upiId === `other${run}@ybl`);
 
   // ── The customer finds and books ───────────────────────────────────────────────────────────
   const found = (await R_("GET", `/rentals?keyword=Plastic&districtIds=${ekm}`, customer)).data ?? [];
@@ -235,12 +246,30 @@ const register = async (first, role) => {
   // ── An offline order paid in cash ──────────────────────────────────────────────────────────
   const off = await R_("POST", "/business/rental-orders", biz, {
     rentalItemId: chairs.data.id, quantity: 30, startDate: day(2).toISOString(), endDate: dayEnd(2).toISOString(),
-    customerName: "Walk-in", customerPhone: "9000000000", deliveryAddress: "Shop counter", advanceMethod: "Cash",
+    customerName: "Walk-in", customerPhone: "9000000000", deliveryAddress: "Shop counter", advanceMethod: "Cash", advanceReceived: true,
   });
   yes("Business takes an offline order with a cash advance", off, `₹${off.data?.paid} paid`);
   no("An offline order cannot be refunded online (paid in cash)", await R_("POST", `/business/rental-orders/${off.data.id}/status`, biz, { toStatus: "Cancelled", refundMode: "Online" }), "cash");
   const offc = await R_("POST", `/business/rental-orders/${off.data.id}/status`, biz, { toStatus: "Cancelled", refundMode: "InHand" });
   ok("…so it is cancelled with an in-hand refund", offc.data?.refundMode === "InHand" && offc.data?.needsRefund === true);
+
+  // ── An offline order whose advance is not in hand is never confirmed on a guess ─────────────
+  const unpaid = await R_("POST", "/business/rental-orders", biz, {
+    rentalItemId: chairs.data.id, quantity: 20, startDate: day(3).toISOString(), endDate: dayEnd(3).toISOString(),
+    customerName: "Walk-in later", deliveryAddress: "Shop counter", advanceMethod: "UpiQr",
+  });
+  ok("Advance not received: the order waits, not confirmed", unpaid.data?.status === "AwaitingAdvance",
+    `${unpaid.status} ${unpaid.data?.status}`);
+  ok("…nothing is shown as paid and the whole amount is due",
+    unpaid.data?.paid === 0 && unpaid.data?.payments?.length === 0 && unpaid.data?.balance === unpaid.data?.amount,
+    `paid ₹${unpaid.data?.paid} · balance ₹${unpaid.data?.balance} of ₹${unpaid.data?.amount}`);
+  no("Marking the order out is refused while it waits",
+    await R_("POST", `/business/rental-orders/${unpaid.data?.id}/status`, biz, { toStatus: "OnRent" }));
+  const advanceIn = await R_("POST", `/business/rental-orders/${unpaid.data?.id}/payments`, biz,
+    { method: "UpiQr", amount: unpaid.data?.advanceDue, reference: "UTR12345678" });
+  ok("Once the business marks the advance received, the order is confirmed",
+    advanceIn.data?.status === "Booked" && advanceIn.data?.paid === unpaid.data?.advanceDue,
+    `${advanceIn.status} ${advanceIn.data?.status} ${advanceIn.text}`);
 
   // ── History keeps every step ───────────────────────────────────────────────────────────────
   const history = await R_("GET", `/business/rental-orders/${s1.data.id}/history`, biz);

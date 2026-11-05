@@ -1,6 +1,7 @@
 using MediatR;
 using Zuno.Application.Common.Interfaces;
 using Zuno.Application.Modules.Business.DTOs;
+using Zuno.Application.Modules.Worker.Common;
 using Zuno.Domain.Entities;
 using Zuno.Domain.Exceptions;
 
@@ -24,6 +25,11 @@ public class UpdateBusinessProfileCommandHandler(
         profile.BusinessType = request.BusinessType;
         profile.GstNumber = request.GstNumber;
         profile.Description = request.Description;
+        // Not sent: an older app, which knows nothing of it — keep the saved one.
+        if (request.UpiId is not null)
+        {
+            profile.UpiId = UpiFormat.Normalize(request.UpiId);
+        }
 
         // LogoUrl is deliberately not touched here — SetBusinessLogoCommand owns it. The edit
         // form posts back whatever profile copy it loaded, so a business that uploaded a picture

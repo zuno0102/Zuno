@@ -5,6 +5,7 @@ using Zuno.Application.Common.Interfaces;
 using Zuno.Application.Modules.Booking.DTOs;
 using Zuno.Application.Modules.Worker.Commands.UpdateMyWorkerProfile;
 using Zuno.Application.Modules.Worker.Common;
+using Zuno.Application.Modules.Worker.DTOs;
 using Zuno.Domain.Entities;
 using Zuno.Domain.Enums;
 using Zuno.Domain.ValueObjects;
@@ -70,6 +71,37 @@ public class PayoutDestinationTests
 
         _added.Should().ContainSingle().Which.Should().Match<WorkerPayoutDetail>(p =>
             p.UpiVpa == "ravi@okaxis" && p.VerificationStatus == VerificationStatus.Verified && p.VerifiedAt == Now);
+    }
+
+    [Fact]
+    public async Task A_profile_without_a_UPI_cannot_be_saved_until_one_is_added()
+    {
+        var act = () => _sut.Handle(new UpdateMyWorkerProfileCommand { HourlyRate = 300 }, default);
+
+        await act.Should().ThrowAsync<Zuno.Domain.Exceptions.DomainException>()
+            .WithMessage(UpdateMyWorkerProfileCommandHandler.MissingUpiMessage);
+        _profile.HourlyRate.Should().NotBe(300, "nothing is saved while the UPI ID is missing");
+    }
+
+    [Fact]
+    public async Task Other_details_save_once_a_UPI_is_on_file()
+    {
+        _profile.PayoutDetail = new WorkerPayoutDetail { UpiVpa = "ravi@okaxis", VerificationStatus = VerificationStatus.Verified };
+
+        await _sut.Handle(new UpdateMyWorkerProfileCommand { HourlyRate = 300 }, default);
+
+        _profile.HourlyRate.Should().Be(300);
+    }
+
+    [Fact]
+    public void The_profile_says_the_UPI_is_missing_and_stops_saying_so_once_added()
+    {
+        _profile.User.FirstName = "Ravi";
+
+        _profile.ToDto(default, new TestPlatformSettings().Current.WorkerLevels).MissingDetails.Should().Equal("UPI ID");
+
+        _profile.PayoutDetail = new WorkerPayoutDetail { UpiVpa = "ravi@okaxis" };
+        _profile.ToDto(default, new TestPlatformSettings().Current.WorkerLevels).MissingDetails.Should().BeEmpty();
     }
 
     [Fact]

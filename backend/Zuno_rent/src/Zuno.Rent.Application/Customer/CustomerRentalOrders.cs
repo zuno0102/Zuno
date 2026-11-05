@@ -223,28 +223,8 @@ public class CustomerRentalOrderHandlers(
 
     public async Task<RentalBusinessDto> Handle(SyncRentalBusinessCommand request, CancellationToken cancellationToken)
     {
-        var ownerId = currentUser.OwnerId();
-        var profile = await directory.GetCurrentBusinessAsync(cancellationToken);
-
-        var row = await dbContext.RentalBusinesses.FirstOrDefaultAsync(b => b.OwnerUserId == ownerId, cancellationToken);
-        if (profile is null)
-        {
-            // Service could not be asked: keep what was known, rather than hiding the business's items.
-            return new RentalBusinessDto { Name = row?.Name ?? string.Empty, IsVerified = row?.IsVerified ?? false };
-        }
-
-        if (row is null)
-        {
-            row = new RentalBusiness { OwnerUserId = ownerId };
-            dbContext.RentalBusinesses.Add(row);
-        }
-
-        row.Name = profile.Name;
-        row.LogoUrl = profile.LogoUrl;
-        row.IsVerified = profile.IsVerified;
-        row.RefreshedAt = clock.GetUtcNow();
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return new RentalBusinessDto { Name = row.Name, IsVerified = row.IsVerified };
+        var row = await RentalBusinessRefresh.RefreshAsync(
+            dbContext, directory, currentUser.OwnerId(), clock.GetUtcNow(), cancellationToken);
+        return new RentalBusinessDto { Name = row?.Name ?? string.Empty, IsVerified = row?.IsVerified ?? false };
     }
 }

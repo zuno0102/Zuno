@@ -115,9 +115,6 @@ class RentalRepositoryImpl implements RentalRepository {
   Future<String?> getUpiId() => _remote.getUpiId();
 
   @override
-  Future<String?> setUpiId(String? upiId) => _remote.setUpiId(upiId);
-
-  @override
   Future<RentalOrder> recordPayment(
     String id,
     RentalPaymentInput input,

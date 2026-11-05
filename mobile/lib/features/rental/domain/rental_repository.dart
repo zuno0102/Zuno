@@ -74,11 +74,8 @@ abstract class RentalRepository {
   /// The words for the item form's advance and the collect sheet's methods.
   Future<RentalPaymentOptions> getPaymentOptions();
 
-  /// The UPI ID the order QR is made from; null until the business sets it.
+  /// The UPI ID the order QR is made from — Rent takes it from the business profile; null until set.
   Future<String?> getUpiId();
-
-  /// Sets it, or clears it with null. Refused by the server unless it looks like name@bank.
-  Future<String?> setUpiId(String? upiId);
 
   /// Money taken for an order, or given back on a cancelled one — never more than is due or was paid.
   Future<RentalOrder> recordPayment(String id, RentalPaymentInput input);

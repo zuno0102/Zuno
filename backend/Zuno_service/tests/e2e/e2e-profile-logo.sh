@@ -95,7 +95,7 @@ echo "==== 3. EDITING THE PROFILE MUST NOT WIPE IT ===="
 # which for a form opened before the upload is null. Renaming your business must not erase your
 # picture, so the update handler no longer writes the field at all.
 want_ok "Renamed the business" "$(curl -s -X PUT $API/business/profile -H "Authorization: Bearer $BT" \
-  -H 'Content-Type: application/json' -d '{"businessName":"Renamed Ltd","logoUrl":null}')" ""
+  -H 'Content-Type: application/json' -d '{"businessName":"Renamed Ltd","logoUrl":null,"upiId":"renamed@okaxis"}')" ""
 eq "Picture survived the rename" "$(logo_of)" "$URL2"
 eq "Name did change"             "$(sql "select business_name from business_owner_profiles where id='$BIZ'")" "Renamed Ltd"
 

@@ -45,12 +45,15 @@ class VacancyApplicantsScreen extends ConsumerWidget {
         appBar: AppBar(
           title: Text(vacancy?.title ?? 'All applicants'),
           bottom: TabBar(
+            // Four lists share a phone's width; the count sits above its label, as "Shortlisted
+            // (1)" on one line was wider than a quarter of the screen and lost its count.
+            labelPadding: const EdgeInsets.symmetric(horizontal: 4),
             tabs: [
               for (final status in VacancyApplicationStatus.businessLists)
-                Tab(
-                  text: counts == null
-                      ? businessListLabel(status)
-                      : '${businessListLabel(status)} (${counts(status)})',
+                _CountTab(
+                  key: ValueKey('applicants-tab-$status'),
+                  label: businessListLabel(status),
+                  count: counts?.call(status),
                 ),
             ],
           ),
@@ -95,6 +98,33 @@ class VacancyApplicantsScreen extends ConsumerWidget {
       _ => current.hiredCount,
     };
   }
+}
+
+/// One list's tab: its count over its name, each shrunk to fit rather than cut off, so the count
+/// stays readable on a narrow phone or with large text. A dash while the counts load.
+class _CountTab extends StatelessWidget {
+  const _CountTab({required this.label, required this.count, super.key});
+
+  final String label;
+  final int? count;
+
+  @override
+  Widget build(BuildContext context) => Tab(
+    height: 56,
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            count?.toString() ?? '–',
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
+        FittedBox(fit: BoxFit.scaleDown, child: Text(label)),
+      ],
+    ),
+  );
 }
 
 class _ApplicantList extends ConsumerWidget {

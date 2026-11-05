@@ -5,12 +5,14 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:zuno/core/payments/upi_pay.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/utils/formatting.dart';
+import 'package:zuno/features/business_owner/presentation/providers/business_profile_notifier.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/service_form_message_banner.dart';
 import 'package:zuno/features/rental/domain/entities/rental_payment.dart';
 import 'package:zuno/features/rental/domain/entities/rental_stock.dart';
 import 'package:zuno/features/rental/presentation/providers/rental_payment_providers.dart';
 import 'package:zuno/features/rental/presentation/providers/rental_providers.dart';
 import 'package:zuno/features/rental/presentation/screens/rental_upi_scan_screen.dart';
+import 'package:zuno/shared/domain/upi_id.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
 
@@ -50,7 +52,15 @@ class _RentalCollectSheetState extends ConsumerState<RentalCollectSheet> {
   late final double _max = widget.refund
       ? widget.order.refundOwed
       : widget.order.balance;
-  late final _amount = TextEditingController(text: rentalPlainAmount(_max));
+  // An order still waiting for its advance starts at the advance — what confirms it — though more
+  // up to the balance can be taken.
+  late final _amount = TextEditingController(
+    text: rentalPlainAmount(
+      !widget.refund && widget.order.isAwaitingAdvance
+          ? widget.order.payNowAmount
+          : _max,
+    ),
+  );
 
   // A refund by UPI: the customer's UPI ID (scanned or typed) and, once paid, the reference.
   final _customerUpi = TextEditingController();
@@ -403,7 +413,13 @@ class _RentalCollectSheetState extends ConsumerState<RentalCollectSheet> {
   }
 }
 
-/// A UPI QR for one amount, made from the business's own UPI ID — any UPI app pays it.
+/// The business's UPI payment card, laid out like the QR standee a shop keeps at its counter for
+/// Google Pay: the business's name and initial on top, the QR with a ₹ mark in its middle, the
+/// amount large below it, and "Scan and pay with any UPI app" with the apps named at the foot.
+///
+/// It is a plain `upi://pay` QR made for this amount, so Google Pay, PhonePe, Paytm, BHIM or any
+/// bank app fills the amount in when scanned. The card stays light in dark mode too: a scanner reads
+/// dark modules on light, and the customer is looking at the business's screen, not their own.
 class RentalUpiQr extends StatelessWidget {
   const RentalUpiQr({
     required this.upiId,
@@ -418,46 +434,180 @@ class RentalUpiQr extends StatelessWidget {
   final double amount;
   final String note;
 
+  /// The UPI apps named at the foot of the card.
+  static const apps = ['Google Pay', 'PhonePe', 'Paytm', 'BHIM'];
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Column(
+    // Always the light version of the app's colours: the card is printed on white.
+    final ink = ColorScheme.fromSeed(seedColor: theme.colorScheme.primary);
+    final text = theme.textTheme;
+    final name = payee.trim().isEmpty ? 'UPI payment' : payee.trim();
+
+    return Container(
       key: const ValueKey('rental-upi-qr'),
-      children: [
-        // Dark modules on a light backdrop in light and dark mode alike, so any scanner reads it.
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: AppColors.qrBackdrop,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: QrImageView(
-              data: rentalUpiUri(
-                upiId: upiId,
-                payee: payee,
-                amount: amount,
-                note: note,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+      decoration: BoxDecoration(
+        color: AppColors.qrBackdrop,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: ink.outlineVariant),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: ink.primary,
+                child: Text(
+                  name.characters.first.toUpperCase(),
+                  style: text.titleMedium?.copyWith(
+                    color: ink.onPrimary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
-              size: 200,
-              gapless: false,
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      key: const ValueKey('rental-upi-qr-payee'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.titleSmall?.copyWith(
+                        color: ink.onSurface,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      'UPI ID: $upiId',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.bodySmall?.copyWith(
+                        color: ink.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final size = constraints.maxWidth.clamp(160.0, 220.0);
+              return SizedBox.square(
+                dimension: size,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    QrImageView(
+                      data: rentalUpiUri(
+                        upiId: upiId,
+                        payee: name,
+                        amount: amount,
+                        note: note,
+                      ),
+                      size: size,
+                      padding: EdgeInsets.zero,
+                      gapless: false,
+                      // The highest level, so the ₹ mark over its middle never stops a scan.
+                      errorCorrectionLevel: QrErrorCorrectLevel.H,
+                      eyeStyle: QrEyeStyle(
+                        eyeShape: QrEyeShape.square,
+                        color: ink.onSurface,
+                      ),
+                      dataModuleStyle: QrDataModuleStyle(
+                        dataModuleShape: QrDataModuleShape.square,
+                        color: ink.onSurface,
+                      ),
+                    ),
+                    Container(
+                      key: const ValueKey('rental-upi-qr-mark'),
+                      width: size * 0.2,
+                      height: size * 0.2,
+                      padding: EdgeInsets.all(size * 0.02),
+                      decoration: BoxDecoration(
+                        color: AppColors.qrBackdrop,
+                        shape: BoxShape.circle,
+                      ),
+                      child: CircleAvatar(
+                        backgroundColor: ink.primary,
+                        child: Icon(
+                          Icons.currency_rupee_rounded,
+                          color: ink.onPrimary,
+                          size: size * 0.09,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          Text(
+            rupees(amount),
+            key: const ValueKey('rental-upi-qr-amount'),
+            style: text.headlineSmall?.copyWith(
+              color: ink.onSurface,
+              fontWeight: FontWeight.w800,
             ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Scan to pay ${rupees(amount)}',
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w700,
+          Text(
+            'Scan to pay ${rupees(amount)}',
+            style: text.bodySmall?.copyWith(color: ink.onSurfaceVariant),
           ),
-        ),
-        Text(
-          upiId,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+          if (note.trim().isNotEmpty)
+            Text(
+              note,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: text.bodySmall?.copyWith(color: ink.onSurfaceVariant),
+            ),
+          const SizedBox(height: 12),
+          Divider(height: 1, color: ink.outlineVariant),
+          const SizedBox(height: 10),
+          Text(
+            'Scan and pay with any UPI app',
+            style: text.labelMedium?.copyWith(
+              color: ink.onSurface,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 6),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final app in apps)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: ink.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    app,
+                    style: text.labelSmall?.copyWith(
+                      color: ink.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -505,12 +655,10 @@ Future<void> showRentalUpiSheet(BuildContext context) =>
       builder: (_) => const RentalUpiSheet(),
     );
 
-/// The business's UPI ID, e.g. joyrentals@okhdfcbank. Empty removes it.
+/// The business's UPI ID, e.g. joyrentals@okhdfcbank — saved on its business profile, the one place
+/// it is kept, so the same QR shows in Service and Rent. Required: it cannot be removed, only changed.
 class RentalUpiSheet extends ConsumerStatefulWidget {
   const RentalUpiSheet({super.key});
-
-  /// The shape the server accepts: name@bank.
-  static final upiPattern = rentalUpiIdPattern;
 
   @override
   ConsumerState<RentalUpiSheet> createState() => _RentalUpiSheetState();
@@ -541,16 +689,15 @@ class _RentalUpiSheetState extends ConsumerState<RentalUpiSheet> {
       _error = null;
     });
     try {
-      final text = _upi.text.trim();
-      final saved = await ref
-          .read(rentalRepositoryProvider)
-          .setUpiId(text.isEmpty ? null : text);
+      await ref
+          .read(businessProfileProvider.notifier)
+          .setUpiId(_upi.text.trim());
+      // Rent reads the ID from the profile, so asking again brings the new one.
       ref.invalidate(rentalUpiIdProvider);
       reloadRentals(ref);
+      final saved = ref.read(businessProfileProvider).value?.upiId;
       messenger.showSuccess(
-        saved == null
-            ? 'UPI ID removed.'
-            : 'UPI ID saved. Order QRs pay $saved.',
+        'UPI ID saved on your business profile. QRs pay ${saved ?? _upi.text.trim()}.',
       );
       navigator.pop();
     } catch (e) {
@@ -583,7 +730,7 @@ class _RentalUpiSheetState extends ConsumerState<RentalUpiSheet> {
               ),
             ),
             Text(
-              'The QR on each order is made from it, for the amount due.',
+              'Saved on your business profile. The QR on each order is made from it, for the amount due.',
               style: theme.textTheme.bodySmall,
             ),
             const SizedBox(height: 16),
@@ -608,13 +755,11 @@ class _RentalUpiSheetState extends ConsumerState<RentalUpiSheet> {
                 border: OutlineInputBorder(),
                 counterText: '',
               ),
-              validator: (v) {
-                final value = (v ?? '').trim();
-                return value.isEmpty ||
-                        RentalUpiSheet.upiPattern.hasMatch(value)
-                    ? null
-                    : 'Enter a UPI ID like name@bank.';
-              },
+              validator: (v) => upiIdProblem(
+                v,
+                missing:
+                    'Enter your UPI ID — customers pay you by scanning it.',
+              ),
             ),
             const SizedBox(height: 18),
             PrimaryButton(

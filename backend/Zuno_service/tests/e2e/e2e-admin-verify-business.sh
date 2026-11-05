@@ -62,7 +62,7 @@ DIST=$(sql "select id from districts limit 1")
 CAT=$(sql "select id from service_categories where is_active order by name limit 1")
 
 NAME="Gatekept Catering $S"
-want_ok "The business names itself" "$(PU /business/profile "$BT" "{\"businessName\":\"$NAME\",\"description\":\"Weddings\",\"yearsOfExperience\":3}")" "$NAME"
+want_ok "The business names itself" "$(PU /business/profile "$BT" "{\"businessName\":\"$NAME\",\"description\":\"Weddings\",\"upiId\":\"gate$S@okaxis\"}")" "$NAME"
 SVC=$(P /business/services "$BT" "{\"serviceCategoryId\":\"$CAT\",\"name\":\"Gate test feast $S\",\"description\":\"d\",\"priceType\":\"Fixed\",\"price\":9000,\"requiredWorkerCount\":2,\"estimatedDurationMinutes\":240,\"districtIds\":[\"$DIST\"]}" | j id)
 eq "...and lists a service" "$([ -n "$SVC" ] && echo yes)" "yes"
 
@@ -96,7 +96,7 @@ eq "It has left the pending list"   "$(G "/admin/businesses?status=Pending" "$AD
 
 step "5. REJECTED"
 NAME2="Turned Down $S"
-want_ok "The second business names itself" "$(PU /business/profile "$B2" "{\"businessName\":\"$NAME2\",\"description\":\"x\",\"yearsOfExperience\":1}")" ""
+want_ok "The second business names itself" "$(PU /business/profile "$B2" "{\"businessName\":\"$NAME2\",\"description\":\"x\",\"upiId\":\"gate2$S@okaxis\"}")" ""
 SVC2=$(P /business/services "$B2" "{\"serviceCategoryId\":\"$CAT\",\"name\":\"Rejected feast $S\",\"description\":\"d\",\"priceType\":\"Fixed\",\"price\":1000,\"requiredWorkerCount\":1,\"estimatedDurationMinutes\":60,\"districtIds\":[\"$DIST\"]}" | j id)
 want_ok "The app owner rejects it"  "$(P "/admin/businesses/$BIZ2/reject" "$AD")" ""
 eq "Now Rejected"                   "$(sql "select verification_status from business_owner_profiles where id='$BIZ2'")" "2"

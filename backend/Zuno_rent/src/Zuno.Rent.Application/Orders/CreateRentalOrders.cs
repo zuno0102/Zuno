@@ -43,6 +43,17 @@ public class CreateRentalOrderCommand : IRequest<RentalOrderDto>
     /// more (up to the order's total) but never less than the item asks. 0 takes none.
     /// </summary>
     public decimal? AdvanceAmount { get; set; }
+
+    /// <summary>
+    /// The business says the advance is already in its hands — counted in cash, or seen in its UPI
+    /// app. Only then is it recorded. Either way the order is booked (confirmed); an advance not yet
+    /// received stays due and is collected from the order later. Left out (an app from before this
+    /// choice existed), saying how the advance was paid means it was received.
+    /// </summary>
+    public bool? AdvanceReceived { get; set; }
+
+    /// <summary>Whether the advance is in the business's hands — said outright, or implied by a method.</summary>
+    public bool AdvanceInHand => AdvanceReceived ?? !string.IsNullOrWhiteSpace(AdvanceMethod);
 }
 
 /// <summary>
@@ -186,8 +197,11 @@ public class RentalOrderCreateHandlers(ICurrentUser currentUser, IRentDbContext 
             dbContext.RentalOrders.Add(order);
             RentalOrderHistory.Record(dbContext, order.Id, RentalOrderEventKind.Booked, order.Quantity, ownerId);
 
-            // An advance taken with the order: the business says how.
-            if (order.AdvanceDue > 0)
+            // An offline order is the business's own word with its customer, so it is confirmed at
+            // once. An advance not in hand yet is simply not recorded: it stays due, and the business
+            // collects it from the order later, as it would any balance.
+            // An advance the business has in hand: it says how it came.
+            if (order.AdvanceDue > 0 && request.AdvanceInHand)
             {
                 if (advanceMethod is not { } method || !await RentalPayments.BusinessMayRecordAsync(dbContext, method, cancellationToken))
                 {

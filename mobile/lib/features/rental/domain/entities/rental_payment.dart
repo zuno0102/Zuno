@@ -302,22 +302,26 @@ double rentalAdvance(
 }
 
 /// A UPI payment link for a QR: any UPI app that scans it opens a payment of [amount] to [upiId].
+///
+/// Written out by hand, not with `Uri(queryParameters:)`: that writes the `@` of the UPI ID as
+/// `%40` and spaces as `+`, and some UPI apps then refuse the ID or show "Joy+Rentals". Here the
+/// ID keeps its `@` and spaces are `%20`, as the NPCI deep-link examples are written.
 String rentalUpiUri({
   required String upiId,
   required String payee,
   required double amount,
   required String note,
-}) => Uri(
-  scheme: 'upi',
-  host: 'pay',
-  queryParameters: {
-    'pa': upiId,
-    'pn': payee,
+}) {
+  String text(String value) => Uri.encodeComponent(value.trim());
+  final params = {
+    'pa': text(upiId).replaceAll('%40', '@'),
+    'pn': text(payee),
     'am': amount.toStringAsFixed(2),
     'cu': 'INR',
-    'tn': note,
-  },
-).toString();
+    'tn': text(note),
+  };
+  return 'upi://pay?${params.entries.map((e) => '${e.key}=${e.value}').join('&')}';
+}
 
 /// An amount as it is typed into a field: 500, or 499.50 when it has paise.
 String rentalPlainAmount(double value) => value == value.roundToDouble()

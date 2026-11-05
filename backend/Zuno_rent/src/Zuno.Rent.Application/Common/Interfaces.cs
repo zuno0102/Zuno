@@ -79,7 +79,8 @@ public interface IServiceDirectory
 
 public record ServicePerson(string Name, string? Phone);
 
-public record ServiceBusiness(string Name, string? LogoUrl, bool IsVerified);
+/// <summary>The business's Service profile. <paramref name="UpiId"/> is null until the business adds one.</summary>
+public record ServiceBusiness(string Name, string? LogoUrl, bool IsVerified, string? UpiId = null);
 
 /// <summary>Who is calling, read from the shared login's token.</summary>
 public interface ICurrentUser

@@ -55,6 +55,12 @@ public class WorkerProfileDto
     /// <summary>Masked for display — the last segment only, never the whole handle in a list.</summary>
     public string? UpiVpa { get; set; }
 
+    /// <summary>
+    /// What the worker still has to fill in, in words, e.g. "UPI ID". Empty when the profile is
+    /// complete; the app asks for these first.
+    /// </summary>
+    public List<string> MissingDetails { get; set; } = [];
+
     public bool HasPayoutDestination { get; set; }
 
     public bool CanReceivePayouts { get; set; }

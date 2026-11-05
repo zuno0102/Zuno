@@ -16,6 +16,12 @@ BusinessProfileModel _$BusinessProfileModelFromJson(
   gstNumber: json['gstNumber'] as String?,
   description: json['description'] as String?,
   logoUrl: json['logoUrl'] as String?,
+  upiId: json['upiId'] as String?,
+  missingDetails:
+      (json['missingDetails'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      const [],
   addressLine1: json['addressLine1'] as String?,
   addressLine2: json['addressLine2'] as String?,
   city: json['city'] as String?,

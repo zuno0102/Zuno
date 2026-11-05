@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Zuno.Application.Common.Interfaces;
+using Zuno.Application.Modules.Worker.Common;
 using Zuno.Application.Modules.Worker.DTOs;
 using Zuno.Domain.Entities;
 using Zuno.Domain.Enums;
@@ -19,6 +20,9 @@ public class UpdateMyWorkerProfileCommandHandler(
     INotificationSender notifications)
     : IRequestHandler<UpdateMyWorkerProfileCommand, WorkerProfileDto>
 {
+    public const string MissingUpiMessage =
+        "Add your UPI ID to save your profile — it is how businesses pay your wages.";
+
     public async Task<WorkerProfileDto> Handle(
         UpdateMyWorkerProfileCommand request,
         CancellationToken cancellationToken)
@@ -31,6 +35,13 @@ public class UpdateMyWorkerProfileCommandHandler(
             .Include(w => w.PayoutDetail)
             .FirstOrDefaultAsync(w => w.UserId == userId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(WorkerProfile), userId);
+
+        // The UPI ID is part of a complete profile: without one the worker cannot be paid, so no
+        // other change is saved until it is added.
+        if (request.UpiVpa is null && string.IsNullOrWhiteSpace(profile.PayoutDetail?.UpiVpa))
+        {
+            throw new DomainException(MissingUpiMessage);
+        }
 
         // Trimmed, because a trailing space is invisible on screen and turns one worker into two
         // different-looking names across the crew lists they appear on.
@@ -49,7 +60,8 @@ public class UpdateMyWorkerProfileCommandHandler(
             await SetPhoneNumberAsync(profile.User, phone, cancellationToken);
         }
 
-        var upiChanged = request.UpiVpa is { } upi && await SetUpiAsync(profile, upi, cancellationToken);
+        var upiChanged = request.UpiVpa is { } upi
+            && await SetUpiAsync(profile, UpiFormat.Normalize(upi), cancellationToken);
 
         // Assigned only when sent. A form that posts back four fields of which the worker touched
         // one must not blank the other three.
@@ -72,7 +84,7 @@ public class UpdateMyWorkerProfileCommandHandler(
                 userId,
                 NotificationKind.PayoutDestinationChanged,
                 "Your payout UPI was changed",
-                $"Wages will now go to {Mask(request.UpiVpa!)}. If you did not change it, change your password now.",
+                $"Wages will now go to {Mask(UpiFormat.Normalize(request.UpiVpa!))}. If you did not change it, change your password now.",
                 NotificationTarget.Profile,
                 Guid.Empty,
                 cancellationToken);

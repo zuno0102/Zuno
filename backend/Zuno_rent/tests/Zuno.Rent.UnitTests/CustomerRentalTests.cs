@@ -259,15 +259,16 @@ public class CustomerRentalTests : IDisposable
     }
 
     [Fact]
-    public async Task Sync_takes_the_business_name_and_verification_from_Service()
+    public async Task Sync_takes_the_business_name_verification_and_upi_id_from_Service()
     {
         _rent.As(TestRent.OwnerA);
-        _directory.Business = new ServiceBusiness("Joy Rentals", "/uploads/logo.png", IsVerified: true);
+        _directory.Business = new ServiceBusiness("Joy Rentals", "/uploads/logo.png", IsVerified: true, UpiId: "joy@okaxis");
 
         var synced = await Orders.Handle(new SyncRentalBusinessCommand(), default);
 
         synced.IsVerified.Should().BeTrue();
         (await _rent.Db.RentalBusinesses.SingleAsync()).LogoUrl.Should().Be("/uploads/logo.png");
+        (await _rent.Db.RentalBusinesses.SingleAsync()).UpiId.Should().Be("joy@okaxis", "the order QR follows the profile");
 
         _directory.Business = null;
         (await Orders.Handle(new SyncRentalBusinessCommand(), default)).Name.Should().Be("Joy Rentals", "Service down keeps what was known");

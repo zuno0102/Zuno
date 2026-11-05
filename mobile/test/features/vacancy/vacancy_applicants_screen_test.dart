@@ -33,6 +33,15 @@ void main() {
     };
   });
 
+  /// The tab of one list, and the count it shows.
+  Finder tab(String status) => find.byKey(ValueKey('applicants-tab-$status'));
+  String tabCount(WidgetTester tester, String status) => tester
+      .widgetList<Text>(
+        find.descendant(of: tab(status), matching: find.byType(Text)),
+      )
+      .first
+      .data!;
+
   Widget host() => ProviderScope(
     overrides: [vacancyRepositoryProvider.overrideWithValue(repo)],
     child: MaterialApp(home: VacancyApplicantsScreen(vacancy: job)),
@@ -75,7 +84,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('All applicants'), findsOneWidget);
-    expect(find.text('Shortlisted (1)'), findsOneWidget);
+    expect(tabCount(tester, VacancyApplicationStatus.shortlisted), '1');
     expect(find.text('Kumar P'), findsOneWidget);
     expect(find.textContaining('Shop helper'), findsOneWidget);
     expect(repo.askedForVacancy, contains(null));
@@ -85,10 +94,18 @@ void main() {
     await tester.pumpWidget(host());
     await tester.pumpAndSettle();
 
-    expect(find.text('New (1)'), findsOneWidget);
-    expect(find.text('Waiting (0)'), findsOneWidget);
-    expect(find.text('Shortlisted (1)'), findsOneWidget);
-    expect(find.text('Hired (0)'), findsOneWidget);
+    for (final (status, label, count) in [
+      (VacancyApplicationStatus.applied, 'New', '1'),
+      (VacancyApplicationStatus.viewed, 'Waiting', '0'),
+      (VacancyApplicationStatus.shortlisted, 'Shortlisted', '1'),
+      (VacancyApplicationStatus.hired, 'Hired', '0'),
+    ]) {
+      expect(tabCount(tester, status), count, reason: label);
+      expect(
+        find.descendant(of: tab(status), matching: find.text(label)),
+        findsOneWidget,
+      );
+    }
     expect(find.text('Ravi K'), findsOneWidget);
     expect(
       find.text('Meena S'),
@@ -96,6 +113,42 @@ void main() {
       reason: 'she is on another list',
     );
   });
+
+  // On a phone, "Shortlisted (1)" on one line was wider than its quarter of the bar and the count
+  // was cut off. Every count and name now sits wholly inside its own tab.
+  for (final (width, textScale) in [(360.0, 1.0), (320.0, 1.0), (360.0, 1.3)]) {
+    testWidgets(
+      'every count is fully shown at ${width.toInt()} wide, text x$textScale',
+      (tester) async {
+        tester.view.physicalSize = Size(width, 800);
+        tester.view.devicePixelRatio = 1;
+        tester.platformDispatcher.textScaleFactorTestValue = textScale;
+        addTearDown(tester.view.reset);
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+        await tester.pumpWidget(host());
+        await tester.pumpAndSettle();
+
+        for (final status in VacancyApplicationStatus.businessLists) {
+          final box = tester.getRect(tab(status));
+          final texts = find.descendant(
+            of: tab(status),
+            matching: find.byType(Text),
+          );
+          for (var i = 0; i < texts.evaluate().length; i++) {
+            final rect = tester.getRect(texts.at(i));
+            expect(
+              rect.left >= box.left - 0.5 && rect.right <= box.right + 0.5,
+              isTrue,
+              reason: '$status: text $i spills out of its tab',
+            );
+          }
+        }
+        expect(tabCount(tester, VacancyApplicationStatus.shortlisted), '1');
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 
   testWidgets('opening an applicant marks them viewed', (tester) async {
     await tester.pumpWidget(host());
@@ -106,7 +159,10 @@ void main() {
 
     expect(repo.opened, ['a-1']);
     expect(
-      find.text('Waiting'),
+      find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.text('Waiting'),
+      ),
       findsOneWidget,
       reason: 'the sheet shows the new stage',
     );
@@ -118,7 +174,7 @@ void main() {
   ) async {
     await tester.pumpWidget(host());
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Shortlisted (1)'));
+    await tester.tap(tab(VacancyApplicationStatus.shortlisted));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Meena S'));

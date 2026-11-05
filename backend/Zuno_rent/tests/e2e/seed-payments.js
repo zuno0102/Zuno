@@ -66,16 +66,16 @@ const ADVANCES = [
   const collect = (o, method, amount) => call("POST", `${R}/business/rental-orders/${o.id}/payments`, biz, { method, amount });
   const show = (label, o) => console.log(`${label}: ${o.status} · total ₹${o.amount} · paid ₹${o.paid} · due ₹${o.balance} · ${o.paymentStatusName ?? "-"}`);
 
-  show("1 Test Cash advance", await offline("Plastic chair (white)", "Test · Cash advance", 100, 3, 4, { advanceMethod: "Cash" }));
-  show("2 Test UPI advance typed", await offline("Banquet table 6 ft", "Test · UPI advance ₹1000", 10, 3, 4, { advanceMethod: "UpiQr", advanceAmount: 1000 }));
+  show("1 Test Cash advance", await offline("Plastic chair (white)", "Test · Cash advance", 100, 3, 4, { advanceMethod: "Cash", advanceReceived: true }));
+  show("2 Test UPI advance typed", await offline("Banquet table 6 ft", "Test · UPI advance ₹1000", 10, 3, 4, { advanceMethod: "UpiQr", advanceReceived: true, advanceAmount: 1000 }));
   show("3 Test No advance", await offline("Red carpet 50 ft", "Test · No advance", 2, 3, 4));
-  show("4 Test Typed advance, item asks none", await offline("Red carpet 50 ft", "Test · Typed advance ₹300", 2, 5, 6, { advanceMethod: "UpiQr", advanceAmount: 300 }));
+  show("4 Test Typed advance, item asks none", await offline("Red carpet 50 ft", "Test · Typed advance ₹300", 2, 5, 6, { advanceMethod: "UpiQr", advanceReceived: true, advanceAmount: 300 }));
 
-  let out = await offline("Plastic chair (white)", "Test · Out, balance due", 50, 1, 2, { advanceMethod: "Cash" });
+  let out = await offline("Plastic chair (white)", "Test · Out, balance due", 50, 1, 2, { advanceMethod: "Cash", advanceReceived: true });
   out = await move(out, "OnRent");
   show("5 Test Out, balance due (Mark returned blocked)", out);
 
-  let paid = await offline("Banquet table 6 ft", "Test · Paid, ready to return", 5, 1, 2, { advanceMethod: "UpiQr" });
+  let paid = await offline("Banquet table 6 ft", "Test · Paid, ready to return", 5, 1, 2, { advanceMethod: "UpiQr", advanceReceived: true });
   paid = await move(paid, "OnRent");
   paid = await collect(paid, "UpiQr", paid.balance);
   show("6 Test Paid, ready to return", paid);
@@ -86,11 +86,11 @@ const ADVANCES = [
   done = await move(done, "Returned");
   show("7 Test Returned", done);
 
-  let part = await offline("Plastic chair (white)", "Test · Part paid", 80, 7, 8, { advanceMethod: "Cash" });
+  let part = await offline("Plastic chair (white)", "Test · Part paid", 80, 7, 8, { advanceMethod: "Cash", advanceReceived: true });
   part = await collect(part, "Cash", 500);
   show("8 Test Part paid", part);
 
-  let cancelled = await offline("Shamiana 20x40 ft", "Test · Cancelled, refund due", 1, 9, 9, { advanceMethod: "Cash" });
+  let cancelled = await offline("Shamiana 20x40 ft", "Test · Cancelled, refund due", 1, 9, 9, { advanceMethod: "Cash", advanceReceived: true });
   cancelled = await move(cancelled, "Cancelled");
   show("9 Test Cancelled, refund due", cancelled);
 

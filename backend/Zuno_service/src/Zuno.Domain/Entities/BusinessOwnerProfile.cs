@@ -19,6 +19,13 @@ public class BusinessOwnerProfile : BaseEntity
 
     public string? LogoUrl { get; set; }
 
+    /// <summary>
+    /// Where customers pay the business by UPI, e.g. <c>joyevents@okhdfcbank</c>. Every payment QR the
+    /// business shows is made from it — in Service and in Rent, which copies it from here. Required to
+    /// save the profile; null only for a business that has not finished its profile yet.
+    /// </summary>
+    public string? UpiId { get; set; }
+
     public Guid? BusinessAddressId { get; set; }
 
     public Address? BusinessAddress { get; set; }

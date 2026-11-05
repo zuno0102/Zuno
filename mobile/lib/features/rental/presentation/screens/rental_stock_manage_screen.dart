@@ -7,6 +7,7 @@ import 'package:zuno/features/rental/domain/entities/rental_item.dart';
 import 'package:zuno/features/rental/presentation/providers/rental_providers.dart';
 import 'package:zuno/features/rental/presentation/screens/business_rentals_tab.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_item_form_sheet.dart';
+import 'package:zuno/features/rental/presentation/widgets/rental_order_form_sheet.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/confirm_dialog.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
@@ -180,6 +181,7 @@ class _RentalStockManagePanelState extends ConsumerState<RentalStockManagePanel>
             children: [
               IconButton.filledTonal(
                 tooltip: 'One less',
+                style: RentalQuantityRow.stepStyle(context),
                 iconSize: 28,
                 onPressed: _quantity > _minimum ? () => _step(-1) : null,
                 icon: const Icon(Icons.remove),
@@ -206,6 +208,7 @@ class _RentalStockManagePanelState extends ConsumerState<RentalStockManagePanel>
               const SizedBox(width: 12),
               IconButton.filledTonal(
                 tooltip: 'One more',
+                style: RentalQuantityRow.stepStyle(context),
                 iconSize: 28,
                 onPressed: _quantity < rentalMaxQuantity
                     ? () => _step(1)
