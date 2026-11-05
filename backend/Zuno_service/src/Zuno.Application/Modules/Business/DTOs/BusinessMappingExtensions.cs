@@ -1,4 +1,6 @@
 using Zuno.Application.Common;
+using Zuno.Application.Common.Services;
+using Zuno.Application.Common.Settings;
 using Zuno.Domain.Entities;
 using Zuno.Domain.Enums;
 using Zuno.Domain.ValueObjects;
@@ -7,28 +9,37 @@ namespace Zuno.Application.Modules.Business.DTOs;
 
 public static class BusinessMappingExtensions
 {
-    public static BusinessProfileDto ToDto(this BusinessOwnerProfile profile, LevelLadder levels) => new()
+    public static BusinessProfileDto ToDto(this BusinessOwnerProfile profile, PlatformRules rules)
     {
-        Id = profile.Id,
-        BusinessName = profile.BusinessName,
-        BusinessType = profile.BusinessType,
-        GstNumber = profile.GstNumber,
-        Description = profile.Description,
-        LogoUrl = profile.LogoUrl,
-        UpiId = profile.UpiId,
-        MissingDetails = ProfileCompleteness.Missing(profile.UpiId),
-        VerificationStatus = profile.VerificationStatus.ToString(),
-        AddressLine1 = profile.BusinessAddress?.Line1,
-        AddressLine2 = profile.BusinessAddress?.Line2,
-        City = profile.BusinessAddress?.City,
-        State = profile.BusinessAddress?.State,
-        PostalCode = profile.BusinessAddress?.PostalCode,
-        Country = profile.BusinessAddress?.Country,
-        Latitude = profile.BusinessAddress?.Latitude,
-        Longitude = profile.BusinessAddress?.Longitude,
-        Level = profile.Level,
-        LevelName = levels.Name(profile.Level),
-    };
+        var lines = BusinessStanding.Lines(profile, rules);
+        return new BusinessProfileDto
+        {
+            Id = profile.Id,
+            BusinessName = profile.BusinessName,
+            BusinessType = profile.BusinessType,
+            GstNumber = profile.GstNumber,
+            Description = profile.Description,
+            LogoUrl = profile.LogoUrl,
+            UpiId = profile.UpiId,
+            MissingDetails = ProfileCompleteness.Missing(profile.UpiId),
+            VerificationStatus = profile.VerificationStatus.ToString(),
+            AddressLine1 = profile.BusinessAddress?.Line1,
+            AddressLine2 = profile.BusinessAddress?.Line2,
+            City = profile.BusinessAddress?.City,
+            State = profile.BusinessAddress?.State,
+            PostalCode = profile.BusinessAddress?.PostalCode,
+            Country = profile.BusinessAddress?.Country,
+            Latitude = profile.BusinessAddress?.Latitude,
+            Longitude = profile.BusinessAddress?.Longitude,
+            Level = profile.Level,
+            LevelName = rules.BusinessLevels.Name(profile.Level),
+            SuccessfulJobs = profile.TotalSuccessfulJobs,
+            ServiceRatingAverage = lines.ServiceRatingAverage,
+            ServiceRatingCount = lines.ServiceRatingCount,
+            RentRatingAverage = lines.RentRatingAverage,
+            RentRatingCount = lines.RentRatingCount,
+        };
+    }
 
     public static BusinessServiceDto ToDto(this BusinessService service) => new()
     {

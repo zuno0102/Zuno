@@ -239,6 +239,11 @@ class RentalOrderModel {
     this.cancelChargeType = RentalCancelChargeType.byTimeLeft,
     this.cancelPercentPerDay,
     this.cancelPercentCap = 0,
+    this.canRate = false,
+    this.myRating,
+    this.myRatingComment,
+    this.customerRating,
+    this.customerRatingComment,
   });
 
   factory RentalOrderModel.fromJson(Map<String, dynamic> json) =>
@@ -297,6 +302,11 @@ class RentalOrderModel {
   final String cancelChargeType;
   final double? cancelPercentPerDay;
   final double cancelPercentCap;
+  final bool canRate;
+  final int? myRating;
+  final String? myRatingComment;
+  final int? customerRating;
+  final String? customerRatingComment;
 
   RentalOrder toEntity() => RentalOrder(
     id: id,
@@ -353,6 +363,11 @@ class RentalOrderModel {
     cancelChargeType: cancelChargeType,
     cancelPercentPerDay: cancelPercentPerDay,
     cancelPercentCap: cancelPercentCap,
+    canRate: canRate,
+    myRating: myRating,
+    myRatingComment: myRatingComment,
+    customerRating: customerRating,
+    customerRatingComment: customerRatingComment,
   );
 }
 

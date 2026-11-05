@@ -1,6 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:zuno/features/rental/domain/entities/rental_item.dart';
 import 'package:zuno/features/rental/domain/entities/rental_payment.dart';
+import 'package:zuno/shared/domain/star_rating.dart';
 
 part 'rental_models.g.dart';
 
@@ -121,6 +122,8 @@ class RentalItemModel {
     this.cancelUnit = RentalCancelUnit.day,
     this.cancelChargeType = RentalCancelChargeType.byTimeLeft,
     this.cancelPercentPerDay,
+    this.ratingAverage,
+    this.ratingCount = 0,
   });
 
   factory RentalItemModel.fromJson(Map<String, dynamic> json) =>
@@ -147,6 +150,10 @@ class RentalItemModel {
   final String cancelChargeType;
   final double? cancelPercentPerDay;
 
+  /// The item's own stars; null until it has enough ratings to be fair.
+  final double? ratingAverage;
+  final int ratingCount;
+
   RentalItem toEntity() => RentalItem(
     id: id,
     rentalCategoryId: rentalCategoryId,
@@ -168,6 +175,7 @@ class RentalItemModel {
     cancelUnit: cancelUnit,
     cancelChargeType: cancelChargeType,
     cancelPercentPerDay: cancelPercentPerDay,
+    rating: StarRating(average: ratingAverage, count: ratingCount),
   );
 }
 

@@ -14,6 +14,7 @@ public class BusinessServiceConfiguration : IEntityTypeConfiguration<BusinessSer
         builder.Property(s => s.ItemName).HasMaxLength(200);
         builder.Property(s => s.Description).HasMaxLength(1000);
         builder.Property(s => s.Price).HasPrecision(10, 2);
+        builder.Property(s => s.RatingSum).HasPrecision(RatingPrecision.SumDigits, RatingPrecision.SumScale);
 
         builder.HasIndex(s => s.BusinessOwnerProfileId).HasDatabaseName("ix_business_services_business_owner_profile_id");
         builder.HasIndex(s => s.ServiceCategoryId).HasDatabaseName("ix_business_services_service_category_id");

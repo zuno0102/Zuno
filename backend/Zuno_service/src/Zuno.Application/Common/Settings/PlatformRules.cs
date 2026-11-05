@@ -135,6 +135,41 @@ public sealed record PlatformRules
     /// <summary>The worker ladder. Rungs from <c>level_definitions</c>; minimums from this table.</summary>
     public LevelLadder WorkerLevels { get; init; } = LevelLadder.WorkerDefaults;
 
+    /// <summary>Least time a business holds a level before it may step up to the next one, in days.</summary>
+    public int BusinessLevelMinDaysAtLevel { get; init; } = 14;
+
+    /// <summary>How long a business may sit below its level's rules before it steps down one, in days.</summary>
+    public int BusinessLevelDropGraceDays { get; init; } = 7;
+
+    /// <summary>How quickly a business's stored level follows the level it has earned.</summary>
+    public LevelPace BusinessLevelPace => new(
+        TimeSpan.FromDays(BusinessLevelMinDaysAtLevel),
+        TimeSpan.FromDays(BusinessLevelDropGraceDays));
+
+    // ---- Ratings ------------------------------------------------------------------------------
+
+    /// <summary>The typical rating every fair average starts from. The Rent API uses the same value.</summary>
+    public decimal RatingPriorAverage { get; init; } = 4.0m;
+
+    /// <summary>How many imaginary typical ratings a fair average starts with. The Rent API uses the same value.</summary>
+    public int RatingPriorWeight { get; init; } = 5;
+
+    /// <summary>How often business standings are refreshed and Rent figures copied in, in minutes.</summary>
+    public int ReputationSyncMinutes { get; init; } = 15;
+
+    /// <summary>
+    /// The fair average of <paramref name="count"/> customer ratings adding up to <paramref name="sum"/> —
+    /// the one formula every rating shown in the app goes through. Null below the review minimum.
+    /// </summary>
+    public decimal? FairRating(decimal sum, int count) => Domain.ValueObjects.FairRating.Of(
+        sum, count, RatingPrior.Average, RatingPrior.Weight, RatingPrior.MinCount);
+
+    /// <summary>
+    /// The fair-average settings in one value, for a query that works ratings out as rows arrive. The
+    /// minimum is the business-level review minimum, so a rating is shown exactly when it starts to count.
+    /// </summary>
+    public RatingPrior RatingPrior => new(RatingPriorAverage, RatingPriorWeight, BusinessLevels.MinimumReviewsForAverage);
+
     /// <summary>The defaults, as the code ships them.</summary>
     public static PlatformRules Defaults { get; } = new();
 
@@ -234,6 +269,16 @@ public sealed record PlatformRules
         Whole("worker-level.min-offers-for-rate", "Offers a worker needs before their answered-offers rate counts towards their level.", 1, 100,
             r => r.WorkerLevels.MinimumOffersForRate,
             (r, v) => r with { WorkerLevels = r.WorkerLevels with { MinimumOffersForRate = v } }),
+        Whole("business-level.min-days-at-level", "Days a business holds a level before it may step up to the next one.", 0, 365,
+            r => r.BusinessLevelMinDaysAtLevel, (r, v) => r with { BusinessLevelMinDaysAtLevel = v }),
+        Whole("business-level.drop-grace-days", "Days a business may fall short of its level before it steps down one.", 0, 365,
+            r => r.BusinessLevelDropGraceDays, (r, v) => r with { BusinessLevelDropGraceDays = v }),
+        Amount("rating.prior-average", "Typical rating every fair average starts from (1-5). Keep equal to the Rent API's.", 1m, 5m,
+            r => r.RatingPriorAverage, (r, v) => r with { RatingPriorAverage = v }),
+        Whole("rating.prior-weight", "Imaginary typical ratings a fair average starts with. Keep equal to the Rent API's.", 0, 100,
+            r => r.RatingPriorWeight, (r, v) => r with { RatingPriorWeight = v }),
+        Whole("reputation.sync-minutes", "Minutes between refreshing every business's standing and copying in Rent figures.", 1, 1440,
+            r => r.ReputationSyncMinutes, (r, v) => r with { ReputationSyncMinutes = v }),
     ];
 
     /// <summary>
@@ -324,6 +369,15 @@ public sealed record PlatformRules
         new(key, description, min, max,
             r => read(r).ToString(CultureInfo.InvariantCulture),
             (r, raw) => int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) && v >= min && v <= max
+                ? write(r, v)
+                : null);
+
+    private static PlatformRuleDefinition Amount(
+        string key, string description, decimal min, decimal max,
+        Func<PlatformRules, decimal> read, Func<PlatformRules, decimal, PlatformRules> write) =>
+        new(key, description, (double)min, (double)max,
+            r => read(r).ToString(CultureInfo.InvariantCulture),
+            (r, raw) => decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var v) && v >= min && v <= max
                 ? write(r, v)
                 : null);
 

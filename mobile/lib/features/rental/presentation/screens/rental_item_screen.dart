@@ -7,6 +7,7 @@ import 'package:zuno/features/rental/presentation/providers/rental_customer_prov
 import 'package:zuno/features/rental/presentation/widgets/rental_booking_sheet.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_item_card.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
+import 'package:zuno/shared/widgets/rating_line.dart';
 
 /// A rent item as a customer opens it: the photos, the rate, what it is, where it is offered, who
 /// rents it out — and **Book** at the bottom, always in reach.
@@ -152,6 +153,12 @@ class _BodyState extends State<_Body> {
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
+              ),
+              const SizedBox(height: 4),
+              RatingLine.of(
+                widget.card.rating,
+                style: theme.textTheme.bodyMedium,
+                key: const ValueKey('rental-item-rating'),
               ),
               const SizedBox(height: 4),
               Text(

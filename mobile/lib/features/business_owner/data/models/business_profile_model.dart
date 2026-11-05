@@ -2,6 +2,7 @@ import 'package:json_annotation/json_annotation.dart';
 import 'package:zuno/features/business_owner/domain/entities/business_profile.dart';
 import 'package:zuno/shared/data/business_trust_model.dart';
 import 'package:zuno/shared/domain/business_trust.dart';
+import 'package:zuno/shared/domain/star_rating.dart';
 
 part 'business_profile_model.g.dart';
 
@@ -28,6 +29,11 @@ class BusinessProfileModel {
     this.trust,
     this.level = 1,
     this.levelName = 'New',
+    this.successfulJobs = 0,
+    this.serviceRatingAverage,
+    this.serviceRatingCount = 0,
+    this.rentRatingAverage,
+    this.rentRatingCount = 0,
   });
 
   factory BusinessProfileModel.fromJson(Map<String, dynamic> json) =>
@@ -54,6 +60,13 @@ class BusinessProfileModel {
   final String levelName;
   final BusinessTrustModel? trust;
 
+  /// Jobs seen through on every line — Service jobs plus Rent orders.
+  final int successfulJobs;
+  final double? serviceRatingAverage;
+  final int serviceRatingCount;
+  final double? rentRatingAverage;
+  final int rentRatingCount;
+
   BusinessProfile toEntity() => BusinessProfile(
     id: id,
     businessName: businessName,
@@ -75,5 +88,12 @@ class BusinessProfileModel {
     level: level,
     levelName: levelName,
     trust: trust?.toEntity() ?? const BusinessTrust(),
+    successfulJobs: successfulJobs,
+    lineRatings: LineRatings.fromFields(
+      serviceAverage: serviceRatingAverage,
+      serviceCount: serviceRatingCount,
+      rentAverage: rentRatingAverage,
+      rentCount: rentRatingCount,
+    ),
   );
 }

@@ -171,6 +171,7 @@ public class GetHomeSectionsQueryHandler(
     /// <summary>Every bookable service with how often it has been booked — the pool each section picks from.</summary>
     private async Task<List<Candidate>> LoadCandidatesAsync(CancellationToken cancellationToken)
     {
+        var prior = platformSettings.Current.RatingPrior;
         var services = await dbContext.BusinessServices
             .Where(s => s.IsActive)
             .Where(s => s.BusinessOwnerProfile.VerificationStatus == VerificationStatus.Verified)
@@ -194,6 +195,8 @@ public class GetHomeSectionsQueryHandler(
                 Level = s.BusinessOwnerProfile.Level,
                 RatingAverage = s.BusinessOwnerProfile.CustomerRatingAverage,
                 ReviewCount = s.BusinessOwnerProfile.CustomerReviewCount,
+                ServiceRatingAverage = FairRating.Of(s.RatingSum, s.RatingCount, prior.Average, prior.Weight, prior.MinCount),
+                ServiceRatingCount = s.RatingCount,
             })
         .ToListAsync(cancellationToken);
 

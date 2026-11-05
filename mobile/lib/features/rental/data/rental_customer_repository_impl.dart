@@ -66,6 +66,13 @@ class RentalCustomerRepositoryImpl implements RentalCustomerRepository {
     paymentId: paymentId,
     signature: signature,
   )).toEntity();
+
+  @override
+  Future<RentalOrder> rate(
+    String orderId,
+    int score, {
+    String? comment,
+  }) async => (await _remote.rate(orderId, score, comment)).toEntity();
 }
 
 /// The customer's rent orders for the shared order screens.

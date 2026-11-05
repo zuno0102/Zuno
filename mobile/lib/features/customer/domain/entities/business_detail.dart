@@ -1,4 +1,5 @@
 import 'package:zuno/features/customer/domain/entities/customer_service.dart';
+import 'package:zuno/shared/domain/star_rating.dart';
 
 class BusinessDetail {
   const BusinessDetail({
@@ -11,6 +12,8 @@ class BusinessDetail {
     this.city,
     this.state,
     this.country,
+    this.rating = const StarRating(),
+    this.lineRatings = const LineRatings(),
   });
 
   final String id;
@@ -22,4 +25,10 @@ class BusinessDetail {
   final String? state;
   final String? country;
   final List<CustomerService> services;
+
+  /// The overall rating across every line it runs.
+  final StarRating rating;
+
+  /// Its stars on Service and on Rent, apart.
+  final LineRatings lineRatings;
 }

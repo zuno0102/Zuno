@@ -168,6 +168,19 @@ public class RentalOrderDto
 
     /// <summary>The refund methods to choose from, when <see cref="CanChooseRefundMode"/>.</summary>
     public List<RentalRefundModeChoiceDto> RefundModes { get; set; } = [];
+
+    /// <summary>The customer may rate it now: returned, fully paid, a main order, and not rated yet.</summary>
+    public bool CanRate { get; set; }
+
+    /// <summary>The customer's own stars on it, shown to the customer; null until rated.</summary>
+    public short? MyRating { get; set; }
+
+    public string? MyRatingComment { get; set; }
+
+    /// <summary>The stars the customer gave, shown to both sides; null until rated.</summary>
+    public short? CustomerRating { get; set; }
+
+    public string? CustomerRatingComment { get; set; }
 }
 
 /// <summary>One way to give a refund back, as the business chooses it.</summary>

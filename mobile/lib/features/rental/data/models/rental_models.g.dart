@@ -87,6 +87,8 @@ RentalItemModel _$RentalItemModelFromJson(
   cancelChargeType:
       json['cancelChargeType'] as String? ?? RentalCancelChargeType.byTimeLeft,
   cancelPercentPerDay: (json['cancelPercentPerDay'] as num?)?.toDouble(),
+  ratingAverage: (json['ratingAverage'] as num?)?.toDouble(),
+  ratingCount: (json['ratingCount'] as num?)?.toInt() ?? 0,
 );
 
 RentalItemPageModel _$RentalItemPageModelFromJson(Map<String, dynamic> json) =>

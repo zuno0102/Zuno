@@ -4,6 +4,7 @@ import 'package:zuno/features/customer/data/models/service_media_model.dart';
 import 'package:zuno/features/customer/data/models/service_question_model.dart';
 import 'package:zuno/features/customer/data/models/service_variant_model.dart';
 import 'package:zuno/features/customer/domain/entities/customer_service.dart';
+import 'package:zuno/shared/domain/star_rating.dart';
 
 part 'customer_service_model.g.dart';
 
@@ -21,6 +22,8 @@ class CustomerServiceModel {
     this.targetDistricts = const [],
     this.variants = const [],
     this.questions = const [],
+    this.ratingAverage,
+    this.ratingCount = 0,
   });
 
   factory CustomerServiceModel.fromJson(Map<String, dynamic> json) =>
@@ -38,6 +41,10 @@ class CustomerServiceModel {
   final List<ServiceVariantModel> variants;
   final List<ServiceQuestionModel> questions;
 
+  /// This service's own stars; null until it has enough ratings to be fair.
+  final double? ratingAverage;
+  final int ratingCount;
+
   CustomerService toEntity() => CustomerService(
     id: id,
     serviceCategoryName: serviceCategoryName,
@@ -50,5 +57,6 @@ class CustomerServiceModel {
     targetDistricts: targetDistricts.map((d) => d.toEntity()).toList(),
     variants: variants.map((v) => v.toEntity()).toList(),
     questions: questions.map((q) => q.toEntity()).toList(),
+    rating: StarRating(average: ratingAverage, count: ratingCount),
   );
 }

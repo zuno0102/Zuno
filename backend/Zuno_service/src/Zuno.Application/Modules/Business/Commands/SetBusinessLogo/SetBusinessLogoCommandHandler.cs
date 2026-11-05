@@ -34,6 +34,6 @@ public class SetBusinessLogoCommandHandler(
             fileStorageService.DeleteFile(previousUrl);
         }
 
-        return profile.ToDto(platformSettings.Current.BusinessLevels);
+        return profile.ToDto(platformSettings.Current);
     }
 }

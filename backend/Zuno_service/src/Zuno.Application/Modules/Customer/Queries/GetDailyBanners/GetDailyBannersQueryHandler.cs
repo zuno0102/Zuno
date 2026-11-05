@@ -65,6 +65,7 @@ public class GetDailyBannersQueryHandler(
 
         var todaysIds = Window(ids, dateTimeProvider.UtcNow, BannerCount);
 
+        var prior = platformSettings.Current.RatingPrior;
         var listings = await dbContext.BusinessServices
             .Where(s => todaysIds.Contains(s.Id))
             .Select(s => new ServiceListingDto
@@ -87,6 +88,8 @@ public class GetDailyBannersQueryHandler(
                 Level = s.BusinessOwnerProfile.Level,
                 RatingAverage = s.BusinessOwnerProfile.CustomerRatingAverage,
                 ReviewCount = s.BusinessOwnerProfile.CustomerReviewCount,
+                ServiceRatingAverage = FairRating.Of(s.RatingSum, s.RatingCount, prior.Average, prior.Weight, prior.MinCount),
+                ServiceRatingCount = s.RatingCount,
             })
             .ToListAsync(cancellationToken);
 

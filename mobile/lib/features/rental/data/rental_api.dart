@@ -61,6 +61,9 @@ class RentApi {
   /// The payment window's answer, checked by the server.
   static String myRentalPayPath(String id) => '$myRentalsPath/$id/pay';
 
+  /// The customer's stars for a returned, fully paid rental — once.
+  static String myRentalRatingPath(String id) => '$myRentalsPath/$id/rating';
+
   static const String ordersPath = '/api/v1/business/rental-orders';
   static const String orderCountsPath = '$ordersPath/counts';
   static const String orderThreadsPath = '$ordersPath/threads';

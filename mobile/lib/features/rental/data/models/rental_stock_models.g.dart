@@ -173,6 +173,11 @@ RentalOrderModel _$RentalOrderModelFromJson(
       json['cancelChargeType'] as String? ?? RentalCancelChargeType.byTimeLeft,
   cancelPercentPerDay: (json['cancelPercentPerDay'] as num?)?.toDouble(),
   cancelPercentCap: (json['cancelPercentCap'] as num?)?.toDouble() ?? 0,
+  canRate: json['canRate'] as bool? ?? false,
+  myRating: (json['myRating'] as num?)?.toInt(),
+  myRatingComment: json['myRatingComment'] as String?,
+  customerRating: (json['customerRating'] as num?)?.toInt(),
+  customerRatingComment: json['customerRatingComment'] as String?,
 );
 
 RentalOrderPageModel _$RentalOrderPageModelFromJson(

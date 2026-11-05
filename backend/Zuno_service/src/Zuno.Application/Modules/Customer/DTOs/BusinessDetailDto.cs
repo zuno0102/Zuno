@@ -18,5 +18,20 @@ public class BusinessDetailDto
 
     public string? Country { get; set; }
 
+    /// <summary>The overall rating across every line it runs. Null until there are enough ratings.</summary>
+    public decimal? RatingAverage { get; set; }
+
+    public int ReviewCount { get; set; }
+
+    /// <summary>The rating of its Service orders alone. Null until there are enough of them.</summary>
+    public decimal? ServiceRatingAverage { get; set; }
+
+    public int ServiceRatingCount { get; set; }
+
+    /// <summary>The rating of its Rent orders alone. Null until there are enough of them.</summary>
+    public decimal? RentRatingAverage { get; set; }
+
+    public int RentRatingCount { get; set; }
+
     public List<CustomerServiceDto> Services { get; set; } = [];
 }

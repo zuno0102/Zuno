@@ -13,7 +13,7 @@ public class BusinessProfileCompletenessTests
 {
     private static BusinessProfileDto Read(string? upiId) =>
         new BusinessOwnerProfile { BusinessName = "Joy Events", UpiId = upiId }
-            .ToDto(new TestPlatformSettings().Current.BusinessLevels);
+            .ToDto(new TestPlatformSettings().Current);
 
     [Fact]
     public void A_profile_without_a_UPI_ID_says_what_is_missing()

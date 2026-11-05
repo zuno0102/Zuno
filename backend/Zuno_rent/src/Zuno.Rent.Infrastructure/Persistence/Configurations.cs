@@ -406,6 +406,31 @@ public class RentalPaymentCheckoutConfiguration : IEntityTypeConfiguration<Renta
     }
 }
 
+public class RentalOrderRatingConfiguration : IEntityTypeConfiguration<RentalOrderRating>
+{
+    public void Configure(EntityTypeBuilder<RentalOrderRating> builder)
+    {
+        builder.ToTable("rental_order_ratings", t =>
+            t.HasCheckConstraint(
+                "ck_rental_order_ratings_score",
+                $"score BETWEEN {RentalRatingFields.MinScore} AND {RentalRatingFields.MaxScore}"));
+        builder.Property(r => r.Comment).HasMaxLength(RentalRatingFields.CommentMaxLength);
+
+        // One rating per order, ever; an item's stars and a business's totals are summed by these.
+        builder.HasIndex(r => r.RentalOrderId).IsUnique();
+        builder.HasIndex(r => r.RentalItemId);
+        builder.HasIndex(r => r.OwnerUserId);
+        builder.HasOne<RentalOrder>()
+            .WithMany()
+            .HasForeignKey(r => r.RentalOrderId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<RentalItem>()
+            .WithMany()
+            .HasForeignKey(r => r.RentalItemId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
 public class RentalAdvanceTypeOptionConfiguration : IEntityTypeConfiguration<RentalAdvanceTypeOption>
 {
     public void Configure(EntityTypeBuilder<RentalAdvanceTypeOption> builder)

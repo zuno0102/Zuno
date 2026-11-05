@@ -41,6 +41,8 @@ public class RentDbContext(DbContextOptions<RentDbContext> options) : DbContext(
 
     public DbSet<RentalPaymentCheckout> RentalPaymentCheckouts => Set<RentalPaymentCheckout>();
 
+    public DbSet<RentalOrderRating> RentalOrderRatings => Set<RentalOrderRating>();
+
     public DbSet<RentalAdvanceTypeOption> RentalAdvanceTypes => Set<RentalAdvanceTypeOption>();
 
     public DbSet<RentalPaymentMethodOption> RentalPaymentMethods => Set<RentalPaymentMethodOption>();

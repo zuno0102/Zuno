@@ -134,6 +134,33 @@ public static class DependencyInjection
             .AddPolicyHandler(PollyPolicies.GetCircuitBreakerPolicy());
 
         services.AddScoped<IBusinessReputationService, BusinessReputationService>();
+
+        // Each business's Rent record, read from the Rent API and folded into its standing on a timer.
+        // No retry policy: the time-out is already long enough for a sleeping server to wake, and the
+        // next run is the retry.
+        services.AddOptions<RentApiSettings>()
+            .Bind(configuration.GetSection(RentApiSettings.SectionName))
+            .ValidateDataAnnotations()
+            .Validate(
+                s => !s.IsConfigured || Uri.TryCreate(s.BaseUrl, UriKind.Absolute, out _),
+                "RentApi:BaseUrl must be an absolute URL, or empty to switch the Rent figures off.")
+            .ValidateOnStart();
+        services.AddHttpClient<IRentReputationClient, RentReputationClient>((sp, client) =>
+        {
+            var rentApi = sp.GetRequiredService<IOptions<RentApiSettings>>().Value;
+            if (rentApi.IsConfigured)
+            {
+                client.BaseAddress = new Uri(rentApi.BaseUrl.TrimEnd('/') + "/");
+            }
+
+            client.Timeout = TimeSpan.FromSeconds(rentApi.TimeoutSeconds);
+        });
+        services.AddOptions<ReputationSyncSettings>()
+            .Bind(configuration.GetSection(ReputationSyncSettings.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.AddScoped<IBusinessReputationSync, BusinessReputationSync>();
+        services.AddHostedService<ReputationSyncService>();
         services.AddScoped<IBusinessTrustService, BusinessTrustService>();
         services.AddScoped<IBookingWageService, BookingWageService>();
         services.AddScoped<IWorkerEarningsService, WorkerEarningsService>();

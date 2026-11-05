@@ -748,9 +748,17 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("level");
 
+                    b.Property<DateTimeOffset?>("LevelBelowSince")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("level_below_since");
+
                     b.Property<DateTimeOffset?>("LevelRecalculatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("level_recalculated_at");
+
+                    b.Property<DateTimeOffset?>("LevelSince")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("level_since");
 
                     b.Property<string>("LogoUrl")
                         .HasMaxLength(500)
@@ -768,6 +776,32 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                     b.Property<int>("OpenDisputeCount")
                         .HasColumnType("integer")
                         .HasColumnName("open_dispute_count");
+
+                    b.Property<int>("RentRatingCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("rent_rating_count");
+
+                    b.Property<decimal>("RentRatingSum")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)")
+                        .HasColumnName("rent_rating_sum");
+
+                    b.Property<DateTimeOffset?>("RentReputationAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("rent_reputation_at");
+
+                    b.Property<int>("RentSuccessfulOrders")
+                        .HasColumnType("integer")
+                        .HasColumnName("rent_successful_orders");
+
+                    b.Property<int>("ServiceRatingCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("service_rating_count");
+
+                    b.Property<decimal>("ServiceRatingSum")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)")
+                        .HasColumnName("service_rating_sum");
 
                     b.Property<short>("Status")
                         .HasColumnType("smallint")
@@ -874,6 +908,15 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                     b.Property<short>("PriceType")
                         .HasColumnType("smallint")
                         .HasColumnName("price_type");
+
+                    b.Property<int>("RatingCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("rating_count");
+
+                    b.Property<decimal>("RatingSum")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)")
+                        .HasColumnName("rating_sum");
 
                     b.Property<int>("RequiredWorkerCount")
                         .HasColumnType("integer")
@@ -12157,6 +12200,56 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                             Key = "worker-level.min-offers-for-rate",
                             Status = (short)1,
                             Value = "5"
+                        },
+                        new
+                        {
+                            Id = new Guid("2a1a6f6b-4923-4947-aa46-b58071d13f44"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Days a business holds a level before it may step up to the next one.",
+                            IsDeleted = false,
+                            Key = "business-level.min-days-at-level",
+                            Status = (short)1,
+                            Value = "14"
+                        },
+                        new
+                        {
+                            Id = new Guid("90ac1acd-4565-a29d-d86a-1aeb3334f243"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Days a business may fall short of its level before it steps down one.",
+                            IsDeleted = false,
+                            Key = "business-level.drop-grace-days",
+                            Status = (short)1,
+                            Value = "7"
+                        },
+                        new
+                        {
+                            Id = new Guid("77adafaa-0184-9d16-2e0a-908426895938"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Typical rating every fair average starts from (1-5). Keep equal to the Rent API's.",
+                            IsDeleted = false,
+                            Key = "rating.prior-average",
+                            Status = (short)1,
+                            Value = "4.0"
+                        },
+                        new
+                        {
+                            Id = new Guid("ac42b329-661d-59dc-88b2-b28cb56263ba"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Imaginary typical ratings a fair average starts with. Keep equal to the Rent API's.",
+                            IsDeleted = false,
+                            Key = "rating.prior-weight",
+                            Status = (short)1,
+                            Value = "5"
+                        },
+                        new
+                        {
+                            Id = new Guid("e609f915-3dd3-aea2-9ef0-5899c21bad59"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Minutes between refreshing every business's standing and copying in Rent figures.",
+                            IsDeleted = false,
+                            Key = "reputation.sync-minutes",
+                            Status = (short)1,
+                            Value = "15"
                         });
                 });
 
@@ -12174,6 +12267,10 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("BusinessOwnerProfileId")
                         .HasColumnType("uuid")
                         .HasColumnName("business_owner_profile_id");
+
+                    b.Property<Guid?>("BusinessServiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("business_service_id");
 
                     b.Property<string>("Comment")
                         .HasMaxLength(1000)
@@ -12222,6 +12319,9 @@ namespace Zuno.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("BusinessOwnerProfileId")
                         .HasDatabaseName("ix_ratings_business_owner_profile_id");
+
+                    b.HasIndex("BusinessServiceId")
+                        .HasDatabaseName("ix_ratings_business_service_id");
 
                     b.HasIndex("CustomerProfileId")
                         .HasDatabaseName("ix_ratings_customer_profile_id");
@@ -15405,6 +15505,12 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_ratings_business_owner_profiles_business_owner_profile_id");
 
+                    b.HasOne("Zuno.Domain.Entities.BusinessService", "BusinessService")
+                        .WithMany()
+                        .HasForeignKey("BusinessServiceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ratings_business_services_business_service_id");
+
                     b.HasOne("Zuno.Domain.Entities.CustomerProfile", "CustomerProfile")
                         .WithMany()
                         .HasForeignKey("CustomerProfileId")
@@ -15415,6 +15521,8 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                     b.Navigation("Booking");
 
                     b.Navigation("BusinessOwnerProfile");
+
+                    b.Navigation("BusinessService");
 
                     b.Navigation("CustomerProfile");
                 });

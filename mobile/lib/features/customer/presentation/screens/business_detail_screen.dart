@@ -10,6 +10,7 @@ import 'package:zuno/features/customer/domain/entities/service_variant.dart';
 import 'package:zuno/features/customer/presentation/providers/customer_providers.dart';
 import 'package:zuno/features/customer/presentation/screens/create_booking_screen.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
+import 'package:zuno/shared/widgets/rating_line.dart';
 import 'package:zuno/core/router/push_screen.dart';
 
 class BusinessDetailScreen extends ConsumerWidget {
@@ -84,6 +85,20 @@ class _BusinessDetailBody extends StatelessWidget {
                     business.businessName,
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
+                  const SizedBox(height: 4),
+                  // Overall, across every line; then each line apart when more than one is rated.
+                  RatingLine.of(
+                    business.rating,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    key: const ValueKey('business-rating'),
+                  ),
+                  if (business.lineRatings.isSplit) ...[
+                    const SizedBox(height: 2),
+                    LineRatingsRow(
+                      lines: business.lineRatings,
+                      key: const ValueKey('business-line-ratings'),
+                    ),
+                  ],
                   if (addressParts.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(
@@ -201,7 +216,17 @@ class _ServiceTile extends StatelessWidget {
           service.name,
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
-        subtitle: Text(service.serviceCategoryName),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(service.serviceCategoryName),
+            // The service's own stars, not the business's.
+            RatingLine.of(
+              service.rating,
+              key: ValueKey('service-rating-${service.id}'),
+            ),
+          ],
+        ),
         trailing: Text(
           label,
           style: const TextStyle(fontWeight: FontWeight.w600),

@@ -38,6 +38,8 @@ public interface IRentDbContext
 
     DbSet<RentalPaymentCheckout> RentalPaymentCheckouts { get; }
 
+    DbSet<RentalOrderRating> RentalOrderRatings { get; }
+
     DbSet<RentalAdvanceTypeOption> RentalAdvanceTypes { get; }
 
     DbSet<RentalPaymentMethodOption> RentalPaymentMethods { get; }

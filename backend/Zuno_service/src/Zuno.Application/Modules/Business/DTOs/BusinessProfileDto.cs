@@ -48,4 +48,17 @@ public class BusinessProfileDto
     public int Level { get; set; } = 1;
 
     public string LevelName { get; set; } = string.Empty;
+
+    /// <summary>Jobs seen through on every line — Service jobs plus Rent orders — which the level counts.</summary>
+    public int SuccessfulJobs { get; set; }
+
+    /// <summary>The rating of its Service orders alone. Null until there are enough of them.</summary>
+    public decimal? ServiceRatingAverage { get; set; }
+
+    public int ServiceRatingCount { get; set; }
+
+    /// <summary>The rating of its Rent orders alone. Null until there are enough of them.</summary>
+    public decimal? RentRatingAverage { get; set; }
+
+    public int RentRatingCount { get; set; }
 }

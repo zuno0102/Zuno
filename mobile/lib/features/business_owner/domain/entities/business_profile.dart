@@ -1,4 +1,5 @@
 import 'package:zuno/shared/domain/business_trust.dart';
+import 'package:zuno/shared/domain/star_rating.dart';
 
 class BusinessProfile {
   const BusinessProfile({
@@ -22,6 +23,8 @@ class BusinessProfile {
     this.trust = const BusinessTrust(),
     this.level = 1,
     this.levelName = 'New',
+    this.successfulJobs = 0,
+    this.lineRatings = const LineRatings(),
   });
 
   final String id;
@@ -52,8 +55,18 @@ class BusinessProfile {
   final int level;
   final String levelName;
 
+  /// Jobs seen through on every line — Service jobs plus Rent orders — which the level counts.
+  final int successfulJobs;
+
+  /// Its stars on Service and on Rent, apart.
+  final LineRatings lineRatings;
+
   /// What customers see, and what workers see — two records, not one score.
   final BusinessTrust trust;
+
+  /// "12 successful jobs" / "1 successful job".
+  String get successfulJobsLabel =>
+      '$successfulJobs successful ${successfulJobs == 1 ? 'job' : 'jobs'}';
 
   bool get hasAddress => addressLine1 != null && addressLine1!.isNotEmpty;
 

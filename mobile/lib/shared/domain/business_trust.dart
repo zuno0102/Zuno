@@ -25,12 +25,10 @@ class CustomerFacingTrust {
 
   final int eventsCompleted;
 
-  /// Null until anyone has reviewed, which is different from a rating of zero.
+  /// Null until there are enough reviews to be fair, which is different from a rating of zero.
   final double? ratingAverage;
   final int reviewCount;
   final int repeatCustomers;
-
-  bool get hasReviews => ratingAverage != null && reviewCount > 0;
 }
 
 /// The pay record — what a worker is deciding on.

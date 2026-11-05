@@ -1,6 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:zuno/features/customer/data/models/customer_service_model.dart';
 import 'package:zuno/features/customer/domain/entities/business_detail.dart';
+import 'package:zuno/shared/domain/star_rating.dart';
 
 part 'business_detail_model.g.dart';
 
@@ -16,6 +17,12 @@ class BusinessDetailModel {
     this.city,
     this.state,
     this.country,
+    this.ratingAverage,
+    this.reviewCount = 0,
+    this.serviceRatingAverage,
+    this.serviceRatingCount = 0,
+    this.rentRatingAverage,
+    this.rentRatingCount = 0,
   });
 
   factory BusinessDetailModel.fromJson(Map<String, dynamic> json) =>
@@ -31,6 +38,14 @@ class BusinessDetailModel {
   final String? country;
   final List<CustomerServiceModel> services;
 
+  /// The overall rating across every line; null until there are enough ratings.
+  final double? ratingAverage;
+  final int reviewCount;
+  final double? serviceRatingAverage;
+  final int serviceRatingCount;
+  final double? rentRatingAverage;
+  final int rentRatingCount;
+
   BusinessDetail toEntity() => BusinessDetail(
     id: id,
     businessName: businessName,
@@ -41,5 +56,12 @@ class BusinessDetailModel {
     state: state,
     country: country,
     services: services.map((s) => s.toEntity()).toList(),
+    rating: StarRating(average: ratingAverage, count: reviewCount),
+    lineRatings: LineRatings.fromFields(
+      serviceAverage: serviceRatingAverage,
+      serviceCount: serviceRatingCount,
+      rentAverage: rentRatingAverage,
+      rentCount: rentRatingCount,
+    ),
   );
 }

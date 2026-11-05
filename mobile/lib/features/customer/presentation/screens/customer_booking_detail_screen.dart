@@ -15,6 +15,7 @@ import 'package:zuno/features/booking/presentation/widgets/booking_terms_section
 import 'package:zuno/features/booking/presentation/widgets/propose_terms_sheet.dart';
 import 'package:zuno/shared/widgets/call_icon_button.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
+import 'package:zuno/shared/widgets/star_rating_dialog.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/router/push_screen.dart';
@@ -180,57 +181,13 @@ class _CustomerBookingDetailScreenState
   }
 
   Future<void> _rate() async {
-    var score = 5;
-    final commentController = TextEditingController();
-
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Rate this service'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (index) {
-                  final starValue = index + 1;
-                  return IconButton(
-                    icon: Icon(
-                      starValue <= score ? Icons.star : Icons.star_border,
-                      color: AppColors.ratingStar,
-                    ),
-                    onPressed: () => setDialogState(() => score = starValue),
-                  );
-                }),
-              ),
-              TextField(
-                controller: commentController,
-                maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Comment (optional)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Submit'),
-            ),
-          ],
-        ),
-      ),
+    // Starts on five, as this dialog always has for a finished service.
+    final input = await showStarRatingDialog(
+      context,
+      title: 'Rate this service',
+      initialScore: StarRatingDialog.maxScore,
     );
-
-    if (result != true) {
-      return;
-    }
+    if (input == null) return;
 
     // The rating sheet was a route of its own; this screen may have gone while it was open.
     if (!mounted) return;
@@ -241,13 +198,7 @@ class _CustomerBookingDetailScreenState
     try {
       await ref
           .read(customerBookingsProvider.notifier)
-          .rate(
-            widget.booking.id,
-            score: score,
-            comment: commentController.text.trim().isEmpty
-                ? null
-                : commentController.text.trim(),
-          );
+          .rate(widget.booking.id, score: input.score, comment: input.comment);
       if (mounted) {
         Navigator.of(context).pop();
         messenger.showSuccess('Thanks — your rating is saved.');

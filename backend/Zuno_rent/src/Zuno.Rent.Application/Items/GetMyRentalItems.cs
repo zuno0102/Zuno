@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Zuno.Rent.Application.Common;
+using Zuno.Rent.Application.Ratings;
 using Zuno.Rent.Domain.Entities;
 
 namespace Zuno.Rent.Application.Items;
@@ -51,9 +52,21 @@ public class GetMyRentalItemsQueryHandler(
                 .Take(pageSize)
                 .ToListAsync(cancellationToken);
 
+        // The stars for the whole page in one grouped read.
+        var ratings = await dbContext.RatingsForAsync(items.Select(i => i.Id).ToList(), cancellationToken);
+
         return new RentalItemPageDto
         {
-            Items = items.Select(i => i.ToDto()).ToList(),
+            Items = items
+                .Select(i =>
+                {
+                    var dto = i.ToDto();
+                    var rating = ratings.For(i.Id);
+                    dto.RatingAverage = rating.Average;
+                    dto.RatingCount = rating.Count;
+                    return dto;
+                })
+                .ToList(),
             Page = page,
             PageSize = pageSize,
             TotalCount = totalCount,

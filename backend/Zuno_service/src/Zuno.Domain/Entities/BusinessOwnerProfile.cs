@@ -54,9 +54,35 @@ public class BusinessOwnerProfile : BaseEntity
     /// </summary>
     public int CompletedJobCount { get; set; }
 
+    /// <summary>
+    /// The overall customer rating across every business line (Service and Rent), worked out with
+    /// <see cref="ValueObjects.FairRating"/>. Null until there are enough ratings to judge.
+    /// </summary>
     public decimal? CustomerRatingAverage { get; set; }
 
+    /// <summary>Customer ratings across every business line: <see cref="ServiceRatingCount"/> + <see cref="RentRatingCount"/>.</summary>
     public int CustomerReviewCount { get; set; }
+
+    /// <summary>All the stars customers gave this business's Service orders, added together.</summary>
+    public decimal ServiceRatingSum { get; set; }
+
+    /// <summary>How many Service orders customers rated.</summary>
+    public int ServiceRatingCount { get; set; }
+
+    /// <summary>All the stars customers gave its Rent orders, as last reported by the Rent API.</summary>
+    public decimal RentRatingSum { get; set; }
+
+    /// <summary>How many Rent orders customers rated, as last reported by the Rent API.</summary>
+    public int RentRatingCount { get; set; }
+
+    /// <summary>Rent orders returned and paid in full, as last reported by the Rent API.</summary>
+    public int RentSuccessfulOrders { get; set; }
+
+    /// <summary>When the Rent figures above were last copied from the Rent API. Null if never.</summary>
+    public DateTimeOffset? RentReputationAt { get; set; }
+
+    /// <summary>Jobs seen through on every line — what the level counts.</summary>
+    public int TotalSuccessfulJobs => CompletedJobCount + RentSuccessfulOrders;
 
     public decimal? WorkerRatingAverage { get; set; }
 
@@ -67,6 +93,12 @@ public class BusinessOwnerProfile : BaseEntity
 
     /// <summary>1–5, from <see cref="BusinessLevel"/>. Shown to customers as a trust badge.</summary>
     public int Level { get; set; } = 1;
+
+    /// <summary>When the business reached its current level. Null for a level held since before this was recorded.</summary>
+    public DateTimeOffset? LevelSince { get; set; }
+
+    /// <summary>When the business first fell below its current level's rules. Null while it meets them.</summary>
+    public DateTimeOffset? LevelBelowSince { get; set; }
 
     public DateTimeOffset? LevelRecalculatedAt { get; set; }
 }

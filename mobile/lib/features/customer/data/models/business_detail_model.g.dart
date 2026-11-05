@@ -19,4 +19,10 @@ BusinessDetailModel _$BusinessDetailModelFromJson(Map<String, dynamic> json) =>
       city: json['city'] as String?,
       state: json['state'] as String?,
       country: json['country'] as String?,
+      ratingAverage: (json['ratingAverage'] as num?)?.toDouble(),
+      reviewCount: (json['reviewCount'] as num?)?.toInt() ?? 0,
+      serviceRatingAverage: (json['serviceRatingAverage'] as num?)?.toDouble(),
+      serviceRatingCount: (json['serviceRatingCount'] as num?)?.toInt() ?? 0,
+      rentRatingAverage: (json['rentRatingAverage'] as num?)?.toDouble(),
+      rentRatingCount: (json['rentRatingCount'] as num?)?.toInt() ?? 0,
     );

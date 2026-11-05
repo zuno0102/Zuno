@@ -24,4 +24,8 @@ BusinessSummaryModel _$BusinessSummaryModelFromJson(
   reviewCount: (json['reviewCount'] as num?)?.toInt() ?? 0,
   completedJobCount: (json['completedJobCount'] as num?)?.toInt() ?? 0,
   startingPrice: (json['startingPrice'] as num?)?.toDouble(),
+  serviceRatingAverage: (json['serviceRatingAverage'] as num?)?.toDouble(),
+  serviceRatingCount: (json['serviceRatingCount'] as num?)?.toInt() ?? 0,
+  rentRatingAverage: (json['rentRatingAverage'] as num?)?.toDouble(),
+  rentRatingCount: (json['rentRatingCount'] as num?)?.toInt() ?? 0,
 );

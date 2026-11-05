@@ -1,5 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:zuno/features/customer/domain/entities/business_summary.dart';
+import 'package:zuno/shared/domain/star_rating.dart';
 
 part 'business_summary_model.g.dart';
 
@@ -19,6 +20,10 @@ class BusinessSummaryModel {
     this.reviewCount = 0,
     this.completedJobCount = 0,
     this.startingPrice,
+    this.serviceRatingAverage,
+    this.serviceRatingCount = 0,
+    this.rentRatingAverage,
+    this.rentRatingCount = 0,
   });
 
   factory BusinessSummaryModel.fromJson(Map<String, dynamic> json) =>
@@ -40,6 +45,12 @@ class BusinessSummaryModel {
   final int completedJobCount;
   final double? startingPrice;
 
+  /// Stars on each line it runs; [ratingAverage] is all of them together.
+  final double? serviceRatingAverage;
+  final int serviceRatingCount;
+  final double? rentRatingAverage;
+  final int rentRatingCount;
+
   BusinessSummary toEntity() => BusinessSummary(
     id: id,
     businessName: businessName,
@@ -54,5 +65,11 @@ class BusinessSummaryModel {
     reviewCount: reviewCount,
     completedJobCount: completedJobCount,
     startingPrice: startingPrice,
+    lineRatings: LineRatings.fromFields(
+      serviceAverage: serviceRatingAverage,
+      serviceCount: serviceRatingCount,
+      rentAverage: rentRatingAverage,
+      rentCount: rentRatingCount,
+    ),
   );
 }

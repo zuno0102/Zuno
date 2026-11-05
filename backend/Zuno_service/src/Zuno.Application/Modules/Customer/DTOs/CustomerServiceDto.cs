@@ -16,6 +16,12 @@ public class CustomerServiceDto
 
     public short? EstimatedDurationMinutes { get; set; }
 
+    /// <summary>How customers rated this service, worked out the fair way. Null until it has enough ratings.</summary>
+    public decimal? RatingAverage { get; set; }
+
+    /// <summary>How many of its orders customers rated.</summary>
+    public int RatingCount { get; set; }
+
     public List<ServiceMediaDto> Media { get; set; } = [];
 
     public List<ServiceDistrictDto> TargetDistricts { get; set; } = [];

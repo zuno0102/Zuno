@@ -70,6 +70,43 @@ public class RateBookingCommandHandlerTests
     }
 
     [Fact]
+    public async Task Rating_a_booking_credits_the_service_it_was_for()
+    {
+        var customerUserId = Guid.NewGuid();
+        var booking = CreateBooking(customerUserId);
+        booking.BusinessServiceId = Guid.NewGuid();
+        Rating? saved = null;
+        _ratingsDbSetMock.Setup(s => s.Add(It.IsAny<Rating>())).Callback((Rating r) => saved = r);
+        _currentUserServiceMock.Setup(c => c.UserId).Returns(customerUserId);
+        _bookingRepositoryMock
+            .Setup(r => r.GetByIdAsync(booking.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(booking);
+
+        await _sut.Handle(new RateBookingCommand { BookingId = booking.Id, Score = 4 }, default);
+
+        saved!.BusinessServiceId.Should().Be(booking.BusinessServiceId);
+        _reputationMock.Verify(
+            r => r.RecalculateServiceRatingAsync(booking.BusinessServiceId, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Should_Not_Touch_Any_Rating_Totals_When_Rating_Is_Refused()
+    {
+        var customerUserId = Guid.NewGuid();
+        var booking = CreateBooking(customerUserId, BookingStatus.InProgress);
+        _currentUserServiceMock.Setup(c => c.UserId).Returns(customerUserId);
+        _bookingRepositoryMock.Setup(r => r.GetByIdAsync(booking.Id, It.IsAny<CancellationToken>())).ReturnsAsync(booking);
+
+        var act = () => _sut.Handle(new RateBookingCommand { BookingId = booking.Id, Score = 5 }, CancellationToken.None);
+
+        await act.Should().ThrowAsync<DomainException>();
+        _reputationMock.Verify(
+            r => r.RecalculateServiceRatingAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task Should_Create_Rating_When_Booking_Is_Completed_And_Unrated()
     {
         var customerUserId = Guid.NewGuid();

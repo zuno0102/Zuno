@@ -17,6 +17,8 @@ RentalCardModel _$RentalCardModelFromJson(Map<String, dynamic> json) =>
       businessName: json['businessName'] as String? ?? '',
       imageUrl: json['imageUrl'] as String?,
       districtName: json['districtName'] as String?,
+      ratingAverage: (json['ratingAverage'] as num?)?.toDouble(),
+      ratingCount: (json['ratingCount'] as num?)?.toInt() ?? 0,
     );
 
 RentalHomeSectionModel _$RentalHomeSectionModelFromJson(

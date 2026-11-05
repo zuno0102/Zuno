@@ -12,7 +12,11 @@ import 'package:zuno/features/booking/presentation/screens/booking_chat_screen.d
 import 'package:zuno/features/customer/presentation/providers/customer_search_filter_provider.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_payment_card.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_order_actions.dart';
+import 'package:zuno/core/error/app_exceptions.dart';
+import 'package:zuno/features/rental/data/models/rental_customer_models.dart';
+import 'package:zuno/features/rental/data/models/rental_models.dart';
 import 'package:zuno/features/rental/data/models/rental_stock_models.dart';
+import 'package:zuno/shared/domain/star_rating.dart';
 import 'package:zuno/features/rental/domain/entities/rental_customer.dart';
 import 'package:zuno/features/rental/domain/entities/rental_item.dart';
 import 'package:zuno/features/rental/domain/entities/rental_payment.dart';
@@ -38,17 +42,22 @@ const _ekm = RentalItemDistrict(
   stateName: 'Kerala',
 );
 
-RentalCard _card(String id, String name, {String category = 'Furniture'}) =>
-    RentalCard(
-      id: id,
-      name: name,
-      categoryName: category,
-      priceType: 'Daily',
-      price: 12,
-      unitSuffix: '/day',
-      businessName: 'Joy Rentals',
-      districtName: 'Ernakulam',
-    );
+RentalCard _card(
+  String id,
+  String name, {
+  String category = 'Furniture',
+  StarRating rating = const StarRating(),
+}) => RentalCard(
+  rating: rating,
+  id: id,
+  name: name,
+  categoryName: category,
+  priceType: 'Daily',
+  price: 12,
+  unitSuffix: '/day',
+  businessName: 'Joy Rentals',
+  districtName: 'Ernakulam',
+);
 
 final _chairs = _card('chairs', 'Plastic chair');
 final _tent = _card('tent', 'Shamiana', category: 'Tents');
@@ -69,6 +78,9 @@ class _FakeCustomerRepository implements RentalCustomerRepository {
   String cancelChargeType = RentalCancelChargeType.byTimeLeft;
   double? cancelPercentPerDay;
   double maxCancelPercent = 0;
+
+  /// The item's stars, as the server sends them.
+  StarRating itemRating = const StarRating();
 
   /// Development's simulated collection: no payment window.
   bool simulated = false;
@@ -124,7 +136,7 @@ class _FakeCustomerRepository implements RentalCustomerRepository {
 
   @override
   Future<RentalItemDetail> item(String id) async => RentalItemDetail(
-    card: _chairs,
+    card: _card('chairs', 'Plastic chair', rating: itemRating),
     priceTypeName: 'Per day',
     quantityOwned: 2000,
     description: 'White armless chairs.',
@@ -200,6 +212,28 @@ class _FakeCustomerRepository implements RentalCustomerRepository {
     payments.add('pay:$orderId:$providerOrderId:$paymentId:$signature');
     return _order(orderId, 'Booked', amount: 3600, advanceDue: 600, paid: 600);
   }
+
+  /// Every rating sent, as `id:score:comment`.
+  final ratings = <String>[];
+
+  /// What the server does with a rating: by default, the order comes back rated.
+  RentalOrder Function(String orderId, int score, String? comment) onRate =
+      (id, score, comment) => _order(
+        id,
+        'Returned',
+        amount: 3600,
+        paid: 3600,
+        myRating: score,
+        myRatingComment: comment,
+        customerRating: score,
+        customerRatingComment: comment,
+      );
+
+  @override
+  Future<RentalOrder> rate(String orderId, int score, {String? comment}) async {
+    ratings.add('$orderId:$score:${comment ?? ''}');
+    return onRate(orderId, score, comment);
+  }
 }
 
 RentalOrder _order(
@@ -217,7 +251,17 @@ RentalOrder _order(
   String? refundModeText,
   String? paymentStatus,
   String? paymentStatusName,
+  bool canRate = false,
+  int? myRating,
+  String? myRatingComment,
+  int? customerRating,
+  String? customerRatingComment,
 }) => RentalOrder(
+  canRate: canRate,
+  myRating: myRating,
+  myRatingComment: myRatingComment,
+  customerRating: customerRating,
+  customerRatingComment: customerRatingComment,
   cancelledBy: cancelledBy,
   cancellationCharge: cancellationCharge,
   refundOwed: refundOwed,
@@ -448,6 +492,10 @@ _pump(
         ),
         rentalOrdersGatewayProvider(
           RentalAudience.customer,
+        ).overrideWithValue(gateway),
+        // The business's view of the same orders, for what each side is shown.
+        rentalOrdersGatewayProvider(
+          RentalAudience.business,
         ).overrideWithValue(gateway),
         rentalCategoriesProvider.overrideWith(
           (ref) async => const [
@@ -1439,6 +1487,343 @@ void main() {
         'refund': 4950,
       }).toEntity();
       expect(quote.refund, 4950);
+    });
+  });
+
+  group('Rating a rental', () {
+    final returned = _order(
+      'o1',
+      'Returned',
+      amount: 3600,
+      paid: 3600,
+      canRate: true,
+    );
+
+    Future<(_FakeCustomerRepository, _FakeCustomerGateway)> openRental(
+      WidgetTester tester,
+      RentalOrder order, {
+      RentalAudience audience = RentalAudience.customer,
+      void Function(_FakeCustomerRepository repository)? setUp,
+    }) async {
+      final (repository, gateway, _) = await _pump(
+        tester,
+        RentalOrderDetailScreen(order: order, audience: audience),
+        setUp: setUp,
+        setUpGateway: (gateway) => gateway.list[0] = order,
+      );
+      return (repository, gateway);
+    }
+
+    Future<void> openDialog(WidgetTester tester) async {
+      await tester.ensureVisible(find.byKey(const ValueKey('rate-rental')));
+      await tester.tap(find.byKey(const ValueKey('rate-rental')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('"Rate this rental" shows when the server allows it', (
+      tester,
+    ) async {
+      await openRental(tester, returned);
+      expect(find.text('Rate this rental'), findsOneWidget);
+    });
+
+    testWidgets('no rate button on a rental that cannot be rated yet', (
+      tester,
+    ) async {
+      await openRental(tester, _order('o1', 'OnRent'));
+      expect(find.text('Rate this rental'), findsNothing);
+      expect(find.byKey(const ValueKey('rental-my-rating')), findsNothing);
+    });
+
+    testWidgets('a star is required before submitting', (tester) async {
+      final (repository, _) = await openRental(tester, returned);
+      await openDialog(tester);
+
+      final submit = find.byKey(const ValueKey('rating-submit'));
+      expect(tester.widget<FilledButton>(submit).onPressed, isNull);
+      expect(find.text('Tap a star to rate.'), findsOneWidget);
+      await tester.tap(submit);
+      await tester.pumpAndSettle();
+      expect(repository.ratings, isEmpty);
+
+      await tester.tap(find.byKey(const ValueKey('rating-star-3')));
+      await tester.pump();
+      expect(tester.widget<FilledButton>(submit).onPressed, isNotNull);
+    });
+
+    testWidgets('submitting sends the stars and comment, then shows them', (
+      tester,
+    ) async {
+      final (repository, gateway) = await openRental(tester, returned);
+      // The server keeps the rating; the reload brings the rated order back.
+      repository.onRate = (id, score, comment) => gateway.list[0] = _order(
+        id,
+        'Returned',
+        amount: 3600,
+        paid: 3600,
+        myRating: score,
+        myRatingComment: comment,
+      );
+
+      await openDialog(tester);
+      await tester.tap(find.byKey(const ValueKey('rating-star-4')));
+      await tester.enterText(
+        find.byKey(const ValueKey('rating-comment')),
+        '  Clean chairs, on time.  ',
+      );
+      await tester.tap(find.byKey(const ValueKey('rating-submit')));
+      await tester.pumpAndSettle();
+
+      expect(repository.ratings, ['o1:4:Clean chairs, on time.']);
+      expect(find.text('Thanks — your rating is saved.'), findsOneWidget);
+      final mine = find.byKey(const ValueKey('rental-my-rating'));
+      expect(mine, findsOneWidget);
+      expect(
+        find.descendant(of: mine, matching: find.text('You rated ')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: mine, matching: find.text('4')),
+        findsOneWidget,
+      );
+      expect(find.text('Clean chairs, on time.'), findsOneWidget);
+      expect(find.text('Rate this rental'), findsNothing);
+    });
+
+    testWidgets('an empty comment is sent as none', (tester) async {
+      final (repository, _) = await openRental(tester, returned);
+      await openDialog(tester);
+      await tester.tap(find.byKey(const ValueKey('rating-star-5')));
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('rating-submit')));
+      await tester.pumpAndSettle();
+
+      expect(repository.ratings, ['o1:5:']);
+    });
+
+    testWidgets('the server refusing shows its words and keeps the button', (
+      tester,
+    ) async {
+      final (repository, _) = await openRental(
+        tester,
+        returned,
+        setUp: (r) => r.onRate = (_, _, _) => throw const ServerAppException(
+          'You have already rated this rental.',
+        ),
+      );
+      await openDialog(tester);
+      await tester.tap(find.byKey(const ValueKey('rating-star-2')));
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('rating-submit')));
+      await tester.pumpAndSettle();
+
+      expect(repository.ratings, ['o1:2:']);
+      expect(find.text('You have already rated this rental.'), findsOneWidget);
+      expect(find.text('Rate this rental'), findsOneWidget);
+    });
+
+    testWidgets('closing the dialog sends nothing', (tester) async {
+      final (repository, _) = await openRental(tester, returned);
+      await openDialog(tester);
+      await tester.tap(find.byKey(const ValueKey('rating-star-5')));
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(repository.ratings, isEmpty);
+    });
+
+    testWidgets('an already rated rental shows the stars, not the button', (
+      tester,
+    ) async {
+      await openRental(
+        tester,
+        _order(
+          'o1',
+          'Returned',
+          amount: 3600,
+          paid: 3600,
+          myRating: 5,
+          myRatingComment: 'Great',
+        ),
+      );
+      expect(find.byKey(const ValueKey('rental-my-rating')), findsOneWidget);
+      expect(find.text('Great'), findsOneWidget);
+      expect(find.text('Rate this rental'), findsNothing);
+    });
+
+    testWidgets('the business sees what the customer rated', (tester) async {
+      await openRental(
+        tester,
+        _order(
+          'o1',
+          'Returned',
+          amount: 3600,
+          paid: 3600,
+          customerRating: 3,
+          customerRatingComment: 'One chair was broken.',
+        ),
+        audience: RentalAudience.business,
+      );
+      final given = find.byKey(const ValueKey('rental-customer-rating'));
+      expect(given, findsOneWidget);
+      expect(
+        find.descendant(of: given, matching: find.text('Customer rated ')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: given, matching: find.text('3')),
+        findsOneWidget,
+      );
+      expect(find.text('One chair was broken.'), findsOneWidget);
+      expect(find.text('Rate this rental'), findsNothing);
+    });
+
+    testWidgets('the business sees nothing before the customer rates', (
+      tester,
+    ) async {
+      await openRental(tester, returned, audience: RentalAudience.business);
+      expect(
+        find.byKey(const ValueKey('rental-customer-rating')),
+        findsNothing,
+      );
+      expect(find.text('Rate this rental'), findsNothing);
+    });
+  });
+
+  group('Item stars', () {
+    testWidgets('a card with too few ratings says New, never 0.0', (
+      tester,
+    ) async {
+      await _pump(tester, const RentalHomeTab());
+      final card = find.byType(RentalItemCard).first;
+      expect(
+        find.descendant(of: card, matching: find.text('New')),
+        findsOneWidget,
+      );
+      expect(find.textContaining('0.0'), findsNothing);
+    });
+
+    testWidgets('a rated card shows its stars with one decimal', (
+      tester,
+    ) async {
+      const rated = RentalCard(
+        id: 'rated',
+        name: 'Plastic chair',
+        categoryName: 'Furniture',
+        priceType: 'Daily',
+        price: 12,
+        unitSuffix: '/day',
+        businessName: 'Joy Rentals',
+        rating: StarRating(average: 4.56, count: 12),
+      );
+      await _pump(
+        tester,
+        SizedBox(
+          width: 200,
+          child: RentalItemCard(card: rated, onTap: () {}),
+        ),
+      );
+      expect(find.text('4.6 (12)'), findsOneWidget);
+    });
+
+    testWidgets('the item page shows the item stars', (tester) async {
+      await _pump(
+        tester,
+        const RentalItemScreen(itemId: 'chairs'),
+        setUp: (r) => r.itemRating = const StarRating(average: 4.8, count: 6),
+      );
+      final line = find.byKey(const ValueKey('rental-item-rating'));
+      expect(
+        find.descendant(of: line, matching: find.text('4.8 (6)')),
+        findsOneWidget,
+      );
+    });
+
+    test(
+      'the server card and item read their stars; old JSON reads as new',
+      () {
+        final card = RentalCardModel.fromJson({
+          'id': 'c1',
+          'name': 'Chair',
+          'categoryName': 'Furniture',
+          'priceType': 'Daily',
+          'price': 12,
+          'ratingAverage': 4.5,
+          'ratingCount': 7,
+        }).toEntity();
+        expect(card.rating.average, 4.5);
+        expect(card.rating.count, 7);
+
+        final old = RentalCardModel.fromJson({
+          'id': 'c1',
+          'name': 'Chair',
+          'categoryName': 'Furniture',
+          'priceType': 'Daily',
+          'price': 12,
+        }).toEntity();
+        expect(old.rating.average, isNull);
+        expect(old.rating.count, 0);
+
+        Map<String, dynamic> item([Map<String, dynamic> extra = const {}]) => {
+          'id': 'i1',
+          'rentalCategoryId': 'cat',
+          'rentalCategoryName': 'Furniture',
+          'name': 'Chair',
+          'priceType': 'Daily',
+          'price': 12,
+          'quantityOwned': 10,
+          'isAvailable': true,
+          ...extra,
+        };
+        final fewRatings = RentalItemModel.fromJson(
+          item({'ratingAverage': null, 'ratingCount': 2}),
+        ).toEntity();
+        expect(fewRatings.rating.average, isNull);
+        expect(fewRatings.rating.count, 2);
+        expect(RentalItemModel.fromJson(item()).toEntity().rating.count, 0);
+      },
+    );
+
+    test('the server order reads its rating; old JSON reads as unrated', () {
+      Map<String, dynamic> order([Map<String, dynamic> extra = const {}]) => {
+        'id': 'o1',
+        'customerName': 'Rahul',
+        'quantity': 250,
+        'startDate': '2026-11-11T00:00:00Z',
+        'endDate': '2026-11-12T23:59:00Z',
+        'deliveryAddress': 'Hall',
+        'status': 'Returned',
+        'statusName': 'Returned',
+        'statusTone': 'success',
+        'isOut': false,
+        ...extra,
+      };
+
+      final rated = RentalOrderModel.fromJson(
+        order({
+          'canRate': false,
+          'myRating': 4,
+          'myRatingComment': 'Good',
+          'customerRating': 4,
+          'customerRatingComment': 'Good',
+        }),
+      ).toEntity();
+      expect(rated.canRate, isFalse);
+      expect(rated.myRating, 4);
+      expect(rated.myRatingComment, 'Good');
+      expect(rated.customerRating, 4);
+      expect(rated.customerRatingComment, 'Good');
+
+      final ready = RentalOrderModel.fromJson(
+        order({'canRate': true}),
+      ).toEntity();
+      expect(ready.canRate, isTrue);
+      expect(ready.myRating, isNull);
+
+      final old = RentalOrderModel.fromJson(order()).toEntity();
+      expect(old.canRate, isFalse);
+      expect(old.myRating, isNull);
+      expect(old.customerRating, isNull);
     });
   });
 }

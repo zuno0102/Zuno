@@ -11,6 +11,7 @@ import 'package:zuno/features/rental/presentation/widgets/rental_order_card.dart
 import 'package:zuno/features/rental/presentation/widgets/rental_order_form_sheet.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_order_timeline.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_payment_card.dart';
+import 'package:zuno/features/rental/presentation/widgets/rental_rating_section.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
 
 /// One rent order: what, how many, when, where, who — and its next steps as buttons, from the
@@ -88,6 +89,8 @@ class RentalOrderDetailScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           // Then the money: what it costs, what is paid, what is still due.
           RentalPaymentCard(order: current, audience: audience),
+          // Once it is back and paid: the customer's stars, or the way to give them.
+          RentalRatingSection(order: current, audience: audience),
           const SizedBox(height: 20),
           // Then the story of how it got there, step by step.
           RentalOrderTimeline(orderId: current.id, audience: audience),

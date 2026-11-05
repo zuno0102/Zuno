@@ -35,6 +35,15 @@ public class RentEndpointsTests(RentApiFactory factory) : IClassFixture<RentApiF
     }
 
     [Fact]
+    public async Task Rent_reputation_is_public_for_the_Service_API()
+    {
+        var response = await factory.CreateClient().GetAsync("/api/v1/rentals/reputation");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await Data(response)).GetProperty("items").ValueKind.Should().Be(JsonValueKind.Array);
+    }
+
+    [Fact]
     public async Task Without_a_valid_token_everything_is_401()
     {
         var anonymous = factory.CreateClient();

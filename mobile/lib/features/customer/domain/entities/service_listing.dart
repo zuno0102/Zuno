@@ -1,4 +1,5 @@
 import 'package:zuno/core/utils/formatting.dart';
+import 'package:zuno/shared/domain/star_rating.dart';
 
 /// One service as a customer browses it, with just enough of the business attached to judge.
 class ServiceListing {
@@ -19,6 +20,7 @@ class ServiceListing {
     this.levelName = 'New',
     this.ratingAverage,
     this.reviewCount = 0,
+    this.serviceRating = const StarRating(),
   });
 
   final String id;
@@ -40,11 +42,13 @@ class ServiceListing {
 
   /// Named by the server, so every screen agrees on what a level is called.
   final String levelName;
+
+  /// The business's overall rating, across every line it runs.
   final double? ratingAverage;
   final int reviewCount;
 
-  /// Enough ratings to be worth showing rather than misleading.
-  bool get hasRating => ratingAverage != null && reviewCount > 0;
+  /// This service's own stars — what the card shows, since the card is the service.
+  final StarRating serviceRating;
 
   bool get hasEarnedLevel => level > 1;
 
@@ -53,6 +57,5 @@ class ServiceListing {
   /// The unit is part of the figure, not decoration: "From ₹500" on a per-person caterer reads as
   /// the price of the job when it is the price of one head. This used to format the number by
   /// hand and so said nothing about the unit at all.
-  String get priceLabel =>
-      'From ${rupees(price)}${priceUnitSuffix(priceType)}';
+  String get priceLabel => 'From ${rupees(price)}${priceUnitSuffix(priceType)}';
 }

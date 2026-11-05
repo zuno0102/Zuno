@@ -38,7 +38,7 @@ public class SearchBusinessesQueryHandler(IApplicationDbContext dbContext, IPlat
 
         var businesses = await query.OrderBy(bp => bp.BusinessName).ToListAsync(cancellationToken);
 
-        var levels = platformSettings.Current.BusinessLevels;
-        return businesses.Select(bp => bp.ToSummaryDto(levels)).ToList();
+        var rules = platformSettings.Current;
+        return businesses.Select(bp => bp.ToSummaryDto(rules)).ToList();
     }
 }

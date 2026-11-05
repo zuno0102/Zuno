@@ -37,4 +37,8 @@ abstract class RentalCustomerRepository {
     required String paymentId,
     required String signature,
   });
+
+  /// Stars (1-5) and an optional comment for a returned, fully paid rental. Refused by the server,
+  /// with words to show, when it is not ready to rate or was rated already.
+  Future<RentalOrder> rate(String orderId, int score, {String? comment});
 }

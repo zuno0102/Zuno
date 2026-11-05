@@ -1,3 +1,5 @@
+import 'package:zuno/shared/domain/star_rating.dart';
+
 class BusinessSummary {
   const BusinessSummary({
     required this.id,
@@ -13,6 +15,7 @@ class BusinessSummary {
     this.reviewCount = 0,
     this.completedJobCount = 0,
     this.startingPrice,
+    this.lineRatings = const LineRatings(),
   });
 
   final String id;
@@ -29,7 +32,8 @@ class BusinessSummary {
   /// Named by the server, so every screen agrees on what a level is called.
   final String levelName;
 
-  /// Null until anyone has rated them — which is different from a rating of zero.
+  /// The overall rating across every line it runs. Null until there are enough ratings to be
+  /// fair — which is different from a rating of zero.
   final double? ratingAverage;
   final int reviewCount;
   final int completedJobCount;
@@ -37,13 +41,13 @@ class BusinessSummary {
   /// The cheapest thing they offer. Null when nothing is priced.
   final double? startingPrice;
 
+  /// Its stars on Service and on Rent, apart.
+  final LineRatings lineRatings;
+
   String? get location {
     final parts = [city, state].whereType<String>().where((s) => s.isNotEmpty);
     return parts.isEmpty ? null : parts.join(', ');
   }
-
-  /// Whether there are enough ratings to be worth showing rather than misleading.
-  bool get hasRating => ratingAverage != null && reviewCount > 0;
 
   /// Only worth a badge once it means something — every business starts at 1.
   bool get hasEarnedLevel => level > 1;

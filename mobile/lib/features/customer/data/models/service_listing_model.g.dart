@@ -24,4 +24,6 @@ ServiceListingModel _$ServiceListingModelFromJson(Map<String, dynamic> json) =>
       levelName: json['levelName'] as String? ?? 'New',
       ratingAverage: (json['ratingAverage'] as num?)?.toDouble(),
       reviewCount: (json['reviewCount'] as num?)?.toInt() ?? 0,
+      serviceRatingAverage: (json['serviceRatingAverage'] as num?)?.toDouble(),
+      serviceRatingCount: (json['serviceRatingCount'] as num?)?.toInt() ?? 0,
     );

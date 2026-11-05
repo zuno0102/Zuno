@@ -35,6 +35,6 @@ public class GetServiceDetailQueryHandler(IApplicationDbContext dbContext, IPlat
                 cancellationToken)
             ?? throw new EntityNotFoundException(nameof(BusinessService), request.ServiceId);
 
-        return service.ToServiceDetailDto(platformSettings.Current.BusinessLevels);
+        return service.ToServiceDetailDto(platformSettings.Current);
     }
 }

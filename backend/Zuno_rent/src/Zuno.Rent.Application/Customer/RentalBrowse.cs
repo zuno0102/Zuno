@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Zuno.Rent.Application.Common;
+using Zuno.Rent.Application.Ratings;
 using Zuno.Rent.Domain.Entities;
 using Zuno.Rent.Domain.Enums;
 using Zuno.Rent.Domain.Exceptions;
@@ -30,6 +31,12 @@ public class RentalCardDto
     public string? DistrictName { get; set; }
 
     public string BusinessName { get; set; } = string.Empty;
+
+    /// <summary>The item's fair star average (<see cref="Domain.Common.FairRating"/>); null until enough customers rated it.</summary>
+    public decimal? RatingAverage { get; set; }
+
+    /// <summary>How many customers rated it.</summary>
+    public int RatingCount { get; set; }
 }
 
 /// <summary>One section of the Rent home, laid out as the section table says.</summary>
@@ -174,6 +181,9 @@ internal static class RentalVisibility
             })
             .ToListAsync(cancellationToken);
 
+        // The stars for every card in one grouped read.
+        var ratings = await dbContext.RatingsForAsync(rows.Select(r => r.Id).ToList(), cancellationToken);
+
         return rows.Select(r => new RentalCardDto
         {
             Id = r.Id,
@@ -185,6 +195,8 @@ internal static class RentalVisibility
             ImageUrl = r.Image,
             DistrictName = r.District,
             BusinessName = r.Business ?? string.Empty,
+            RatingAverage = ratings.For(r.Id).Average,
+            RatingCount = ratings.For(r.Id).Count,
         }).ToList();
     }
 }

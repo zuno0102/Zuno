@@ -80,6 +80,9 @@ public class ZunoApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
                 ["RateLimiting:Global:PermitLimit"] = "100000",
                 ["RateLimiting:Auth:PermitLimit"] = "100000",
                 ["RateLimiting:PlaceSearch:PermitLimit"] = "100000",
+
+                // Never reach a real Rent API from a test run; the standing refresh still runs without it.
+                ["RentApi:BaseUrl"] = string.Empty,
             });
         });
     }

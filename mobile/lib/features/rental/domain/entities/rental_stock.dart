@@ -113,6 +113,11 @@ class RentalOrder {
     this.cancelChargeType = RentalCancelChargeType.byTimeLeft,
     this.cancelPercentPerDay,
     this.cancelPercentCap = 0,
+    this.canRate = false,
+    this.myRating,
+    this.myRatingComment,
+    this.customerRating,
+    this.customerRatingComment,
   });
 
   final String id;
@@ -225,6 +230,17 @@ class RentalOrder {
 
   /// The most a per-day charge adds up to, as booked.
   final double cancelPercentCap;
+
+  /// The customer may rate this rental now: returned, fully paid, not rated yet. Customer side only.
+  final bool canRate;
+
+  /// The customer's own stars on this rental, 1-5; null until rated. Customer side only.
+  final int? myRating;
+  final String? myRatingComment;
+
+  /// The stars the customer gave, as both sides see them; null until rated.
+  final int? customerRating;
+  final String? customerRatingComment;
 
   /// `Business` or `Customer` on a cancelled order; null otherwise.
   final String? cancelledBy;

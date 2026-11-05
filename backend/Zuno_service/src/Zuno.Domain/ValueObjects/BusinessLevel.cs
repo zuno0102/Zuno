@@ -63,4 +63,41 @@ public static class BusinessLevel
     private static bool MeetsBar(LevelLadder ladder, decimal? average, int reviewCount, decimal required) =>
         reviewCount < ladder.MinimumReviewsForAverage || (average ?? 0m) >= required;
 
+    /// <summary>
+    /// Moves a stored level towards the level the business has earned — one rung at a time, so a badge
+    /// cannot leap from New to Top rated overnight or crash because of one bad week.
+    /// </summary>
+    /// <remarks>
+    /// Up: one rung, and only once the business has held its current level for
+    /// <see cref="LevelPace.MinTimeAtLevel"/> (a level held since before this was recorded may step up at
+    /// once). Down: one rung, and only after it has been below its level's rules for
+    /// <see cref="LevelPace.DropGrace"/>; getting back above them within that time forgets the slip.
+    /// An open dispute is not handled here — <see cref="Calculate"/> already drops it to level 1 outright.
+    /// </remarks>
+    /// <param name="current">The level, and its dates, as stored now.</param>
+    /// <param name="earned">The level the business's record earns today, from <see cref="Calculate"/>.</param>
+    public static LevelPosition Move(LevelPosition current, int earned, DateTimeOffset now, LevelPace pace)
+    {
+        if (earned > current.Level)
+        {
+            var heldLongEnough = current.LevelSince is not { } since || now - since >= pace.MinTimeAtLevel;
+            return heldLongEnough
+                ? new LevelPosition(current.Level + 1, now, null)
+                : current with { BelowSince = null };
+        }
+
+        if (earned < current.Level)
+        {
+            if (current.BelowSince is not { } below)
+            {
+                return current with { BelowSince = now };
+            }
+
+            return now - below >= pace.DropGrace
+                ? new LevelPosition(Math.Max(current.Level - 1, Minimum), now, null)
+                : current;
+        }
+
+        return current with { BelowSince = null };
+    }
 }

@@ -3,6 +3,7 @@ import 'package:zuno/features/rental/data/models/rental_models.dart';
 import 'package:zuno/features/rental/domain/entities/rental_customer.dart';
 import 'package:zuno/features/rental/domain/entities/rental_item.dart';
 import 'package:zuno/features/rental/domain/entities/rental_payment.dart';
+import 'package:zuno/shared/domain/star_rating.dart';
 
 part 'rental_customer_models.g.dart';
 
@@ -18,6 +19,8 @@ class RentalCardModel {
     this.businessName = '',
     this.imageUrl,
     this.districtName,
+    this.ratingAverage,
+    this.ratingCount = 0,
   });
 
   factory RentalCardModel.fromJson(Map<String, dynamic> json) =>
@@ -33,6 +36,10 @@ class RentalCardModel {
   final String? imageUrl;
   final String? districtName;
 
+  /// The item's own stars; null until it has enough ratings to be fair.
+  final double? ratingAverage;
+  final int ratingCount;
+
   RentalCard toEntity() => RentalCard(
     id: id,
     name: name,
@@ -43,6 +50,7 @@ class RentalCardModel {
     businessName: businessName,
     imageUrl: imageUrl,
     districtName: districtName,
+    rating: StarRating(average: ratingAverage, count: ratingCount),
   );
 }
 

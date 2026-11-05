@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/rental/data/rental_api.dart';
 import 'package:zuno/features/rental/domain/entities/rental_customer.dart';
+import 'package:zuno/shared/widgets/rating_line.dart';
 
 /// A rent item on the customer's Rent home and search — the photo, the rate on it, the name, where,
 /// and who rents it out. One card for the grids and the sideways strips; the parent gives the width.
@@ -76,6 +77,11 @@ class RentalItemCard extends StatelessWidget {
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
+                  ),
+                  const SizedBox(height: 2),
+                  RatingLine.of(
+                    card.rating,
+                    key: ValueKey('rental-card-rating-${card.id}'),
                   ),
                   const SizedBox(height: 2),
                   Row(

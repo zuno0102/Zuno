@@ -1,5 +1,6 @@
 import 'package:zuno/features/rental/domain/entities/rental_item.dart';
 import 'package:zuno/features/rental/domain/entities/rental_payment.dart';
+import 'package:zuno/shared/domain/star_rating.dart';
 
 /// Which side of a rent order is looking: the business that rents the item out, or the customer who
 /// rented it. The same order screens serve both; this picks the server routes and what may be done.
@@ -17,6 +18,7 @@ class RentalCard {
     required this.businessName,
     this.imageUrl,
     this.districtName,
+    this.rating = const StarRating(),
   });
 
   final String id;
@@ -30,6 +32,9 @@ class RentalCard {
   final String businessName;
   final String? imageUrl;
   final String? districtName;
+
+  /// How customers rated this item.
+  final StarRating rating;
 }
 
 /// How a Rent home section lays out its items, as the server's section table says.

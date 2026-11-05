@@ -126,6 +126,10 @@ internal static class RentalOrderReader
                     .OrderBy(a => a.CreatedDate)
                     .Select(a => new RentalOrderAnswerDto { Prompt = a.Prompt, Answer = a.Answer })
                     .ToList(),
+                Rating = dbContext.RentalOrderRatings
+                    .Where(r => r.RentalOrderId == o.Id)
+                    .Select(r => new { r.Score, r.Comment })
+                    .FirstOrDefault(),
             })
             .ToListAsync(cancellationToken);
 
@@ -155,6 +159,7 @@ internal static class RentalOrderReader
             var refundMode = o.RefundMode is { } rm ? refundModes.FirstOrDefault(m => m.Code == rm) : null;
             var canChooseRefundMode = business && refundOwed > 0 && !anyRefund;
             var onlinePaid = RentalMoney.OnlinePaid(lines);
+            var customer = audience == RentalAudience.Customer;
             return new RentalOrderDto
             {
                 Id = o.Id,
@@ -256,6 +261,15 @@ internal static class RentalOrderReader
 
                 // The QR is the business's to show; a customer pays the business in front of them.
                 UpiId = audience == RentalAudience.Business ? o.UpiId : null,
+
+                // Only the customer rates, once, a rental that went well.
+                CanRate = customer
+                    && o.Rating is null
+                    && RentalOrderSuccess.IsSuccessful(o.Status, o.ParentOrderId, o.Amount, paid),
+                MyRating = customer ? o.Rating?.Score : null,
+                MyRatingComment = customer ? o.Rating?.Comment : null,
+                CustomerRating = o.Rating?.Score,
+                CustomerRatingComment = o.Rating?.Comment,
             };
         }).ToList();
     }

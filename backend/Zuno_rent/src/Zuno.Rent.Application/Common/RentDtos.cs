@@ -52,6 +52,15 @@ public class RentalItemDto
 
     /// <summary>For <c>PerRentalDay</c>: the percent for each day (or hour) rented.</summary>
     public decimal? CancelPercentPerDay { get; set; }
+
+    /// <summary>
+    /// The item's fair star average (<see cref="Domain.Common.FairRating"/>); null until enough
+    /// customers rated it. Filled on the business's item list.
+    /// </summary>
+    public decimal? RatingAverage { get; set; }
+
+    /// <summary>How many customers rated it.</summary>
+    public int RatingCount { get; set; }
 }
 
 /// <summary>"<see cref="UnitsBefore"/>+ days before → <see cref="Percent"/>% of the order".</summary>

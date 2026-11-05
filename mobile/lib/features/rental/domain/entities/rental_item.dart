@@ -1,4 +1,5 @@
 import 'package:zuno/features/rental/domain/entities/rental_payment.dart';
+import 'package:zuno/shared/domain/star_rating.dart';
 
 /// How a rent item is charged — the server's enum names, matched as written.
 class RentalPriceType {
@@ -96,6 +97,7 @@ class RentalItem {
     this.cancelUnit = RentalCancelUnit.day,
     this.cancelChargeType = RentalCancelChargeType.byTimeLeft,
     this.cancelPercentPerDay,
+    this.rating = const StarRating(),
   });
 
   final String id;
@@ -132,6 +134,9 @@ class RentalItem {
 
   /// For a per-rental-day charge: the percent for each day (or hour) rented.
   final double? cancelPercentPerDay;
+
+  /// How customers rated this item.
+  final StarRating rating;
 
   bool get asksAdvance => advanceType != 'None' && (advanceAmount ?? 0) > 0;
 

@@ -3,6 +3,7 @@ import 'package:zuno/features/customer/domain/entities/service_district.dart';
 import 'package:zuno/features/customer/domain/entities/service_media.dart';
 import 'package:zuno/features/customer/domain/entities/service_question.dart';
 import 'package:zuno/features/customer/domain/entities/service_variant.dart';
+import 'package:zuno/shared/domain/star_rating.dart';
 
 class CustomerService {
   const CustomerService({
@@ -17,6 +18,7 @@ class CustomerService {
     this.targetDistricts = const [],
     this.variants = const [],
     this.questions = const [],
+    this.rating = const StarRating(),
   });
 
   final String id;
@@ -32,6 +34,9 @@ class CustomerService {
 
   /// What the business needs to know before it can staff this job.
   final List<ServiceQuestion> questions;
+
+  /// How customers rated this service on its own — not the business behind it.
+  final StarRating rating;
 
   bool get isHourly => priceType == 'Hourly';
   bool get isDaily => priceType == 'Daily';

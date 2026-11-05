@@ -35,4 +35,9 @@ BusinessProfileModel _$BusinessProfileModelFromJson(
       : BusinessTrustModel.fromJson(json['trust'] as Map<String, dynamic>),
   level: (json['level'] as num?)?.toInt() ?? 1,
   levelName: json['levelName'] as String? ?? 'New',
+  successfulJobs: (json['successfulJobs'] as num?)?.toInt() ?? 0,
+  serviceRatingAverage: (json['serviceRatingAverage'] as num?)?.toDouble(),
+  serviceRatingCount: (json['serviceRatingCount'] as num?)?.toInt() ?? 0,
+  rentRatingAverage: (json['rentRatingAverage'] as num?)?.toDouble(),
+  rentRatingCount: (json['rentRatingCount'] as num?)?.toInt() ?? 0,
 );

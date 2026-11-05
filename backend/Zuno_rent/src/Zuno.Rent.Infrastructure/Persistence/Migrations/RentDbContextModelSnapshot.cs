@@ -6033,6 +6033,77 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Zuno.Rent.Domain.Entities.RentalOrderRating", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("comment");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
+
+                    b.Property<Guid>("CustomerUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_user_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_date");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_user_id");
+
+                    b.Property<Guid>("RentalItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rental_item_id");
+
+                    b.Property<Guid>("RentalOrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rental_order_id");
+
+                    b.Property<short>("Score")
+                        .HasColumnType("smallint")
+                        .HasColumnName("score");
+
+                    b.HasKey("Id")
+                        .HasName("pk_rental_order_ratings");
+
+                    b.HasIndex("OwnerUserId")
+                        .HasDatabaseName("ix_rental_order_ratings_owner_user_id");
+
+                    b.HasIndex("RentalItemId")
+                        .HasDatabaseName("ix_rental_order_ratings_rental_item_id");
+
+                    b.HasIndex("RentalOrderId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_rental_order_ratings_rental_order_id");
+
+                    b.ToTable("rental_order_ratings", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_rental_order_ratings_score", "score BETWEEN 1 AND 5");
+                        });
+                });
+
             modelBuilder.Entity("Zuno.Rent.Domain.Entities.RentalOrderStatusOption", b =>
                 {
                     b.Property<short>("Code")
@@ -7052,6 +7123,23 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_rental_order_payments_rental_orders_rental_order_id");
+                });
+
+            modelBuilder.Entity("Zuno.Rent.Domain.Entities.RentalOrderRating", b =>
+                {
+                    b.HasOne("Zuno.Rent.Domain.Entities.RentalItem", null)
+                        .WithMany()
+                        .HasForeignKey("RentalItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_rental_order_ratings_rental_items_rental_item_id");
+
+                    b.HasOne("Zuno.Rent.Domain.Entities.RentalOrder", null)
+                        .WithMany()
+                        .HasForeignKey("RentalOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_rental_order_ratings_rental_orders_rental_order_id");
                 });
 
             modelBuilder.Entity("Zuno.Rent.Domain.Entities.RentalPaymentCheckout", b =>

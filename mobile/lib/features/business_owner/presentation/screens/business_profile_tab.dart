@@ -10,6 +10,7 @@ import 'package:zuno/shared/widgets/status_pill.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_profile_notifier.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
+import 'package:zuno/shared/widgets/rating_line.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/app_permissions_link.dart';
 import 'package:zuno/shared/widgets/avatar_crop_screen.dart';
@@ -607,13 +608,35 @@ class _ProfileSummary extends StatelessWidget {
                     ),
                   ],
                   const SizedBox(height: 7),
-                  StatusPill(
-                    label: '${profile.levelName} · Level ${profile.level}',
-                    tone: profile.level > 1
-                        ? StatusTone.success
-                        : StatusTone.waiting,
-                    compact: true,
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      StatusPill(
+                        label: '${profile.levelName} · Level ${profile.level}',
+                        tone: profile.level > 1
+                            ? StatusTone.success
+                            : StatusTone.waiting,
+                        compact: true,
+                      ),
+                      // What the level is counted from: jobs seen through on every line.
+                      Text(
+                        profile.successfulJobsLabel,
+                        key: const ValueKey('profile-successful-jobs'),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
+                  if (profile.lineRatings.isSplit) ...[
+                    const SizedBox(height: 6),
+                    LineRatingsRow(
+                      lines: profile.lineRatings,
+                      key: const ValueKey('profile-line-ratings'),
+                    ),
+                  ],
                 ],
               ),
             ),

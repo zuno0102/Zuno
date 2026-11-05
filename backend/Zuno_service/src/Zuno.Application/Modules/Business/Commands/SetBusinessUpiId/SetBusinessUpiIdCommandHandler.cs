@@ -24,6 +24,6 @@ public class SetBusinessUpiIdCommandHandler(
         profile.UpiId = UpiFormat.Normalize(request.UpiId);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return profile.ToDto(platformSettings.Current.BusinessLevels);
+        return profile.ToDto(platformSettings.Current);
     }
 }

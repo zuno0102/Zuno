@@ -44,6 +44,16 @@ public class BusinessService : BaseEntity
 
     public int RequiredWorkerCount { get; set; } = 1;
 
+    /// <summary>All the stars customers gave orders for this service, added together.</summary>
+    /// <remarks>
+    /// Stored rather than counted on read because it shows on every search card. Recounted from the
+    /// ratings table whenever one of its orders is rated, so it cannot drift.
+    /// </remarks>
+    public decimal RatingSum { get; set; }
+
+    /// <summary>How many orders for this service customers rated.</summary>
+    public int RatingCount { get; set; }
+
     public ICollection<BusinessServiceMedia> Media { get; set; } = new List<BusinessServiceMedia>();
 
     /// <summary>What the business needs to know from a customer before it can staff this job.</summary>

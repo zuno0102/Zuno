@@ -43,6 +43,7 @@ public class RateBookingCommandHandler(
             BookingId = booking.Id,
             CustomerProfileId = booking.CustomerProfileId,
             BusinessOwnerProfileId = booking.BusinessOwnerProfileId,
+            BusinessServiceId = booking.BusinessServiceId,
             Score = request.Score,
             Comment = request.Comment,
         };
@@ -63,6 +64,9 @@ public class RateBookingCommandHandler(
         // a rating that is still only in the change tracker.
         await reputationService.RecalculateAndSaveAsync(
             booking.BusinessOwnerProfileId, cancellationToken);
+
+        // The service its stars belong to, so each service card shows how that service was rated.
+        await reputationService.RecalculateServiceRatingAsync(booking.BusinessServiceId, cancellationToken);
 
         await publisher.Publish(
             new BookingRatedEvent(

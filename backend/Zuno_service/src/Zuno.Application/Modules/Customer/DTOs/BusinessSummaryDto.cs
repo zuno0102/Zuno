@@ -33,6 +33,16 @@ public class BusinessSummaryDto
 
     public int ReviewCount { get; set; }
 
+    /// <summary>The rating of its Service orders alone. Null until there are enough of them.</summary>
+    public decimal? ServiceRatingAverage { get; set; }
+
+    public int ServiceRatingCount { get; set; }
+
+    /// <summary>The rating of its Rent orders alone. Null until there are enough of them.</summary>
+    public decimal? RentRatingAverage { get; set; }
+
+    public int RentRatingCount { get; set; }
+
     /// Jobs finished <em>and</em> paid for in full.
     public int CompletedJobCount { get; set; }
 

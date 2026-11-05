@@ -137,6 +137,15 @@ class RentalCustomerRemoteDataSource {
     return RentalOrderModel.fromJson(response.data!);
   });
 
+  Future<RentalOrderModel> rate(String id, int score, String? comment) =>
+      _run(() async {
+        final response = await _dio.post<Map<String, dynamic>>(
+          RentApi.myRentalRatingPath(id),
+          data: {'score': score, 'comment': ?comment},
+        );
+        return RentalOrderModel.fromJson(response.data!);
+      });
+
   Future<List<RentalOrderEventModel>> history(String id) =>
       _list(RentApi.myRentalHistoryPath(id), RentalOrderEventModel.fromJson);
 

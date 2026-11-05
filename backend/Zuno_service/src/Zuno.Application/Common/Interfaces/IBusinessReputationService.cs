@@ -27,4 +27,16 @@ public interface IBusinessReputationService
     /// </para>
     /// </remarks>
     Task RecalculateAndSaveAsync(Guid businessOwnerProfileId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Recalculates every stored figure for a batch of tracked profiles, without saving — the caller saves
+    /// the batch once. A handful of grouped queries serve the whole batch, however large.
+    /// </summary>
+    Task RecalculateAsync(IReadOnlyList<Domain.Entities.BusinessOwnerProfile> profiles, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Recounts one service's rating total and count from the ratings table and saves them. Call it after
+    /// the rating is saved, for the same reason as <see cref="RecalculateAndSaveAsync"/>.
+    /// </summary>
+    Task RecalculateServiceRatingAsync(Guid businessServiceId, CancellationToken cancellationToken = default);
 }

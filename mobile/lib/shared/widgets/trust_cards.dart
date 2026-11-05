@@ -2,6 +2,7 @@ import 'package:zuno/core/utils/formatting.dart';
 import 'package:flutter/material.dart';
 import 'package:zuno/shared/domain/business_trust.dart';
 import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/shared/widgets/rating_line.dart';
 
 /// One headline figure with a caption, then a short list of supporting facts.
 ///
@@ -97,18 +98,20 @@ class TrustCard extends StatelessWidget {
                     // Flexible so a long value wraps under itself instead of pushing the row
                     // off a narrow phone.
                     Flexible(
-                      child: Text(
-                        rows[i].value,
-                        textAlign: TextAlign.end,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontWeight: rows[i].muted
-                              ? FontWeight.w500
-                              : FontWeight.w700,
-                          color: rows[i].muted
-                              ? theme.colorScheme.onSurfaceVariant
-                              : rows[i].tone,
-                        ),
-                      ),
+                      child:
+                          rows[i].child ??
+                          Text(
+                            rows[i].value,
+                            textAlign: TextAlign.end,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontWeight: rows[i].muted
+                                  ? FontWeight.w500
+                                  : FontWeight.w700,
+                              color: rows[i].muted
+                                  ? theme.colorScheme.onSurfaceVariant
+                                  : rows[i].tone,
+                            ),
+                          ),
                     ),
                   ],
                 ),
@@ -121,10 +124,19 @@ class TrustCard extends StatelessWidget {
 }
 
 class TrustRow {
-  const TrustRow(this.label, this.value, {this.tone, this.muted = false});
+  const TrustRow(
+    this.label,
+    this.value, {
+    this.tone,
+    this.muted = false,
+    this.child,
+  });
 
   final String label;
   final String value;
+
+  /// Shown in place of [value] when the figure is more than words, such as a star rating.
+  final Widget? child;
   final Color? tone;
 
   /// For "None yet" and friends — an absence, not a figure.
@@ -147,10 +159,12 @@ class CustomerTrustCard extends StatelessWidget {
     rows: [
       TrustRow(
         'Reviews on your events',
-        trust.hasReviews
-            ? '${trust.ratingAverage!.toStringAsFixed(1)} ★  (${trust.reviewCount})'
-            : 'None yet',
-        muted: !trust.hasReviews,
+        RatingLine.text(trust.ratingAverage, trust.reviewCount),
+        child: RatingLine(
+          average: trust.ratingAverage,
+          count: trust.reviewCount,
+          key: const ValueKey('trust-rating'),
+        ),
       ),
       TrustRow('Repeat customers', '${trust.repeatCustomers}'),
     ],

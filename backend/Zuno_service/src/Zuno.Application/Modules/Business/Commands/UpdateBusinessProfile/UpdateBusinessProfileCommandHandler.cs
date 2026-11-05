@@ -63,6 +63,6 @@ public class UpdateBusinessProfileCommandHandler(
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return profile.ToDto(platformSettings.Current.BusinessLevels);
+        return profile.ToDto(platformSettings.Current);
     }
 }

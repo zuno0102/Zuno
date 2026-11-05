@@ -14,6 +14,8 @@ public class SearchServicesQueryHandler(IApplicationDbContext dbContext, IPlatfo
         SearchServicesQuery request,
         CancellationToken cancellationToken)
     {
+        // Read once, outside the query: the projection works each service's fair rating out as rows arrive.
+        var prior = platformSettings.Current.RatingPrior;
         var query = dbContext.BusinessServices
             .Where(s => s.IsActive)
             // A customer must never be shown a business an admin has not cleared, however good
@@ -66,6 +68,8 @@ public class SearchServicesQueryHandler(IApplicationDbContext dbContext, IPlatfo
                 Level = s.BusinessOwnerProfile.Level,
                 RatingAverage = s.BusinessOwnerProfile.CustomerRatingAverage,
                 ReviewCount = s.BusinessOwnerProfile.CustomerReviewCount,
+                ServiceRatingAverage = FairRating.Of(s.RatingSum, s.RatingCount, prior.Average, prior.Weight, prior.MinCount),
+                ServiceRatingCount = s.RatingCount,
             })
             .ToListAsync(cancellationToken);
 

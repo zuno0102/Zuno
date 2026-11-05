@@ -110,6 +110,10 @@ public class RentApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             Task.FromResult($"order_{Interlocked.Increment(ref _orders)}_{receipt}");
 
         public bool VerifySignature(string providerOrderId, string paymentId, string signature) => signature == "good";
+
+        /// <summary>No payment was ever taken outside the app here.</summary>
+        public Task<string?> FindCapturedPaymentAsync(string providerOrderId, CancellationToken cancellationToken) =>
+            Task.FromResult<string?>(null);
     }
 
     /// <summary>Answers as the Service API would for any caller: a named customer and a verified business.</summary>

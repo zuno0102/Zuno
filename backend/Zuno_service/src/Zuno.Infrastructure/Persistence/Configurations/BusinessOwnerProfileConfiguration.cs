@@ -17,6 +17,9 @@ public class BusinessOwnerProfileConfiguration : IEntityTypeConfiguration<Busine
         builder.Property(bp => bp.Description).HasMaxLength(1000);
         builder.Property(bp => bp.LogoUrl).HasMaxLength(500);
         builder.Property(bp => bp.UpiId).HasMaxLength(UpiFormat.MaxLength);
+        builder.Property(bp => bp.ServiceRatingSum).HasPrecision(RatingPrecision.SumDigits, RatingPrecision.SumScale);
+        builder.Property(bp => bp.RentRatingSum).HasPrecision(RatingPrecision.SumDigits, RatingPrecision.SumScale);
+        builder.Ignore(bp => bp.TotalSuccessfulJobs);
 
         builder.HasIndex(bp => bp.UserId).IsUnique().HasDatabaseName("ux_business_owner_profiles_user_id");
 

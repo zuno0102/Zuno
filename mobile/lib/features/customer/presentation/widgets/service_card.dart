@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:zuno/core/constants/api_constants.dart';
 import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/shared/widgets/rating_line.dart';
 import 'package:zuno/features/customer/domain/entities/service_listing.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
 
@@ -27,12 +28,16 @@ class ServiceCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(15),
+              ),
               child: AspectRatio(
                 aspectRatio: 16 / 10,
                 child: service.imageUrl == null
                     ? Container(
-                        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
+                        color: theme.colorScheme.primaryContainer.withValues(
+                          alpha: 0.5,
+                        ),
                         child: Icon(
                           Icons.image_outlined,
                           size: 30,
@@ -83,35 +88,13 @@ class ServiceCard extends StatelessWidget {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      if (service.hasRating) ...[
-                        Icon(Icons.star_rounded, size: 14, color: AppColors.ratingStar),
-                        const SizedBox(width: 2),
-                        Text(
-                          service.ratingAverage!.toStringAsFixed(1),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                      // The service's own stars, or "New" until it has enough ratings.
+                      Flexible(
+                        child: RatingLine.of(
+                          service.serviceRating,
+                          key: const ValueKey('service-card-rating'),
                         ),
-                        const SizedBox(width: 3),
-                        Text(
-                          '(${service.reviewCount})',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontSize: 10.5,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ] else
-                        Flexible(
-                          child: Text(
-                            service.city ?? 'New listing',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontSize: 10.5,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
+                      ),
                       if (service.hasEarnedLevel) ...[
                         const SizedBox(width: 6),
                         StatusPill(

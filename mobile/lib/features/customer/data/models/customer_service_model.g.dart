@@ -36,4 +36,6 @@ CustomerServiceModel _$CustomerServiceModelFromJson(
           ?.map((e) => ServiceQuestionModel.fromJson(e as Map<String, dynamic>))
           .toList() ??
       const [],
+  ratingAverage: (json['ratingAverage'] as num?)?.toDouble(),
+  ratingCount: (json['ratingCount'] as num?)?.toInt() ?? 0,
 );

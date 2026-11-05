@@ -13,6 +13,7 @@ import 'package:zuno/features/customer/presentation/screens/service_variant_deta
 import 'package:zuno/features/customer/presentation/widgets/service_gallery_app_bar.dart';
 import 'package:zuno/features/customer/presentation/widgets/share_service.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
+import 'package:zuno/shared/widgets/rating_line.dart';
 import 'package:zuno/shared/widgets/section_header.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
 import 'package:zuno/core/router/push_screen.dart';
@@ -127,7 +128,8 @@ class _ServiceDetailBody extends StatelessWidget {
                           color: theme.colorScheme.primary,
                         ),
                       ),
-                      if (service.estimatedDurationMinutes case final mins?) ...[
+                      if (service.estimatedDurationMinutes
+                          case final mins?) ...[
                         const SizedBox(width: 10),
                         Icon(
                           Icons.schedule_rounded,
@@ -143,6 +145,13 @@ class _ServiceDetailBody extends StatelessWidget {
                         ),
                       ],
                     ],
+                  ),
+                  const SizedBox(height: 6),
+                  // This service's own stars. The business's overall rating is on its card below.
+                  RatingLine.of(
+                    service.rating,
+                    style: theme.textTheme.bodyMedium,
+                    key: const ValueKey('service-rating'),
                   ),
                   if (service.description case final text?
                       when text.isNotEmpty) ...[
@@ -179,7 +188,8 @@ class _ServiceDetailBody extends StatelessWidget {
                   // Tapping opens it properly. Book alone was the only thing these offered, which
                   // asked a customer to commit to something they had not been allowed to read.
                   onOpen: () => _openVariant(context, service.variants[index]),
-                  onBook: () => _book(context, variant: service.variants[index]),
+                  onBook: () =>
+                      _book(context, variant: service.variants[index]),
                 ),
               ),
             ),
@@ -215,21 +225,26 @@ class _ServiceDetailBody extends StatelessWidget {
   }
 
   void _openVariant(BuildContext context, ServiceVariant variant) {
-    pushScreen(context, ServiceVariantDetailScreen(
-          variant: variant,
-          service: detail.service,
-          businessName: detail.business.businessName,
-        ));
+    pushScreen(
+      context,
+      ServiceVariantDetailScreen(
+        variant: variant,
+        service: detail.service,
+        businessName: detail.business.businessName,
+      ),
+    );
   }
 
   void _book(BuildContext context, {ServiceVariant? variant}) {
-    pushScreen(context, CreateBookingScreen(
-          businessName: detail.business.businessName,
-          service: detail.service,
-          variant: variant,
-        ));
+    pushScreen(
+      context,
+      CreateBookingScreen(
+        businessName: detail.business.businessName,
+        service: detail.service,
+        variant: variant,
+      ),
+    );
   }
-
 }
 
 /// Who is behind this service, and a way through to everything else they offer.
@@ -288,20 +303,15 @@ class _BusinessLine extends StatelessWidget {
                     const SizedBox(height: 3),
                     Row(
                       children: [
-                        if (business.hasRating) ...[
-                          Icon(
-                            Icons.star_rounded,
-                            size: 14,
-                            color: AppColors.ratingStar,
+                        // The business's overall rating, across every line it runs.
+                        Flexible(
+                          child: RatingLine(
+                            average: business.ratingAverage,
+                            count: business.reviewCount,
+                            key: const ValueKey('business-rating'),
                           ),
-                          const SizedBox(width: 2),
-                          Text(
-                            '${business.ratingAverage!.toStringAsFixed(1)} '
-                            '(${business.reviewCount})',
-                            style: theme.textTheme.bodySmall,
-                          ),
-                          const SizedBox(width: 8),
-                        ],
+                        ),
+                        const SizedBox(width: 8),
                         Flexible(
                           child: Text(
                             business.location ?? 'Location not set',
@@ -314,6 +324,13 @@ class _BusinessLine extends StatelessWidget {
                         ),
                       ],
                     ),
+                    if (business.lineRatings.isSplit) ...[
+                      const SizedBox(height: 3),
+                      LineRatingsRow(
+                        lines: business.lineRatings,
+                        key: const ValueKey('business-line-ratings'),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -364,123 +381,123 @@ class _VariantCard extends StatelessWidget {
       child: InkWell(
         onTap: onOpen,
         child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (thumbnail != null) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: CachedNetworkImage(
-                  imageUrl: '${ApiConstants.baseUrl}$thumbnail',
-                  width: 64,
-                  height: 64,
-                  fit: BoxFit.cover,
-                  errorWidget: (_, _, _) => Container(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (thumbnail != null) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: CachedNetworkImage(
+                    imageUrl: '${ApiConstants.baseUrl}$thumbnail',
                     width: 64,
                     height: 64,
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    child: const Icon(Icons.broken_image_outlined, size: 18),
+                    fit: BoxFit.cover,
+                    errorWidget: (_, _, _) => Container(
+                      width: 64,
+                      height: 64,
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      child: const Icon(Icons.broken_image_outlined, size: 18),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (variant.serviceSubCategoryName case final subCategory?)
-                    Text(
-                      subCategory.toUpperCase(),
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        fontSize: 10,
-                        letterSpacing: 0.6,
-                        fontWeight: FontWeight.w700,
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                  Text(
-                    variant.name,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  if (variant.description case final text?
-                      when text.isNotEmpty) ...[
-                    const SizedBox(height: 3),
-                    Text(
-                      text,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (variant.serviceSubCategoryName case final subCategory?)
                       Text(
-                        priceLabel(variant.price, variant.priceType),
-                        style: theme.textTheme.bodyMedium?.copyWith(
+                        subCategory.toUpperCase(),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontSize: 10,
+                          letterSpacing: 0.6,
                           fontWeight: FontWeight.w700,
                           color: theme.colorScheme.primary,
                         ),
                       ),
-                      if (variant.estimatedDurationMinutes case final mins?) ...[
-                        const SizedBox(width: 8),
+                    Text(
+                      variant.name,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (variant.description case final text?
+                        when text.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        text,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
                         Text(
-                          '· ${formatDuration(mins)}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                          priceLabel(variant.price, variant.priceType),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: theme.colorScheme.primary,
                           ),
                         ),
+                        if (variant.estimatedDurationMinutes
+                            case final mins?) ...[
+                          const SizedBox(width: 8),
+                          Text(
+                            '· ${formatDuration(mins)}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FilledButton.tonal(
+                    onPressed: onBook,
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 36),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                    child: const Text('Book'),
+                  ),
+                  const SizedBox(height: 2),
+                  // Says the card is worth tapping. Without it the button looks like the only thing
+                  // here that does anything, which is exactly how it read before.
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'View details',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 14,
+                        color: theme.colorScheme.primary,
+                      ),
                     ],
                   ),
                 ],
               ),
-            ),
-            const SizedBox(width: 8),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                FilledButton.tonal(
-                  onPressed: onBook,
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(0, 36),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                  ),
-                  child: const Text('Book'),
-                ),
-                const SizedBox(height: 2),
-                // Says the card is worth tapping. Without it the button looks like the only thing
-                // here that does anything, which is exactly how it read before.
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'View details',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      size: 14,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ],
-        ),
+            ],
+          ),
         ),
       ),
     );
   }
-
 }

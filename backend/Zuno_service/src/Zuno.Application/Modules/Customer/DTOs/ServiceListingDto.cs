@@ -43,7 +43,18 @@ public class ServiceListingDto
     /// <summary>The name for that standing — computed server-side so every client agrees.</summary>
     public string LevelName { get; set; } = string.Empty;
 
+    /// <summary>The business's overall rating, across every line it runs.</summary>
     public decimal? RatingAverage { get; set; }
 
     public int ReviewCount { get; set; }
+
+    // ---- The service itself ---------------------------------------------------------------
+
+    /// <summary>
+    /// How customers rated this service, worked out the fair way. Null until it has enough ratings.
+    /// Named apart from <see cref="RatingAverage"/>, which already carries the business's rating.
+    /// </summary>
+    public decimal? ServiceRatingAverage { get; set; }
+
+    public int ServiceRatingCount { get; set; }
 }

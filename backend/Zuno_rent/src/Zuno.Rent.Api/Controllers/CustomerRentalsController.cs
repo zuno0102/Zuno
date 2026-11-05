@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Zuno.Rent.Api.Common;
 using Zuno.Rent.Application.Customer;
 using Zuno.Rent.Application.Orders;
+using Zuno.Rent.Application.Ratings;
 
 namespace Zuno.Rent.Api.Controllers;
 
@@ -101,4 +102,26 @@ public class CustomerRentalOrdersController(ISender mediator) : ControllerBase
         command.Id = id;
         return Ok(await mediator.Send(command, cancellationToken));
     }
+
+    /// <summary>Stars for a rental that was returned and fully paid — once.</summary>
+    [HttpPost("{id:guid}/rating")]
+    public async Task<IActionResult> Rate(Guid id, [FromBody] RateRentalOrderCommand command, CancellationToken cancellationToken)
+    {
+        command.Id = id;
+        return Ok(await mediator.Send(command, cancellationToken));
+    }
+}
+
+/// <summary>
+/// Every business's Rent rating totals, read by the Service API to make one business rating. Open
+/// without a login: totals only, no customer or order is named. The global per-IP limit applies.
+/// </summary>
+[ApiController]
+[Route("api/v1/rentals/reputation")]
+[AllowAnonymous]
+public class RentalReputationController(ISender mediator) : ControllerBase
+{
+    [HttpGet]
+    public async Task<IActionResult> Get(CancellationToken cancellationToken) =>
+        Ok(await mediator.Send(new GetRentalReputationQuery(), cancellationToken));
 }

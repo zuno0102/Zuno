@@ -11,6 +11,7 @@ import 'package:zuno/features/rental/presentation/widgets/rental_item_form_sheet
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/confirm_dialog.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
+import 'package:zuno/shared/widgets/rating_line.dart';
 
 /// "₹12/day · 200 in stock" — the rate and how many the business has. The "/day" is the rate
 /// table's suffix for the item's type; until that list loads the price shows on its own.
@@ -205,6 +206,11 @@ class _RentalCard extends ConsumerWidget {
                 Text(
                   rentalRateAndStock(item, priceTypes),
                   style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                // What customers think of it, as they see it on the card.
+                RatingLine.of(
+                  item.rating,
+                  key: ValueKey('rental-item-rating-${item.id}'),
                 ),
                 if (!item.isAvailable)
                   const Chip(

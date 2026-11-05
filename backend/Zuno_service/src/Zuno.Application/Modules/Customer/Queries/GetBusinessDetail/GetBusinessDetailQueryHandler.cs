@@ -8,7 +8,7 @@ using Zuno.Domain.Exceptions;
 
 namespace Zuno.Application.Modules.Customer.Queries.GetBusinessDetail;
 
-public class GetBusinessDetailQueryHandler(IApplicationDbContext dbContext)
+public class GetBusinessDetailQueryHandler(IApplicationDbContext dbContext, IPlatformSettings platformSettings)
     : IRequestHandler<GetBusinessDetailQuery, BusinessDetailDto>
 {
     public async Task<BusinessDetailDto> Handle(GetBusinessDetailQuery request, CancellationToken cancellationToken)
@@ -27,6 +27,6 @@ public class GetBusinessDetailQueryHandler(IApplicationDbContext dbContext)
                 cancellationToken)
             ?? throw new EntityNotFoundException(nameof(BusinessOwnerProfile), request.BusinessId);
 
-        return business.ToDetailDto();
+        return business.ToDetailDto(platformSettings.Current);
     }
 }

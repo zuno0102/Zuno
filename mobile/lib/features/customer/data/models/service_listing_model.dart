@@ -1,5 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:zuno/features/customer/domain/entities/service_listing.dart';
+import 'package:zuno/shared/domain/star_rating.dart';
 
 part 'service_listing_model.g.dart';
 
@@ -22,6 +23,8 @@ class ServiceListingModel {
     this.levelName = 'New',
     this.ratingAverage,
     this.reviewCount = 0,
+    this.serviceRatingAverage,
+    this.serviceRatingCount = 0,
   });
 
   factory ServiceListingModel.fromJson(Map<String, dynamic> json) =>
@@ -46,6 +49,10 @@ class ServiceListingModel {
   final double? ratingAverage;
   final int reviewCount;
 
+  /// The service's own stars; [ratingAverage] above is the business's overall rating.
+  final double? serviceRatingAverage;
+  final int serviceRatingCount;
+
   ServiceListing toEntity() => ServiceListing(
     id: id,
     name: name,
@@ -63,5 +70,9 @@ class ServiceListingModel {
     levelName: levelName,
     ratingAverage: ratingAverage,
     reviewCount: reviewCount,
+    serviceRating: StarRating(
+      average: serviceRatingAverage,
+      count: serviceRatingCount,
+    ),
   );
 }

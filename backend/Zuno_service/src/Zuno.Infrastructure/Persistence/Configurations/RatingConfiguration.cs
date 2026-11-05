@@ -18,6 +18,7 @@ public class RatingConfiguration : IEntityTypeConfiguration<Rating>
             .HasDatabaseName("ux_ratings_booking_id");
 
         builder.HasIndex(r => r.BusinessOwnerProfileId).HasDatabaseName("ix_ratings_business_owner_profile_id");
+        builder.HasIndex(r => r.BusinessServiceId).HasDatabaseName("ix_ratings_business_service_id");
 
         builder.HasOne(r => r.Booking)
             .WithOne(b => b.Rating)
@@ -32,6 +33,11 @@ public class RatingConfiguration : IEntityTypeConfiguration<Rating>
         builder.HasOne(r => r.BusinessOwnerProfile)
             .WithMany()
             .HasForeignKey(r => r.BusinessOwnerProfileId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(r => r.BusinessService)
+            .WithMany()
+            .HasForeignKey(r => r.BusinessServiceId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
