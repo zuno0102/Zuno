@@ -74,6 +74,7 @@ class RentalCustomerRemoteDataSource {
         'endDate': rentalApiDate(input.endDate),
         'deliveryAddress': input.deliveryAddress,
         'districtId': input.districtId,
+        'customerPhone': input.customerPhone,
         'answers': [
           for (final entry in input.answers.entries)
             if (entry.value.trim().isNotEmpty)
@@ -82,6 +83,36 @@ class RentalCustomerRemoteDataSource {
       },
     );
     return RentalOrderModel.fromJson(response.data!);
+  });
+
+  /// The customer's verified mobile, or null when they have none yet.
+  Future<String?> verifiedPhone() => _run(() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      RentApi.rentalPhonePath,
+    );
+    return response.data?['phone'] as String?;
+  });
+
+  Future<RentalPhoneCodeSent> sendPhoneCode(String phone) => _run(() async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      RentApi.rentalPhoneSendCodePath,
+      data: {'phone': phone},
+    );
+    final json = response.data!;
+    return RentalPhoneCodeSent(
+      phone: json['phone'] as String? ?? '',
+      alreadyVerified: json['alreadyVerified'] as bool? ?? false,
+      expiresInSeconds: (json['expiresInSeconds'] as num?)?.toInt() ?? 0,
+      resendInSeconds: (json['resendInSeconds'] as num?)?.toInt() ?? 0,
+      testCode: json['testCode'] as String?,
+    );
+  });
+
+  Future<void> verifyPhoneCode(String phone, String code) => _run(() async {
+    await _dio.post<Map<String, dynamic>>(
+      RentApi.rentalPhoneVerifyPath,
+      data: {'phone': phone, 'code': code},
+    );
   });
 
   Future<RentalOrderPageModel> myRentals({int? pageSize}) => _run(() async {

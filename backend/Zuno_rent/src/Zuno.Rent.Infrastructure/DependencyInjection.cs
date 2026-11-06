@@ -60,6 +60,17 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromSeconds(15);
         });
 
+        // The code a customer's mobile is checked with before a rent booking. Test is the only sender
+        // until an SMS provider is added; any other mode is refused at start rather than sending nothing.
+        services.AddOptions<PhoneOtpSettings>()
+            .Bind(configuration.GetSection(PhoneOtpSettings.SectionName))
+            .ValidateDataAnnotations()
+            .Validate(
+                settings => settings.Mode == PhoneOtpModes.Test,
+                $"PhoneOtp:Mode must be {PhoneOtpModes.Test} until an SMS provider is added.")
+            .ValidateOnStart();
+        services.AddSingleton<IPhoneOtpSender, TestPhoneOtpSender>();
+
         // Lets go of app bookings whose advance was not paid in time.
         services.AddHostedService<AdvanceLapseService>();
 

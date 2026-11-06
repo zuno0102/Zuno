@@ -39,6 +39,11 @@ class RentApi {
       '$browsePath/$id/availability';
 
   static const String myRentalsPath = '/api/v1/customer/rental-orders';
+
+  /// The customer's mobile, checked with a one-time code before booking with it.
+  static const String rentalPhonePath = '/api/v1/customer/rental-phone';
+  static const String rentalPhoneSendCodePath = '$rentalPhonePath/send-code';
+  static const String rentalPhoneVerifyPath = '$rentalPhonePath/verify';
   static const String myRentalThreadsPath = '$myRentalsPath/threads';
 
   static String myRentalPath(String id) => '$myRentalsPath/$id';

@@ -497,3 +497,18 @@ public class RentalRefundModeOptionConfiguration : IEntityTypeConfiguration<Rent
         builder.HasData(RentalPaymentSeedData.RefundModes);
     }
 }
+
+public class RentalPhoneVerificationConfiguration : IEntityTypeConfiguration<RentalPhoneVerification>
+{
+    public void Configure(EntityTypeBuilder<RentalPhoneVerification> builder)
+    {
+        builder.ToTable("rental_phone_verifications");
+        builder.Property(v => v.Phone).HasMaxLength(RentalPhoneVerificationFields.PhoneLength).IsRequired();
+        builder.Property(v => v.CodeHash).HasMaxLength(RentalPhoneVerificationFields.CodeHashMaxLength);
+        builder.Property(v => v.ConcurrencyStamp).IsConcurrencyToken();
+        builder.HasIndex(v => new { v.Phone, v.SendWindowStartedAt });
+
+        // One row per customer and number: a booking checks it, a new code replaces the old one.
+        builder.HasIndex(v => new { v.CustomerUserId, v.Phone }).IsUnique();
+    }
+}

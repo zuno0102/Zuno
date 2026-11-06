@@ -46,6 +46,9 @@ public class PaymentFlowTests(RentApiFactory factory) : IClassFixture<RentApiFac
         return (business, item.GetProperty("id").GetString()!);
     }
 
+    private async Task<HttpResponseMessage> BookAsVerifiedCustomerAsync(string itemId) =>
+        await (await factory.VerifiedCustomerAsync()).PostAsJsonAsync("/api/v1/customer/rental-orders", Booking(itemId, 10));
+
     private static object Booking(string itemId, int quantity) => new
     {
         rentalItemId = itemId,
@@ -53,6 +56,7 @@ public class PaymentFlowTests(RentApiFactory factory) : IClassFixture<RentApiFac
         startDate = Start,
         endDate = End,
         deliveryAddress = "Kakkanad",
+        customerPhone = RentApiFactory.CustomerPhone,
         districtId = Ernakulam,
     };
 
@@ -61,7 +65,7 @@ public class PaymentFlowTests(RentApiFactory factory) : IClassFixture<RentApiFac
     {
         var (business, itemId) = await ChairsAsync(1000, "PerPiece", 2);
         await Data(await business.PutAsJsonAsync("/api/v1/business/rentals/payment-settings", new { upiId = "joy@okhdfcbank" }));
-        var customer = factory.ClientFor(Guid.NewGuid(), "Customer");
+        var customer = await factory.VerifiedCustomerAsync();
 
         var detail = await Data(await customer.GetAsync($"/api/v1/rentals/{itemId}"));
         detail.GetProperty("advanceType").GetString().Should().Be("PerPiece");
@@ -129,7 +133,12 @@ public class PaymentFlowTests(RentApiFactory factory) : IClassFixture<RentApiFac
 
         var order = await Data(await business.PostAsJsonAsync("/api/v1/business/rental-orders", new
         {
-            offline.rentalItemId, offline.quantity, offline.startDate, offline.endDate, offline.customerName, offline.deliveryAddress,
+            offline.rentalItemId,
+            offline.quantity,
+            offline.startDate,
+            offline.endDate,
+            offline.customerName,
+            offline.deliveryAddress,
             advanceMethod = "Cash",
         }));
         order.GetProperty("paid").GetDecimal().Should().Be(500);
@@ -146,7 +155,7 @@ public class PaymentFlowTests(RentApiFactory factory) : IClassFixture<RentApiFac
         var (_, itemId) = await ChairsAsync(10, "PerOrder", 100);
 
         var tries = await Task.WhenAll(Enumerable.Range(0, 2).Select(_ =>
-            factory.ClientFor(Guid.NewGuid(), "Customer").PostAsJsonAsync("/api/v1/customer/rental-orders", Booking(itemId, 10))));
+            BookAsVerifiedCustomerAsync(itemId)));
 
         tries.Count(r => r.IsSuccessStatusCode).Should().Be(1);
         tries.Count(r => r.StatusCode == HttpStatusCode.BadRequest).Should().Be(1);
@@ -156,7 +165,7 @@ public class PaymentFlowTests(RentApiFactory factory) : IClassFixture<RentApiFac
     public async Task An_unpaid_hold_is_let_go_and_its_chairs_are_free_again()
     {
         var (_, itemId) = await ChairsAsync(10, "PerOrder", 100);
-        var first = factory.ClientFor(Guid.NewGuid(), "Customer");
+        var first = await factory.VerifiedCustomerAsync();
         var order = await Data(await first.PostAsJsonAsync("/api/v1/customer/rental-orders", Booking(itemId, 10)));
         var orderId = Guid.Parse(order.GetProperty("id").GetString()!);
 
@@ -168,7 +177,7 @@ public class PaymentFlowTests(RentApiFactory factory) : IClassFixture<RentApiFac
         }
 
         // Free at once, before the lapse job has run.
-        var second = factory.ClientFor(Guid.NewGuid(), "Customer");
+        var second = await factory.VerifiedCustomerAsync();
         (await second.PostAsJsonAsync("/api/v1/customer/rental-orders", Booking(itemId, 10))).IsSuccessStatusCode.Should().BeTrue();
 
         using (var scope = factory.Services.CreateScope())

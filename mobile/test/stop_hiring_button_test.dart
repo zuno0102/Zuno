@@ -109,7 +109,7 @@ void main() {
       .map((t) => t.data ?? '')
       .join('\n');
 
-  testWidgets('looks like a button, with its meaning behind an info icon', (
+  testWidgets('looks like a button, with no info icon beside it', (
     tester,
   ) async {
     await pump(tester, post());
@@ -129,20 +129,9 @@ void main() {
       findsOneWidget,
     );
 
-    // Hidden until asked for.
-    const hint = 'Close this post to new workers';
-    expect(find.text(hint), findsNothing);
-
-    await tester.tap(find.byIcon(Icons.info_outline));
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text(hint), findsOneWidget);
-
-    // Tapping the info icon explains; it never stops hiring.
-    expect(find.byType(AlertDialog), findsNothing);
-
-    // And it goes away on its own.
-    await tester.pumpAndSettle(const Duration(seconds: 5));
-    expect(find.text(hint), findsNothing);
+    // The button speaks for itself: no ⓘ and no hidden hint next to it.
+    expect(find.byIcon(Icons.info_outline), findsNothing);
+    expect(find.text('Close this post to new workers'), findsNothing);
   });
 
   testWidgets('sits apart from the hiring details above it', (tester) async {

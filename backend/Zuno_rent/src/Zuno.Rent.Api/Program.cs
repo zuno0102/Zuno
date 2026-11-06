@@ -98,6 +98,13 @@ builder.Services.AddRateLimiter(options =>
         RateLimitPartition.GetFixedWindowLimiter(
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions { PermitLimit = limits.GetValue("UploadPermitLimit", 30), Window = TimeSpan.FromMinutes(1) }));
+
+    // Mobile codes: per signed-in person (else per address), so one account cannot hammer the code
+    // checks from many addresses, nor many accounts from one.
+    options.AddPolicy(RentPolicies.PhoneCodePolicy, context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = limits.GetValue("PhoneCodePermitLimit", 10), Window = TimeSpan.FromMinutes(1) }));
 });
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -152,14 +159,24 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = fileStorage.PublicPath,
 });
 
-app.UseRateLimiter();
+// After sign-in is read, so a limit can count per person rather than only per address.
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapControllers();
 app.MapHealthChecks("/health").AllowAnonymous();
 
 await app.Services.MigrateRentDatabaseAsync();
+
+// Test codes are shown in the app, so they prove nothing about the number: fine to try the flow,
+// not protection against fake bookings. Said at every start outside Development until SMS is added.
+if (!app.Environment.IsDevelopment()
+    && app.Services.GetRequiredService<IOptions<Zuno.Rent.Application.Common.PhoneOtpSettings>>().Value.Mode
+        == Zuno.Rent.Application.Common.PhoneOtpModes.Test)
+{
+    app.Logger.LogWarning("PhoneOtp:Mode is Test: booking codes are shown in the app and no SMS is sent. Add an SMS sender before relying on it against fake bookings.");
+}
 
 app.Run();
 

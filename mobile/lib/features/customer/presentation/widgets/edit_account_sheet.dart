@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/features/auth/domain/entities/user.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
+import 'package:zuno/shared/widgets/primary_button.dart';
 
 /// Lets somebody correct their own name and phone number.
 ///
@@ -200,16 +201,10 @@ class _EditAccountSheetState extends ConsumerState<_EditAccountSheet> {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
+                    style: _isSaving ? busyFilledButtonStyle(context) : null,
                     onPressed: _isSaving ? null : _save,
                     child: _isSaving
-                        ? SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Theme.of(context).colorScheme.onPrimary,
-                            ),
-                          )
+                        ? const ButtonSpinner(size: 18)
                         : const Text('Save'),
                   ),
                 ),

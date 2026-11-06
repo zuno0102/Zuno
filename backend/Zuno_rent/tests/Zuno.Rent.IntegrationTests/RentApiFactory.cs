@@ -1,5 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Hosting;
@@ -59,6 +61,24 @@ public class RentApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             expires: expires,
             signingCredentials: credentials);
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    /// <summary>The mobile every test customer books with.</summary>
+    public const string CustomerPhone = "9876543210";
+
+    /// <summary>
+    /// A new customer who has verified <see cref="CustomerPhone"/> with the test code, as every app
+    /// booking now needs.
+    /// </summary>
+    public async Task<HttpClient> VerifiedCustomerAsync()
+    {
+        var client = ClientFor(Guid.NewGuid(), "Customer");
+        var sent = await client.PostAsJsonAsync("/api/v1/customer/rental-phone/send-code", new { phone = CustomerPhone });
+        sent.EnsureSuccessStatusCode();
+        var code = (await sent.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data").GetProperty("testCode").GetString();
+        (await client.PostAsJsonAsync("/api/v1/customer/rental-phone/verify", new { phone = CustomerPhone, code }))
+            .EnsureSuccessStatusCode();
+        return client;
     }
 
     public HttpClient ClientFor(Guid userId, string role = "BusinessOwner")

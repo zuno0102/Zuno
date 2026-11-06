@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/router/push_screen.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/utils/formatting.dart';
+import 'package:zuno/core/utils/validators.dart';
+import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
+import 'package:zuno/features/auth/presentation/providers/auth_state.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/service_form_message_banner.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/service_form_pickers.dart';
 import 'package:zuno/features/customer/presentation/providers/customer_search_filter_provider.dart';
@@ -16,6 +19,7 @@ import 'package:zuno/features/rental/presentation/widgets/rental_advance_basis.d
 import 'package:zuno/features/rental/presentation/widgets/rental_availability_line.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_order_form_sheet.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_payment_card.dart';
+import 'package:zuno/features/rental/presentation/widgets/rental_phone_verify_field.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
 
@@ -31,7 +35,8 @@ Future<void> showRentalBookingSheet(
 );
 
 /// A customer books an item: dates, how many — with what those dates leave shown as they choose —
-/// where it goes, and the business's questions. The server checks it all again on save.
+/// where it goes, their mobile (checked with a code once), and the business's questions. The server
+/// checks it all again on save.
 class RentalBookingSheet extends ConsumerStatefulWidget {
   const RentalBookingSheet({required this.item, super.key});
 
@@ -45,6 +50,12 @@ class _RentalBookingSheetState extends ConsumerState<RentalBookingSheet> {
   final _formKey = GlobalKey<FormState>();
   final _quantity = TextEditingController(text: '1');
   final _address = TextEditingController();
+
+  /// Starts as the number they verified before, or else the one on their account.
+  late final _phone = TextEditingController(text: _accountPhone ?? '');
+
+  /// The mobile verified with a code, as its 10 digits; null until one is.
+  String? _verifiedPhone;
   late final Map<String, TextEditingController> _answers = {
     for (final q in widget.item.questions) q.id: TextEditingController(),
   };
@@ -69,6 +80,47 @@ class _RentalBookingSheetState extends ConsumerState<RentalBookingSheet> {
 
   bool _isSaving = false;
   String? _error;
+
+  String? get _accountPhone {
+    final auth = ref.read(authProvider).value;
+    return Validators.indianMobileDigits(
+      auth is AuthAuthenticated ? auth.user.phoneNumber : null,
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVerifiedPhone();
+  }
+
+  /// A customer who verified a number before books with it again without a new code.
+  Future<void> _loadVerifiedPhone() async {
+    try {
+      final phone = await ref
+          .read(rentalCustomerRepositoryProvider)
+          .verifiedPhone();
+      if (!mounted || phone == null) return;
+      setState(() {
+        _verifiedPhone = phone;
+        // Only over what was filled in for them: never over a number they are typing.
+        final typed = _phone.text.trim();
+        if (typed.isEmpty || typed == _accountPhone) _phone.text = phone;
+      });
+    } catch (_) {
+      // Not knowing only means the code is asked for again; the booking still works.
+    }
+  }
+
+  /// Set on the first Book tap: from then on each field checks itself as it is typed in, so a
+  /// message goes the moment the field is put right instead of waiting for the next tap.
+  bool _submitted = false;
+
+  /// Any change to the booking makes the banner above stale — "Choose the district" once one is
+  /// chosen, "Only 3 available" once the number or dates change — so it goes.
+  void _edited() {
+    if (_error != null) setState(() => _error = null);
+  }
 
   int get _count => int.tryParse(_quantity.text.trim()) ?? 0;
   DateTime get _start => rentalDayStart(_dates.start);
@@ -95,6 +147,7 @@ class _RentalBookingSheetState extends ConsumerState<RentalBookingSheet> {
   void dispose() {
     _quantity.dispose();
     _address.dispose();
+    _phone.dispose();
     for (final c in _answers.values) {
       c.dispose();
     }
@@ -110,7 +163,12 @@ class _RentalBookingSheetState extends ConsumerState<RentalBookingSheet> {
       initialDateRange: _dates,
       helpText: 'Rental dates',
     );
-    if (picked != null) setState(() => _dates = picked);
+    if (picked != null) {
+      setState(() {
+        _dates = picked;
+        _error = null;
+      });
+    }
   }
 
   Future<void> _pickDistrict() async {
@@ -132,11 +190,17 @@ class _RentalBookingSheetState extends ConsumerState<RentalBookingSheet> {
         ),
       ),
     );
-    if (picked != null) setState(() => _districtId = picked);
+    if (picked != null) {
+      setState(() {
+        _districtId = picked;
+        _error = null;
+      });
+    }
   }
 
   Future<void> _book() async {
     FocusScope.of(context).unfocus();
+    setState(() => _submitted = true);
     final valid = _formKey.currentState!.validate();
     if (_districtId == null) {
       setState(() => _error = 'Choose the district it goes to.');
@@ -161,6 +225,7 @@ class _RentalBookingSheetState extends ConsumerState<RentalBookingSheet> {
               endDate: _end,
               deliveryAddress: _address.text.trim(),
               districtId: _districtId!,
+              customerPhone: Validators.indianMobileDigits(_phone.text)!,
               answers: {
                 for (final entry in _answers.entries)
                   entry.key: entry.value.text,
@@ -224,6 +289,9 @@ class _RentalBookingSheetState extends ConsumerState<RentalBookingSheet> {
       child: SingleChildScrollView(
         child: Form(
           key: _formKey,
+          autovalidateMode: _submitted
+              ? AutovalidateMode.always
+              : AutovalidateMode.disabled,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -262,10 +330,11 @@ class _RentalBookingSheetState extends ConsumerState<RentalBookingSheet> {
               const SizedBox(height: 14),
               RentalQuantityRow(
                 controller: _quantity,
-                onStep: (delta) => setState(
-                  () => _quantity.text = '${(_count + delta).clamp(1, 100000)}',
-                ),
-                onChanged: () => setState(() {}),
+                onStep: (delta) => setState(() {
+                  _quantity.text = '${(_count + delta).clamp(1, 100000)}';
+                  _error = null;
+                }),
+                onChanged: () => setState(() => _error = null),
               ),
               const SizedBox(height: 8),
               RentalAvailabilityLine(
@@ -295,9 +364,20 @@ class _RentalBookingSheetState extends ConsumerState<RentalBookingSheet> {
                   border: OutlineInputBorder(),
                   counterText: '',
                 ),
+                onChanged: (_) => _edited(),
                 validator: (v) => (v ?? '').trim().isEmpty
                     ? 'Say where the pieces go.'
                     : null,
+              ),
+              const SizedBox(height: 14),
+              RentalPhoneVerifyField(
+                controller: _phone,
+                verifiedPhone: _verifiedPhone,
+                onVerified: (phone) => setState(() {
+                  _verifiedPhone = phone;
+                  _error = null;
+                }),
+                onChanged: _edited,
               ),
               // The business's own questions, as on a service booking.
               for (final q in item.questions) ...[
@@ -311,6 +391,7 @@ class _RentalBookingSheetState extends ConsumerState<RentalBookingSheet> {
                     border: const OutlineInputBorder(),
                     counterText: '',
                   ),
+                  onChanged: (_) => _edited(),
                   validator: (v) => q.isRequired && (v ?? '').trim().isEmpty
                       ? 'Please answer this.'
                       : null,

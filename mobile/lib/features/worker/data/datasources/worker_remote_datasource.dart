@@ -40,18 +40,6 @@ class WorkerRemoteDataSource {
     }
   }
 
-  /// The worker's own profile: earnings, work record and payout setup.
-  Future<WorkerProfileModel> getMyProfile() async {
-    try {
-      final response = await _dio.get<Map<String, dynamic>>(
-        ApiConstants.workerProfilePath,
-      );
-      return WorkerProfileModel.fromJson(response.data!);
-    } on DioException catch (e) {
-      throw mapDioExceptionToAppException(e);
-    }
-  }
-
   /// The worker's home screen: the profile plus what is running, coming, and owed.
   Future<WorkerDashboardModel> getDashboard() async {
     try {

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_providers.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
+import 'package:zuno/shared/widgets/primary_button.dart';
 
 /// Lets somebody change their own password without signing out.
 ///
@@ -181,16 +182,10 @@ class _ChangePasswordSheetState extends ConsumerState<_ChangePasswordSheet> {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
+                    style: _isSaving ? busyFilledButtonStyle(context) : null,
                     onPressed: _isSaving ? null : _save,
                     child: _isSaving
-                        ? SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Theme.of(context).colorScheme.onPrimary,
-                            ),
-                          )
+                        ? const ButtonSpinner(size: 18)
                         : const Text('Change password'),
                   ),
                 ),

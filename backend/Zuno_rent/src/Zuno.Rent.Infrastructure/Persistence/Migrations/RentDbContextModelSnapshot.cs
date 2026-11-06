@@ -6464,6 +6464,90 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Zuno.Rent.Domain.Entities.RentalPhoneVerification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempts");
+
+                    b.Property<DateTimeOffset?>("CodeExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("code_expires_at");
+
+                    b.Property<string>("CodeHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("code_hash");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
+
+                    b.Property<Guid>("CustomerUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_user_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTimeOffset?>("LastSentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_sent_at");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_date");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("phone");
+
+                    b.Property<DateTimeOffset?>("SendWindowStartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("send_window_started_at");
+
+                    b.Property<int>("SendsInWindow")
+                        .HasColumnType("integer")
+                        .HasColumnName("sends_in_window");
+
+                    b.Property<DateTimeOffset?>("VerifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("verified_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_rental_phone_verifications");
+
+                    b.HasIndex("CustomerUserId", "Phone")
+                        .IsUnique()
+                        .HasDatabaseName("ix_rental_phone_verifications_customer_user_id_phone");
+
+                    b.HasIndex("Phone", "SendWindowStartedAt")
+                        .HasDatabaseName("ix_rental_phone_verifications_phone_send_window_started_at");
+
+                    b.ToTable("rental_phone_verifications", (string)null);
+                });
+
             modelBuilder.Entity("Zuno.Rent.Domain.Entities.RentalPriceTypeOption", b =>
                 {
                     b.Property<short>("Code")

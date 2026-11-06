@@ -51,6 +51,17 @@ class RentalCustomerRepositoryImpl implements RentalCustomerRepository {
       (await _remote.book(input)).toEntity();
 
   @override
+  Future<String?> verifiedPhone() => _remote.verifiedPhone();
+
+  @override
+  Future<RentalPhoneCodeSent> sendPhoneCode(String phone) =>
+      _remote.sendPhoneCode(phone);
+
+  @override
+  Future<void> verifyPhoneCode(String phone, String code) =>
+      _remote.verifyPhoneCode(phone, code);
+
+  @override
   Future<RentalCheckout> checkout(String orderId) async =>
       (await _remote.checkout(orderId)).toEntity();
 

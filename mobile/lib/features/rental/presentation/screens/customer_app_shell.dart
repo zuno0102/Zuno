@@ -29,15 +29,21 @@ class CustomerAppShell extends ConsumerWidget {
           color: Theme.of(context).colorScheme.surface,
           child: Column(
             children: [
-              SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
-                  child: CustomerPanelSwitch(
-                    value: panel,
-                    onChanged: (p) => ref
-                        .read(customerPanelChoiceProvider.notifier)
-                        .choose(p),
+              // The switch sits in a band of the theme's own colour that runs up under the status
+              // bar, so the two doors read as the top of the app rather than floating above it.
+              ColoredBox(
+                key: const ValueKey('customer-panel-band'),
+                color: Theme.of(context).colorScheme.primaryContainer,
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                    child: CustomerPanelSwitch(
+                      value: panel,
+                      onChanged: (p) => ref
+                          .read(customerPanelChoiceProvider.notifier)
+                          .choose(p),
+                    ),
                   ),
                 ),
               ),
@@ -117,27 +123,19 @@ class _PanelCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final foreground = selected ? scheme.onPrimary : scheme.onSurface;
-    final radius = BorderRadius.circular(12);
+    final radius = BorderRadius.circular(14);
 
+    // Flat cards on the band, the chosen one filled — no shadow, which made them look lifted
+    // off the page. The colours are the theme's, so light and dark mode both read.
     return Semantics(
       button: true,
       selected: selected,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        height: 40,
+        height: 46,
         decoration: BoxDecoration(
-          color: selected ? scheme.primary : scheme.surfaceContainerLowest,
+          color: selected ? scheme.primary : scheme.surface,
           borderRadius: radius,
-          border: Border.all(
-            color: selected ? scheme.primary : scheme.outlineVariant,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.shadowSoft,
-              blurRadius: selected ? 6 : 2,
-              offset: const Offset(0, 2),
-            ),
-          ],
         ),
         child: Material(
           type: MaterialType.transparency,

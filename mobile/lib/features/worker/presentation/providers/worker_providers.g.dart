@@ -106,45 +106,6 @@ final class WorkerInvitationRepositoryProvider
 String _$workerInvitationRepositoryHash() =>
     r'a769765671eb73d701fd63d6ff76d097ca577af5';
 
-@ProviderFor(workerProfile)
-final workerProfileProvider = WorkerProfileProvider._();
-
-final class WorkerProfileProvider
-    extends
-        $FunctionalProvider<
-          AsyncValue<WorkerProfile>,
-          WorkerProfile,
-          FutureOr<WorkerProfile>
-        >
-    with $FutureModifier<WorkerProfile>, $FutureProvider<WorkerProfile> {
-  WorkerProfileProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'workerProfileProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$workerProfileHash();
-
-  @$internal
-  @override
-  $FutureProviderElement<WorkerProfile> $createElement(
-    $ProviderPointer pointer,
-  ) => $FutureProviderElement(pointer);
-
-  @override
-  FutureOr<WorkerProfile> create(Ref ref) {
-    return workerProfile(ref);
-  }
-}
-
-String _$workerProfileHash() => r'be1a8efc0d97c85b23316ec3ba15952ebb5043e9';
-
 @ProviderFor(hiringBusiness)
 final hiringBusinessProvider = HiringBusinessFamily._();
 

@@ -17,7 +17,7 @@ public class CustomerRentalTests : IDisposable
     private static readonly Guid CustomerC = Guid.NewGuid();
     private static readonly Guid CustomerD = Guid.NewGuid();
 
-    private readonly TestRent _rent = new();
+    private readonly TestRent _rent = new TestRent().WithVerifiedPhone(CustomerC, CustomerD);
     private readonly FakeDirectory _directory = new();
 
     public void Dispose() => _rent.Dispose();
@@ -56,6 +56,7 @@ public class CustomerRentalTests : IDisposable
         StartDate = DateTimeOffset.UtcNow.AddDays(10),
         EndDate = DateTimeOffset.UtcNow.AddDays(12),
         DeliveryAddress = "St. Mary's Hall, Kakkanad",
+        CustomerPhone = TestRent.Phone,
         DistrictId = TestRent.Ernakulam,
         Answers = answers ?? [],
     };
@@ -133,6 +134,42 @@ public class CustomerRentalTests : IDisposable
             .Select(c => c.Name).Should().Equal("Plastic chair");
         (await Browse.Handle(new SearchRentalsQuery { DistrictIds = [TestRent.Thrissur] }, default))
             .Select(c => c.Name).Should().Equal("Thrissur ladder");
+    }
+
+    [Fact]
+    public async Task Booking_needs_a_mobile_the_customer_verified()
+    {
+        await VerifyAsync(TestRent.OwnerA);
+        var chairs = await ItemAsync("Plastic chair", 2000);
+
+        // A new customer who never typed the code.
+        AsCustomer(Guid.NewGuid());
+        var unverified = () => Orders.Handle(Book(chairs, 10), default);
+        await unverified.Should().ThrowAsync<DomainException>().WithMessage(RentalPhoneMessages.NotVerified);
+
+        // A verified customer, but booking with another number.
+        AsCustomer();
+        var command = Book(chairs, 10);
+        command.CustomerPhone = "9123456789";
+        var otherNumber = () => Orders.Handle(command, default);
+        await otherNumber.Should().ThrowAsync<DomainException>().WithMessage(RentalPhoneMessages.NotVerified);
+
+        (await _rent.Db.RentalOrders.CountAsync()).Should().Be(0);
+
+        // The verified number, typed with spaces and +91, books.
+        command.CustomerPhone = "+91 98765 43210";
+        (await Orders.Handle(command, default)).CustomerPhone.Should().Be(TestRent.Phone);
+    }
+
+    [Fact]
+    public async Task An_app_from_before_verified_mobiles_is_told_to_update()
+    {
+        var command = Book(Guid.NewGuid(), 10);
+        command.CustomerPhone = string.Empty;
+
+        var result = await new BookRentalCommandValidator(_rent.Settings, TimeProvider.System).ValidateAsync(command);
+
+        result.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(RentalPhoneMessages.Missing);
     }
 
     [Fact]

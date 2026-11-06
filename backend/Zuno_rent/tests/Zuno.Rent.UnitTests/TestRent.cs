@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Zuno.Rent.Application.Common;
 using Zuno.Rent.Application.Items;
+using Zuno.Rent.Domain.Entities;
 using Zuno.Rent.Infrastructure.Persistence;
 using Zuno.Rent.Infrastructure.Persistence.Seed;
 
@@ -19,15 +20,20 @@ internal sealed class TestRent : IDisposable
     public static readonly Guid CuttingMachine = RentalCategorySeedData.SubCategoryId(6, 1);
     public static readonly Guid PlasticChairs = RentalCategorySeedData.SubCategoryId(1, 1);
 
+    private readonly string _databaseName = Guid.NewGuid().ToString();
+
     public TestRent(Guid? userId = null)
     {
         User = new FakeCurrentUser { UserId = userId ?? OwnerA };
-        Db = new RentDbContext(new DbContextOptionsBuilder<RentDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .AddInterceptors(new AuditInterceptor(User, TimeProvider.System))
-            .Options);
+        Db = NewContext();
         Db.Database.EnsureCreated();
     }
+
+    /// <summary>A second connection to the same data, as a request running at the same time has.</summary>
+    public RentDbContext NewContext() => new(new DbContextOptionsBuilder<RentDbContext>()
+        .UseInMemoryDatabase(_databaseName)
+        .AddInterceptors(new AuditInterceptor(User, TimeProvider.System))
+        .Options);
 
     public RentDbContext Db { get; }
 
@@ -73,6 +79,27 @@ internal sealed class TestRent : IDisposable
         };
         change?.Invoke(command);
         return command;
+    }
+
+    /// <summary>The mobile test customers book with.</summary>
+    public const string Phone = "9876543210";
+
+    /// <summary>Marks each customer as having verified <see cref="Phone"/>, as every app booking needs.</summary>
+    public TestRent WithVerifiedPhone(params Guid[] customers)
+    {
+        foreach (var customer in customers)
+        {
+            Db.RentalPhoneVerifications.Add(new RentalPhoneVerification
+            {
+                CustomerUserId = customer,
+                Phone = Phone,
+                VerifiedAt = DateTimeOffset.UtcNow,
+            });
+        }
+
+        Db.SaveChanges();
+        Db.ChangeTracker.Clear();
+        return this;
     }
 
     /// <summary>Acts as someone else on the same data, as a second request would.</summary>

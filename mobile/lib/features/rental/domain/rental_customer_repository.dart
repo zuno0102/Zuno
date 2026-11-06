@@ -27,6 +27,15 @@ abstract class RentalCustomerRepository {
   /// area, or a required question is unanswered — with words to show.
   Future<RentalOrder> book(RentalBookingInput input);
 
+  /// The mobile the customer verified last, to start the booking form with; null when none.
+  Future<String?> verifiedPhone();
+
+  /// Sends a one-time code to [phone] — refused, with words to show, when asked again too soon.
+  Future<RentalPhoneCodeSent> sendPhoneCode(String phone);
+
+  /// Checks the code typed; refused, with words to show, when wrong or expired.
+  Future<void> verifyPhoneCode(String phone, String code);
+
   /// Starts paying online: the advance while it is awaited, otherwise what is due.
   Future<RentalCheckout> checkout(String orderId);
 

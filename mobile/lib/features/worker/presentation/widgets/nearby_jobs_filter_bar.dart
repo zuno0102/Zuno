@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/features/worker/presentation/providers/worker_job_filter_provider.dart';
 import 'package:zuno/features/worker/presentation/widgets/worker_location_picker.dart';
+import 'package:zuno/shared/widgets/primary_button.dart';
 
 /// Where the worker is and how far they will travel, in one line above the jobs.
 ///
@@ -77,19 +78,12 @@ class _NearbyJobsFilterBarState extends ConsumerState<NearbyJobsFilterBar> {
               child: FilledButton.icon(
                 onPressed: _isLocating ? null : _useCurrentLocation,
                 icon: _isLocating
-                    ? SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Theme.of(context).colorScheme.onPrimary,
-                        ),
-                      )
+                    ? const ButtonSpinner(size: 16)
                     : const Icon(Icons.near_me, size: 18),
                 label: Text(_isLocating ? 'Finding you…' : 'Jobs near me'),
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(46),
-                ),
+                ).merge(_isLocating ? busyFilledButtonStyle(context) : null),
               ),
             ),
             const SizedBox(width: 8),

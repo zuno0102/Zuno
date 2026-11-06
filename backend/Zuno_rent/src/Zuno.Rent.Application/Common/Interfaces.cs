@@ -40,6 +40,8 @@ public interface IRentDbContext
 
     DbSet<RentalOrderRating> RentalOrderRatings { get; }
 
+    DbSet<RentalPhoneVerification> RentalPhoneVerifications { get; }
+
     DbSet<RentalAdvanceTypeOption> RentalAdvanceTypes { get; }
 
     DbSet<RentalPaymentMethodOption> RentalPaymentMethods { get; }
@@ -83,6 +85,18 @@ public record ServicePerson(string Name, string? Phone);
 
 /// <summary>The business's Service profile. <paramref name="UpiId"/> is null until the business adds one.</summary>
 public record ServiceBusiness(string Name, string? LogoUrl, bool IsVerified, string? UpiId = null);
+
+/// <summary>Sends the one-time code that checks a customer's mobile before a rent booking.</summary>
+public interface IPhoneOtpSender
+{
+    /// <summary>
+    /// No message is really sent, so the code goes back to the app to show — the test sender, used
+    /// until an SMS provider is added.
+    /// </summary>
+    bool ShowsCode { get; }
+
+    Task SendAsync(string phone, string code, CancellationToken cancellationToken);
+}
 
 /// <summary>Who is calling, read from the shared login's token.</summary>
 public interface ICurrentUser

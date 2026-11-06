@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Zuno.Rent.Api.Common;
 using Zuno.Rent.Application.Customer;
 using Zuno.Rent.Application.Orders;
@@ -124,4 +125,25 @@ public class RentalReputationController(ISender mediator) : ControllerBase
     [HttpGet]
     public async Task<IActionResult> Get(CancellationToken cancellationToken) =>
         Ok(await mediator.Send(new GetRentalReputationQuery(), cancellationToken));
+}
+
+/// <summary>The customer's mobile, checked with a one-time code before their first rent booking with it.</summary>
+[ApiController]
+[Route("api/v1/customer/rental-phone")]
+[Authorize(Policy = RentPolicies.Customer)]
+public class CustomerRentalPhoneController(ISender mediator) : ControllerBase
+{
+    [HttpGet]
+    public async Task<IActionResult> Get(CancellationToken cancellationToken) =>
+        Ok(await mediator.Send(new GetRentalPhoneQuery(), cancellationToken));
+
+    [HttpPost("send-code")]
+    [EnableRateLimiting(RentPolicies.PhoneCodePolicy)]
+    public async Task<IActionResult> SendCode([FromBody] SendRentalPhoneCodeCommand command, CancellationToken cancellationToken) =>
+        Ok(await mediator.Send(command, cancellationToken));
+
+    [HttpPost("verify")]
+    [EnableRateLimiting(RentPolicies.PhoneCodePolicy)]
+    public async Task<IActionResult> Verify([FromBody] VerifyRentalPhoneCodeCommand command, CancellationToken cancellationToken) =>
+        Ok(await mediator.Send(command, cancellationToken));
 }

@@ -28,7 +28,7 @@ public class CancellationTests : IDisposable
 
     private static readonly DateTimeOffset Start = new(2026, 11, 11, 0, 0, 0, TimeSpan.Zero);
 
-    private readonly TestRent _rent = new();
+    private readonly TestRent _rent = new TestRent().WithVerifiedPhone(Customer);
     private readonly FakePaymentGateway _gateway = new();
     private readonly SettableClock _clock = new(BookedAt);
 
@@ -90,6 +90,7 @@ public class CancellationTests : IDisposable
             StartDate = from,
             EndDate = from.AddDays(days).AddMinutes(-1),
             DeliveryAddress = "St. Mary's Hall",
+            CustomerPhone = TestRent.Phone,
             DistrictId = TestRent.Ernakulam,
         }, default);
     }
@@ -101,7 +102,10 @@ public class CancellationTests : IDisposable
         var checkout = await Payments.Handle(new StartRentalPaymentCommand { Id = order }, default);
         return await Payments.Handle(new CompleteRentalPaymentCommand
         {
-            Id = order, ProviderOrderId = checkout.ProviderOrderId, PaymentId = $"pay_{Guid.NewGuid():N}", Signature = "good",
+            Id = order,
+            ProviderOrderId = checkout.ProviderOrderId,
+            PaymentId = $"pay_{Guid.NewGuid():N}",
+            Signature = "good",
         }, default);
     }
 
@@ -382,8 +386,14 @@ public class CancellationTests : IDisposable
         var quote = await Cancellations.Handle(new GetMyRentalCancelQuoteQuery { Id = order.Id }, default);
         quote.Should().BeEquivalentTo(new RentalCancelQuoteDto
         {
-            UnitsBefore = daysLeft, Unit = "Day", Basis = "ByTimeLeft", RentalUnits = 2,
-            Percent = percent, Charge = charge, Paid = 5000, Refund = refund,
+            UnitsBefore = daysLeft,
+            Unit = "Day",
+            Basis = "ByTimeLeft",
+            RentalUnits = 2,
+            Percent = percent,
+            Charge = charge,
+            Paid = 5000,
+            Refund = refund,
         });
 
         var cancelled = await CustomerCancelsAsync(order.Id);
@@ -840,8 +850,12 @@ public class CancellationTests : IDisposable
         _rent.Db.ChangeTracker.Clear();
         var refunded = await Payments.Handle(new RecordRentalPaymentCommand
         {
-            Id = order.Id, Method = "UpiQr", Amount = 5000, IsRefund = true,
-            Reference = "431256789012", PayeeUpiId = "rahul@okaxis",
+            Id = order.Id,
+            Method = "UpiQr",
+            Amount = 5000,
+            IsRefund = true,
+            Reference = "431256789012",
+            PayeeUpiId = "rahul@okaxis",
         }, default);
 
         refunded.PaymentStatus.Should().Be("Refunded");

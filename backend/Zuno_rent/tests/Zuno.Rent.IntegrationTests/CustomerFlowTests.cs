@@ -43,6 +43,7 @@ public class CustomerFlowTests(RentApiFactory factory) : IClassFixture<RentApiFa
         startDate = Start,
         endDate = End,
         deliveryAddress = "Kakkanad",
+        customerPhone = RentApiFactory.CustomerPhone,
         districtId = "106ed900-3319-e16c-796b-a3a11ea1a1e9",
     };
 
@@ -50,7 +51,7 @@ public class CustomerFlowTests(RentApiFactory factory) : IClassFixture<RentApiFa
     public async Task A_customer_finds_books_and_talks_and_the_business_sends_it_out()
     {
         var (business, itemId) = await ListedChairsAsync(1000);
-        var customer = factory.ClientFor(Guid.NewGuid(), "Customer");
+        var customer = await factory.VerifiedCustomerAsync();
 
         var home = await Data(await customer.GetAsync("/api/v1/rentals/home?seed=7"));
         home.GetArrayLength().Should().BeGreaterThan(0);
@@ -80,6 +81,32 @@ public class CustomerFlowTests(RentApiFactory factory) : IClassFixture<RentApiFa
     }
 
     [Fact]
+    public async Task A_mobile_not_verified_cannot_book_and_a_verified_one_can()
+    {
+        var (_, itemId) = await ListedChairsAsync(1000);
+        var customer = factory.ClientFor(Guid.NewGuid(), "Customer");
+
+        var refused = await customer.PostAsJsonAsync("/api/v1/customer/rental-orders", Booking(itemId, 10));
+        refused.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await refused.Content.ReadAsStringAsync()).Should().Contain("Verify your mobile number");
+
+        var sent = await Data(await customer.PostAsJsonAsync(
+            "/api/v1/customer/rental-phone/send-code", new { phone = RentApiFactory.CustomerPhone }));
+        var wrong = await customer.PostAsJsonAsync(
+            "/api/v1/customer/rental-phone/verify", new { phone = RentApiFactory.CustomerPhone, code = "12" });
+        wrong.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        await Data(await customer.PostAsJsonAsync(
+            "/api/v1/customer/rental-phone/verify",
+            new { phone = RentApiFactory.CustomerPhone, code = sent.GetProperty("testCode").GetString() }));
+        (await Data(await customer.GetAsync("/api/v1/customer/rental-phone"))).GetProperty("phone").GetString()
+            .Should().Be(RentApiFactory.CustomerPhone);
+
+        (await customer.PostAsJsonAsync("/api/v1/customer/rental-orders", Booking(itemId, 10))).StatusCode
+            .Should().Be(HttpStatusCode.Created);
+    }
+
+    [Fact]
     public async Task Each_side_is_kept_to_its_own_routes()
     {
         var business = factory.ClientFor(Guid.NewGuid());
@@ -95,8 +122,8 @@ public class CustomerFlowTests(RentApiFactory factory) : IClassFixture<RentApiFa
     public async Task Two_customers_for_the_last_pieces_at_once_only_one_wins()
     {
         var (_, itemId) = await ListedChairsAsync(1000);
-        var first = factory.ClientFor(Guid.NewGuid(), "Customer");
-        var second = factory.ClientFor(Guid.NewGuid(), "Customer");
+        var first = await factory.VerifiedCustomerAsync();
+        var second = await factory.VerifiedCustomerAsync();
 
         var results = await Task.WhenAll(
             first.PostAsJsonAsync("/api/v1/customer/rental-orders", Booking(itemId, 600)),

@@ -43,6 +43,8 @@ public class RentDbContext(DbContextOptions<RentDbContext> options) : DbContext(
 
     public DbSet<RentalOrderRating> RentalOrderRatings => Set<RentalOrderRating>();
 
+    public DbSet<RentalPhoneVerification> RentalPhoneVerifications => Set<RentalPhoneVerification>();
+
     public DbSet<RentalAdvanceTypeOption> RentalAdvanceTypes => Set<RentalAdvanceTypeOption>();
 
     public DbSet<RentalPaymentMethodOption> RentalPaymentMethods => Set<RentalPaymentMethodOption>();

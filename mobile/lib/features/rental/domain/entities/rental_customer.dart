@@ -137,6 +137,7 @@ class RentalBookingInput {
     required this.endDate,
     required this.deliveryAddress,
     required this.districtId,
+    required this.customerPhone,
     this.answers = const {},
   });
 
@@ -147,6 +148,28 @@ class RentalBookingInput {
   final String deliveryAddress;
   final String districtId;
 
+  /// The 10 digits of the mobile the customer verified with a code.
+  final String customerPhone;
+
   /// Question id → the customer's answer.
   final Map<String, String> answers;
+}
+
+/// A code was sent to the customer's mobile — or not needed, the number being verified already.
+class RentalPhoneCodeSent {
+  const RentalPhoneCodeSent({
+    required this.phone,
+    this.alreadyVerified = false,
+    this.expiresInSeconds = 0,
+    this.resendInSeconds = 0,
+    this.testCode,
+  });
+
+  final String phone;
+  final bool alreadyVerified;
+  final int expiresInSeconds;
+  final int resendInSeconds;
+
+  /// The code itself, only while no SMS is really sent — shown so it can be typed in.
+  final String? testCode;
 }

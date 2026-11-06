@@ -13,8 +13,8 @@ namespace Zuno.Rent.Application.Customer;
 
 /// <summary>
 /// A customer books pieces in the app — refused when the dates do not leave enough, the place is
-/// outside the item's area, or a required question is unanswered. Their name and phone come from
-/// their account, never from what the app sends.
+/// outside the item's area, a required question is unanswered, or the mobile given is not one the
+/// customer verified with a code. Their name comes from their account, never from what the app sends.
 /// </summary>
 public class BookRentalCommand : IRequest<RentalOrderDto>
 {
@@ -27,6 +27,9 @@ public class BookRentalCommand : IRequest<RentalOrderDto>
     public DateTimeOffset EndDate { get; set; }
 
     public string DeliveryAddress { get; set; } = string.Empty;
+
+    /// <summary>The customer's mobile for this booking — one they verified with a code (<see cref="RentalPhoneVerificationHandlers"/>).</summary>
+    public string CustomerPhone { get; set; } = string.Empty;
 
     /// <summary>Where it goes — one of the districts the item is offered in.</summary>
     public Guid DistrictId { get; set; }
@@ -84,6 +87,10 @@ public class BookRentalCommandValidator : AbstractValidator<BookRentalCommand>
             .Must(address => !string.IsNullOrWhiteSpace(address)).WithMessage("Say where the pieces go.")
             .MaximumLength(500);
         RuleFor(x => x.DistrictId).NotEmpty().WithMessage("Choose the district it goes to.");
+        // An app from before verified mobiles sends none: told to update rather than refused blankly.
+        RuleFor(x => x.CustomerPhone).Cascade(CascadeMode.Stop)
+            .Must(phone => !string.IsNullOrWhiteSpace(phone)).WithMessage(RentalPhoneMessages.Missing)
+            .Must(phone => RentalPhone.Normalize(phone) is not null).WithMessage(RentalPhone.Hint);
         RuleFor(x => x.Answers)
             .Must(answers => answers.Select(a => a.QuestionId).Distinct().Count() == answers.Count)
             .WithMessage("The same question was answered twice.");
@@ -141,6 +148,13 @@ public class CustomerRentalOrderHandlers(
             throw new DomainException($"Please answer: {missing.Prompt}");
         }
 
+        // A number nobody answers is how a fake booking holds a business's stock: only a verified one books.
+        var phone = RentalPhone.Normalize(request.CustomerPhone)!;
+        if (!await RentalPhoneVerificationHandlers.IsVerifiedAsync(dbContext, customerId, phone, cancellationToken))
+        {
+            throw new DomainException(RentalPhoneMessages.NotVerified);
+        }
+
         // The name the business sees comes from the customer's own account.
         var person = await directory.GetCurrentPersonAsync(cancellationToken)
             ?? throw new DomainException("We could not read your profile just now. Try again in a moment.");
@@ -155,7 +169,7 @@ public class CustomerRentalOrderHandlers(
                 OwnerUserId = item.OwnerUserId,
                 CustomerUserId = customerId,
                 CustomerName = person.Name,
-                CustomerPhone = person.Phone,
+                CustomerPhone = phone,
                 Quantity = request.Quantity,
                 StartDate = request.StartDate.ToUniversalTime(),
                 EndDate = request.EndDate.ToUniversalTime(),

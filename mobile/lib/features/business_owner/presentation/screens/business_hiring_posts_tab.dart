@@ -443,32 +443,14 @@ class _PostCardState extends ConsumerState<_PostCard> {
 
             // The way out of hiring: manage with the crew already on board. The post then
             // leaves this tab and every worker's feed.
-            // The same bordered primary button as on a full-time job. What it does sits behind
-            // the ⓘ beside it, shown on tap.
+            // The same bordered primary button as on a full-time job. The button says what it
+            // does, and the dialog it opens explains who is affected — no extra info icon.
             if (post.canStopHiring() && !_isDeleting)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    StopHiringButton(
-                      onPressed: _confirmAndStopHiring,
-                      isStopping: _isStopping,
-                    ),
-                    Tooltip(
-                      message: 'Close this post to new workers',
-                      triggerMode: TooltipTriggerMode.tap,
-                      showDuration: const Duration(seconds: 4),
-                      child: Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: Icon(
-                          Icons.info_outline,
-                          size: 20,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ],
+                child: StopHiringButton(
+                  onPressed: _confirmAndStopHiring,
+                  isStopping: _isStopping,
                 ),
               ),
 

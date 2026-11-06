@@ -19,7 +19,7 @@ public class PaymentTests : IDisposable
 {
     private static readonly Guid Customer = Guid.NewGuid();
 
-    private readonly TestRent _rent = new();
+    private readonly TestRent _rent = new TestRent().WithVerifiedPhone(Customer);
     private readonly FakePaymentGateway _gateway = new();
 
     public void Dispose() => _rent.Dispose();
@@ -103,6 +103,7 @@ public class PaymentTests : IDisposable
             StartDate = start,
             EndDate = end,
             DeliveryAddress = "St. Mary's Hall",
+            CustomerPhone = TestRent.Phone,
             DistrictId = TestRent.Ernakulam,
         }, default);
     }

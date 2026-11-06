@@ -82,6 +82,9 @@ class _FakeCustomerRepository implements RentalCustomerRepository {
   /// The item's stars, as the server sends them.
   StarRating itemRating = const StarRating();
 
+  /// Where the item goes. One district is chosen for the customer; two, neither theirs, are not.
+  List<RentalItemDistrict> districts = const [_ekm];
+
   /// Development's simulated collection: no payment window.
   bool simulated = false;
   final payments = <String>[];
@@ -146,7 +149,7 @@ class _FakeCustomerRepository implements RentalCustomerRepository {
     cancelChargeType: cancelChargeType,
     cancelPercentPerDay: cancelPercentPerDay,
     maxCancelPercent: maxCancelPercent,
-    districts: const [_ekm],
+    districts: districts,
     questions: const [
       RentalItemQuestion(
         id: 'q1',
@@ -163,6 +166,35 @@ class _FakeCustomerRepository implements RentalCustomerRepository {
     DateTime end,
   ) async =>
       RentalAvailability(total: 2000, held: held, available: 2000 - held);
+
+  /// The mobile this customer verified before; null for one who never has.
+  String? verifiedNumber = '9876543210';
+  final codesSent = <String>[];
+
+  @override
+  Future<String?> verifiedPhone() async => verifiedNumber;
+
+  @override
+  Future<RentalPhoneCodeSent> sendPhoneCode(String phone) async {
+    if (phone == verifiedNumber) {
+      return RentalPhoneCodeSent(phone: phone, alreadyVerified: true);
+    }
+    codesSent.add(phone);
+    return RentalPhoneCodeSent(
+      phone: phone,
+      expiresInSeconds: 300,
+      resendInSeconds: 30,
+      testCode: '123456',
+    );
+  }
+
+  @override
+  Future<void> verifyPhoneCode(String phone, String code) async {
+    if (code != '123456') {
+      throw Exception('That code is not right. 2 tries left.');
+    }
+    verifiedNumber = phone;
+  }
 
   @override
   Future<RentalOrder> book(RentalBookingInput input) async {
@@ -719,6 +751,182 @@ void main() {
       expect(repository.booked!.answers['q1'], 'Sunday, St. Mary\'s');
       expect(find.byType(RentalOrderDetailScreen), findsOneWidget);
       expect(find.text('My rental'), findsOneWidget);
+    });
+
+    testWidgets(
+      'a number verified before shows a tick and books without a code',
+      (tester) async {
+        final (repository, _, _) = await _pump(
+          tester,
+          const RentalItemScreen(itemId: 'chairs'),
+        );
+        await openBooking(tester);
+
+        expect(find.text('9876543210'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('booking-phone-verified')),
+          findsOneWidget,
+        );
+        expect(find.byKey(const ValueKey('booking-send-code')), findsNothing);
+
+        await tester.enterText(
+          find.byKey(const ValueKey('booking-address')),
+          'Kakkanad',
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('booking-answer-q1')),
+          'Sunday',
+        );
+        final book = find.widgetWithText(FilledButton, 'BOOK');
+        await tester.ensureVisible(book);
+        await tester.tap(book);
+        await tester.pumpAndSettle();
+
+        expect(repository.codesSent, isEmpty);
+        expect(repository.booked!.customerPhone, '9876543210');
+      },
+    );
+
+    testWidgets('a new number is verified with the code before it books', (
+      tester,
+    ) async {
+      final (repository, _, _) = await _pump(
+        tester,
+        const RentalItemScreen(itemId: 'chairs'),
+        setUp: (repository) => repository.verifiedNumber = null,
+      );
+      await openBooking(tester);
+      await tester.enterText(
+        find.byKey(const ValueKey('booking-address')),
+        'Kakkanad',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('booking-answer-q1')),
+        'Sunday',
+      );
+
+      // No number: Book says so, and nothing is booked.
+      final book = find.widgetWithText(FilledButton, 'BOOK');
+      await tester.ensureVisible(book);
+      await tester.tap(book);
+      await tester.pumpAndSettle();
+      expect(find.text('Enter your mobile number.'), findsOneWidget);
+      expect(repository.booked, isNull);
+
+      // A number not yet verified: still not booked.
+      await tester.enterText(
+        find.byKey(const ValueKey('booking-phone')),
+        '9123456789',
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(book);
+      await tester.tap(book);
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Tap Send code and enter the code to verify this number.'),
+        findsOneWidget,
+      );
+      expect(repository.booked, isNull);
+
+      final send = find.byKey(const ValueKey('booking-send-code'));
+      await tester.ensureVisible(send);
+      await tester.tap(send);
+      await tester.pumpAndSettle();
+      expect(repository.codesSent, ['9123456789']);
+      expect(
+        find.text('Test code: 123456 (SMS will come later)'),
+        findsOneWidget,
+      );
+      expect(find.text('Resend in 30s'), findsOneWidget);
+
+      // A wrong code is said under the box.
+      await tester.enterText(
+        find.byKey(const ValueKey('booking-otp')),
+        '999999',
+      );
+      await tester.tap(find.byKey(const ValueKey('booking-verify')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('That code is not right'), findsOneWidget);
+
+      await tester.enterText(
+        find.byKey(const ValueKey('booking-otp')),
+        '123456',
+      );
+      await tester.tap(find.byKey(const ValueKey('booking-verify')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('booking-phone-verified')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('booking-otp')), findsNothing);
+      expect(
+        find.text('Tap Send code and enter the code to verify this number.'),
+        findsNothing,
+        reason: 'the message goes once the number is verified',
+      );
+
+      await tester.ensureVisible(book);
+      await tester.tap(book);
+      await tester.pumpAndSettle();
+      expect(repository.booked!.customerPhone, '9123456789');
+    });
+
+    testWidgets('changing a verified number asks for a code again', (
+      tester,
+    ) async {
+      await _pump(tester, const RentalItemScreen(itemId: 'chairs'));
+      await openBooking(tester);
+
+      await tester.enterText(
+        find.byKey(const ValueKey('booking-phone')),
+        '9000000001',
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('booking-phone-verified')),
+        findsNothing,
+      );
+      expect(find.byKey(const ValueKey('booking-send-code')), findsOneWidget);
+    });
+
+    // The report: after Book with no district and no address, choosing the district and typing
+    // the address left "Choose the district it goes to." and "Say where the pieces go." showing.
+    testWidgets('messages go as soon as each one is put right', (tester) async {
+      await _pump(
+        tester,
+        const RentalItemScreen(itemId: 'chairs'),
+        setUp: (repository) => repository.districts = const [
+          _ekm,
+          RentalItemDistrict(
+            id: 'd-tvm',
+            name: 'Thiruvananthapuram',
+            stateId: 's-kl',
+            stateName: 'Kerala',
+          ),
+        ],
+      );
+      await openBooking(tester);
+
+      final book = find.widgetWithText(FilledButton, 'BOOK');
+      await tester.ensureVisible(book);
+      await tester.tap(book);
+      await tester.pumpAndSettle();
+      expect(find.text('Choose the district it goes to.'), findsOneWidget);
+      expect(find.text('Say where the pieces go.'), findsOneWidget);
+
+      await tester.tap(find.text('Choose where it goes'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Ernakulam').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Choose the district it goes to.'), findsNothing);
+
+      await tester.enterText(
+        find.byKey(const ValueKey('booking-address')),
+        'Kakkanad',
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Say where the pieces go.'), findsNothing);
     });
   });
 

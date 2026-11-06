@@ -28,4 +28,7 @@ public static class RentPolicies
     public const string Customer = "RequireCustomerRole";
 
     public const string UploadPolicy = "RentUploadPolicy";
+
+    /// <summary>Sending and checking mobile codes: a few a minute per person, whatever the database allows.</summary>
+    public const string PhoneCodePolicy = "RentPhoneCodePolicy";
 }

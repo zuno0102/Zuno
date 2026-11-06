@@ -3,7 +3,6 @@ import 'package:zuno/features/auth/presentation/providers/auth_providers.dart';
 import 'package:zuno/features/worker/data/datasources/worker_remote_datasource.dart';
 import 'package:zuno/features/worker/data/repositories/worker_invitation_repository_impl.dart';
 import 'package:zuno/features/worker/domain/entities/hiring_business.dart';
-import 'package:zuno/features/worker/domain/entities/worker_profile.dart';
 import 'package:zuno/features/worker/domain/repositories/worker_invitation_repository.dart';
 import 'package:zuno/features/worker/presentation/providers/worker_job_filter_provider.dart';
 
@@ -18,10 +17,6 @@ WorkerInvitationRepository workerInvitationRepository(Ref ref) =>
     WorkerInvitationRepositoryImpl(
       remoteDataSource: ref.watch(workerRemoteDataSourceProvider),
     );
-
-@riverpod
-Future<WorkerProfile> workerProfile(Ref ref) async =>
-    (await ref.watch(workerRemoteDataSourceProvider).getMyProfile()).toEntity();
 
 @riverpod
 Future<HiringBusiness> hiringBusiness(Ref ref, String businessId) async {
