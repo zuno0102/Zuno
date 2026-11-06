@@ -274,6 +274,8 @@ Future<RentalOrder?> payRentalOnline(
   final messenger = AppMessenger.of(context);
   final repository = ref.read(rentalCustomerRepositoryProvider);
   final window = ref.read(rentalPaymentWindowProvider);
+  // The payment window can stay open long enough for the screen that opened it to close.
+  final reload = rentalReloader(ref);
 
   try {
     final checkout = await repository.checkout(order.id);
@@ -294,7 +296,7 @@ Future<RentalOrder?> payRentalOnline(
       paymentId: result.paymentId,
       signature: result.signature,
     );
-    reloadRentals(ref);
+    reload();
 
     if (checkout.nothingToCollect) {
       // Never a plain "Paid": no window opened and no money moved, so say so.
@@ -318,7 +320,7 @@ Future<RentalOrder?> payRentalOnline(
     }
     return paid;
   } on RazorpayCancelled catch (e) {
-    reloadRentals(ref);
+    reload();
     // A UPI app can take the money and still come back as "closed"; the server asks Razorpay every
     // minute and confirms a paid booking by itself, so never promise "nothing was charged".
     messenger.showInfo(

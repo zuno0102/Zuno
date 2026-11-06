@@ -210,6 +210,7 @@ class _RentalBookingSheetState extends ConsumerState<RentalBookingSheet> {
 
     final messenger = AppMessenger.of(context);
     final navigator = Navigator.of(context);
+    final reload = rentalReloader(ref);
     setState(() {
       _isSaving = true;
       _error = null;
@@ -232,13 +233,17 @@ class _RentalBookingSheetState extends ConsumerState<RentalBookingSheet> {
               },
             ),
           );
-      reloadRentals(ref);
+      reload();
 
       // The item asks an advance: pay it now, while the pieces are held. Closing the window keeps
       // the booking waiting; it can be paid from My rents until the hold runs out.
       if (order.isAwaitingAdvance) {
         if (!mounted) return;
         await payRentalOnline(context, ref, order);
+        // The sheet can close while the payment window is open. Popping then would close the page
+        // under it instead — the item page — so stop here: the payment message has been shown,
+        // and the booking is in My rents.
+        if (!mounted) return;
       } else {
         messenger.showSuccess(
           'Booked: ${order.quantity} × ${order.itemName}. '

@@ -60,11 +60,12 @@ Future<RentalOrder?> runRentalOrderAction(
 
   // Before the await, as the app's messages need: the screen's colours and its messenger.
   final messenger = AppMessenger.of(context);
+  final reload = rentalReloader(ref);
   try {
     final updated = await ref
         .read(rentalOrdersGatewayProvider(audience))
         .takeStep(order.id, action.toStatus, refundMode: refundMode);
-    reloadRentals(ref);
+    reload();
     messenger.showSuccess(
       rentalCancelledMoneyNote(updated, audience) ??
           '${updated.customerName}: ${updated.quantity} × ${updated.itemName} — '

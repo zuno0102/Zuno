@@ -45,12 +45,13 @@ class _RentalRefundNoteState extends ConsumerState<RentalRefundNote> {
     );
     if (!confirmed || !mounted) return;
     final messenger = AppMessenger.of(context);
+    final reload = rentalReloader(ref);
     setState(() => _saving = true);
     try {
       await ref
           .read(rentalRepositoryProvider)
           .setRefundMode(_order.id, mode.code);
-      reloadRentals(ref);
+      reload();
       messenger.showSuccess('Refund goes back ${mode.name.toLowerCase()}.');
     } catch (e) {
       messenger.showFailure(e.toString());

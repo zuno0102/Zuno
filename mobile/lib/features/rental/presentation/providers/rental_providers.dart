@@ -1,7 +1,8 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' show WidgetRef;
+import 'package:flutter_riverpod/flutter_riverpod.dart'
+    show ProviderScope, WidgetRef;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:zuno/core/network/dio_client.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_providers.dart';
@@ -73,13 +74,25 @@ Future<List<RentalItem>> businessRentals(Ref ref) {
 ///
 /// Invalidation rather than a notifier method: a list opened from a tile does not watch the full
 /// list, so a reload routed through that list's notifier would reach nothing on screen.
-void reloadRentals(WidgetRef ref) => ref
-  ..invalidate(businessRentalsProvider)
-  ..invalidate(rentalSummaryProvider)
-  ..invalidate(rentalItemsByAvailabilityProvider)
-  ..invalidate(rentalStockProvider)
-  ..invalidate(rentalItemOrdersProvider)
-  ..invalidate(rentalOrdersProvider)
-  ..invalidate(rentalOrderCountsProvider)
-  ..invalidate(rentalOrderProvider)
-  ..invalidate(rentalOrderHistoryProvider);
+void reloadRentals(WidgetRef ref) => _reloadAll(ref.invalidate);
+
+/// [reloadRentals] for after an await: taken while the widget is still on screen, it still works
+/// once the widget has gone — a payment window the customer leaves open while the sheet behind it
+/// closes, or a screen they back out of mid-request. A widget's ref is unusable by then, and using
+/// it showed "Bad state: Using ref…" over a payment that had in fact been saved.
+void Function() rentalReloader(WidgetRef ref) {
+  final container = ProviderScope.containerOf(ref.context, listen: false);
+  return () => _reloadAll(container.invalidate);
+}
+
+void _reloadAll(void Function(ProviderOrFamily provider) invalidate) {
+  invalidate(businessRentalsProvider);
+  invalidate(rentalSummaryProvider);
+  invalidate(rentalItemsByAvailabilityProvider);
+  invalidate(rentalStockProvider);
+  invalidate(rentalItemOrdersProvider);
+  invalidate(rentalOrdersProvider);
+  invalidate(rentalOrderCountsProvider);
+  invalidate(rentalOrderProvider);
+  invalidate(rentalOrderHistoryProvider);
+}

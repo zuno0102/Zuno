@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -1108,6 +1110,51 @@ void main() {
       expect(find.textContaining('booking confirmed'), findsOneWidget);
       expect(find.byType(RentalOrderDetailScreen), findsOneWidget);
     });
+
+    // The report: the sheet behind the payment window closed while the customer paid, and the
+    // reload after the payment used the closed sheet's ref — "Bad state: Using ref…" over a
+    // payment that had been saved.
+    testWidgets(
+      'the sheet closing while paying still confirms, with no error',
+      (tester) async {
+        final paying = Completer<RazorpayResult>();
+        final (repository, _, container) = await _pump(
+          tester,
+          const RentalItemScreen(itemId: 'chairs'),
+          setUp: perChairAdvance,
+          window: (checkout, payee) => paying.future,
+        );
+        await fillBooking(tester);
+
+        await tester.ensureVisible(payButton);
+        await tester.tap(payButton);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+
+        // The sheet goes while the payment window is still open.
+        Navigator.of(tester.element(find.byType(RentalBookingSheet))).pop();
+        await tester.pumpAndSettle();
+        expect(find.byType(RentalBookingSheet), findsNothing);
+        paying.complete(
+          const RazorpayResult(
+            paymentId: 'pay_1',
+            orderId: 'order_1',
+            signature: 'sig',
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(find.textContaining('Bad state'), findsNothing);
+        expect(repository.payments, [
+          'checkout:new',
+          'pay:new:order_1:pay_1:sig',
+        ]);
+        expect(find.textContaining('booking confirmed'), findsOneWidget);
+        // The page under the sheet stays: only the sheet was closed.
+        expect(find.byType(RentalItemScreen), findsOneWidget);
+      },
+    );
 
     testWidgets('closing the window charges nothing and keeps the booking', (
       tester,

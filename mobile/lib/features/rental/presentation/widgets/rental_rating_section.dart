@@ -79,11 +79,12 @@ Future<RentalOrder?> rateRental(
 
   // Before the await, as the app's messages need.
   final messenger = AppMessenger.of(context);
+  final reload = rentalReloader(ref);
   try {
     final rated = await ref
         .read(rentalCustomerRepositoryProvider)
         .rate(order.id, input.score, comment: input.comment);
-    reloadRentals(ref);
+    reload();
     messenger.showSuccess('Thanks — your rating is saved.');
     return rated;
   } catch (e) {
