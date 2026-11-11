@@ -13,6 +13,7 @@ import 'package:zuno/shared/widgets/primary_button.dart';
 import 'package:zuno/shared/widgets/rating_line.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/app_permissions_link.dart';
+import 'package:zuno/shared/widgets/help_and_legal_links.dart';
 import 'package:zuno/shared/widgets/avatar_crop_screen.dart';
 import 'package:zuno/shared/domain/upi_id.dart';
 import 'package:zuno/shared/widgets/profile_incomplete_banner.dart';
@@ -316,6 +317,8 @@ class _BusinessProfileFormState extends ConsumerState<_BusinessProfileForm> {
               ),
               const SizedBox(height: 20),
               const AppPermissionsLink(),
+              const SizedBox(height: 12),
+              const HelpAndLegalLinks(),
             ],
           ),
         ),

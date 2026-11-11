@@ -656,6 +656,64 @@ void main() {
       await _pump(tester, const RentalHomeTab(), size: const Size(360, 740));
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets(
+      'a location: "Recommended rentals near you" first, from that district',
+      (tester) async {
+        final (repository, _, container) = await _pump(
+          tester,
+          const RentalHomeTab(),
+        );
+        expect(find.text(recommendedRentalsTitle), findsNothing);
+
+        container
+            .read(customerSearchFilterProvider.notifier)
+            .setLocation(
+              stateIds: {'s-kl'},
+              districtIds: {'d-ekm'},
+              primaryDistrictName: 'Ernakulam',
+            );
+        await tester.pumpAndSettle();
+
+        expect(find.text(recommendedRentalsTitle), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('rent-recommended-strip')),
+          findsOneWidget,
+        );
+        expect(
+          repository.searches.last,
+          '-||d-ekm',
+          reason: 'no words, no category',
+        );
+        // Above the featured items and the home sections.
+        expect(
+          tester.getTopLeft(find.text(recommendedRentalsTitle)).dy,
+          lessThan(tester.getTopLeft(find.text('Popular categories')).dy),
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets('a search under a location: "Matching rentals near you"', (
+      tester,
+    ) async {
+      final (_, _, container) = await _pump(tester, const RentalHomeTab());
+      container
+          .read(customerSearchFilterProvider.notifier)
+          .setLocation(
+            stateIds: {'s-kl'},
+            districtIds: {'d-ekm'},
+            primaryDistrictName: 'Ernakulam',
+          );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const ValueKey('rent-search')), 'tent');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Matching rentals near you'), findsOneWidget);
+      expect(find.text(recommendedRentalsTitle), findsNothing);
+    });
   });
 
   group('Item and booking', () {

@@ -12,7 +12,13 @@ abstract class LocationService {
   ///
   /// [precise] asks for a GPS-quality fix, for pinning the house a job is at. The default coarse fix
   /// is enough for "jobs within a few kilometres" and comes back faster.
-  Future<LocationResult> current({bool precise = false});
+  ///
+  /// [askPermission] false reads the position only if permission was already given, and never shows
+  /// the system dialog — for a quiet check on every app open, after the customer has answered once.
+  Future<LocationResult> current({
+    bool precise = false,
+    bool askPermission = true,
+  });
 
   /// Opens the system settings page, for a worker who denied the permission permanently.
   Future<void> openSettings();
@@ -69,15 +75,20 @@ class LocationResult {
 
 class GeolocatorLocationService implements LocationService {
   @override
-  Future<LocationResult> current({bool precise = false}) async {
+  Future<LocationResult> current({
+    bool precise = false,
+    bool askPermission = true,
+  }) async {
     try {
       if (!await Geolocator.isLocationServiceEnabled()) {
-        return const LocationResult.unavailable(LocationProblem.serviceDisabled);
+        return const LocationResult.unavailable(
+          LocationProblem.serviceDisabled,
+        );
       }
 
       var permission = await Geolocator.checkPermission();
 
-      if (permission == LocationPermission.denied) {
+      if (permission == LocationPermission.denied && askPermission) {
         permission = await Geolocator.requestPermission();
       }
 
@@ -106,7 +117,10 @@ class GeolocatorLocationService implements LocationService {
       } on Exception {
         // A fix indoors can simply never arrive. Yesterday's position is far better than refusing
         // to show any jobs at all — a worker has not usually moved districts overnight.
-        final last = await Geolocator.getLastKnownPosition();
+        // Not on the web, where there is no last fix to fall back on.
+        final last = await Geolocator.getLastKnownPosition().catchError(
+          (Object _) => null,
+        );
         return last == null
             ? const LocationResult.unavailable(LocationProblem.timedOut)
             : LocationResult.approximate(last.latitude, last.longitude);

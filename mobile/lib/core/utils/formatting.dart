@@ -118,10 +118,6 @@ bool isPerPersonPrice(String? priceType) => priceType == PriceType.perPerson;
 String priceUnitSuffix(String priceType) =>
     UiConfig.current.own('PriceType', priceType)?.shortLabel ?? '';
 
-/// "per hour" — the spelled-out form, for a line of its own under a figure.
-String priceUnitWords(String priceType) =>
-    UiConfig.current.own('PriceType', priceType)?.label ?? '';
-
 /// "₹500/hr" — a price with its unit attached.
 String priceLabel(double price, String priceType) =>
     '${rupees(price)}${priceUnitSuffix(priceType)}';
@@ -164,11 +160,4 @@ String formatDuration(int minutes) {
   final hours = minutes ~/ 60;
   final rest = minutes % 60;
   return rest == 0 ? '$hours hr' : '$hours hr $rest min';
-}
-
-/// "19 hrs" / "2 days" — how long something took, from an hour count.
-String formatHoursElapsed(double hours) {
-  if (hours < 1) return 'under an hour';
-  if (hours < 48) return '${hours.round()} hrs';
-  return '${(hours / 24).round()} days';
 }

@@ -52,7 +52,7 @@ class SpyLocationService implements LocationService {
   int asked = 0;
 
   @override
-  Future<LocationResult> current({bool precise = false}) async {
+  Future<LocationResult> current({bool precise = false, bool askPermission = true}) async {
     asked++;
     return const LocationResult.unavailable(LocationProblem.denied);
   }

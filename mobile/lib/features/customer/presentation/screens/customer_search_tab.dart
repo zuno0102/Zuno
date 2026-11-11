@@ -11,6 +11,8 @@ import 'package:zuno/features/customer/presentation/screens/customer_home_header
 import 'package:zuno/features/customer/presentation/widgets/home_banner_section.dart';
 import 'package:zuno/features/customer/presentation/widgets/home_sections_view.dart';
 import 'package:zuno/features/customer/presentation/widgets/customer_location_picker.dart';
+import 'package:zuno/features/customer/domain/entities/service_listing.dart';
+import 'package:zuno/features/customer/presentation/widgets/popular_services_strip.dart';
 import 'package:zuno/features/customer/presentation/widgets/service_card.dart';
 
 import 'package:zuno/shared/widgets/category_grid.dart';
@@ -136,7 +138,13 @@ class _CustomerSearchTabState extends ConsumerState<CustomerSearchTab> {
       onTap: _dismissKeyboard,
       child: Stack(
         children: [
-          _buildScrollView(context, filter, servicesAsync, categoriesAsync, user),
+          _buildScrollView(
+            context,
+            filter,
+            servicesAsync,
+            categoriesAsync,
+            user,
+          ),
           // Sits above the list rather than in the shell's Scaffold: the button belongs to this
           // page, and a floating action button on the shell would follow the customer onto
           // Bookings and Chat where there is nothing to scroll back from.
@@ -156,232 +164,279 @@ class _CustomerSearchTabState extends ConsumerState<CustomerSearchTab> {
   Widget _buildScrollView(
     BuildContext context,
     CustomerSearchFilter filter,
-    AsyncValue<List<dynamic>> servicesAsync,
+    AsyncValue<List<ServiceListing>> servicesAsync,
     AsyncValue<dynamic> categoriesAsync,
     dynamic user,
   ) {
     return RefreshIndicator(
-        // Refetches the same question. Changing the filter is what asks a new one.
-        // A pull down asks for something else to look at, so the home sections come back in a new
-        // order with a different spread of services. Re-rolling the seed does that; the sections
-        // provider watches it and refetches on its own.
-        //
-        // The filtered results are simply refetched: under a search, "show me something else" is not
-        // what a pull means.
-        onRefresh: () async {
-          ref.read(homeShuffleSeedProvider.notifier).reroll();
-          await ref.read(serviceSearchProvider.notifier).refresh();
-        },
-        child: CustomScrollView(
-          controller: _scrollController,
-          // Scrolling the results is as clear a sign as any that somebody has finished typing.
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          slivers: [
-            // 1. Who is signed in, and where results are drawn from.
-            SliverToBoxAdapter(
-              child: CustomerHomeHeader(
-                user: user,
-                location: locationSummary(
-                  primaryName: filter.primaryDistrictName,
-                  districtCount: filter.districtIds.length,
-                ),
-                trailing: widget.notificationBell,
+      // Refetches the same question. Changing the filter is what asks a new one.
+      // A pull down asks for something else to look at, so the home sections come back in a new
+      // order with a different spread of services. Re-rolling the seed does that; the sections
+      // provider watches it and refetches on its own.
+      //
+      // The filtered results are simply refetched: under a search, "show me something else" is not
+      // what a pull means.
+      onRefresh: () async {
+        ref.read(homeShuffleSeedProvider.notifier).reroll();
+        await ref.read(serviceSearchProvider.notifier).refresh();
+      },
+      child: CustomScrollView(
+        controller: _scrollController,
+        // Scrolling the results is as clear a sign as any that somebody has finished typing.
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        slivers: [
+          // 1. Who is signed in, and where results are drawn from.
+          SliverToBoxAdapter(
+            child: CustomerHomeHeader(
+              user: user,
+              location: locationSummary(
+                primaryName: filter.primaryDistrictName,
+                districtCount: filter.districtIds.length,
+              ),
+              trailing: widget.notificationBell,
+            ),
+          ),
+
+          // 2. Search, with the location filter beside it rather than stacked — they are two
+          // halves of the same question, and stacking pushed results below the fold.
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: (_) => _runSearch(),
+                      decoration: const InputDecoration(
+                        hintText: 'Search services, events, or businesses',
+                        prefixIcon: Icon(Icons.search),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  CustomerLocationButton(
+                    count: filter.districtIds.length,
+                    onPressed: _pickLocation,
+                  ),
+                ],
               ),
             ),
+          ),
 
-            // 2. Search, with the location filter beside it rather than stacked — they are two
-            // halves of the same question, and stacking pushed results below the fold.
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        textInputAction: TextInputAction.search,
-                        onSubmitted: (_) => _runSearch(),
-                        decoration: const InputDecoration(
-                          hintText: 'Search services, events, or businesses',
-                          prefixIcon: Icon(Icons.search),
-                          isDense: true,
+          // 3. First on the page: what is offered where the customer is — their district, read from
+          // the phone or picked. Only while nothing is being searched; a search gets its own band
+          // below, under the headings it has always had.
+          if (filter.hasLocation && !filter.hasSearchTerms)
+            ..._recommendedSlivers(filter, servicesAsync),
+
+          // 4. The banner strip: seven real services, a different seven tomorrow.
+          const SliverToBoxAdapter(child: HomeBannerSection()),
+
+          // 4. Categories.
+          SliverToBoxAdapter(
+            child: categoriesAsync.when(
+              loading: () => const SizedBox(height: 120),
+              error: (_, _) => const SizedBox.shrink(),
+              data: (categories) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SectionHeader(title: 'What do you need?'),
+                  CategoryGrid(
+                    selectedId: filter.categoryId,
+                    onSelected: _selectCategory,
+                    categories: [
+                      for (final c in categories)
+                        CategoryTile(
+                          id: c.id,
+                          label: c.name,
+                          iconUrl: c.iconUrl,
+                          icon: CategoryGrid.iconForCategory(
+                            iconName: c.iconName,
+                            name: c.name,
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    CustomerLocationButton(
-                      count: filter.districtIds.length,
-                      onPressed: _pickLocation,
-                    ),
-                  ],
-                ),
+                    ],
+                    onMore: () => _showAllCategories(categories),
+                  ),
+                ],
               ),
             ),
+          ),
 
-            // 3. The banner strip: seven real services, a different seven tomorrow.
-            const SliverToBoxAdapter(child: HomeBannerSection()),
-
-            // 4. Categories.
+          // 5. What was asked for, first and under its own name.
+          //
+          // A band at the top rather than a page that replaces itself: the filter answers "show me
+          // catering in Kanyakumari", and the home screen below still answers "what else is here".
+          // Replacing the whole page meant a district — which the app now remembers between
+          // launches — cost the customer their home screen permanently.
+          if (filter.hasSearchTerms) ...[
             SliverToBoxAdapter(
-              child: categoriesAsync.when(
-                loading: () => const SizedBox(height: 120),
-                error: (_, _) => const SizedBox.shrink(),
-                data: (categories) => Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SectionHeader(title: 'What do you need?'),
-                    CategoryGrid(
-                      selectedId: filter.categoryId,
-                      onSelected: _selectCategory,
-                      categories: [
-                        for (final c in categories)
-                          CategoryTile(
-                            id: c.id,
-                            label: c.name,
-                            iconUrl: c.iconUrl,
-                            icon: CategoryGrid.iconForCategory(
-                              iconName: c.iconName,
-                              name: c.name,
-                            ),
-                          ),
-                      ],
-                      onMore: () => _showAllCategories(categories),
-                    ),
-                  ],
+              child: SectionHeader(
+                title: matchingSectionTitle(
+                  hasLocation: filter.hasLocation,
+                  hasSearchTerms: filter.hasSearchTerms,
                 ),
+                count: servicesAsync.value?.length,
+                // Only for what a customer typed or tapped just now. The district is where they
+                // live, cleared from inside the location picker — not by a button that happens to
+                // sit beside today's search results.
+                actionLabel: 'Clear',
+                onAction: _clearFilters,
               ),
             ),
-
-            // 5. What was asked for, first and under its own name.
-            //
-            // A band at the top rather than a page that replaces itself: the filter answers "show me
-            // catering in Kanyakumari", and the home screen below still answers "what else is here".
-            // Replacing the whole page meant a district — which the app now remembers between
-            // launches — cost the customer their home screen permanently.
-            if (filter.isFiltering) ...[
-              SliverToBoxAdapter(
-                child: SectionHeader(
-                  title: matchingSectionTitle(
-                    hasLocation: filter.hasLocation,
-                    hasSearchTerms: filter.hasSearchTerms,
-                  ),
-                  count: servicesAsync.value?.length,
-                  // Only for what a customer typed or tapped just now. The district is where they
-                  // live, cleared from inside the location picker — not by a button that happens to
-                  // sit beside today's search results.
-                  actionLabel: filter.hasSearchTerms ? 'Clear' : null,
-                  onAction: filter.hasSearchTerms ? _clearFilters : null,
+            servicesAsync.when(
+              loading: () => const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(40),
+                  child: Center(child: CircularProgressIndicator()),
                 ),
               ),
-              servicesAsync.when(
-                loading: () => const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.all(40),
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
+              error: (error, _) => SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: ErrorBanner(message: error.toString()),
                 ),
-                error: (error, _) => SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: ErrorBanner(message: error.toString()),
-                  ),
-                ),
-                data: (services) {
-                  if (services.isEmpty) {
-                    return SliverToBoxAdapter(
-                      child: EmptyState(
-                        icon: Icons.search_off,
-                        title: 'Nothing here yet',
-                        message: filter.hasSearchTerms
-                            ? 'No service matches these filters. Try widening them.'
-                            : 'Nothing is listed near your location yet. '
-                                  'Everything else is below.',
-                        // Whichever of the two is actually in the way. With only a district set,
-                        // "Clear filters" would clear nothing and look broken.
-                        actionLabel: filter.hasSearchTerms
-                            ? 'Clear filters'
-                            : 'Search everywhere',
-                        onAction: filter.hasSearchTerms
-                            ? _clearFilters
-                            : () {
-                                _dismissKeyboard();
-                                _filter.clearLocation();
-                              },
-                      ),
-                    );
-                  }
-
-                  // Two across, always: a service is judged on its picture, and a full-width row
-                  // would show half as many for no extra information. Fixed at two rather than
-                  // fitted to the width, so the grid is the same shape on every phone and twenty
-                  // services are ten rows wherever they are read.
-                  return SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-                    sliver: SliverGrid.builder(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 12,
-                            crossAxisSpacing: 12,
-                            childAspectRatio: 0.74,
-                          ),
-                      itemCount: services.length,
-                      itemBuilder: (context, index) {
-                        final service = services[index];
-                        return ServiceCard(
-                          service: service,
-                          onTap: () =>
-                              context.push('/customer/service/${service.id}'),
-                        );
-                      },
+              ),
+              data: (services) {
+                if (services.isEmpty) {
+                  return SliverToBoxAdapter(
+                    child: EmptyState(
+                      icon: Icons.search_off,
+                      title: 'Nothing here yet',
+                      message:
+                          'No service matches these filters. Try widening them.',
+                      actionLabel: 'Clear filters',
+                      onAction: _clearFilters,
                     ),
                   );
-                },
-              ),
-            ],
+                }
 
-            // 6. The home screen itself, under every filter and none.
-            //
-            // Unnarrowed on purpose. These sections are the catalogue — what Zuno has — and a
-            // district with four businesses in it would otherwise leave the customer with four
-            // cards and nothing to browse.
-            ...ref
-                .watch(homeSectionsProvider)
-                .when(
-                  loading: () => const [
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.all(40),
-                        child: Center(child: CircularProgressIndicator()),
-                      ),
-                    ),
-                  ],
-                  error: (error, _) => [
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: ErrorBanner(message: error.toString()),
-                      ),
-                    ),
-                  ],
-                  data: (sections) => sections.isEmpty
-                      ? const [
-                          SliverToBoxAdapter(
-                            child: EmptyState(
-                              icon: Icons.storefront_outlined,
-                              title: 'Nothing listed yet',
-                              message:
-                                  'No businesses have listed a service for your area yet.',
-                            ),
-                          ),
-                        ]
-                      : homeSectionSlivers(context, sections),
-                ),
+                // Two across, always: a service is judged on its picture, and a full-width row
+                // would show half as many for no extra information. Fixed at two rather than
+                // fitted to the width, so the grid is the same shape on every phone and twenty
+                // services are ten rows wherever they are read.
+                return SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+                  sliver: SliverGrid.builder(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 0.74,
+                        ),
+                    itemCount: services.length,
+                    itemBuilder: (context, index) {
+                      final service = services[index];
+                      return ServiceCard(
+                        service: service,
+                        onTap: () =>
+                            context.push('/customer/service/${service.id}'),
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
           ],
-        ),
+
+          // 6. The home screen itself, under every filter and none.
+          //
+          // Unnarrowed on purpose. These sections are the catalogue — what Zuno has — and a
+          // district with four businesses in it would otherwise leave the customer with four
+          // cards and nothing to browse.
+          ...ref
+              .watch(homeSectionsProvider)
+              .when(
+                loading: () => const [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.all(40),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                  ),
+                ],
+                error: (error, _) => [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: ErrorBanner(message: error.toString()),
+                    ),
+                  ),
+                ],
+                data: (sections) => sections.isEmpty
+                    ? const [
+                        SliverToBoxAdapter(
+                          child: EmptyState(
+                            icon: Icons.storefront_outlined,
+                            title: 'Nothing listed yet',
+                            message:
+                                'No businesses have listed a service for your area yet.',
+                          ),
+                        ),
+                      ]
+                    : homeSectionSlivers(context, sections),
+              ),
+        ],
+      ),
     );
   }
 
+  /// "Recommended services near you": what is offered in the customer's district, in one strip at
+  /// the top. A strip, not a grid, so the banner and categories below stay in reach.
+  List<Widget> _recommendedSlivers(
+    CustomerSearchFilter filter,
+    AsyncValue<List<ServiceListing>> servicesAsync,
+  ) => [
+    SliverToBoxAdapter(
+      child: SectionHeader(
+        title: recommendedSectionTitle,
+        count: servicesAsync.value?.length,
+      ),
+    ),
+    SliverToBoxAdapter(
+      child: servicesAsync.when(
+        loading: () => const SizedBox(
+          height: 120,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+        error: (error, _) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: ErrorBanner(message: error.toString()),
+        ),
+        data: (services) => services.isEmpty
+            ? Padding(
+                key: const ValueKey('recommended-empty'),
+                padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Nothing is listed near ${filter.primaryDistrictName ?? 'you'} yet. '
+                        'Everything else is below.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        _dismissKeyboard();
+                        _filter.clearLocation();
+                      },
+                      child: const Text('Search everywhere'),
+                    ),
+                  ],
+                ),
+              )
+            : PopularServicesStrip(
+                key: const ValueKey('recommended-strip'),
+                services: services,
+              ),
+      ),
+    ),
+  ];
 
   /// The categories that did not fit in the grid.
   ///
@@ -424,6 +479,9 @@ class _CustomerSearchTabState extends ConsumerState<CustomerSearchTab> {
     _filter.clearSearch();
   }
 }
+
+/// The heading of the first section when a location is set and nothing is being searched.
+const recommendedSectionTitle = 'Recommended services near you';
 
 /// What to call the band of matching services at the top of the home screen.
 ///

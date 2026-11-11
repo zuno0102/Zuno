@@ -83,7 +83,8 @@ class ServiceVariantDetailScreen extends StatelessWidget {
                           color: theme.colorScheme.primary,
                         ),
                       ),
-                      if (variant.estimatedDurationMinutes case final mins?) ...[
+                      if (variant.estimatedDurationMinutes
+                          case final mins?) ...[
                         const SizedBox(width: 10),
                         Icon(
                           Icons.schedule_rounded,
@@ -100,7 +101,8 @@ class ServiceVariantDetailScreen extends StatelessWidget {
                       ],
                     ],
                   ),
-                  if (variant.description case final text? when text.isNotEmpty) ...[
+                  if (variant.description case final text?
+                      when text.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     // In full, not the two clipped lines the list can afford.
                     Text(text, style: theme.textTheme.bodyMedium),
@@ -125,11 +127,14 @@ class ServiceVariantDetailScreen extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
           child: FilledButton(
-            onPressed: () => pushScreen(context, CreateBookingScreen(
-                  businessName: businessName,
-                  service: service,
-                  variant: variant,
-                )),
+            onPressed: () => pushScreen(
+              context,
+              CreateBookingScreen(
+                businessName: businessName,
+                service: service,
+                variant: variant,
+              ),
+            ),
             child: Text('Book ${variant.name}'),
           ),
         ),

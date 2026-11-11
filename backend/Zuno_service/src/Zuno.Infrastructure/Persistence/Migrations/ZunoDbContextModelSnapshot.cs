@@ -1296,6 +1296,19 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
 
+                    b.Property<Guid?>("LocationDistrictId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("location_district_id");
+
+                    b.Property<string>("LocationSource")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("location_source");
+
+                    b.Property<DateTimeOffset?>("LocationUpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("location_updated_at");
+
                     b.Property<Guid?>("ModifiedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("modified_by");
@@ -1323,6 +1336,9 @@ namespace Zuno.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("DefaultAddressId")
                         .HasDatabaseName("ix_customer_profiles_default_address_id");
+
+                    b.HasIndex("LocationDistrictId")
+                        .HasDatabaseName("ix_customer_profiles_location_district_id");
 
                     b.HasIndex("UserId")
                         .IsUnique()
@@ -15335,6 +15351,12 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_customer_profiles_addresses_default_address_id");
 
+                    b.HasOne("Zuno.Domain.Entities.District", "LocationDistrict")
+                        .WithMany()
+                        .HasForeignKey("LocationDistrictId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_customer_profiles_districts_location_district_id");
+
                     b.HasOne("Zuno.Domain.Entities.User", "User")
                         .WithOne("CustomerProfile")
                         .HasForeignKey("Zuno.Domain.Entities.CustomerProfile", "UserId")
@@ -15343,6 +15365,8 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_customer_profiles_users_user_id");
 
                     b.Navigation("DefaultAddress");
+
+                    b.Navigation("LocationDistrict");
 
                     b.Navigation("User");
                 });

@@ -66,8 +66,6 @@ void main() {
       expect(formatDuration(20), '20 min');
       expect(formatDuration(60), '1 hr');
       expect(formatDuration(90), '1 hr 30 min');
-      expect(formatHoursElapsed(19.1), '19 hrs');
-      expect(formatHoursElapsed(72), '3 days');
     });
   });
 

@@ -10,8 +10,8 @@ import 'package:zuno/features/booking/presentation/providers/customer_bookings_n
 import 'package:zuno/features/customer/presentation/screens/app_permissions_screen.dart';
 import 'package:zuno/features/customer/presentation/widgets/edit_account_sheet.dart';
 import 'package:zuno/shared/widgets/change_password_sheet.dart';
+import 'package:zuno/shared/widgets/help_and_legal_links.dart';
 import 'package:zuno/shared/widgets/profile_avatar.dart';
-import 'package:zuno/shared/widgets/section_header.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/avatar_crop_screen.dart';
 import 'package:zuno/core/router/push_screen.dart';
@@ -29,53 +29,53 @@ class CustomerProfileTab extends ConsumerWidget {
     final authValue = ref.watch(authProvider).value;
     final user = authValue is AuthAuthenticated ? authValue.user : null;
 
+    // Flat white sections on the page's grey, a thin gap between them: one title, then short rows
+    // with an icon, a name and a chevron — read at a glance, like any shop app's account page.
     return ListView(
       padding: const EdgeInsets.only(bottom: 28),
       children: [
-        _ProfileHeader(
-          onEdit: user == null
-              ? null
-              : () async {
-                  final saved = await showEditAccountSheet(context, user: user);
-                  if (saved && context.mounted) {
-                    context.showSuccessMessage('Your details are saved.');
-                  }
-                },
+        _Section(
+          key: const ValueKey('profile-header'),
+          children: [
+            _ProfileHeader(
+              onEdit: user == null
+                  ? null
+                  : () async {
+                      final saved = await showEditAccountSheet(
+                        context,
+                        user: user,
+                      );
+                      if (saved && context.mounted) {
+                        context.showSuccessMessage('Your details are saved.');
+                      }
+                    },
+            ),
+            const _ActivitySummary(),
+            // The one review prompt in the app. With no ratings at all, no business can clear the
+            // rating bar that gates Level 3 — so this is where that unblocks.
+            const _ReviewPrompt(),
+            const SizedBox(height: 16),
+          ],
         ),
 
-        const _ActivitySummary(),
-
-        // The one review prompt in the app. With no ratings at all, no business can clear the
-        // rating bar that gates Level 3 — so this is where that unblocks.
-        const _ReviewPrompt(),
-
-        const SectionHeader(title: 'Account'),
-        _SettingsCard(
-          rows: [
+        _Section(
+          title: 'Account settings',
+          children: [
             _SettingsRow(
-              icon: Icons.person_outline,
-              title: 'Edit your details',
-              subtitle: 'Name and mobile number',
+              icon: Icons.person_outline_rounded,
+              title: 'Edit profile',
               onTap: user == null
                   ? null
                   : () => showEditAccountSheet(context, user: user),
             ),
             _SettingsRow(
-              icon: Icons.lock_outline,
+              icon: Icons.lock_outline_rounded,
               title: 'Change password',
-              subtitle: 'You stay signed in on this phone',
               onTap: () => showChangePasswordSheet(context),
             ),
-          ],
-        ),
-
-        const SectionHeader(title: 'Settings'),
-        _SettingsCard(
-          rows: [
             _SettingsRow(
               icon: Icons.shield_outlined,
               title: 'App permissions',
-              subtitle: 'Location, camera and photos',
               onTap: () => pushScreen(context, const AppPermissionsScreen()),
             ),
             _SettingsRow(
@@ -88,22 +88,29 @@ class CustomerProfileTab extends ConsumerWidget {
           ],
         ),
 
-        const SectionHeader(title: 'About Zuno'),
-        const _AboutCard(),
-
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: _SettingsCard(
-            rows: [
+        _Section(
+          title: 'Help and legal',
+          children: [
+            for (final link in helpAndLegalLinks)
               _SettingsRow(
-                icon: Icons.logout,
-                title: 'Log out',
-                isDestructive: true,
-                onTap: () => _confirmLogout(context, ref),
+                icon: link.icon,
+                title: link.title,
+                onTap: () => link.open(context),
               ),
-            ],
-            inset: false,
-          ),
+          ],
+        ),
+
+        const _Section(title: 'About Zuno', children: [_AboutText()]),
+
+        _Section(
+          children: [
+            _SettingsRow(
+              icon: Icons.logout_rounded,
+              title: 'Log out',
+              isDestructive: true,
+              onTap: () => _confirmLogout(context, ref),
+            ),
+          ],
         ),
       ],
     );
@@ -293,35 +300,55 @@ class _Stat extends StatelessWidget {
   }
 }
 
-class _SettingsCard extends StatelessWidget {
-  const _SettingsCard({required this.rows, this.inset = true});
+/// One full-width white band of the page, with an optional bold [title], and a thin gap of the
+/// page's own grey above it to set it apart from the one before.
+class _Section extends StatelessWidget {
+  const _Section({required this.children, this.title, super.key});
 
-  final List<_SettingsRow> rows;
-  final bool inset;
+  final String? title;
+  final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: inset
-          ? const EdgeInsets.symmetric(horizontal: 16)
-          : EdgeInsets.zero,
-      child: Column(
-        children: [
-          for (var i = 0; i < rows.length; i++) ...[
-            if (i > 0) const Divider(height: 1, indent: 56),
-            rows[i],
-          ],
-        ],
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      // A Material, not a coloured box, so the rows' tap ripple shows on it. Lighter than the page
+      // in both modes, so each section reads as its own band.
+      child: Material(
+        color: theme.brightness == Brightness.light
+            ? scheme.surfaceContainerLowest
+            : scheme.surfaceContainer,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (title != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
+                  child: Text(
+                    title!,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ...children,
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
+/// A short row: an icon in the app's colour, a name, and a chevron where it leads somewhere.
 class _SettingsRow extends StatelessWidget {
   const _SettingsRow({
     required this.icon,
     required this.title,
-    this.subtitle,
     this.trailingText,
     this.onTap,
     this.isDestructive = false,
@@ -329,7 +356,6 @@ class _SettingsRow extends StatelessWidget {
 
   final IconData icon;
   final String title;
-  final String? subtitle;
   final String? trailingText;
   final VoidCallback? onTap;
   final bool isDestructive;
@@ -337,62 +363,52 @@ class _SettingsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final tint = isDestructive ? theme.colorScheme.error : null;
+    final scheme = theme.colorScheme;
+    final tint = isDestructive ? scheme.error : scheme.primary;
 
     return ListTile(
-      leading: Icon(icon, color: tint),
-      title: Text(title, style: TextStyle(color: tint)),
-      subtitle: subtitle == null ? null : Text(subtitle!),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+      minVerticalPadding: 14,
+      horizontalTitleGap: 18,
+      leading: Icon(icon, color: tint, size: 24),
+      title: Text(
+        title,
+        style: theme.textTheme.bodyLarge?.copyWith(
+          color: isDestructive ? scheme.error : scheme.onSurface,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
       trailing: trailingText != null
           ? Text(
               trailingText!,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                color: scheme.onSurfaceVariant,
               ),
             )
           // A chevron only where there is somewhere to go.
-          : onTap == null
+          : onTap == null || isDestructive
           ? null
-          : Icon(
-              Icons.chevron_right_rounded,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+          : Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
       onTap: onTap,
     );
   }
 }
 
-class _AboutCard extends StatelessWidget {
-  const _AboutCard();
+/// What Zuno is, in two lines, under its own title.
+class _AboutText extends StatelessWidget {
+  const _AboutText();
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Zuno',
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.5,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Local services, booked properly. Every business here is verified before it can take '
-              'an order, and the people who do the work are paid through the same booking.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                height: 1.4,
-              ),
-            ),
-          ],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 2, 20, 14),
+      child: Text(
+        'Local services and rentals, booked properly. Every business is verified before it can '
+        'take an order, and workers are paid through the same booking.',
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+          height: 1.45,
         ),
       ),
     );

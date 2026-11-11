@@ -70,8 +70,9 @@ android {
                 signingConfigs.getByName("debug")
             }
 
-            // Named even though shrinking is off today, so that switching it on later cannot
-            // quietly strip Razorpay and break paying a crew in release builds only.
+            // Flutter shrinks release builds with R8. These rules keep what is only reached by name at
+            // runtime — Razorpay (paying) and ML Kit (the QR scanner) — which R8 would otherwise strip
+            // and break in release builds only.
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",

@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:zuno/features/catalog/domain/entities/district.dart';
+import 'package:zuno/features/customer/domain/entities/customer_location.dart';
 
 part 'customer_search_filter_provider.g.dart';
 
@@ -25,6 +27,7 @@ class CustomerSearchFilter {
     this.stateIds = const {},
     this.districtIds = const {},
     this.primaryDistrictName,
+    this.locationSource,
   });
 
   final String? categoryId;
@@ -37,6 +40,10 @@ class CustomerSearchFilter {
 
   /// The name of the first district chosen, for the line under the greeting.
   final String? primaryDistrictName;
+
+  /// How the location was set: read from the phone, picked, or cleared on purpose. Null until it
+  /// has been set at all. Only a location read from the phone is updated by the app by itself.
+  final CustomerLocationSource? locationSource;
 
   bool get hasLocation => districtIds.isNotEmpty;
 
@@ -66,6 +73,7 @@ class CustomerSearchFilter {
     Set<String>? stateIds,
     Set<String>? districtIds,
     String? primaryDistrictName,
+    CustomerLocationSource? locationSource,
     bool clearCategory = false,
     bool clearPrimaryDistrictName = false,
   }) => CustomerSearchFilter(
@@ -76,6 +84,7 @@ class CustomerSearchFilter {
     primaryDistrictName: clearPrimaryDistrictName
         ? null
         : (primaryDistrictName ?? this.primaryDistrictName),
+    locationSource: locationSource ?? this.locationSource,
   );
 }
 
@@ -84,12 +93,18 @@ class CustomerSearchFilterNotifier extends _$CustomerSearchFilterNotifier {
   static const _keyStateIds = 'customer_filter_state_ids';
   static const _keyDistrictIds = 'customer_filter_district_ids';
   static const _keyPrimaryName = 'customer_filter_primary_district';
+  static const _keySource = 'customer_filter_location_source';
+
+  /// Done once the location saved on the phone has been read back — so the app-open location check
+  /// knows whether the customer picked or cleared one before it decides to read the phone.
+  late Future<void> ready;
 
   @override
   CustomerSearchFilter build() {
     // Read in the background rather than awaited: the home screen must not hold on a spinner waiting
     // for disk. It opens showing everywhere and narrows a frame later if a district was saved.
-    unawaited(_restore());
+    ready = _restore();
+    unawaited(ready);
     return const CustomerSearchFilter();
   }
 
@@ -101,17 +116,28 @@ class CustomerSearchFilterNotifier extends _$CustomerSearchFilterNotifier {
     try {
       final store = await SharedPreferences.getInstance();
       final districtIds = store.getStringList(_keyDistrictIds);
-
-      if (districtIds == null || districtIds.isEmpty) return;
+      final source = CustomerLocationSource.fromCode(
+        store.getString(_keySource),
+      );
 
       // Only if nothing has been chosen since: somebody who set a district while this was loading
       // must not have it overwritten by where they were yesterday.
-      if (state.hasLocation) return;
+      if (state.hasLocation || state.locationSource != null) return;
+
+      if (districtIds == null || districtIds.isEmpty) {
+        // Cleared on purpose is remembered too, so the next open does not set it again.
+        if (source == CustomerLocationSource.cleared) {
+          state = state.copyWith(locationSource: source);
+        }
+        return;
+      }
 
       state = state.copyWith(
         stateIds: store.getStringList(_keyStateIds)?.toSet() ?? const {},
         districtIds: districtIds.toSet(),
         primaryDistrictName: store.getString(_keyPrimaryName),
+        // A district saved before sources existed was picked by hand.
+        locationSource: source ?? CustomerLocationSource.manual,
       );
     } on Exception {
       // A remembered district that cannot be read is not worth an error on screen — the customer
@@ -123,6 +149,12 @@ class CustomerSearchFilterNotifier extends _$CustomerSearchFilterNotifier {
     try {
       final store = await SharedPreferences.getInstance();
       final filter = state;
+
+      if (filter.locationSource case final source?) {
+        await store.setString(_keySource, source.code);
+      } else {
+        await store.remove(_keySource);
+      }
 
       if (!filter.hasLocation) {
         await store.remove(_keyStateIds);
@@ -178,6 +210,34 @@ class CustomerSearchFilterNotifier extends _$CustomerSearchFilterNotifier {
       stateIds: stateIds,
       districtIds: districtIds,
       primaryDistrictName: primaryDistrictName,
+      locationSource: CustomerLocationSource.manual,
+    );
+    _saveLocation();
+  }
+
+  /// The district the phone is in, found when the app opens or when the customer asks for it.
+  void setDetectedLocation(District district) =>
+      _setOne(district, CustomerLocationSource.gps);
+
+  /// The location kept in the customer's account, for a phone that has none of its own yet.
+  void applySaved(SavedCustomerLocation saved) {
+    final source = saved.source;
+    if (source == null) return;
+    if (saved.district case final district?) {
+      _setOne(district, source);
+    } else if (source == CustomerLocationSource.cleared) {
+      clearLocation();
+    }
+  }
+
+  void _setOne(District district, CustomerLocationSource source) {
+    state = CustomerSearchFilter(
+      categoryId: state.categoryId,
+      keyword: state.keyword,
+      stateIds: {district.stateId},
+      districtIds: {district.id},
+      primaryDistrictName: district.name,
+      locationSource: source,
     );
     _saveLocation();
   }
@@ -191,6 +251,7 @@ class CustomerSearchFilterNotifier extends _$CustomerSearchFilterNotifier {
     state = CustomerSearchFilter(
       categoryId: state.categoryId,
       keyword: state.keyword,
+      locationSource: CustomerLocationSource.cleared,
     );
     _saveLocation();
   }
@@ -205,6 +266,7 @@ class CustomerSearchFilterNotifier extends _$CustomerSearchFilterNotifier {
       stateIds: state.stateIds,
       districtIds: state.districtIds,
       primaryDistrictName: state.primaryDistrictName,
+      locationSource: state.locationSource,
     );
   }
 }

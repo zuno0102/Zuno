@@ -169,7 +169,12 @@ class _RentalHomeTabState extends ConsumerState<RentalHomeTab> {
                   ),
                 ),
 
-                // 3. Featured: a few items with photos, the same all day.
+                // 3. First on the page: what can be rented where the customer is, while nothing is
+                // being searched — as on the Service home.
+                if (location.hasLocation && !browse.isSearching)
+                  ..._recommended(location),
+
+                // 4. Featured: a few items with photos, the same all day.
                 const SliverToBoxAdapter(child: _BannerCarousel()),
 
                 // 4. Categories, from the Rent server's table.
@@ -273,10 +278,78 @@ class _RentalHomeTabState extends ConsumerState<RentalHomeTab> {
     );
   }
 
+  /// "Recommended rentals near you": everything offered in the customer's district, in one strip
+  /// — a strip, not a grid, so the featured items and categories below stay in reach.
+  List<Widget> _recommended(CustomerSearchFilter location) {
+    final near = ref.watch(rentalSearchProvider);
+    return [
+      SliverToBoxAdapter(
+        child: SectionHeader(
+          title: recommendedRentalsTitle,
+          count: near.value?.length,
+        ),
+      ),
+      SliverToBoxAdapter(
+        child: near.when(
+          loading: () => const SizedBox(
+            height: 120,
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (error, _) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: ErrorBanner(message: error.toString()),
+          ),
+          data: (cards) => cards.isEmpty
+              ? Padding(
+                  key: const ValueKey('rent-recommended-empty'),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Nothing to rent near '
+                          '${location.primaryDistrictName ?? 'you'} yet. '
+                          'Everything else is below.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => ref
+                            .read(customerSearchFilterProvider.notifier)
+                            .clearLocation(),
+                        child: const Text('Search everywhere'),
+                      ),
+                    ],
+                  ),
+                )
+              : SizedBox(
+                  height: 236,
+                  child: ListView.separated(
+                    key: const ValueKey('rent-recommended-strip'),
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: cards.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 12),
+                    itemBuilder: (context, index) => SizedBox(
+                      width: 168,
+                      child: RentalItemCard(
+                        card: cards[index],
+                        onTap: () => _open(cards[index]),
+                      ),
+                    ),
+                  ),
+                ),
+        ),
+      ),
+    ];
+  }
+
   List<Widget> _searchResults(RentalBrowseFilter browse) => [
     SliverToBoxAdapter(
       child: SectionHeader(
-        title: 'Matching rentals',
+        title: matchingRentalsTitle(
+          hasLocation: ref.watch(customerSearchFilterProvider).hasLocation,
+        ),
         count: ref.watch(rentalSearchProvider).value?.length,
         actionLabel: 'Clear',
         onAction: () {
@@ -520,3 +593,10 @@ class _BannerCarouselState extends ConsumerState<_BannerCarousel> {
     );
   }
 }
+
+/// The heading of the first section when a location is set and nothing is being searched.
+const recommendedRentalsTitle = 'Recommended rentals near you';
+
+/// The heading over search results — "near you" when a location narrows them, as on Service.
+String matchingRentalsTitle({required bool hasLocation}) =>
+    hasLocation ? 'Matching rentals near you' : 'Matching rentals';

@@ -109,10 +109,6 @@ public static class NotificationText
         return day is "today" or "tomorrow" ? day : "on " + day;
     }
 
-    /// <summary>A time of day: <c>18:30</c>.</summary>
-    public static string TimeOfDay(DateTimeOffset when) =>
-        when.ToOffset(IndiaOffset).ToString("HH:mm", Culture);
-
     /// <summary>
     /// A message quoted into a notification's body, clipped so the end is not cut mid-word.
     /// </summary>

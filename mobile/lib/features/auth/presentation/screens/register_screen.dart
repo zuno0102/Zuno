@@ -112,7 +112,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ],
                       Text('I am a...', style: theme.textTheme.labelMedium),
                       const SizedBox(height: 8),
+                      // No tick on the chosen role: the fill already says which one it is, and
+                      // the tick took enough room to break "Business" over two lines on a phone.
                       SegmentedButton<String>(
+                        showSelectedIcon: false,
                         segments: AppConstants.selfRegistrableRoles
                             .map(
                               (role) => ButtonSegment(
@@ -122,6 +125,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                           .own('RegisterRole', role)
                                           ?.label ??
                                       role,
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  overflow: TextOverflow.fade,
                                 ),
                               ),
                             )

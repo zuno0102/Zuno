@@ -51,7 +51,7 @@ class _QueuedLocationService implements LocationService {
   int settingsOpened = 0;
 
   @override
-  Future<LocationResult> current({bool precise = false}) async =>
+  Future<LocationResult> current({bool precise = false, bool askPermission = true}) async =>
       _answers.length > 1 ? _answers.removeAt(0) : _answers.first;
 
   @override

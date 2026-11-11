@@ -33,6 +33,7 @@ app (`mobile/`), the launcher (`launcher/`) and the PostgreSQL database. A chang
 13. [Unit testing — every scenario covered](#13-unit-testing--every-scenario-covered)
 14. [Code review — high-performance focus](#14-code-review--high-performance-focus)
 15. [Pull-request checklist](#15-pull-request-checklist)
+16. [Privacy policy stays true](#16-privacy-policy-stays-true)
 
 ---
 
@@ -598,4 +599,14 @@ Copy into every PR description and tick each item.
 - [ ] Unit/integration tests cover every applicable scenario; coverage gates met (section 13)
 - [ ] Performance review checklist passed; budgets respected (section 14)
 - [ ] Reviewed and approved (two reviewers for auth, payments, uploads, schema) (section 14)
+- [ ] New data, permission, package or company that touches personal data? Privacy policy updated (section 16)
 ```
+
+---
+
+## 16. Privacy policy stays true
+
+The Privacy policy, Terms of use and Help page (`mobile/assets/legal/`) must describe what the app really does. A change that collects new data, uses it in a new way, asks for a new phone permission, adds a package that sends data off the phone, or shares data with a new company is **not done** until the policy says so, and `lastUpdated` in `mobile/assets/legal/legal.json` is moved on.
+
+- The table of which change updates which section, the before-publishing checklist and the Play Store Data safety answers are in [PRIVACY_AND_LEGAL.md](PRIVACY_AND_LEGAL.md).
+- `mobile/test/legal/legal_documents_test.dart` fails when a phone permission or a data-sending package is not covered by the policy. Do not silence it: update the policy.

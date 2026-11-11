@@ -14,6 +14,7 @@ import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/app_permissions_link.dart';
+import 'package:zuno/shared/widgets/help_and_legal_links.dart';
 import 'package:zuno/shared/widgets/avatar_crop_screen.dart';
 
 /// The worker's own details, as a page of its own.
@@ -61,6 +62,8 @@ class WorkerProfileScreen extends ConsumerWidget {
               _PayoutCard(profile: profile),
               const SizedBox(height: 12),
               const AppPermissionsLink(),
+              const SizedBox(height: 12),
+              const HelpAndLegalLinks(),
             ],
           );
         },

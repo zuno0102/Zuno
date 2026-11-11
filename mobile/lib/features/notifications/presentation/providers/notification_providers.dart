@@ -116,12 +116,6 @@ class UnreadNotificationTargets extends _$UnreadNotificationTargets {
       '${target.toLowerCase()}:$targetId';
 }
 
-/// Whether anything unread points at this exact thing.
-@riverpod
-bool hasUnreadNotificationFor(Ref ref, String target, String targetId) =>
-    (ref.watch(unreadNotificationTargetsProvider).value ?? const <String>{})
-        .contains(UnreadNotificationTargets.keyFor(target, targetId));
-
 /// The number on the bell.
 ///
 /// Kept alive, because the bell sits above every tab in all three shells: rebuilding it per tab

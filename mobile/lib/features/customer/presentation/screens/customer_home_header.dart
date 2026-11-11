@@ -33,7 +33,12 @@ class CustomerHomeHeader extends StatelessWidget {
         : '${user!.firstName} ${user!.lastName}'.trim();
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + 12, 12, 4),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        MediaQuery.of(context).padding.top + 12,
+        12,
+        4,
+      ),
       child: Row(
         children: [
           ProfileAvatar(user: user),
@@ -79,4 +84,3 @@ class CustomerHomeHeader extends StatelessWidget {
     );
   }
 }
-

@@ -30,7 +30,8 @@ class CustomerRemoteDataSource {
         queryParameters: {
           'categoryId': ?categoryId,
           if (keyword != null && keyword.isNotEmpty) 'keyword': keyword,
-          if (districtIds != null && districtIds.isNotEmpty) 'districtIds': districtIds,
+          if (districtIds != null && districtIds.isNotEmpty)
+            'districtIds': districtIds,
           'take': _homeGridSize,
         },
       );

@@ -87,10 +87,6 @@ StatusPill vacancyStatusPill(Vacancy v, {bool compact = false}) {
   );
 }
 
-/// An application's stage as the worker reads it — "Application sent", "Application viewed" …
-String applicationStatusLabel(String status) =>
-    UiConfig.current.label(_workerGroup, status);
-
 /// The same stage as the business's list it sits in — New, Waiting, Shortlisted, Hired.
 String businessListLabel(String status) =>
     UiConfig.current.label(_businessGroup, status);

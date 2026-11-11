@@ -23,15 +23,14 @@ class PopularServicesStrip extends StatelessWidget {
     if (services.isEmpty) return const SizedBox.shrink();
 
     return SizedBox(
-          height: _height,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(16, 2, 16, 6),
-            itemCount: services.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 10),
-            itemBuilder: (context, index) =>
-                _StripCard(service: services[index]),
-          ),
+      height: _height,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(16, 2, 16, 6),
+        itemCount: services.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 10),
+        itemBuilder: (context, index) => _StripCard(service: services[index]),
+      ),
     );
   }
 }
@@ -73,7 +72,10 @@ class _StripCard extends StatelessWidget {
                         fit: BoxFit.cover,
                         errorWidget: (_, _, _) => Container(
                           color: theme.colorScheme.surfaceContainerHighest,
-                          child: const Icon(Icons.broken_image_outlined, size: 18),
+                          child: const Icon(
+                            Icons.broken_image_outlined,
+                            size: 18,
+                          ),
                         ),
                       ),
               ),

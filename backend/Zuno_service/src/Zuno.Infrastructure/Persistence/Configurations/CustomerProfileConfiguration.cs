@@ -19,6 +19,12 @@ public class CustomerProfileConfiguration : IEntityTypeConfiguration<CustomerPro
             .HasForeignKey<CustomerProfile>(cp => cp.UserId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.Property(cp => cp.LocationSource).HasMaxLength(CustomerLocationSources.MaxLength);
+        builder.HasOne(cp => cp.LocationDistrict)
+            .WithMany()
+            .HasForeignKey(cp => cp.LocationDistrictId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.HasOne(cp => cp.DefaultAddress)
             .WithMany()
             .HasForeignKey(cp => cp.DefaultAddressId)

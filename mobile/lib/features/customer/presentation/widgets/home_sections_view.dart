@@ -12,17 +12,20 @@ import 'package:zuno/shared/widgets/section_header.dart';
 /// rhythm rather than being one long wall of identical cards. Every service on it is distinct — the
 /// server composes the sections against each other — which is what stops the same business filling
 /// the screen the way it used to.
-List<Widget> homeSectionSlivers(BuildContext context, HomeSections sections) => [
+List<Widget> homeSectionSlivers(
+  BuildContext context,
+  HomeSections sections,
+) => [
   if (sections.forYou.isNotEmpty) ...[
     const SliverToBoxAdapter(child: SectionHeader(title: 'Services for you')),
     _grid(sections.forYou),
   ],
 
   if (sections.mostBooked.isNotEmpty) ...[
-    const SliverToBoxAdapter(
-      child: SectionHeader(title: 'Booked most often'),
+    const SliverToBoxAdapter(child: SectionHeader(title: 'Booked most often')),
+    SliverToBoxAdapter(
+      child: PopularServicesStrip(services: sections.mostBooked),
     ),
-    SliverToBoxAdapter(child: PopularServicesStrip(services: sections.mostBooked)),
   ],
 
   if (sections.more.isNotEmpty) ...[
@@ -32,15 +35,14 @@ List<Widget> homeSectionSlivers(BuildContext context, HomeSections sections) => 
 
   if (sections.topRated.isNotEmpty) ...[
     const SliverToBoxAdapter(child: SectionHeader(title: 'Top rated')),
-    SliverToBoxAdapter(child: PopularServicesStrip(services: sections.topRated)),
+    SliverToBoxAdapter(
+      child: PopularServicesStrip(services: sections.topRated),
+    ),
   ],
 
   if (sections.all.isNotEmpty) ...[
     SliverToBoxAdapter(
-      child: SectionHeader(
-        title: 'All services',
-        count: sections.all.length,
-      ),
+      child: SectionHeader(title: 'All services', count: sections.all.length),
     ),
     _grid(sections.all),
   ],

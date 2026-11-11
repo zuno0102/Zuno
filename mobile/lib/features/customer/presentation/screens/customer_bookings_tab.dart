@@ -69,7 +69,8 @@ class _BookingCard extends StatelessWidget {
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => pushScreen(context, CustomerBookingDetailScreen(booking: booking)),
+        onTap: () =>
+            pushScreen(context, CustomerBookingDetailScreen(booking: booking)),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
           child: Row(

@@ -38,6 +38,12 @@ class ApiConstants {
   static const String uiConfigPath = '/api/$apiVersion/ui-config';
   static const String districtsPath = '/api/$apiVersion/districts';
 
+  /// The district a point is in, by the nearest headquarters; null when too far from all.
+  static const String nearestDistrictPath = '$districtsPath/nearest';
+
+  /// The customer's own location, kept in their account.
+  static const String customerLocationPath = '/api/$apiVersion/customer/location';
+
   /// The app owner's catalogue: the kinds of work the whole product offers.
   static const String adminCatalogCategoriesPath =
       '/api/$apiVersion/admin/catalog/categories';

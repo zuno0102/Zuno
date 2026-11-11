@@ -11,6 +11,7 @@ import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/location_pin_picker.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
+import 'package:zuno/shared/widgets/select_field.dart';
 
 /// Opens the vacancy form: blank to post a new job, or filled in to edit [existing].
 ///
@@ -181,12 +182,13 @@ class _VacancyFormSheetState extends ConsumerState<VacancyFormSheet> {
                   validator: (v) =>
                       (v ?? '').trim().isEmpty ? 'Enter a job title' : null,
                 ),
-                DropdownButtonFormField<String>(
+                SelectField<String>(
+                  key: const ValueKey('vacancy-job-type'),
+                  label: 'Job type',
                   initialValue: _jobTypeId,
-                  decoration: const InputDecoration(labelText: 'Job type'),
-                  items: [
+                  options: [
                     for (final t in options.jobTypes)
-                      DropdownMenuItem(value: t.id, child: Text(t.name)),
+                      SelectOption(t.id, t.name),
                   ],
                   onChanged: (v) => setState(() => _jobTypeId = v),
                   validator: (v) => v == null ? 'Choose a job type' : null,
@@ -237,16 +239,15 @@ class _VacancyFormSheetState extends ConsumerState<VacancyFormSheet> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: DropdownButtonFormField<int>(
+                      child: SelectField<int>(
+                        key: const ValueKey('vacancy-days'),
+                        label: 'Days a week',
                         initialValue: _days,
-                        decoration: const InputDecoration(
-                          labelText: 'Days a week',
-                        ),
-                        items: [
+                        options: [
                           for (var d = 1; d <= 7; d++)
-                            DropdownMenuItem(value: d, child: Text('$d')),
+                            SelectOption(d, d == 1 ? '1 day' : '$d days'),
                         ],
-                        onChanged: (v) => setState(() => _days = v ?? _days),
+                        onChanged: (v) => setState(() => _days = v),
                       ),
                     ),
                   ],
@@ -341,14 +342,14 @@ class _VacancyFormSheetState extends ConsumerState<VacancyFormSheet> {
         ],
       ),
       const SizedBox(height: 12),
-      DropdownButtonFormField<String>(
+      SelectField<String>(
+        key: const ValueKey('vacancy-pay-period'),
+        label: 'Salary is paid',
         initialValue: _payPeriod,
-        decoration: const InputDecoration(labelText: 'Salary is paid'),
-        items: [
-          for (final p in payPeriodOptions)
-            DropdownMenuItem(value: p, child: Text(payPeriodWords(p))),
+        options: [
+          for (final p in payPeriodOptions) SelectOption(p, payPeriodWords(p)),
         ],
-        onChanged: (v) => setState(() => _payPeriod = v ?? _payPeriod),
+        onChanged: (v) => setState(() => _payPeriod = v),
       ),
     ],
   );
@@ -495,20 +496,15 @@ class _VacancyFormSheetState extends ConsumerState<VacancyFormSheet> {
                 Row(
                   children: [
                     Expanded(
-                      child: DropdownButtonFormField<String>(
+                      child: SelectField<String>(
+                        label: 'Answer type',
+                        isDense: true,
                         initialValue: f.kind,
-                        decoration: const InputDecoration(
-                          labelText: 'Answer type',
-                          isDense: true,
-                        ),
-                        items: [
+                        options: [
                           for (final k in fieldKindOptions)
-                            DropdownMenuItem(
-                              value: k,
-                              child: Text(fieldKindLabel(k)),
-                            ),
+                            SelectOption(k, fieldKindLabel(k)),
                         ],
-                        onChanged: (v) => setState(() => f.kind = v ?? f.kind),
+                        onChanged: (v) => setState(() => f.kind = v),
                       ),
                     ),
                     const SizedBox(width: 8),

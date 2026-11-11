@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:zuno/core/ui_config/ui_config.dart';
 import 'package:zuno/features/notifications/domain/entities/app_notification.dart';
 import 'package:zuno/features/vacancy/data/models/vacancy_application_model.dart';
 import 'package:zuno/features/vacancy/data/models/vacancy_model.dart';
@@ -8,6 +9,10 @@ import 'package:zuno/features/vacancy/presentation/providers/paged_list.dart';
 import 'package:zuno/features/vacancy/presentation/widgets/vacancy_labels.dart';
 
 import 'vacancy_fixtures.dart';
+
+/// What the worker's status pill says for a stage — read from the same label table it uses.
+String _workerLabel(String status) =>
+    UiConfig.current.label('VacancyApplication.Worker', status);
 
 void main() {
   group('parsing what the server sends', () {
@@ -162,22 +167,16 @@ void main() {
 
     test('the worker reads each stage in plain words', () {
       expect(
-        applicationStatusLabel(VacancyApplicationStatus.applied),
+        _workerLabel(VacancyApplicationStatus.applied),
         'Application sent',
       );
       expect(
-        applicationStatusLabel(VacancyApplicationStatus.viewed),
+        _workerLabel(VacancyApplicationStatus.viewed),
         'Application viewed',
       );
-      expect(
-        applicationStatusLabel(VacancyApplicationStatus.shortlisted),
-        'Shortlisted',
-      );
-      expect(
-        applicationStatusLabel(VacancyApplicationStatus.rejected),
-        'Rejected',
-      );
-      expect(applicationStatusLabel('SomethingNew'), 'Application sent');
+      expect(_workerLabel(VacancyApplicationStatus.shortlisted), 'Shortlisted');
+      expect(_workerLabel(VacancyApplicationStatus.rejected), 'Rejected');
+      expect(_workerLabel('SomethingNew'), 'Application sent');
     });
 
     test('the business reads the same stages as its lists', () {

@@ -38,5 +38,4 @@ class ServiceDetail {
     final prefix = hasVariants ? 'From ' : '';
     return '$prefix${rupees(lowest)}${priceUnitSuffix(service.priceType)}';
   }
-
 }

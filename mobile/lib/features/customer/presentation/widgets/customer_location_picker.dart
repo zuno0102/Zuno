@@ -1,13 +1,103 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zuno/core/location/location_service.dart';
 import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
+import 'package:zuno/features/customer/data/datasources/customer_location_api.dart';
+import 'package:zuno/features/customer/presentation/providers/customer_location_sync.dart';
 import 'package:zuno/features/customer/presentation/providers/customer_search_filter_provider.dart';
+import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/multi_select_sheet.dart';
 
-/// Asks where the customer is looking — states, then districts — and keeps the answer in
-/// [customerSearchFilterProvider]. One location for the whole customer app: the Service home and the
-/// Rent home both search where this says.
+enum _LocationChoice { current, pick, everywhere }
+
+/// Where the customer is looking: their phone's location, districts they pick, or everywhere — kept
+/// in [customerSearchFilterProvider]. One location for the whole customer app: the Service home and
+/// the Rent home both search where this says.
 Future<void> pickCustomerLocation(BuildContext context, WidgetRef ref) async {
+  final hasLocation = ref.read(customerSearchFilterProvider).hasLocation;
+  final choice = await showModalBottomSheet<_LocationChoice>(
+    context: context,
+    builder: (context) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const ListTile(title: Text('Where are you?')),
+          ListTile(
+            key: const ValueKey('location-use-current'),
+            leading: const Icon(Icons.my_location),
+            title: const Text('Use my current location'),
+            onTap: () => Navigator.of(context).pop(_LocationChoice.current),
+          ),
+          ListTile(
+            key: const ValueKey('location-pick'),
+            leading: const Icon(Icons.map_outlined),
+            title: const Text('Choose state and district'),
+            onTap: () => Navigator.of(context).pop(_LocationChoice.pick),
+          ),
+          if (hasLocation)
+            ListTile(
+              key: const ValueKey('location-everywhere'),
+              leading: const Icon(Icons.public),
+              title: const Text('Show everywhere'),
+              onTap: () =>
+                  Navigator.of(context).pop(_LocationChoice.everywhere),
+            ),
+        ],
+      ),
+    ),
+  );
+  if (choice == null || !context.mounted) return;
+
+  switch (choice) {
+    case _LocationChoice.current:
+      await useCurrentCustomerLocation(context, ref);
+    case _LocationChoice.pick:
+      await _pickDistricts(context, ref);
+    case _LocationChoice.everywhere:
+      ref.read(customerSearchFilterProvider.notifier).clearLocation();
+  }
+}
+
+/// Reads the phone's location now — asking for the permission if need be — and sets its district,
+/// saying in a line what happened.
+Future<void> useCurrentCustomerLocation(
+  BuildContext context,
+  WidgetRef ref,
+) async {
+  final messenger = AppMessenger.of(context);
+  try {
+    final outcome = await locateCustomerFromPhone(
+      locationService: ref.read(locationServiceProvider),
+      api: ref.read(customerLocationApiProvider),
+      filter: ref.read(customerSearchFilterProvider.notifier),
+      askPermission: true,
+    );
+    if (outcome.district case final district?) {
+      messenger.showSuccess('Showing listings near ${district.name}.');
+    } else if (outcome.isOutsideArea) {
+      messenger.showInfo(
+        'Zuno does not serve where you are yet. Choose a district instead.',
+      );
+    } else {
+      messenger.showInfo(switch (outcome.problem) {
+        LocationProblem.deniedForever =>
+          'Location is blocked for Zuno. Allow it in your phone settings, or choose a district.',
+        LocationProblem.serviceDisabled =>
+          'Location is off on your phone. Turn it on, or choose a district.',
+        LocationProblem.denied =>
+          'Zuno needs your location for this. You can choose a district instead.',
+        _ => 'Could not read your location. Try again, or choose a district.',
+      });
+    }
+  } on Object {
+    messenger.showFailure(
+      'Could not find your district. Check your connection and try again.',
+    );
+  }
+}
+
+/// States, then districts, picked by hand.
+Future<void> _pickDistricts(BuildContext context, WidgetRef ref) async {
   final filter = ref.read(customerSearchFilterProvider.notifier);
   final current = ref.read(customerSearchFilterProvider);
   final states = await ref.read(locationStatesProvider.future);

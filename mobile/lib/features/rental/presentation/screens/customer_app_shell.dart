@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/features/customer/presentation/providers/customer_location_sync.dart';
 import 'package:zuno/features/customer/presentation/screens/customer_dashboard_shell.dart';
 import 'package:zuno/features/customer/presentation/screens/customer_profile_tab.dart';
 import 'package:zuno/features/notifications/presentation/widgets/notification_bell.dart';
@@ -21,6 +22,9 @@ class CustomerAppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final panel = ref.watch(customerPanelChoiceProvider);
+    // Once per app open: where the customer is — from their account, then the phone — narrows the
+    // listings on every side (Service, Rent). Watched only to start it; it never blocks the screen.
+    ref.watch(customerLocationSyncProvider);
 
     return RoleTheme(
       role: ZunoRole.customer,

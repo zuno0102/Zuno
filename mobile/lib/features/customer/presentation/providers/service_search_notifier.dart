@@ -40,11 +40,13 @@ class ServiceSearchNotifier extends _$ServiceSearchNotifier {
 
     state = const AsyncLoading();
     state = await AsyncValue.guard(
-      () => ref.read(customerRepositoryProvider).searchServices(
-        categoryId: filter.categoryId,
-        keyword: filter.keyword.isEmpty ? null : filter.keyword,
-        districtIds: filter.districtIdsOrNull,
-      ),
+      () => ref
+          .read(customerRepositoryProvider)
+          .searchServices(
+            categoryId: filter.categoryId,
+            keyword: filter.keyword.isEmpty ? null : filter.keyword,
+            districtIds: filter.districtIdsOrNull,
+          ),
     );
   }
 }

@@ -106,16 +106,19 @@ class _CustomerDashboardShellState
   /// one order is fresher than finding it in a list loaded minutes ago — which matters when the
   /// notification exists to say that order just changed.
   void _openBooking(String bookingId, {bool openRating = false}) {
-    pushScreen(context, AsyncDetailScreen<Booking>(
-          title: 'Booking',
-          fetch: () => ref
-              .read(bookingRepositoryProvider)
-              .getBookingByIdAsCustomer(bookingId),
-          builder: (_, booking) => CustomerBookingDetailScreen(
-            booking: booking,
-            openRating: openRating,
-          ),
-        ));
+    pushScreen(
+      context,
+      AsyncDetailScreen<Booking>(
+        title: 'Booking',
+        fetch: () => ref
+            .read(bookingRepositoryProvider)
+            .getBookingByIdAsCustomer(bookingId),
+        builder: (_, booking) => CustomerBookingDetailScreen(
+          booking: booking,
+          openRating: openRating,
+        ),
+      ),
+    );
   }
 
   /// Fetches the order, then opens its conversation.
@@ -124,17 +127,20 @@ class _CustomerDashboardShellState
   /// neither — only the id. Composing them here rather than widening the notification keeps the
   /// stored words a record of the moment rather than a payload the client depends on.
   void _openChat(String bookingId) {
-    pushScreen(context, AsyncDetailScreen<Booking>(
-          title: 'Chat',
-          fetch: () => ref
-              .read(bookingRepositoryProvider)
-              .getBookingByIdAsCustomer(bookingId),
-          builder: (_, booking) => BookingChatScreen(
-            bookingId: booking.id,
-            title: booking.variantName ?? booking.serviceName,
-            counterpartName: booking.businessName,
-          ),
-        ));
+    pushScreen(
+      context,
+      AsyncDetailScreen<Booking>(
+        title: 'Chat',
+        fetch: () => ref
+            .read(bookingRepositoryProvider)
+            .getBookingByIdAsCustomer(bookingId),
+        builder: (_, booking) => BookingChatScreen(
+          bookingId: booking.id,
+          title: booking.variantName ?? booking.serviceName,
+          counterpartName: booking.businessName,
+        ),
+      ),
+    );
   }
 
   @override
