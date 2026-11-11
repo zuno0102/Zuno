@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/location/location_service.dart';
@@ -13,7 +14,15 @@ enum _LocationChoice { current, pick, everywhere }
 /// Where the customer is looking: their phone's location, districts they pick, or everywhere — kept
 /// in [customerSearchFilterProvider]. One location for the whole customer app: the Service home and
 /// the Rent home both search where this says.
-Future<void> pickCustomerLocation(BuildContext context, WidgetRef ref) async {
+///
+/// [firstTime] is the welcome version, shown once to a new customer when the automatic read gave
+/// no location: it says why it is asking, so the tap on "Use my current location" — which makes
+/// the browser show its permission popup — is an informed one.
+Future<void> pickCustomerLocation(
+  BuildContext context,
+  WidgetRef ref, {
+  bool firstTime = false,
+}) async {
   final hasLocation = ref.read(customerSearchFilterProvider).hasLocation;
   final choice = await showModalBottomSheet<_LocationChoice>(
     context: context,
@@ -21,7 +30,17 @@ Future<void> pickCustomerLocation(BuildContext context, WidgetRef ref) async {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const ListTile(title: Text('Where are you?')),
+          if (firstTime)
+            const ListTile(
+              key: ValueKey('location-first-time'),
+              title: Text('Find services near you'),
+              subtitle: Text(
+                'Share your location to see services and rentals in your district first. '
+                'You can change it any time with the location button.',
+              ),
+            )
+          else
+            const ListTile(title: Text('Where are you?')),
           ListTile(
             key: const ValueKey('location-use-current'),
             leading: const Icon(Icons.my_location),
@@ -41,6 +60,13 @@ Future<void> pickCustomerLocation(BuildContext context, WidgetRef ref) async {
               title: const Text('Show everywhere'),
               onTap: () =>
                   Navigator.of(context).pop(_LocationChoice.everywhere),
+            ),
+          if (firstTime)
+            ListTile(
+              key: const ValueKey('location-not-now'),
+              leading: const Icon(Icons.close),
+              title: const Text('Not now'),
+              onTap: () => Navigator.of(context).pop(),
             ),
         ],
       ),
@@ -80,8 +106,14 @@ Future<void> useCurrentCustomerLocation(
       );
     } else {
       messenger.showInfo(switch (outcome.problem) {
+        // A browser remembers "Block" for the site and never shows the popup again by itself.
+        LocationProblem.deniedForever when kIsWeb =>
+          'Location is blocked for this website. Click the icon left of the web address, '
+              'allow Location and reload — or choose a district.',
         LocationProblem.deniedForever =>
           'Location is blocked for Zuno. Allow it in your phone settings, or choose a district.',
+        LocationProblem.serviceDisabled when kIsWeb =>
+          'Location is off on this computer or browser. Turn it on, or choose a district.',
         LocationProblem.serviceDisabled =>
           'Location is off on your phone. Turn it on, or choose a district.',
         LocationProblem.denied =>

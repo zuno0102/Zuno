@@ -10,10 +10,9 @@ import 'package:zuno/core/permissions/permission_service.dart';
 /// picker open over a screen that could no longer do anything. Asking once, in a sentence that says
 /// what it is for, is the difference between a decision and an interruption.
 ///
-/// **Location is deliberately not asked here.** It is the one permission this app can genuinely do
-/// without — somebody who never opens Find work or picks a service area never needs it — so it stays
-/// where it belongs, on the button that needs it. Asking for a location at launch is what teaches
-/// people to refuse everything.
+/// **Location is not asked here.** Customers are asked once, by the customer app itself, so it can
+/// show services near them first (see `customerLocationSync`); workers and businesses are asked on
+/// the button that needs it.
 ///
 /// The same for all three roles. A customer, a worker and a business owner all set a profile
 /// picture, and a worker also scans a job's QR code, so the camera is the one answer every side of
@@ -72,11 +71,13 @@ class _StartupPermissionPrimerState
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('For your profile picture, photos of your work, and scanning a job code.'),
+            Text(
+              'For your profile picture, photos of your work, and scanning a job code.',
+            ),
             SizedBox(height: 12),
             Text(
-              'Your location is only asked for later, when you choose where to '
-              'search — never before.',
+              'Customers are also asked once for their location, to show services '
+              'near them first.',
               style: TextStyle(fontSize: 12.5),
             ),
           ],

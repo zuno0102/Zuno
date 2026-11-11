@@ -52,7 +52,7 @@ class ServicePickerField extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             if (ellipsize) Expanded(child: text) else text,
-            const Icon(Icons.arrow_drop_down),
+            const Icon(Icons.keyboard_arrow_down_rounded),
           ],
         ),
       ),

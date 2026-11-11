@@ -17,16 +17,21 @@ class SelectOption<T> {
 /// edge to edge and covers the fields around it. This one looks like the text boxes beside it —
 /// label, the chosen value, a chevron — and opens its options as a bottom sheet of their own, with
 /// the chosen one ticked. It validates like any other form field.
+///
+/// [initialValue] is followed: when the screen changes it (linking an order fills in the unit), the
+/// field shows the new value. A null [onChanged] shows the field locked.
 class SelectField<T> extends FormField<T> {
   SelectField({
     required String label,
     required List<SelectOption<T>> options,
-    required ValueChanged<T> onChanged,
+    required ValueChanged<T>? onChanged,
     super.initialValue,
     super.validator,
+    String? helperText,
     bool isDense = false,
     super.key,
   }) : super(
+         enabled: onChanged != null,
          builder: (field) {
            final context = field.context;
            final theme = Theme.of(context);
@@ -34,7 +39,10 @@ class SelectField<T> extends FormField<T> {
                .where((o) => o.value == field.value)
                .firstOrNull;
 
+           final change = onChanged;
+
            Future<void> open() async {
+             if (change == null) return;
              FocusScope.of(context).unfocus();
              final picked = await showSelectSheet<T>(
                context,
@@ -44,15 +52,16 @@ class SelectField<T> extends FormField<T> {
              );
              if (picked == null) return;
              field.didChange(picked.value);
-             onChanged(picked.value);
+             change(picked.value);
            }
 
            return Semantics(
              button: true,
+             enabled: change != null,
              label: label,
              value: chosen?.label,
              child: InkWell(
-               onTap: open,
+               onTap: change == null ? null : open,
                borderRadius: BorderRadius.circular(12),
                // Nothing chosen: the label alone sits in the box, as on an empty text field, and
                // moves up once a choice is made. A "Choose" placeholder drawn there as well landed
@@ -61,6 +70,8 @@ class SelectField<T> extends FormField<T> {
                  isEmpty: chosen == null,
                  decoration: InputDecoration(
                    labelText: label,
+                   helperText: helperText,
+                   enabled: change != null,
                    isDense: isDense,
                    errorText: field.errorText,
                    suffixIcon: const Icon(Icons.keyboard_arrow_down_rounded),
@@ -76,6 +87,21 @@ class SelectField<T> extends FormField<T> {
            );
          },
        );
+
+  @override
+  FormFieldState<T> createState() => _SelectFieldState<T>();
+}
+
+class _SelectFieldState<T> extends FormFieldState<T> {
+  @override
+  void didUpdateWidget(covariant SelectField<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The screen set a different value: show it, rather than the one picked before.
+    if (widget.initialValue != oldWidget.initialValue &&
+        widget.initialValue != value) {
+      setValue(widget.initialValue);
+    }
+  }
 }
 
 /// The picked option, so a choice of `null` is told apart from closing the sheet.

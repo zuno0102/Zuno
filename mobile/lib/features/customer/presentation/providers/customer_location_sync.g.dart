@@ -34,8 +34,15 @@ final customerLocationSyncProvider = CustomerLocationSyncProvider._();
 /// the customer can still pick one by hand.
 
 final class CustomerLocationSyncProvider
-    extends $FunctionalProvider<AsyncValue<void>, void, FutureOr<void>>
-    with $FutureModifier<void>, $FutureProvider<void> {
+    extends
+        $FunctionalProvider<
+          AsyncValue<CustomerLocationOpen>,
+          CustomerLocationOpen,
+          FutureOr<CustomerLocationOpen>
+        >
+    with
+        $FutureModifier<CustomerLocationOpen>,
+        $FutureProvider<CustomerLocationOpen> {
   /// Runs when the customer app opens, and again whenever a different customer signs in.
   ///
   /// 1. A location on this device that belongs to another customer is forgotten.
@@ -62,14 +69,15 @@ final class CustomerLocationSyncProvider
 
   @$internal
   @override
-  $FutureProviderElement<void> $createElement($ProviderPointer pointer) =>
-      $FutureProviderElement(pointer);
+  $FutureProviderElement<CustomerLocationOpen> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
 
   @override
-  FutureOr<void> create(Ref ref) {
+  FutureOr<CustomerLocationOpen> create(Ref ref) {
     return customerLocationSync(ref);
   }
 }
 
 String _$customerLocationSyncHash() =>
-    r'46e7f022f88d42fc12edcc189f189bd9648f242c';
+    r'826965b052e4c5f469be67cf2b6ca28f975e5e48';

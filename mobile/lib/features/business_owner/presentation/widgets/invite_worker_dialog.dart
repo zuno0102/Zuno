@@ -9,6 +9,7 @@ import 'package:zuno/features/hiring_post/presentation/providers/business_hiring
 import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_services_notifier.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
+import 'package:zuno/shared/widgets/select_field.dart';
 
 /// Invites someone by email or phone, suggesting the business's own workers as they type.
 ///
@@ -138,8 +139,8 @@ class _InviteWorkerDialogState extends ConsumerState<_InviteWorkerDialog> {
     );
 
     // The list refreshes under us after a successful invite, and the job just used can drop out
-    // of it once its pending count rises. DropdownButtonFormField asserts its value is present
-    // among its items, so fall back to null rather than pointing at a job no longer listed.
+    // of it once its pending count rises, so fall back to null rather than pointing at a job no
+    // longer listed.
     final selectedId =
         _isNewDate || invitable.any((p) => p.id == _selectedPostId)
         ? _selectedPostId
@@ -186,38 +187,26 @@ class _InviteWorkerDialogState extends ConsumerState<_InviteWorkerDialog> {
               if (pinned != null)
                 _JobSummary(post: pinned)
               else ...[
-                DropdownButtonFormField<String?>(
+                SelectField<String?>(
+                  label: 'Invite them to',
                   initialValue: selectedId,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Invite them to',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    const DropdownMenuItem<String?>(
-                      value: null,
-                      child: Text('My workers list (no specific job)'),
+                  options: [
+                    const SelectOption<String?>(
+                      null,
+                      'My workers list (no specific job)',
                     ),
                     // Sits with the jobs rather than beside the workers list, because that is
                     // what choosing it makes: a job, on a date, that this worker is offered.
-                    const DropdownMenuItem<String?>(
-                      value: _newDateOption,
-                      child: Text('A new date…'),
-                    ),
-                    ...invitable.map(
-                      (p) => DropdownMenuItem<String?>(
-                        value: p.id,
-                        // A job for a customer's order is named by that order, the way it reads
-                        // in the bookings tab, so the two can be matched at a glance. The
-                        // business's own work has no order to name and goes by its title.
-                        child: Text(
-                          p.bookingReference ??
-                              '${p.title} · '
-                                  '${formatDate(p.eventDate.toLocal())}',
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                    const SelectOption<String?>(_newDateOption, 'A new date…'),
+                    // A job for a customer's order is named by that order, the way it reads in
+                    // the bookings tab, so the two can be matched at a glance. The business's
+                    // own work has no order to name and goes by its title.
+                    for (final p in invitable)
+                      SelectOption<String?>(
+                        p.id,
+                        p.bookingReference ??
+                            '${p.title} · ${formatDate(p.eventDate.toLocal())}',
                       ),
-                    ),
                   ],
                   onChanged: (value) => setState(() => _selectedPostId = value),
                 ),
@@ -658,26 +647,13 @@ class _WorkKindField extends ConsumerWidget {
 
         if (kinds.isEmpty) return const SizedBox.shrink();
 
-        return DropdownButtonFormField<String?>(
+        return SelectField<String?>(
+          label: 'Kind of work',
           initialValue: kinds.any((k) => k.$2.id == value) ? value : null,
-          isExpanded: true,
-          decoration: const InputDecoration(
-            labelText: 'Kind of work',
-            border: OutlineInputBorder(),
-          ),
-          items: [
-            const DropdownMenuItem<String?>(
-              value: null,
-              child: Text('Not saying'),
-            ),
+          options: [
+            const SelectOption<String?>(null, 'Not saying'),
             for (final (category, sub) in kinds)
-              DropdownMenuItem<String?>(
-                value: sub.id,
-                child: Text(
-                  '${sub.name} · ${category.name}',
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
+              SelectOption<String?>(sub.id, '${sub.name} · ${category.name}'),
           ],
           onChanged: onChanged,
         );

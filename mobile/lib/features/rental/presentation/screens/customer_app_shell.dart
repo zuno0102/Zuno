@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/features/customer/presentation/providers/customer_location_sync.dart';
 import 'package:zuno/features/customer/presentation/screens/customer_dashboard_shell.dart';
+import 'package:zuno/features/customer/presentation/widgets/customer_location_picker.dart';
 import 'package:zuno/features/customer/presentation/screens/customer_profile_tab.dart';
 import 'package:zuno/features/notifications/presentation/widgets/notification_bell.dart';
 import 'package:zuno/features/rental/domain/entities/rental_customer.dart';
@@ -25,6 +28,13 @@ class CustomerAppShell extends ConsumerWidget {
     // Once per app open: where the customer is — from their account, then the phone — narrows the
     // listings on every side (Service, Rent). Watched only to start it; it never blocks the screen.
     ref.watch(customerLocationSyncProvider);
+    // A new customer whose phone or browser gave no location is asked here instead — a tap on
+    // "Use my current location" makes the browser show its permission popup.
+    ref.listen(customerLocationSyncProvider, (_, next) {
+      if (next.value == CustomerLocationOpen.needsChoice && context.mounted) {
+        unawaited(pickCustomerLocation(context, ref, firstTime: true));
+      }
+    });
 
     return RoleTheme(
       role: ZunoRole.customer,

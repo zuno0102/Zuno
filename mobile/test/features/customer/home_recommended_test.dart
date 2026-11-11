@@ -277,4 +277,60 @@ void main() {
       expect(find.text(recommendedSectionTitle), findsNothing);
     },
   );
+
+  // A new customer whose browser gave no location gets this once, so the tap on "Use my current
+  // location" is what makes the browser show its permission popup.
+  group('first-time chooser', () {
+    Future<ProviderContainer> openChooser(
+      WidgetTester tester,
+      LocationService phone,
+    ) async {
+      final c = await _pump(tester, phone: phone);
+      final ref = tester.element(find.byType(CustomerSearchTab)) as WidgetRef;
+      final context = tester.element(find.byType(CustomerSearchTab));
+      // ignore: unawaited_futures
+      pickCustomerLocation(context, ref, firstTime: true);
+      await tester.pumpAndSettle();
+      return c;
+    }
+
+    testWidgets('says why it asks, and offers "Not now"', (tester) async {
+      await openChooser(tester, _Phone(const LocationResult.found(10, 76)));
+
+      expect(find.text('Find services near you'), findsOneWidget);
+      expect(find.text('Where are you?'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('location-use-current')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('location-pick')), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('location-not-now')));
+      await tester.pumpAndSettle();
+      expect(find.text('Find services near you'), findsNothing);
+    });
+
+    testWidgets('"Use my current location" asks and sets the district', (
+      tester,
+    ) async {
+      final phone = _Phone(const LocationResult.found(10.0159, 76.3419));
+      final c = await openChooser(tester, phone);
+
+      await tester.tap(find.byKey(const ValueKey('location-use-current')));
+      await tester.pumpAndSettle();
+
+      expect(phone.asks, [true]);
+      expect(c.read(customerSearchFilterProvider).districtIds, {'d-ekm'});
+      expect(find.text(recommendedSectionTitle), findsOneWidget);
+    });
+  });
+
+  testWidgets('the everyday chooser has no "Not now"', (tester) async {
+    await _pump(tester, phone: _Phone(const LocationResult.found(10, 76)));
+    await tester.tap(find.byType(CustomerLocationButton));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Where are you?'), findsOneWidget);
+    expect(find.byKey(const ValueKey('location-not-now')), findsNothing);
+  });
 }

@@ -67,6 +67,18 @@ const customerLocationOwnerKey = 'customer_location_owner';
 String customerLocationAskedKey(String userId) =>
     'customer_location_permission_asked:$userId';
 
+/// How the open-time check ended, so the app knows whether to ask the customer itself.
+enum CustomerLocationOpen {
+  /// A location is set, the customer chose one (or everywhere), or they were asked before.
+  settled,
+
+  /// A customer's first open, and the phone or browser gave no location: the permission is
+  /// blocked, no fix came, or the place is outside the area. The app then shows the "Where are
+  /// you?" chooser, where a tap on "Use my current location" asks again. Browsers remember "Block"
+  /// per site, so on the web the automatic ask can end without any popup at all.
+  needsChoice,
+}
+
 /// Runs when the customer app opens, and again whenever a different customer signs in.
 ///
 /// 1. A location on this device that belongs to another customer is forgotten.
@@ -78,7 +90,7 @@ String customerLocationAskedKey(String userId) =>
 /// Never fails out loud: no permission, no signal or no network leaves the location as it was, and
 /// the customer can still pick one by hand.
 @Riverpod(keepAlive: true)
-Future<void> customerLocationSync(Ref ref) async {
+Future<CustomerLocationOpen> customerLocationSync(Ref ref) async {
   final userId = ref.watch(
     authProvider.select(
       (auth) => switch (auth.value) {
@@ -87,7 +99,7 @@ Future<void> customerLocationSync(Ref ref) async {
       },
     ),
   );
-  if (userId == null) return;
+  if (userId == null) return CustomerLocationOpen.settled;
 
   final filter = ref.read(customerSearchFilterProvider.notifier);
   final api = ref.read(customerLocationApiProvider);
@@ -125,23 +137,31 @@ Future<void> customerLocationSync(Ref ref) async {
   final source = ref.read(customerSearchFilterProvider).locationSource;
   if (source == CustomerLocationSource.manual ||
       source == CustomerLocationSource.cleared) {
-    return;
+    return CustomerLocationOpen.settled;
   }
 
-  try {
-    final askedKey = customerLocationAskedKey(userId);
-    final asked = store.getBool(askedKey) ?? false;
-    await store.setBool(askedKey, true);
+  final askedKey = customerLocationAskedKey(userId);
+  final asked = store.getBool(askedKey) ?? false;
+  await store.setBool(askedKey, true);
 
-    await locateCustomerFromPhone(
+  var found = false;
+  try {
+    final outcome = await locateCustomerFromPhone(
       locationService: ref.read(locationServiceProvider),
       api: api,
       filter: filter,
       askPermission: !asked,
     );
+    found = outcome.district != null;
   } on Object {
     // No district found is the same as no location read: nothing changes.
   }
+
+  // Asked once per customer: only their first open hands the question to the app's own chooser.
+  final hasLocation = ref.read(customerSearchFilterProvider).hasLocation;
+  return !asked && !found && !hasLocation
+      ? CustomerLocationOpen.needsChoice
+      : CustomerLocationOpen.settled;
 }
 
 String _accountKey(CustomerSearchFilter filter) =>

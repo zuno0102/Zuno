@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/features/business_owner/domain/entities/business_service.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_services_notifier.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
+import 'package:zuno/shared/widgets/select_field.dart';
 
 /// Titles a hiring post by picking one of the business's own services, rather than free
 /// text. Selecting one also carries that service's description into the form.
@@ -62,26 +63,12 @@ class HiringPostServiceTitlePicker extends ConsumerWidget {
           ...byName.keys,
         ];
 
-        return DropdownButtonFormField<String>(
+        return SelectField<String>(
+          label: 'Service',
+          helperText: 'Picks the title and fills in the description',
           initialValue: selectedTitle,
-          isExpanded: true,
-          decoration: const InputDecoration(
-            labelText: 'Service',
-            helperText: 'Picks the title and fills in the description',
-            border: OutlineInputBorder(),
-          ),
-          items: titles
-              .map(
-                (title) => DropdownMenuItem(
-                  value: title,
-                  child: Text(title, overflow: TextOverflow.ellipsis),
-                ),
-              )
-              .toList(),
-          onChanged: (title) {
-            if (title == null) return;
-            onSelected(title, byName[title]);
-          },
+          options: [for (final title in titles) SelectOption(title, title)],
+          onChanged: (title) => onSelected(title, byName[title]),
           validator: (value) => (value == null || value.trim().isEmpty)
               ? 'Choose the service you are hiring for.'
               : null,

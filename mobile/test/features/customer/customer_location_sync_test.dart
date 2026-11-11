@@ -386,4 +386,93 @@ void main() {
     expect(_filter(c).districtIds, {'d-ekm'});
     expect(phone.asks, isEmpty);
   });
+
+  // The report: on the web a new customer saw no popup. A browser that remembers "Block" for the
+  // site answers without asking, so the app asks itself with its own chooser.
+  group('what the open tells the app', () {
+    Future<CustomerLocationOpen> openWith(
+      _Phone phone, {
+      _Api? api,
+      Map<String, Object> saved = const {},
+    }) async {
+      final c = await _open(phone: phone, api: api ?? _Api(), saved: saved);
+      return c.read(customerLocationSyncProvider.future);
+    }
+
+    test('first open, location found: nothing more to ask', () async {
+      expect(await openWith(_Phone()), CustomerLocationOpen.settled);
+    });
+
+    test('first open, blocked in the browser: the app asks itself', () async {
+      final phone = _Phone(
+        const LocationResult.unavailable(LocationProblem.deniedForever),
+      );
+      expect(await openWith(phone), CustomerLocationOpen.needsChoice);
+      expect(phone.asks, [true]);
+    });
+
+    test('first open, no fix came: the app asks itself', () async {
+      final phone = _Phone(
+        const LocationResult.unavailable(LocationProblem.timedOut),
+      );
+      expect(await openWith(phone), CustomerLocationOpen.needsChoice);
+    });
+
+    test('first open, outside the area: the app asks itself', () async {
+      expect(
+        await openWith(_Phone(), api: _Api()..nearest = null),
+        CustomerLocationOpen.needsChoice,
+      );
+    });
+
+    test('first open, offline: the app asks itself', () async {
+      expect(
+        await openWith(_Phone(), api: _Api()..offline = true),
+        CustomerLocationOpen.needsChoice,
+      );
+    });
+
+    test('asked before: never asked again, even with no location', () async {
+      final phone = _Phone(
+        const LocationResult.unavailable(LocationProblem.denied),
+      );
+      final result = await openWith(
+        phone,
+        saved: {
+          customerLocationAskedKey('u1'): true,
+          customerLocationOwnerKey: 'u1',
+        },
+      );
+      expect(result, CustomerLocationOpen.settled);
+    });
+
+    test('a location already in the account: nothing to ask', () async {
+      final phone = _Phone(
+        const LocationResult.unavailable(LocationProblem.deniedForever),
+      );
+      final result = await openWith(
+        phone,
+        api: _Api(
+          account: const SavedCustomerLocation(
+            district: _ernakulam,
+            source: CustomerLocationSource.gps,
+          ),
+        ),
+      );
+      expect(result, CustomerLocationOpen.settled);
+    });
+
+    test('a district picked by hand: nothing to ask', () async {
+      final result = await openWith(
+        _Phone(),
+        saved: {
+          customerLocationOwnerKey: 'u1',
+          'customer_filter_district_ids': ['d-ekm'],
+          'customer_filter_primary_district': 'Ernakulam',
+          'customer_filter_location_source': 'Manual',
+        },
+      );
+      expect(result, CustomerLocationOpen.settled);
+    });
+  });
 }

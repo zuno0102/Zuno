@@ -32,13 +32,13 @@ class HiringPostOrderField extends StatelessWidget {
     final theme = Theme.of(context);
     final booking = linkedBooking;
 
+    // Looks like every other picker in the app (see SelectField): label, choice, chevron.
     return InkWell(
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: BorderRadius.circular(12),
       onTap: isLoading ? null : onTap,
       child: InputDecorator(
         decoration: const InputDecoration(
           labelText: 'For which order?',
-          border: OutlineInputBorder(),
           helperText: 'Workers who accept join that order.',
         ),
         child: Row(
@@ -72,7 +72,7 @@ class HiringPostOrderField extends StatelessWidget {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             else
-              const Icon(Icons.arrow_drop_down),
+              const Icon(Icons.keyboard_arrow_down_rounded),
           ],
         ),
       ),

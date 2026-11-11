@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:geolocator/geolocator.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -88,8 +89,23 @@ class GeolocatorLocationService implements LocationService {
 
       var permission = await Geolocator.checkPermission();
 
-      if (permission == LocationPermission.denied && askPermission) {
+      // A browser without the Permissions API (older Safari) cannot say; asking is how to find out.
+      final unknown = permission == LocationPermission.unableToDetermine;
+      if ((permission == LocationPermission.denied || unknown) &&
+          askPermission) {
         permission = await Geolocator.requestPermission();
+        // On the web the request reports "blocked" for any failure, a slow fix included. The
+        // browser's own answer tells a real block from a position that simply did not come.
+        if (kIsWeb && permission == LocationPermission.deniedForever) {
+          final actual = await Geolocator.checkPermission();
+          if (actual == LocationPermission.whileInUse ||
+              actual == LocationPermission.always) {
+            permission = actual;
+          }
+        }
+      } else if (unknown) {
+        // A quiet check must not make the browser show a popup.
+        permission = LocationPermission.denied;
       }
 
       if (permission == LocationPermission.deniedForever) {

@@ -52,7 +52,10 @@ class SpyLocationService implements LocationService {
   int asked = 0;
 
   @override
-  Future<LocationResult> current({bool precise = false, bool askPermission = true}) async {
+  Future<LocationResult> current({
+    bool precise = false,
+    bool askPermission = true,
+  }) async {
     asked++;
     return const LocationResult.unavailable(LocationProblem.denied);
   }
@@ -109,9 +112,9 @@ void main() {
       await pumpDashboard(tester);
 
       expect(find.textContaining('profile picture'), findsOneWidget);
-      // The promise this whole design rests on.
+      // Says honestly that customers are asked for their location too.
       expect(
-        find.textContaining('location is only asked for later'),
+        find.textContaining('asked once for their location'),
         findsOneWidget,
       );
     });

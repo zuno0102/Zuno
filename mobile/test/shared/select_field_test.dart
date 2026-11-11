@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zuno/core/theme/app_theme.dart';
+import 'package:zuno/features/business_owner/presentation/widgets/salary_unit_dropdown.dart';
 import 'package:zuno/shared/widgets/select_field.dart';
 
 /// The picker field that replaced drop-downs in forms opened as a bottom sheet, where a drop-down's
@@ -185,5 +186,123 @@ void main() {
       tester.getRect(find.byType(BottomSheet)).height,
       lessThanOrEqualTo(640 * 0.7 + 60),
     );
+  });
+
+  Future<void> pumpAlone(WidgetTester tester, Widget field) async {
+    tester.view.physicalSize = const Size(360, 780);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: Padding(padding: const EdgeInsets.all(16), child: field),
+        ),
+      ),
+    );
+  }
+
+  testWidgets('shows a helper line under the field', (tester) async {
+    await pumpAlone(
+      tester,
+      SelectField<String>(
+        label: 'Service',
+        helperText: 'Picks the title and fills in the description',
+        options: options,
+        onChanged: (_) {},
+      ),
+    );
+    expect(
+      find.text('Picks the title and fills in the description'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('locked: tapping opens nothing', (tester) async {
+    await pumpAlone(
+      tester,
+      SelectField<String>(
+        label: 'Per',
+        initialValue: 'd',
+        options: options,
+        onChanged: null,
+      ),
+    );
+    await tester.tap(find.byType(SelectField<String>));
+    await tester.pumpAndSettle();
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.text('Per day'), findsOneWidget);
+  });
+
+  testWidgets('follows a value the screen changes', (tester) async {
+    var value = 'm';
+    late StateSetter set;
+    await pumpAlone(
+      tester,
+      StatefulBuilder(
+        builder: (context, setState) {
+          set = setState;
+          return SelectField<String>(
+            label: 'Salary is paid',
+            initialValue: value,
+            options: options,
+            onChanged: (v) => setState(() => value = v),
+          );
+        },
+      ),
+    );
+    expect(find.text('Per month'), findsOneWidget);
+
+    set(() => value = 'w');
+    await tester.pumpAndSettle();
+    expect(find.text('Per week'), findsOneWidget);
+    expect(find.text('Per month'), findsNothing);
+  });
+
+  testWidgets('a "nothing" option can be chosen and is shown', (tester) async {
+    String? picked = 'x';
+    await pumpAlone(
+      tester,
+      SelectField<String?>(
+        label: 'Kind of work',
+        initialValue: 'm',
+        options: const [
+          SelectOption<String?>(null, 'Not saying'),
+          SelectOption<String?>('m', 'Plumbing'),
+        ],
+        onChanged: (v) => picked = v,
+      ),
+    );
+    await tester.tap(find.byType(SelectField<String?>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Not saying'));
+    await tester.pumpAndSettle();
+
+    expect(picked, isNull);
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.text('Not saying'), findsOneWidget);
+  });
+
+  // The hire post's "Per": Event, Day, Hour — the menu that spilled over the form in the report.
+  testWidgets('the salary "Per" opens as a bottom sheet with the three units', (
+    tester,
+  ) async {
+    final picked = <String>[];
+    await pumpAlone(
+      tester,
+      SalaryUnitDropdown(value: 'PerEvent', onChanged: picked.add),
+    );
+    await tester.tap(find.byType(SalaryUnitDropdown));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(find.text('Event'), findsNWidgets(2), reason: 'field and sheet');
+    expect(find.text('Day'), findsOneWidget);
+    expect(find.text('Hour'), findsOneWidget);
+
+    await tester.tap(find.text('Day'));
+    await tester.pumpAndSettle();
+    expect(picked, ['PerDay']);
+    expect(find.text('Day'), findsOneWidget);
   });
 }

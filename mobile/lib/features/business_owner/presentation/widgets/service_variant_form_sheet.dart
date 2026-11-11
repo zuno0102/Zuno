@@ -375,7 +375,7 @@ class _ServiceVariantFormSheetState
                                     : null,
                               ),
                             ),
-                            const Icon(Icons.arrow_drop_down),
+                            const Icon(Icons.keyboard_arrow_down_rounded),
                           ],
                         ),
                       ),
