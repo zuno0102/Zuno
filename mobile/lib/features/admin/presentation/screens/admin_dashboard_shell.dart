@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/features/admin/presentation/screens/admin_catalog_screen.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_state.dart';
+import 'package:zuno/features/marketplace/presentation/screens/admin_marketplace_categories_screen.dart';
 import 'package:zuno/core/router/push_screen.dart';
 
 /// The app owner's home.
@@ -55,6 +56,27 @@ class AdminDashboardShell extends ConsumerWidget {
               ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => pushScreen(context, const AdminCatalogScreen()),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Card(
+            margin: EdgeInsets.zero,
+            child: ListTile(
+              key: const ValueKey('admin-marketplace-categories'),
+              leading: CircleAvatar(
+                backgroundColor: theme.colorScheme.primaryContainer,
+                child: Icon(
+                  Icons.storefront_outlined,
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+              ),
+              title: const Text('Marketplace categories'),
+              subtitle: const Text(
+                'What businesses can post — and the details each kind asks for',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () =>
+                  pushScreen(context, const AdminMarketplaceCategoriesScreen()),
             ),
           ),
         ],

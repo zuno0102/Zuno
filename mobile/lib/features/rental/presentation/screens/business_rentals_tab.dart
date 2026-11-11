@@ -1,8 +1,6 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/rental/data/rental_api.dart';
 import 'package:zuno/features/rental/domain/entities/rental_item.dart';
@@ -11,6 +9,7 @@ import 'package:zuno/features/rental/presentation/widgets/rental_item_form_sheet
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/confirm_dialog.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
+import 'package:zuno/shared/widgets/media_list_card.dart';
 import 'package:zuno/shared/widgets/rating_line.dart';
 
 /// "₹12/day · 200 in stock" — the rate and how many the business has. The "/day" is the rate
@@ -146,97 +145,45 @@ class _RentalCard extends ConsumerWidget {
         ref.watch(rentalPriceTypesProvider).value ??
         const <RentalPriceTypeOption>[];
 
-    return Card(
-      margin: EdgeInsets.zero,
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Stack(
-            children: [
-              thumbnailUrl != null
-                  ? CachedNetworkImage(
-                      imageUrl: RentApi.mediaUrl(thumbnailUrl),
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.cover,
-                      errorWidget: (context, url, error) =>
-                          const Icon(Icons.broken_image_outlined),
-                    )
-                  : Container(
-                      width: 48,
-                      height: 48,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.surfaceContainerHighest,
-                      child: const Icon(Icons.inventory_2_outlined),
-                    ),
-              if (item.video != null)
-                Positioned(
-                  right: 2,
-                  bottom: 2,
-                  child: Icon(
-                    Icons.videocam,
-                    size: 14,
-                    color: AppColors.onMedia,
-                    shadows: const [Shadow(blurRadius: 3)],
-                  ),
-                ),
-            ],
-          ),
-        ),
-        title: Text(
-          item.name,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return MediaListCard(
+      thumbnailUrl: thumbnailUrl == null
+          ? null
+          : RentApi.mediaUrl(thumbnailUrl),
+      placeholderIcon: Icons.inventory_2_outlined,
+      showVideoBadge: item.video != null,
+      title: item.name,
+      lines: [
+        Text(item.categoryLine, maxLines: 1, overflow: TextOverflow.ellipsis),
+        Wrap(
+          spacing: 10,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            const SizedBox(height: 4),
             Text(
-              item.categoryLine,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              rentalRateAndStock(item, priceTypes),
+              style: const TextStyle(fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: 4),
-            Wrap(
-              spacing: 10,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Text(
-                  rentalRateAndStock(item, priceTypes),
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                // What customers think of it, as they see it on the card.
-                RatingLine.of(
-                  item.rating,
-                  key: ValueKey('rental-item-rating-${item.id}'),
-                ),
-                if (!item.isAvailable)
-                  const Chip(
-                    label: Text('Unavailable', style: TextStyle(fontSize: 11)),
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                  ),
-              ],
+            // What customers think of it, as they see it on the card.
+            RatingLine.of(
+              item.rating,
+              key: ValueKey('rental-item-rating-${item.id}'),
             ),
+            if (!item.isAvailable)
+              const Chip(
+                label: Text('Unavailable', style: TextStyle(fontSize: 11)),
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+              ),
           ],
         ),
-        isThreeLine: true,
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) {
-            if (value == 'edit') {
-              showRentalItemFormSheet(context, existing: item);
-            } else if (value == 'delete') {
-              _confirmDelete(context, ref);
-            }
-          },
-          itemBuilder: (context) => const [
-            PopupMenuItem(value: 'edit', child: Text('Edit')),
-            PopupMenuItem(value: 'delete', child: Text('Remove')),
-          ],
-        ),
-      ),
+      ],
+      menu: const [('edit', 'Edit'), ('delete', 'Remove')],
+      onMenuSelected: (value) {
+        if (value == 'edit') {
+          showRentalItemFormSheet(context, existing: item);
+        } else if (value == 'delete') {
+          _confirmDelete(context, ref);
+        }
+      },
     );
   }
 }

@@ -24,6 +24,8 @@ import 'package:zuno/features/vacancy/presentation/screens/business_vacancies_ta
 import 'package:zuno/features/vacancy/presentation/screens/vacancy_applicants_screen.dart';
 import 'package:zuno/features/rental/presentation/providers/rental_providers.dart';
 import 'package:zuno/features/rental/presentation/widgets/rent_dashboard_tiles.dart';
+import 'package:zuno/features/marketplace/presentation/providers/marketplace_providers.dart';
+import 'package:zuno/features/marketplace/presentation/widgets/marketplace_dashboard_tiles.dart';
 
 /// The business home screen.
 ///
@@ -48,7 +50,8 @@ class BusinessDashboardTab extends ConsumerWidget {
         onRefresh: () {
           ref
             ..invalidate(vacancySummaryProvider)
-            ..invalidate(rentalSummaryProvider);
+            ..invalidate(rentalSummaryProvider)
+            ..invalidate(marketplaceSummaryProvider);
           return ref.refresh(businessDashboardProvider.future);
         },
         child: _Body(dashboard: dashboard),
@@ -88,6 +91,11 @@ class _Body extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(0, 18, 0, 8),
         ),
         const RentDashboardTiles(),
+        SectionHeader(
+          title: UiConfig.current.label(dashboardSectionGroup, 'Marketplace'),
+          padding: const EdgeInsets.fromLTRB(0, 18, 0, 8),
+        ),
+        const MarketplaceDashboardTiles(),
         const SizedBox(height: 12),
         const _ProfileCard(),
         const SizedBox(height: 4),

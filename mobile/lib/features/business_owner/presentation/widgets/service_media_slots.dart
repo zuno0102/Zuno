@@ -123,14 +123,22 @@ class ServiceMediaSlots extends ConsumerStatefulWidget {
     required this.media,
     required this.onError,
     this.mediaBaseUrl = ApiConstants.baseUrl,
+    this.allowVideo = true,
+    this.hint,
     super.key,
   });
 
   final ServiceMediaSelection media;
 
   /// The server the saved photos and video are fetched from. The main API unless another
-  /// service (Rent) keeps its own files.
+  /// service (Rent, Marketplace) keeps its own files.
   final String mediaBaseUrl;
+
+  /// False for photos only — a Marketplace post has no video.
+  final bool allowVideo;
+
+  /// The line under the slots; the service form's own hint when null.
+  final String? hint;
 
   /// A message for the form to show, or null to clear one after a successful pick.
   final ValueChanged<String?> onError;
@@ -359,7 +367,10 @@ class _ServiceMediaSlotsState extends ConsumerState<ServiceMediaSlots> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Photos & video', style: Theme.of(context).textTheme.titleSmall),
+          Text(
+            widget.allowVideo ? 'Photos & video' : 'Photos',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
           const SizedBox(height: 8),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -369,13 +380,14 @@ class _ServiceMediaSlotsState extends ConsumerState<ServiceMediaSlots> {
                   _buildImageSlot(slot),
                   const SizedBox(width: 10),
                 ],
-                _buildVideoSlot(),
+                if (widget.allowVideo) _buildVideoSlot(),
               ],
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            ref.watch(currentAppOptionsProvider).serviceMediaHint,
+            widget.hint ??
+                ref.watch(currentAppOptionsProvider).serviceMediaHint,
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ],

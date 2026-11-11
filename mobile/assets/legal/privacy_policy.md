@@ -2,9 +2,9 @@
 
 **Last updated: {{lastUpdated}}**
 
-{{appName}} ("we", "us") is run by {{companyName}}. This policy explains what we collect when you use the {{appName}} app and website, why we collect it, who can see it, and the choices you have. It covers all three kinds of account: customers, businesses and workers, in both Service and Rent.
+{{appName}} ("we", "us") is run by {{companyName}}. This policy explains what we collect when you use the {{appName}} app and website, why we collect it, who can see it, and the choices you have. It covers all three kinds of account: customers, businesses and workers, in Service, Rent and Marketplace.
 
-We collect only what the app needs to do its job. We do not sell your data, we do not show advertising, and we do not use advertising or analytics trackers.
+We collect only what the app needs to do its job. We do not sell your data, we do not show advertising from outside companies, and we do not use advertising or analytics trackers. The only adverts in the app are the ones businesses post themselves on the Marketplace.
 
 ## 1. What we collect
 
@@ -24,6 +24,10 @@ We collect only what the app needs to do its job. We do not sell your data, we d
 - Your GST number, if you give it.
 - Your UPI ID, so customers can pay you by scanning your QR code.
 - The services, rent items, prices, photos, hire posts and full-time job posts you create.
+- Your Marketplace posts — listings, food offers and adverts — with their prices, photos,
+  district and area, the details you fill in (such as a vehicle's year or a plot's size), and the
+  contact number you give on an advert.
+- Your Marketplace plan and how many posts it allows.
 - Your verification status, ratings, reviews and level.
 
 ### If you work through the app
@@ -47,7 +51,7 @@ We collect only what the app needs to do its job. We do not sell your data, we d
 ### From your phone
 
 - **Location**, only if you allow it: to show nearby jobs and services, and to pin an address on the map.
-- **Camera and photos**, only if you allow it: to take or choose a profile photo, add photos to a service or rent item, scan a booking QR code, or scan a UPI QR code.
+- **Camera and photos**, only if you allow it: to take or choose a profile photo, add photos to a service, rent item or Marketplace post, scan a booking QR code, or scan a UPI QR code.
 - **Files**: a PDF or picture you choose for a job application.
 - **Notifications**, only if you allow it: to tell you about your bookings, orders, messages and applications.
 - Your sign-in session is kept in your phone's secure storage. Your chosen search area and distance are kept on your phone.
@@ -70,7 +74,7 @@ We collect only what the app needs to do its job. We do not sell your data, we d
 ## 3. Who can see your information
 
 - **Other users, only as needed.** A business sees the name, mobile number and address of a customer who books or rents from it. A worker sees the details of a job they are assigned to. A business sees what an applicant sent with an application to its job.
-- **Everyone using the app.** A business's name, logo, services, rent items, area, verification status, ratings and reviews are public in the app. A review you write is shown with your name.
+- **Everyone using the app.** A business's name, logo, services, rent items, Marketplace posts (with an advert's contact number), area, verification status, ratings and reviews are public in the app. A review you write is shown with your name.
 - **Service providers who work for us**, only for the job they do:
   - Razorpay, to process online payments.
   - Render, Neon and Vercel, which host our servers, database and website.

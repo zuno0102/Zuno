@@ -1,0 +1,51 @@
+namespace Zuno.Marketplace.Domain.Enums;
+
+// Only states the code branches on are enums. Their names, colours and order are rows in the
+// matching ref_marketplace_* table. Values are stored, so they are append-only: never renumber.
+
+/// <summary>What a post is, which decides the rules it is checked against.</summary>
+public enum MarketplacePostKind : short
+{
+    /// <summary>A car, a plot, a saree, a load of bananas: shown with a price, customers call or enquire.</summary>
+    Listing = 1,
+
+    /// <summary>Food sold off for a short time at a lower price; customers reserve portions and pay at the shop.</summary>
+    FoodOffer = 2,
+
+    /// <summary>A paid-for notice such as a sports tournament or an Aadi sale, shown for a run of dates.</summary>
+    Advertisement = 3,
+}
+
+/// <summary>Where a post stands. "Expired" is never stored: it is an Active post whose end has passed.</summary>
+public enum MarketplacePostStatus : short
+{
+    Active = 1,
+
+    /// <summary>Hidden from customers for now; does not use a plan slot.</summary>
+    Paused = 2,
+
+    /// <summary>Sold, rented out or finished. Final.</summary>
+    Closed = 3,
+
+    /// <summary>Shown only: an Active post whose end time has passed.</summary>
+    Expired = 4,
+}
+
+/// <summary>Who a listing sells to: one piece at a time, or in bulk to other businesses (B2B).</summary>
+public enum MarketplaceTradeType : short
+{
+    Retail = 1,
+
+    Wholesale = 2,
+}
+
+/// <summary>How a category's own field is filled in on the post form.</summary>
+public enum MarketplaceFieldType : short
+{
+    Text = 1,
+
+    Number = 2,
+
+    /// <summary>One of the field's options.</summary>
+    Select = 3,
+}

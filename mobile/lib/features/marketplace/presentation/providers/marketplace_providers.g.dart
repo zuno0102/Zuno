@@ -1,0 +1,408 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
+part of 'marketplace_providers.dart';
+
+// **************************************************************************
+// RiverpodGenerator
+// **************************************************************************
+
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// The app's usual client, pointed at the Marketplace service. Same interceptors, and the very
+/// same [authInterceptorProvider], so Marketplace shares the login and its one token refresh.
+
+@ProviderFor(marketplaceDio)
+final marketplaceDioProvider = MarketplaceDioProvider._();
+
+/// The app's usual client, pointed at the Marketplace service. Same interceptors, and the very
+/// same [authInterceptorProvider], so Marketplace shares the login and its one token refresh.
+
+final class MarketplaceDioProvider extends $FunctionalProvider<Dio, Dio, Dio>
+    with $Provider<Dio> {
+  /// The app's usual client, pointed at the Marketplace service. Same interceptors, and the very
+  /// same [authInterceptorProvider], so Marketplace shares the login and its one token refresh.
+  MarketplaceDioProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'marketplaceDioProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$marketplaceDioHash();
+
+  @$internal
+  @override
+  $ProviderElement<Dio> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  Dio create(Ref ref) {
+    return marketplaceDio(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Dio value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Dio>(value),
+    );
+  }
+}
+
+String _$marketplaceDioHash() => r'13f0fd3fe408e17813671280031ee41429862289';
+
+@ProviderFor(marketplaceRepository)
+final marketplaceRepositoryProvider = MarketplaceRepositoryProvider._();
+
+final class MarketplaceRepositoryProvider
+    extends
+        $FunctionalProvider<
+          MarketplaceRepository,
+          MarketplaceRepository,
+          MarketplaceRepository
+        >
+    with $Provider<MarketplaceRepository> {
+  MarketplaceRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'marketplaceRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$marketplaceRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<MarketplaceRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  MarketplaceRepository create(Ref ref) {
+    return marketplaceRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(MarketplaceRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<MarketplaceRepository>(value),
+    );
+  }
+}
+
+String _$marketplaceRepositoryHash() =>
+    r'1d397ebe41931ef15b4af61f39cfb41fed90d134';
+
+/// The categories a business can post in, with their details. The server caches them too.
+
+@ProviderFor(marketplaceCategories)
+final marketplaceCategoriesProvider = MarketplaceCategoriesProvider._();
+
+/// The categories a business can post in, with their details. The server caches them too.
+
+final class MarketplaceCategoriesProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<MarketplaceCategory>>,
+          List<MarketplaceCategory>,
+          FutureOr<List<MarketplaceCategory>>
+        >
+    with
+        $FutureModifier<List<MarketplaceCategory>>,
+        $FutureProvider<List<MarketplaceCategory>> {
+  /// The categories a business can post in, with their details. The server caches them too.
+  MarketplaceCategoriesProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'marketplaceCategoriesProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$marketplaceCategoriesHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<MarketplaceCategory>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<MarketplaceCategory>> create(Ref ref) {
+    return marketplaceCategories(ref);
+  }
+}
+
+String _$marketplaceCategoriesHash() =>
+    r'c1aaeed762a149176580977d485a61af2f8e2eff';
+
+/// The post kinds, statuses (with colours) and limits, from the server's tables.
+
+@ProviderFor(marketplaceOptions)
+final marketplaceOptionsProvider = MarketplaceOptionsProvider._();
+
+/// The post kinds, statuses (with colours) and limits, from the server's tables.
+
+final class MarketplaceOptionsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<MarketplaceOptions>,
+          MarketplaceOptions,
+          FutureOr<MarketplaceOptions>
+        >
+    with
+        $FutureModifier<MarketplaceOptions>,
+        $FutureProvider<MarketplaceOptions> {
+  /// The post kinds, statuses (with colours) and limits, from the server's tables.
+  MarketplaceOptionsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'marketplaceOptionsProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$marketplaceOptionsHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<MarketplaceOptions> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<MarketplaceOptions> create(Ref ref) {
+    return marketplaceOptions(ref);
+  }
+}
+
+String _$marketplaceOptionsHash() =>
+    r'419f8a5ec00731651f8875fd14e7dab666cf54f7';
+
+/// The counts behind the Marketplace tiles, and the plan banner.
+
+@ProviderFor(marketplaceSummary)
+final marketplaceSummaryProvider = MarketplaceSummaryProvider._();
+
+/// The counts behind the Marketplace tiles, and the plan banner.
+
+final class MarketplaceSummaryProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<MarketplaceSummary>,
+          MarketplaceSummary,
+          FutureOr<MarketplaceSummary>
+        >
+    with
+        $FutureModifier<MarketplaceSummary>,
+        $FutureProvider<MarketplaceSummary> {
+  /// The counts behind the Marketplace tiles, and the plan banner.
+  MarketplaceSummaryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'marketplaceSummaryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$marketplaceSummaryHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<MarketplaceSummary> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<MarketplaceSummary> create(Ref ref) {
+    return marketplaceSummary(ref);
+  }
+}
+
+String _$marketplaceSummaryHash() =>
+    r'bd2fc1382479d012fb1cf883588d1065c3047100';
+
+/// The business's posts; [kind] and [status] narrow the list (null for all).
+///
+/// Loading the full list also refreshes how customers see the business (name, verified) — in the
+/// background, so a slow or failed refresh never holds up the business's own list.
+
+@ProviderFor(businessMarketplacePosts)
+final businessMarketplacePostsProvider = BusinessMarketplacePostsFamily._();
+
+/// The business's posts; [kind] and [status] narrow the list (null for all).
+///
+/// Loading the full list also refreshes how customers see the business (name, verified) — in the
+/// background, so a slow or failed refresh never holds up the business's own list.
+
+final class BusinessMarketplacePostsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<MarketplacePost>>,
+          List<MarketplacePost>,
+          FutureOr<List<MarketplacePost>>
+        >
+    with
+        $FutureModifier<List<MarketplacePost>>,
+        $FutureProvider<List<MarketplacePost>> {
+  /// The business's posts; [kind] and [status] narrow the list (null for all).
+  ///
+  /// Loading the full list also refreshes how customers see the business (name, verified) — in the
+  /// background, so a slow or failed refresh never holds up the business's own list.
+  BusinessMarketplacePostsProvider._({
+    required BusinessMarketplacePostsFamily super.from,
+    required ({String? kind, String? status}) super.argument,
+  }) : super(
+         retry: null,
+         name: r'businessMarketplacePostsProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$businessMarketplacePostsHash();
+
+  @override
+  String toString() {
+    return r'businessMarketplacePostsProvider'
+        ''
+        '$argument';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<List<MarketplacePost>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<MarketplacePost>> create(Ref ref) {
+    final argument = this.argument as ({String? kind, String? status});
+    return businessMarketplacePosts(
+      ref,
+      kind: argument.kind,
+      status: argument.status,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is BusinessMarketplacePostsProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$businessMarketplacePostsHash() =>
+    r'784e5edbac7ef3f007f15d281dec8afb287af668';
+
+/// The business's posts; [kind] and [status] narrow the list (null for all).
+///
+/// Loading the full list also refreshes how customers see the business (name, verified) — in the
+/// background, so a slow or failed refresh never holds up the business's own list.
+
+final class BusinessMarketplacePostsFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          FutureOr<List<MarketplacePost>>,
+          ({String? kind, String? status})
+        > {
+  BusinessMarketplacePostsFamily._()
+    : super(
+        retry: null,
+        name: r'businessMarketplacePostsProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// The business's posts; [kind] and [status] narrow the list (null for all).
+  ///
+  /// Loading the full list also refreshes how customers see the business (name, verified) — in the
+  /// background, so a slow or failed refresh never holds up the business's own list.
+
+  BusinessMarketplacePostsProvider call({String? kind, String? status}) =>
+      BusinessMarketplacePostsProvider._(
+        argument: (kind: kind, status: status),
+        from: this,
+      );
+
+  @override
+  String toString() => r'businessMarketplacePostsProvider';
+}
+
+/// The super admin's categories: every one, switched off or not.
+
+@ProviderFor(adminMarketplaceCategories)
+final adminMarketplaceCategoriesProvider =
+    AdminMarketplaceCategoriesProvider._();
+
+/// The super admin's categories: every one, switched off or not.
+
+final class AdminMarketplaceCategoriesProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<MarketplaceCategory>>,
+          List<MarketplaceCategory>,
+          FutureOr<List<MarketplaceCategory>>
+        >
+    with
+        $FutureModifier<List<MarketplaceCategory>>,
+        $FutureProvider<List<MarketplaceCategory>> {
+  /// The super admin's categories: every one, switched off or not.
+  AdminMarketplaceCategoriesProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'adminMarketplaceCategoriesProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$adminMarketplaceCategoriesHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<MarketplaceCategory>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<MarketplaceCategory>> create(Ref ref) {
+    return adminMarketplaceCategories(ref);
+  }
+}
+
+String _$adminMarketplaceCategoriesHash() =>
+    r'68c5ffc82509b98db9f33dd8c23d74719426062b';

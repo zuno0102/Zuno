@@ -20,6 +20,8 @@ import 'package:zuno/features/vacancy/domain/entities/vacancy_summary.dart';
 import 'package:zuno/features/vacancy/presentation/providers/vacancy_providers.dart';
 import 'package:zuno/features/vacancy/presentation/screens/business_vacancies_tab.dart';
 import 'package:zuno/features/vacancy/presentation/screens/vacancy_applicants_screen.dart';
+import 'package:zuno/features/marketplace/domain/entities/marketplace_post.dart';
+import 'package:zuno/features/marketplace/presentation/providers/marketplace_providers.dart';
 
 import 'features/vacancy/vacancy_fixtures.dart';
 
@@ -394,6 +396,10 @@ void main() {
             businessDashboardProvider.overrideWith((ref) async => dashboard),
             businessServicesProvider.overrideWith(_NoServices.new),
             vacancySummaryProvider.overrideWith((ref) async => _summary),
+            // Marketplace is its own server; its tiles get a fixed answer here.
+            marketplaceSummaryProvider.overrideWith(
+              (ref) async => _marketplace,
+            ),
             vacancyRepositoryProvider.overrideWithValue(repo),
           ],
           child: const MaterialApp(
@@ -448,6 +454,7 @@ void main() {
       await tester.pageBack();
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Active posts'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Active posts'));
       await tester.pumpAndSettle();
 
@@ -471,3 +478,17 @@ class _Profile extends BusinessProfileNotifier {
   @override
   Future<BusinessProfile> build() async => _profile;
 }
+
+const _marketplace = MarketplaceSummary(
+  active: 1,
+  paused: 0,
+  expired: 0,
+  closed: 0,
+  plan: MarketplacePlan(
+    code: 'free',
+    name: 'Free',
+    price: 0,
+    maxActivePosts: 1,
+    usedActivePosts: 1,
+  ),
+);

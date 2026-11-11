@@ -12,11 +12,13 @@ How every change goes from your machine to live: **Zuno_Dev → main → live**.
 | Rent API (.NET) | `backend/Zuno_rent` | Render `zuno-rent-api` → https://zuno-rent-api.onrender.com | `main` changes (auto-deploy) |
 | Service DB (Postgres) | `Zuno_service/.../Persistence/Migrations` | Neon `misty-breeze-90136767`, db `neondb` | the Service API starts (MigrateOnStartup) |
 | Rent DB (Postgres) | `Zuno_rent/.../Migrations` | Neon same project, db `zuno_rent` | the Rent API starts (MigrateOnStartup) |
+| Marketplace API (.NET) | `backend/Zuno_marketplace` | Render `zuno-marketplace-api` → https://zuno-marketplace-api.onrender.com (**not created yet**) | `main` changes (auto-deploy) |
+| Marketplace DB (Postgres) | `Zuno_marketplace/.../Migrations` | Neon same project, db `zuno_marketplace` (**not created yet**) | the Marketplace API starts (MigrateOnStartup) |
 | Website (Flutter web) | `mobile/` | Vercel team `zuno-team1`, project `zuno` → https://zuno-infinite-service.vercel.app | `deploy.ps1` builds and uploads it |
 | Android APK | `mobile/` | GitHub release `v<version>` (Latest) → https://github.com/zuno0102/Zuno/releases/latest/download/zuno.apk | `deploy.ps1` builds and publishes it |
 
-The website and the APK are built with both addresses:
-`--dart-define=API_BASE_URL=https://zuno-api-qon8.onrender.com --dart-define=RENT_API_BASE_URL=https://zuno-rent-api.onrender.com`.
+The website and the APK are built with all three addresses:
+`--dart-define=API_BASE_URL=https://zuno-api-qon8.onrender.com --dart-define=RENT_API_BASE_URL=https://zuno-rent-api.onrender.com --dart-define=MARKETPLACE_API_BASE_URL=https://zuno-marketplace-api.onrender.com`.
 
 ## Every release, in order
 
@@ -27,6 +29,7 @@ The website and the APK are built with both addresses:
   dotnet test backend/Zuno_service/tests/Zuno.Application.UnitTests
   dotnet test backend/Zuno_service/tests/Zuno.Infrastructure.UnitTests
   dotnet test backend/Zuno_rent/tests/Zuno.Rent.UnitTests
+  dotnet test backend/Zuno_marketplace/tests/Zuno.Marketplace.UnitTests
   ```
 - [ ] App checks pass, from `mobile/`: `flutter analyze` and `flutter test`.
 - [ ] A new migration is checked on a local database first: `dotnet ef database update`.
@@ -83,3 +86,6 @@ Options: `-SkipApk` (website and APIs only), `-Force` (redeploy without changes)
   - `zuno-api`: database, `JwtSettings__*`, Razorpay keys, CORS.
   - `zuno-rent-api`: `ConnectionStrings__RentDatabase`, the **same** `JwtSettings__SigningKey` as
     `zuno-api`, `ServiceApi__BaseUrl`, CORS, and optionally `Razorpay__KeyId` / `Razorpay__KeySecret`.
+  - `zuno-marketplace-api` (Docker, context `./backend`, Dockerfile `Zuno_marketplace/Dockerfile`):
+    `ConnectionStrings__MarketplaceDatabase`, the **same** `JwtSettings__SigningKey` as `zuno-api`,
+    `ServiceApi__BaseUrl`, `Cors__AllowedOrigins__0`.
