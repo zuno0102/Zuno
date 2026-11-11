@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/features/business_owner/presentation/screens/business_orders_tab.dart';
+import 'package:zuno/features/marketplace/presentation/screens/business_marketplace_orders_tab.dart';
 import 'package:zuno/features/rental/presentation/providers/rental_order_providers.dart';
 import 'package:zuno/features/rental/presentation/screens/business_rent_orders_tab.dart';
 
 /// The business's Orders, split by business line: **Service** — the orders screen exactly as it
-/// was — and **Rent**, the same three parts for rent orders.
+/// was — **Rent**, the same three parts for rent orders, and **Marketplace**, the posts by status.
 class BusinessOrdersHubTab extends ConsumerWidget {
   const BusinessOrdersHubTab({super.key});
 
@@ -14,7 +15,7 @@ class BusinessOrdersHubTab extends ConsumerWidget {
     final rentUnread = ref.watch(rentalUnreadMessageCountProvider());
 
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Column(
         children: [
           // The same bar as Services › Service | Rent, so both splits look alike.
@@ -31,12 +32,17 @@ class BusinessOrdersHubTab extends ConsumerWidget {
                     child: const Text('Rent'),
                   ),
                 ),
+                const Tab(text: 'Marketplace'),
               ],
             ),
           ),
           const Expanded(
             child: TabBarView(
-              children: [BusinessOrdersTab(), BusinessRentOrdersTab()],
+              children: [
+                BusinessOrdersTab(),
+                BusinessRentOrdersTab(),
+                BusinessMarketplaceOrdersTab(),
+              ],
             ),
           ),
         ],

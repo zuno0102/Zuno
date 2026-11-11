@@ -16,6 +16,7 @@ import 'package:zuno/features/marketplace/domain/marketplace_repository.dart';
 import 'package:zuno/features/marketplace/presentation/providers/marketplace_providers.dart';
 import 'package:zuno/features/marketplace/presentation/screens/admin_marketplace_categories_screen.dart';
 import 'package:zuno/features/marketplace/presentation/screens/business_marketplace_tab.dart';
+import 'package:zuno/features/marketplace/presentation/screens/business_marketplace_orders_tab.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_dashboard_tiles.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_post_form_sheet.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_post_lines.dart';
@@ -895,6 +896,117 @@ void main() {
       expect(input.price, 400000);
       expect(input.districtId, 'd-kk');
       expect(input.attributes['fuel'], 'Petrol');
+    });
+  });
+
+  group('Saving shows it worked', () {
+    testWidgets(
+      '"Post added." shows over the form after saving from the bottom',
+      (tester) async {
+        await _pump(tester, const BusinessMarketplaceTab());
+        await _openFormFor(tester, _farm);
+        await _type(tester, 'marketplace-title', 'Nendran banana');
+        await _type(tester, 'marketplace-price', '45');
+        await _choose(tester, 'marketplace-state', 's-tn');
+        await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
+
+        final save = find.byKey(const ValueKey('primary-button'));
+        await tester.ensureVisible(save);
+        await tester.tap(save);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+
+        final banner = find.byKey(const ValueKey('marketplace-post-saved'));
+        expect(banner, findsOneWidget);
+        expect(
+          find.descendant(of: banner, matching: find.text('Post added.')),
+          findsOneWidget,
+        );
+        final sheetTop = tester
+            .getTopLeft(find.byType(MarketplacePostFormSheet))
+            .dy;
+        expect(
+          tester.getTopLeft(banner).dy - sheetTop,
+          lessThan(60),
+          reason: 'pinned to the top of the sheet',
+        );
+
+        await tester.pumpAndSettle();
+        expect(find.byType(MarketplacePostFormSheet), findsNothing);
+      },
+    );
+
+    testWidgets('a refused save scrolls up to the reason', (tester) async {
+      final repo = _FakeMarketplaceRepository()
+        ..failCreate = const UnknownAppException(
+          'Your Free plan allows 1 active post. Pause or close one to put up another.',
+        );
+      await _pump(tester, const BusinessMarketplaceTab(), repository: repo);
+      await _openFormFor(tester, _farm);
+      await _type(tester, 'marketplace-title', 'Nendran banana');
+      await _type(tester, 'marketplace-price', '45');
+      await _choose(tester, 'marketplace-state', 's-tn');
+      await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
+      await _save(tester);
+
+      final reason = find.textContaining('Free plan allows 1 active post');
+      expect(reason, findsOneWidget);
+      final sheet = tester.getRect(find.byType(MarketplacePostFormSheet));
+      final at = tester.getTopLeft(reason).dy;
+      expect(at, greaterThanOrEqualTo(sheet.top));
+      expect(at - sheet.top, lessThan(200));
+    });
+  });
+
+  group('Orders › Marketplace', () {
+    testWidgets('posts by status, named from the server table, with counts', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        const BusinessMarketplaceOrdersTab(),
+        repository: _FakeMarketplaceRepository(
+          posts: [
+            _post(title: 'Live one'),
+            _post(
+              id: 'p-2',
+              title: 'Held one',
+              status: 'Paused',
+              actions: const [],
+            ),
+          ],
+          plan: _plan(used: 1),
+        ),
+      );
+
+      expect(find.text('All 2'), findsOneWidget);
+      expect(find.text('Active 1'), findsOneWidget);
+      expect(find.text('On hold 1'), findsOneWidget);
+      expect(find.text('Live one'), findsOneWidget);
+      expect(find.text('Held one'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('marketplace-orders-Paused')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Held one'), findsOneWidget);
+      expect(find.text('Live one'), findsNothing);
+    });
+
+    testWidgets('an empty status says where posts come from', (tester) async {
+      await _pump(tester, const BusinessMarketplaceOrdersTab());
+
+      final expired = find.byKey(const ValueKey('marketplace-orders-Expired'));
+      await tester.ensureVisible(expired);
+      await tester.tap(expired);
+      await tester.pumpAndSettle();
+
+      expect(find.text('No expired posts'), findsOneWidget);
+      expect(find.textContaining('Services › Marketplace'), findsOneWidget);
+    });
+
+    testWidgets('Orders has Service, Rent and Marketplace', (tester) async {
+      await _pump(tester, const BusinessCatalogTab());
+      expect(find.text('Marketplace'), findsOneWidget);
     });
   });
 

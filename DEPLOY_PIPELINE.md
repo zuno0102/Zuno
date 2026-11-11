@@ -12,8 +12,8 @@ How every change goes from your machine to live: **Zuno_Dev → main → live**.
 | Rent API (.NET) | `backend/Zuno_rent` | Render `zuno-rent-api` → https://zuno-rent-api.onrender.com | `main` changes (auto-deploy) |
 | Service DB (Postgres) | `Zuno_service/.../Persistence/Migrations` | Neon `misty-breeze-90136767`, db `neondb` | the Service API starts (MigrateOnStartup) |
 | Rent DB (Postgres) | `Zuno_rent/.../Migrations` | Neon same project, db `zuno_rent` | the Rent API starts (MigrateOnStartup) |
-| Marketplace API (.NET) | `backend/Zuno_marketplace` | Render `zuno-marketplace-api` → https://zuno-marketplace-api.onrender.com (**not created yet**) | `main` changes (auto-deploy) |
-| Marketplace DB (Postgres) | `Zuno_marketplace/.../Migrations` | Neon same project, db `zuno_marketplace` (**not created yet**) | the Marketplace API starts (MigrateOnStartup) |
+| Marketplace API (.NET) | `backend/Zuno_marketplace` | Render `zuno-marketplace-api` → https://zuno-marketplace-api.onrender.com (`srv-dbq8jpugekts73eoefbg`) | `main` changes (auto-deploy) |
+| Marketplace DB (Postgres) | `Zuno_marketplace/.../Migrations` | Neon same project, db `zuno_marketplace` | the Marketplace API starts (MigrateOnStartup) |
 | Website (Flutter web) | `mobile/` | Vercel team `zuno-team1`, project `zuno` → https://zuno-infinite-service.vercel.app | `deploy.ps1` builds and uploads it |
 | Android APK | `mobile/` | GitHub release `v<version>` (Latest) → https://github.com/zuno0102/Zuno/releases/latest/download/zuno.apk | `deploy.ps1` builds and publishes it |
 

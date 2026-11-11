@@ -43,6 +43,7 @@ class MarketplacePostFormSheet extends ConsumerStatefulWidget {
 class _MarketplacePostFormSheetState
     extends ConsumerState<MarketplacePostFormSheet> {
   final _formKey = GlobalKey<FormState>();
+  final _scroll = ScrollController();
 
   late final MarketplacePost? _old = widget.existing;
   late final _title = TextEditingController(text: _old?.title);
@@ -109,6 +110,7 @@ class _MarketplacePostFormSheetState
     }
     _attributes.dispose();
     _media.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -192,9 +194,22 @@ class _MarketplacePostFormSheetState
       await Future<void>.delayed(const Duration(milliseconds: 900));
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
-      if (mounted) setState(() => _errorMessage = e.toString());
+      if (mounted) _showError(e.toString());
     } finally {
       if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  /// The server's reason sits at the top of the form; the business pressed Save at the bottom,
+  /// so the form scrolls up to show it.
+  void _showError(String message) {
+    setState(() => _errorMessage = message);
+    if (_scroll.hasClients) {
+      _scroll.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
     }
   }
 
@@ -206,6 +221,35 @@ class _MarketplacePostFormSheetState
     final options = ref.watch(marketplaceOptionsProvider).value;
     final theme = Theme.of(context);
 
+    // A Stack like the rent item form's, so "Post added." shows over the form wherever it is
+    // scrolled to — the business saves from the bottom.
+    return Stack(
+      children: [
+        _form(context, theme, categoriesAsync, categories, category, options),
+        if (_successMessage case final message?)
+          Positioned(
+            top: 12,
+            right: 20,
+            child: ServiceFormMessageBanner(
+              key: const ValueKey('marketplace-post-saved'),
+              message: message,
+              color: theme.colorScheme.primary,
+              onColor: theme.colorScheme.onPrimary,
+              icon: Icons.check_circle,
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _form(
+    BuildContext context,
+    ThemeData theme,
+    AsyncValue<List<MarketplaceCategory>> categoriesAsync,
+    List<MarketplaceCategory> categories,
+    MarketplaceCategory? category,
+    MarketplaceOptions? options,
+  ) {
     return Padding(
       padding: EdgeInsets.only(
         left: 20,
@@ -214,6 +258,7 @@ class _MarketplacePostFormSheetState
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
       child: SingleChildScrollView(
+        controller: _scroll,
         child: Form(
           key: _formKey,
           child: Column(
@@ -233,15 +278,6 @@ class _MarketplacePostFormSheetState
                   color: AppColors.error,
                   onColor: theme.colorScheme.onError,
                   icon: Icons.error_outline,
-                ),
-                const SizedBox(height: 16),
-              ],
-              if (_successMessage case final message?) ...[
-                ServiceFormMessageBanner(
-                  message: message,
-                  color: AppColors.status(StatusTone.success, theme.brightness),
-                  onColor: theme.colorScheme.onPrimary,
-                  icon: Icons.check_circle_outline,
                 ),
                 const SizedBox(height: 16),
               ],
