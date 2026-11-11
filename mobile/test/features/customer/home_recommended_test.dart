@@ -278,59 +278,100 @@ void main() {
     },
   );
 
-  // A new customer whose browser gave no location gets this once, so the tap on "Use my current
-  // location" is what makes the browser show its permission popup.
-  group('first-time chooser', () {
-    Future<ProviderContainer> openChooser(
+  // Location setup is required: the setup sheet has no way out but a location.
+  group('required location setup', () {
+    Future<(ProviderContainer, Future<void>)> openSetup(
       WidgetTester tester,
       LocationService phone,
     ) async {
       final c = await _pump(tester, phone: phone);
-      final ref = tester.element(find.byType(CustomerSearchTab)) as WidgetRef;
-      final context = tester.element(find.byType(CustomerSearchTab));
-      // ignore: unawaited_futures
-      pickCustomerLocation(context, ref, firstTime: true);
+      final element = tester.element(find.byType(CustomerSearchTab));
+      final done = requireCustomerLocation(element, element as WidgetRef);
       await tester.pumpAndSettle();
-      return c;
+      return (c, done);
     }
 
-    testWidgets('says why it asks, and offers "Not now"', (tester) async {
-      await openChooser(tester, _Phone(const LocationResult.found(10, 76)));
+    testWidgets('says why, and offers no "Not now" or "everywhere"', (
+      tester,
+    ) async {
+      await openSetup(tester, _Phone(const LocationResult.found(10, 76)));
 
       expect(find.text('Find services near you'), findsOneWidget);
-      expect(find.text('Where are you?'), findsNothing);
       expect(
         find.byKey(const ValueKey('location-use-current')),
         findsOneWidget,
       );
       expect(find.byKey(const ValueKey('location-pick')), findsOneWidget);
-
-      await tester.tap(find.byKey(const ValueKey('location-not-now')));
-      await tester.pumpAndSettle();
-      expect(find.text('Find services near you'), findsNothing);
+      expect(find.text('Not now'), findsNothing);
+      expect(find.byKey(const ValueKey('location-everywhere')), findsNothing);
     });
 
-    testWidgets('"Use my current location" asks and sets the district', (
+    testWidgets('tapping outside or pressing back does not close it', (
+      tester,
+    ) async {
+      await openSetup(tester, _Phone(const LocationResult.found(10, 76)));
+
+      await tester.tapAt(const Offset(280, 40));
+      await tester.pumpAndSettle();
+      expect(find.text('Find services near you'), findsOneWidget);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('Find services near you'), findsOneWidget);
+    });
+
+    testWidgets('"Use my current location" sets the district and it closes', (
       tester,
     ) async {
       final phone = _Phone(const LocationResult.found(10.0159, 76.3419));
-      final c = await openChooser(tester, phone);
+      final (c, done) = await openSetup(tester, phone);
+
+      await tester.tap(find.byKey(const ValueKey('location-use-current')));
+      await tester.pumpAndSettle();
+      await done;
+
+      expect(phone.asks, [true]);
+      expect(c.read(customerSearchFilterProvider).districtIds, {'d-ekm'});
+      expect(find.text('Find services near you'), findsNothing);
+      expect(find.text(recommendedSectionTitle), findsOneWidget);
+    });
+
+    testWidgets('blocked: says how to allow it, and the setup comes back', (
+      tester,
+    ) async {
+      final phone = _Phone(
+        const LocationResult.unavailable(LocationProblem.deniedForever),
+      );
+      final (c, _) = await openSetup(tester, phone);
 
       await tester.tap(find.byKey(const ValueKey('location-use-current')));
       await tester.pumpAndSettle();
 
-      expect(phone.asks, [true]);
-      expect(c.read(customerSearchFilterProvider).districtIds, {'d-ekm'});
-      expect(find.text(recommendedSectionTitle), findsOneWidget);
+      // Shown inside the setup sheet, not behind it.
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('location-problem')),
+          matching: find.textContaining('Location is blocked'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Find services near you'), findsOneWidget);
+      expect(c.read(customerSearchFilterProvider).hasLocation, isFalse);
     });
   });
 
-  testWidgets('the everyday chooser has no "Not now"', (tester) async {
+  testWidgets('the everyday chooser can be closed and has no setup text', (
+    tester,
+  ) async {
     await _pump(tester, phone: _Phone(const LocationResult.found(10, 76)));
     await tester.tap(find.byType(CustomerLocationButton));
     await tester.pumpAndSettle();
 
     expect(find.text('Where are you?'), findsOneWidget);
-    expect(find.byKey(const ValueKey('location-not-now')), findsNothing);
+    expect(find.text('Find services near you'), findsNothing);
+
+    await tester.tapAt(const Offset(280, 40));
+    await tester.pumpAndSettle();
+    expect(find.text('Where are you?'), findsNothing);
   });
 }

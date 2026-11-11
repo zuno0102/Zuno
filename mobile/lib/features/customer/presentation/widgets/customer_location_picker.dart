@@ -15,82 +15,124 @@ enum _LocationChoice { current, pick, everywhere }
 /// in [customerSearchFilterProvider]. One location for the whole customer app: the Service home and
 /// the Rent home both search where this says.
 ///
-/// [firstTime] is the welcome version, shown once to a new customer when the automatic read gave
-/// no location: it says why it is asking, so the tap on "Use my current location" — which makes
-/// the browser show its permission popup — is an informed one.
-Future<void> pickCustomerLocation(
+/// [firstTime] is the setup version, for a customer with no location yet (see
+/// [requireCustomerLocation]): it says why it is asking, cannot be closed, and offers no way out
+/// but a location — the tap on "Use my current location" makes the browser show its popup. There,
+/// [problem] is why the last try gave no location, shown inside the sheet (a message at the bottom
+/// of the screen would sit behind it), and the result is the new problem, if any.
+Future<String?> pickCustomerLocation(
   BuildContext context,
   WidgetRef ref, {
   bool firstTime = false,
+  String? problem,
 }) async {
   final hasLocation = ref.read(customerSearchFilterProvider).hasLocation;
   final choice = await showModalBottomSheet<_LocationChoice>(
     context: context,
-    builder: (context) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (firstTime)
-            const ListTile(
-              key: ValueKey('location-first-time'),
-              title: Text('Find services near you'),
-              subtitle: Text(
-                'Share your location to see services and rentals in your district first. '
-                'You can change it any time with the location button.',
+    isDismissible: !firstTime,
+    enableDrag: !firstTime,
+    builder: (context) => PopScope(
+      canPop: !firstTime,
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (firstTime)
+              const ListTile(
+                key: ValueKey('location-first-time'),
+                title: Text('Find services near you'),
+                subtitle: Text(
+                  'Set your location to see services and rentals in your district first. '
+                  'You can change it any time with the location button.',
+                ),
+              )
+            else
+              const ListTile(title: Text('Where are you?')),
+            if (problem != null)
+              Padding(
+                key: const ValueKey('location-problem'),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Text(
+                  problem,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
               ),
-            )
-          else
-            const ListTile(title: Text('Where are you?')),
-          ListTile(
-            key: const ValueKey('location-use-current'),
-            leading: const Icon(Icons.my_location),
-            title: const Text('Use my current location'),
-            onTap: () => Navigator.of(context).pop(_LocationChoice.current),
-          ),
-          ListTile(
-            key: const ValueKey('location-pick'),
-            leading: const Icon(Icons.map_outlined),
-            title: const Text('Choose state and district'),
-            onTap: () => Navigator.of(context).pop(_LocationChoice.pick),
-          ),
-          if (hasLocation)
             ListTile(
-              key: const ValueKey('location-everywhere'),
-              leading: const Icon(Icons.public),
-              title: const Text('Show everywhere'),
-              onTap: () =>
-                  Navigator.of(context).pop(_LocationChoice.everywhere),
+              key: const ValueKey('location-use-current'),
+              leading: const Icon(Icons.my_location),
+              title: const Text('Use my current location'),
+              onTap: () => Navigator.of(context).pop(_LocationChoice.current),
             ),
-          if (firstTime)
             ListTile(
-              key: const ValueKey('location-not-now'),
-              leading: const Icon(Icons.close),
-              title: const Text('Not now'),
-              onTap: () => Navigator.of(context).pop(),
+              key: const ValueKey('location-pick'),
+              leading: const Icon(Icons.map_outlined),
+              title: const Text('Choose state and district'),
+              onTap: () => Navigator.of(context).pop(_LocationChoice.pick),
             ),
-        ],
+            if (hasLocation && !firstTime)
+              ListTile(
+                key: const ValueKey('location-everywhere'),
+                leading: const Icon(Icons.public),
+                title: const Text('Show everywhere'),
+                onTap: () =>
+                    Navigator.of(context).pop(_LocationChoice.everywhere),
+              ),
+          ],
+        ),
       ),
     ),
   );
-  if (choice == null || !context.mounted) return;
+  if (choice == null || !context.mounted) return null;
 
   switch (choice) {
     case _LocationChoice.current:
-      await useCurrentCustomerLocation(context, ref);
+      return useCurrentCustomerLocation(context, ref, announce: !firstTime);
     case _LocationChoice.pick:
       await _pickDistricts(context, ref);
     case _LocationChoice.everywhere:
       ref.read(customerSearchFilterProvider.notifier).clearLocation();
   }
+  return null;
 }
 
-/// Reads the phone's location now — asking for the permission if need be — and sets its district,
-/// saying in a line what happened.
-Future<void> useCurrentCustomerLocation(
+/// Location setup is required: the setup sheet comes back until the customer has a location — from
+/// the phone, or a state and district picked by hand. A blocked permission, a place outside the
+/// area or a district list closed half-way leaves the question open, so it is asked again.
+///
+/// Once set, the customer can still widen the search to everywhere from the location button.
+Future<void> requireCustomerLocation(
   BuildContext context,
   WidgetRef ref,
 ) async {
+  String? problem;
+  while (context.mounted &&
+      !ref.read(customerSearchFilterProvider).hasLocation) {
+    try {
+      problem = await pickCustomerLocation(
+        context,
+        ref,
+        firstTime: true,
+        problem: problem,
+      );
+    } on Object {
+      // The district list failed to load (offline): the sheet comes back so they can try again.
+      problem =
+          'Could not load the districts. Check your connection and try again.';
+    }
+  }
+}
+
+/// Reads the phone's location now — asking for the permission if need be — and sets its district.
+///
+/// Returns why no district was set, or null when one was. With [announce] it also says so in a
+/// line at the bottom of the screen; the setup sheet shows the reason inside itself instead.
+Future<String?> useCurrentCustomerLocation(
+  BuildContext context,
+  WidgetRef ref, {
+  bool announce = true,
+}) async {
   final messenger = AppMessenger.of(context);
+  String? problem;
   try {
     final outcome = await locateCustomerFromPhone(
       locationService: ref.read(locationServiceProvider),
@@ -100,12 +142,12 @@ Future<void> useCurrentCustomerLocation(
     );
     if (outcome.district case final district?) {
       messenger.showSuccess('Showing listings near ${district.name}.');
+      return null;
     } else if (outcome.isOutsideArea) {
-      messenger.showInfo(
-        'Zuno does not serve where you are yet. Choose a district instead.',
-      );
+      problem =
+          'Zuno does not serve where you are yet. Choose a district instead.';
     } else {
-      messenger.showInfo(switch (outcome.problem) {
+      problem = (switch (outcome.problem) {
         // A browser remembers "Block" for the site and never shows the popup again by itself.
         LocationProblem.deniedForever when kIsWeb =>
           'Location is blocked for this website. Click the icon left of the web address, '
@@ -121,11 +163,13 @@ Future<void> useCurrentCustomerLocation(
         _ => 'Could not read your location. Try again, or choose a district.',
       });
     }
+    if (announce) messenger.showInfo(problem);
   } on Object {
-    messenger.showFailure(
-      'Could not find your district. Check your connection and try again.',
-    );
+    problem =
+        'Could not find your district. Check your connection and try again.';
+    if (announce) messenger.showFailure(problem);
   }
+  return problem;
 }
 
 /// States, then districts, picked by hand.

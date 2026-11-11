@@ -28,11 +28,11 @@ class CustomerAppShell extends ConsumerWidget {
     // Once per app open: where the customer is — from their account, then the phone — narrows the
     // listings on every side (Service, Rent). Watched only to start it; it never blocks the screen.
     ref.watch(customerLocationSyncProvider);
-    // A new customer whose phone or browser gave no location is asked here instead — a tap on
-    // "Use my current location" makes the browser show its permission popup.
+    // Location setup is required: a customer without one gets a setup sheet that stays until they
+    // set it — a tap on "Use my current location" makes the browser show its permission popup.
     ref.listen(customerLocationSyncProvider, (_, next) {
       if (next.value == CustomerLocationOpen.needsChoice && context.mounted) {
-        unawaited(pickCustomerLocation(context, ref, firstTime: true));
+        unawaited(requireCustomerLocation(context, ref));
       }
     });
 

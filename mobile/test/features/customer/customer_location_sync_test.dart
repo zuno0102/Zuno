@@ -432,7 +432,9 @@ void main() {
       );
     });
 
-    test('asked before: never asked again, even with no location', () async {
+    // Location setup is required: skipped once (app closed), asked again on the next open — but
+    // the system permission dialog is not shown a second time.
+    test('asked before but still no location: setup is asked again', () async {
       final phone = _Phone(
         const LocationResult.unavailable(LocationProblem.denied),
       );
@@ -441,6 +443,19 @@ void main() {
         saved: {
           customerLocationAskedKey('u1'): true,
           customerLocationOwnerKey: 'u1',
+        },
+      );
+      expect(result, CustomerLocationOpen.needsChoice);
+      expect(phone.asks, [false], reason: 'the system dialog only once');
+    });
+
+    test('set up, then chose "everywhere": not asked again', () async {
+      final result = await openWith(
+        _Phone(),
+        saved: {
+          customerLocationAskedKey('u1'): true,
+          customerLocationOwnerKey: 'u1',
+          'customer_filter_location_source': 'Cleared',
         },
       );
       expect(result, CustomerLocationOpen.settled);

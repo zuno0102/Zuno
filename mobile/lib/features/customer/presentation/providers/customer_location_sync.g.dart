@@ -80,4 +80,4 @@ final class CustomerLocationSyncProvider
 }
 
 String _$customerLocationSyncHash() =>
-    r'826965b052e4c5f469be67cf2b6ca28f975e5e48';
+    r'677d36807b09e065f0d6ed29eaa408201125e5f7';

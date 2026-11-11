@@ -69,13 +69,13 @@ String customerLocationAskedKey(String userId) =>
 
 /// How the open-time check ended, so the app knows whether to ask the customer itself.
 enum CustomerLocationOpen {
-  /// A location is set, the customer chose one (or everywhere), or they were asked before.
+  /// A location is set, or the customer set one up and later chose to see everywhere.
   settled,
 
-  /// A customer's first open, and the phone or browser gave no location: the permission is
-  /// blocked, no fix came, or the place is outside the area. The app then shows the "Where are
-  /// you?" chooser, where a tap on "Use my current location" asks again. Browsers remember "Block"
-  /// per site, so on the web the automatic ask can end without any popup at all.
+  /// The customer has never set a location, and the phone or browser gave none: the permission
+  /// is blocked, no fix came, or the place is outside the area. Setup is required, so the app
+  /// shows its setup sheet until they set one. Browsers remember "Block" per site, so on the web
+  /// the automatic ask can end without any popup at all.
   needsChoice,
 }
 
@@ -157,9 +157,10 @@ Future<CustomerLocationOpen> customerLocationSync(Ref ref) async {
     // No district found is the same as no location read: nothing changes.
   }
 
-  // Asked once per customer: only their first open hands the question to the app's own chooser.
+  // Setting a location is required: until the customer has one, every open asks with the app's
+  // own setup sheet. (The system permission dialog is still asked only once, above.)
   final hasLocation = ref.read(customerSearchFilterProvider).hasLocation;
-  return !asked && !found && !hasLocation
+  return !found && !hasLocation
       ? CustomerLocationOpen.needsChoice
       : CustomerLocationOpen.settled;
 }
