@@ -116,16 +116,31 @@ class GeolocatorLocationService implements LocationService {
         return const LocationResult.unavailable(LocationProblem.denied);
       }
 
+      // A coarse answer straight away when the phone already knows where it is: a position from
+      // the last few minutes is as good as a new one for a district or a kilometre radius, and
+      // waiting for a fresh fix took 8–15 seconds.
+      if (!precise && !kIsWeb) {
+        final last = await Geolocator.getLastKnownPosition().catchError(
+          (Object _) => null,
+        );
+        if (last != null &&
+            DateTime.now().difference(last.timestamp) <
+                const Duration(minutes: 10)) {
+          return LocationResult.found(last.latitude, last.longitude);
+        }
+      }
+
       try {
-        // Low accuracy on purpose. The tightest radius offered is a kilometre, so a coarse fix is
-        // ample, and asking for less precision is faster, kinder to the battery, and satisfied by
-        // the "Approximate" choice Android 12 and later offer.
+        // Balanced accuracy, not the lowest: the low-power mode only uses fixes other apps have
+        // already asked for, so right after location is switched on it waited until it timed
+        // out. Balanced uses Wi-Fi and the mobile network — fast, and still satisfied by the
+        // "Approximate" choice Android 12 and later offer.
         //
         // A pinned job location is the exception: there the whole point is the right house, so it
         // asks for high accuracy and allows the GPS a little longer to settle.
         final position = await Geolocator.getCurrentPosition(
           locationSettings: LocationSettings(
-            accuracy: precise ? LocationAccuracy.high : LocationAccuracy.low,
+            accuracy: precise ? LocationAccuracy.high : LocationAccuracy.medium,
             timeLimit: Duration(seconds: precise ? 15 : 10),
           ),
         );

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -74,7 +76,10 @@ class _SignedIn extends AuthNotifier {
 class _Phone implements LocationService {
   _Phone(this.result);
 
-  final LocationResult result;
+  LocationResult result;
+
+  /// When set, each read waits for it — to see the screen while the phone is being asked.
+  Completer<void>? gate;
   final asks = <bool>[];
   var settingsOpened = 0;
 
@@ -84,6 +89,7 @@ class _Phone implements LocationService {
     bool askPermission = true,
   }) async {
     asks.add(askPermission);
+    await gate?.future;
     return result;
   }
 
@@ -406,7 +412,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(phone.settingsOpened, 1);
-      expect(find.textContaining('Turn on location, then'), findsOneWidget);
+      expect(
+        find.textContaining('Turn on location in settings'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('"Choose state and district" sets one district and closes', (
@@ -431,5 +440,85 @@ void main() {
       expect(c.read(customerSearchFilterProvider).hasLocation, isFalse);
       expect(find.text('Find services near you'), findsNothing);
     });
+
+    testWidgets('while the phone is asked: a spinner, and the sheet stays', (
+      tester,
+    ) async {
+      final phone = _Phone(const LocationResult.found(10.0159, 76.3419))
+        ..gate = Completer<void>();
+      final (c, done) = await openSetup(tester, phone);
+
+      await tester.tap(find.byKey(const ValueKey('location-turn-on')));
+      await tester.pump();
+
+      expect(find.text('Finding your location…'), findsOneWidget);
+      expect(find.text('Find services near you'), findsOneWidget);
+
+      phone.gate!.complete();
+      await tester.pumpAndSettle();
+      await done;
+
+      expect(c.read(customerHomeLocationProvider).district?.id, 'd-ekm');
+      expect(find.text('Find services near you'), findsNothing);
+      expect(find.text('Your location is set to Ernakulam.'), findsOneWidget);
+    });
+
+    // The report: location switched on in settings, back to the app — and it waited for a second
+    // tap. It now carries on by itself.
+    testWidgets('back from settings: carries on without a second tap', (
+      tester,
+    ) async {
+      final phone = _Phone(
+        const LocationResult.unavailable(LocationProblem.serviceDisabled),
+      );
+      final (c, done) = await openSetup(tester, phone);
+
+      await tester.tap(find.byKey(const ValueKey('location-turn-on')));
+      await tester.pumpAndSettle();
+      expect(phone.settingsOpened, 1);
+
+      // In settings, location goes on; then the customer comes back.
+      phone.result = const LocationResult.found(10.0159, 76.3419);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+      await done;
+
+      expect(phone.asks.length, 2, reason: 'asked again on return, by itself');
+      expect(c.read(customerHomeLocationProvider).district?.id, 'd-ekm');
+      expect(find.text('Find services near you'), findsNothing);
+    });
+
+    testWidgets(
+      'back from settings with location still off: no settings loop',
+      (tester) async {
+        final phone = _Phone(
+          const LocationResult.unavailable(LocationProblem.serviceDisabled),
+        );
+        await openSetup(tester, phone);
+
+        await tester.tap(find.byKey(const ValueKey('location-turn-on')));
+        await tester.pumpAndSettle();
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          phone.settingsOpened,
+          1,
+          reason: 'settings are not reopened by themselves',
+        );
+        expect(find.text('Find services near you'), findsOneWidget);
+        expect(find.byKey(const ValueKey('location-problem')), findsOneWidget);
+      },
+    );
   });
 }

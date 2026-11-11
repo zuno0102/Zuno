@@ -111,7 +111,22 @@ String _problemText(PhoneLocationOutcome outcome) {
   };
 }
 
-enum _SetupChoice { turnOn, pick }
+enum _SetupChoice { located, pick }
+
+/// What one "Turn on location" try came to.
+class _TurnOnResult {
+  const _TurnOnResult.located(this.districtName)
+    : problem = null,
+      openedSettings = false;
+  const _TurnOnResult.failed(this.problem, {this.openedSettings = false})
+    : districtName = null;
+
+  final String? districtName;
+  final String? problem;
+
+  /// The phone's settings were opened to switch location on: try again when the customer is back.
+  final bool openedSettings;
+}
 
 /// Location setup is required: a customer without a location gets this sheet, and it comes back
 /// until one is set — from the phone ("Turn on location") or a district picked by hand. It cannot be
@@ -141,72 +156,151 @@ Future<String?> _setupOnce(
   WidgetRef ref,
   String? problem,
 ) async {
-  final choice = await showModalBottomSheet<_SetupChoice>(
+  final messenger = AppMessenger.of(context);
+  final choice = await showModalBottomSheet<(_SetupChoice, String?)>(
     context: context,
     isDismissible: false,
     enableDrag: false,
     builder: (context) => PopScope(
       canPop: false,
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const ListTile(
-              key: ValueKey('location-first-time'),
-              title: Text('Find services near you'),
-              subtitle: Text(
-                'Turn on your location so we can show services and rentals in your district. '
-                'It is saved to your account.',
-              ),
-            ),
-            if (problem != null)
-              Padding(
-                key: const ValueKey('location-problem'),
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: Text(
-                  problem,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-              child: FilledButton.icon(
-                key: const ValueKey('location-turn-on'),
-                onPressed: () => Navigator.of(context).pop(_SetupChoice.turnOn),
-                icon: const Icon(Icons.my_location),
-                label: const Text('Turn on location'),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
-                ),
-              ),
-            ),
-            ListTile(
-              key: const ValueKey('location-pick'),
-              leading: const Icon(Icons.map_outlined),
-              title: const Text('Choose state and district'),
-              onTap: () => Navigator.of(context).pop(_SetupChoice.pick),
-            ),
-          ],
-        ),
+      child: _LocationSetupSheet(
+        problem: problem,
+        turnOn: ({required bool mayOpenSettings}) =>
+            _turnOnLocation(ref, mayOpenSettings: mayOpenSettings),
       ),
     ),
   );
   if (choice == null || !context.mounted) return problem;
 
-  switch (choice) {
-    case _SetupChoice.turnOn:
-      return _turnOnLocation(context, ref);
-    case _SetupChoice.pick:
-      await _pickHomeDistrict(context, ref);
-      return null;
+  final (kind, name) = choice;
+  if (kind == _SetupChoice.located) {
+    messenger.showSuccess('Your location is set to $name.');
+  } else {
+    await _pickHomeDistrict(context, ref);
+  }
+  return null;
+}
+
+/// The setup sheet itself. "Turn on location" works inside it — a spinner on the button while the
+/// phone is asked — and closes it once the location is set. When the phone's settings had to be
+/// opened, it tries again by itself as soon as the customer comes back to the app.
+class _LocationSetupSheet extends StatefulWidget {
+  const _LocationSetupSheet({required this.problem, required this.turnOn});
+
+  final String? problem;
+  final Future<_TurnOnResult> Function({required bool mayOpenSettings}) turnOn;
+
+  @override
+  State<_LocationSetupSheet> createState() => _LocationSetupSheetState();
+}
+
+class _LocationSetupSheetState extends State<_LocationSetupSheet> {
+  late String? _problem = widget.problem;
+  bool _busy = false;
+  AppLifecycleListener? _backFromSettings;
+
+  @override
+  void dispose() {
+    _backFromSettings?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _turnOn({bool mayOpenSettings = true}) async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _problem = null;
+    });
+    final result = await widget.turnOn(mayOpenSettings: mayOpenSettings);
+    if (!mounted) return;
+
+    if (result.districtName case final name?) {
+      Navigator.of(context).pop((_SetupChoice.located, name));
+      return;
+    }
+    setState(() {
+      _busy = false;
+      _problem = result.problem;
+    });
+
+    // Back from the settings page: carry on without a second tap. Once only — if location is
+    // still off, the settings are not opened again by themselves.
+    if (result.openedSettings) {
+      _backFromSettings?.dispose();
+      _backFromSettings = AppLifecycleListener(
+        onResume: () {
+          _backFromSettings?.dispose();
+          _backFromSettings = null;
+          if (mounted) _turnOn(mayOpenSettings: false);
+        },
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final problem = _problem;
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const ListTile(
+            key: ValueKey('location-first-time'),
+            title: Text('Find services near you'),
+            subtitle: Text(
+              'Turn on your location so we can show services and rentals in your district. '
+              'It is saved to your account.',
+            ),
+          ),
+          if (problem != null)
+            Padding(
+              key: const ValueKey('location-problem'),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(
+                problem,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+            child: FilledButton.icon(
+              key: const ValueKey('location-turn-on'),
+              onPressed: _busy ? null : _turnOn,
+              icon: _busy
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.my_location),
+              label: Text(
+                _busy ? 'Finding your location…' : 'Turn on location',
+              ),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+              ),
+            ),
+          ),
+          ListTile(
+            key: const ValueKey('location-pick'),
+            enabled: !_busy,
+            leading: const Icon(Icons.map_outlined),
+            title: const Text('Choose state and district'),
+            onTap: () => Navigator.of(context).pop((_SetupChoice.pick, null)),
+          ),
+        ],
+      ),
+    );
   }
 }
 
 /// Reads the phone's location — asking for the permission — and saves its district as the
 /// customer's location. On a phone where location is off or blocked, opens the settings page that
-/// turns it on. Returns why no district was set, or null when one was.
-Future<String?> _turnOnLocation(BuildContext context, WidgetRef ref) async {
-  final messenger = AppMessenger.of(context);
+/// turns it on ([mayOpenSettings]).
+Future<_TurnOnResult> _turnOnLocation(
+  WidgetRef ref, {
+  required bool mayOpenSettings,
+}) async {
   final service = ref.read(locationServiceProvider);
   final home = ref.read(customerHomeLocationProvider.notifier);
   try {
@@ -217,23 +311,30 @@ Future<String?> _turnOnLocation(BuildContext context, WidgetRef ref) async {
       askPermission: true,
     );
     if (outcome.district case final district?) {
-      messenger.showSuccess('Your location is set to ${district.name}.');
-      return null;
+      return _TurnOnResult.located(district.name);
     }
     // A phone can take the customer straight to the switch; a browser cannot.
-    if (!kIsWeb) {
+    if (!kIsWeb && mayOpenSettings) {
       if (outcome.problem == LocationProblem.serviceDisabled) {
         await service.openLocationSettings();
-        return 'Turn on location, then come back and tap Turn on location again.';
+        return const _TurnOnResult.failed(
+          'Turn on location in settings and come back — Zuno carries on by itself.',
+          openedSettings: true,
+        );
       }
       if (outcome.problem == LocationProblem.deniedForever) {
         await service.openSettings();
-        return 'Allow location for Zuno in settings, then tap Turn on location again.';
+        return const _TurnOnResult.failed(
+          'Allow location for Zuno in settings and come back — Zuno carries on by itself.',
+          openedSettings: true,
+        );
       }
     }
-    return _problemText(outcome);
+    return _TurnOnResult.failed(_problemText(outcome));
   } on Object {
-    return 'Could not find your district. Check your connection and try again.';
+    return const _TurnOnResult.failed(
+      'Could not find your district. Check your connection and try again.',
+    );
   }
 }
 
