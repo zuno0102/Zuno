@@ -11,6 +11,9 @@ import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_state.dart';
 import 'package:zuno/features/booking/domain/entities/booking_message.dart';
 import 'package:zuno/features/booking/presentation/screens/booking_chat_screen.dart';
+import 'package:zuno/features/catalog/domain/entities/district.dart';
+import 'package:zuno/features/customer/domain/entities/customer_location.dart';
+import 'package:zuno/features/customer/presentation/providers/customer_home_location_provider.dart';
 import 'package:zuno/features/customer/presentation/providers/customer_search_filter_provider.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_payment_card.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_order_actions.dart';
@@ -625,7 +628,7 @@ void main() {
     });
 
     testWidgets(
-      'the location is the app\'s one location, shared with Service',
+      'the pin filter is shared with Service and narrows the search',
       (tester) async {
         final (repository, _, container) = await _pump(
           tester,
@@ -641,7 +644,7 @@ void main() {
             );
         await tester.pumpAndSettle();
 
-        expect(find.text('Ernakulam'), findsWidgets);
+        expect(find.text('Matching rentals near you'), findsOneWidget);
         await tester.enterText(
           find.byKey(const ValueKey('rent-search')),
           'chair',
@@ -649,6 +652,15 @@ void main() {
         await tester.testTextInput.receiveAction(TextInputAction.search);
         await tester.pumpAndSettle();
         expect(repository.searches.last, endsWith('|d-ekm'));
+
+        // Clear takes the whole search away, the district filter included.
+        await tester.tap(find.text('Clear'));
+        await tester.pumpAndSettle();
+        expect(
+          container.read(customerSearchFilterProvider).hasLocation,
+          isFalse,
+        );
+        expect(find.textContaining('Matching rentals'), findsNothing);
       },
     );
 
@@ -658,23 +670,33 @@ void main() {
     });
 
     testWidgets(
-      'a location: "Recommended rentals near you" first, from that district',
+      'their location: "Recommended rentals near you" below the categories',
       (tester) async {
         final (repository, _, container) = await _pump(
           tester,
           const RentalHomeTab(),
+          size: const Size(400, 1600),
         );
         expect(find.text(recommendedRentalsTitle), findsNothing);
 
-        container
-            .read(customerSearchFilterProvider.notifier)
-            .setLocation(
-              stateIds: {'s-kl'},
-              districtIds: {'d-ekm'},
-              primaryDistrictName: 'Ernakulam',
+        await container
+            .read(customerHomeLocationProvider.notifier)
+            .set(
+              const District(
+                id: 'd-ekm',
+                name: 'Ernakulam',
+                stateId: 's-kl',
+                stateName: 'Kerala',
+              ),
+              CustomerLocationSource.gps,
             );
         await tester.pumpAndSettle();
 
+        expect(
+          find.text('Ernakulam'),
+          findsWidgets,
+          reason: 'under the greeting',
+        );
         expect(find.text(recommendedRentalsTitle), findsOneWidget);
         expect(
           find.byKey(const ValueKey('rent-recommended-strip')),
@@ -685,35 +707,44 @@ void main() {
           '-||d-ekm',
           reason: 'no words, no category',
         );
-        // Above the featured items and the home sections.
         expect(
           tester.getTopLeft(find.text(recommendedRentalsTitle)).dy,
-          lessThan(tester.getTopLeft(find.text('Popular categories')).dy),
+          greaterThan(tester.getTopLeft(find.text('Popular categories')).dy),
         );
+        // Not a filter: the listings are not narrowed.
+        expect(
+          container.read(customerSearchFilterProvider).hasLocation,
+          isFalse,
+        );
+        expect(find.textContaining('Matching rentals'), findsNothing);
         expect(tester.takeException(), isNull);
       },
     );
 
-    testWidgets('a search under a location: "Matching rentals near you"', (
-      tester,
-    ) async {
-      final (_, _, container) = await _pump(tester, const RentalHomeTab());
-      container
-          .read(customerSearchFilterProvider.notifier)
-          .setLocation(
-            stateIds: {'s-kl'},
-            districtIds: {'d-ekm'},
-            primaryDistrictName: 'Ernakulam',
-          );
-      await tester.pumpAndSettle();
+    testWidgets(
+      'a search under a filter location: "Matching rentals near you"',
+      (tester) async {
+        final (_, _, container) = await _pump(tester, const RentalHomeTab());
+        container
+            .read(customerSearchFilterProvider.notifier)
+            .setLocation(
+              stateIds: {'s-kl'},
+              districtIds: {'d-ekm'},
+              primaryDistrictName: 'Ernakulam',
+            );
+        await tester.pumpAndSettle();
 
-      await tester.enterText(find.byKey(const ValueKey('rent-search')), 'tent');
-      await tester.testTextInput.receiveAction(TextInputAction.search);
-      await tester.pumpAndSettle();
+        await tester.enterText(
+          find.byKey(const ValueKey('rent-search')),
+          'tent',
+        );
+        await tester.testTextInput.receiveAction(TextInputAction.search);
+        await tester.pumpAndSettle();
 
-      expect(find.text('Matching rentals near you'), findsOneWidget);
-      expect(find.text(recommendedRentalsTitle), findsNothing);
-    });
+        expect(find.text('Matching rentals near you'), findsOneWidget);
+        expect(find.text(recommendedRentalsTitle), findsNothing);
+      },
+    );
   });
 
   group('Item and booking', () {

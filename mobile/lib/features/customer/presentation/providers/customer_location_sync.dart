@@ -9,6 +9,7 @@ import 'package:zuno/features/auth/presentation/providers/auth_state.dart';
 import 'package:zuno/features/catalog/domain/entities/district.dart';
 import 'package:zuno/features/customer/data/datasources/customer_location_api.dart';
 import 'package:zuno/features/customer/domain/entities/customer_location.dart';
+import 'package:zuno/features/customer/presentation/providers/customer_home_location_provider.dart';
 import 'package:zuno/features/customer/presentation/providers/customer_search_filter_provider.dart';
 
 part 'customer_location_sync.g.dart';
@@ -22,22 +23,22 @@ class PhoneLocationOutcome {
   const PhoneLocationOutcome.unavailable(LocationProblem this.problem)
     : district = null;
 
-  /// The district the phone is in, already set as the customer's location.
+  /// The district the phone is in, already handed to whoever asked.
   final District? district;
 
   /// Why the position could not be read; null when it was read.
   final LocationProblem? problem;
 
-  /// Read, but further than any district Zuno serves — the location is left as it was.
+  /// Read, but further than any district Zuno serves — nothing is changed.
   bool get isOutsideArea => district == null && problem == null;
 }
 
-/// Reads where the phone is, turns it into a district, and sets it as the customer's location (read
-/// from the phone). Used on every app open, and by "Use my current location" in the picker.
+/// Reads where the phone is and turns it into a district, handed to [onFound]: the customer's
+/// location (setup and app open) or the search filter (the pin button's "Use my current location").
 Future<PhoneLocationOutcome> locateCustomerFromPhone({
   required LocationService locationService,
   required CustomerLocationApi api,
-  required CustomerSearchFilterNotifier filter,
+  required void Function(District district) onFound,
   required bool askPermission,
 }) async {
   final position = await locationService.current(askPermission: askPermission);
@@ -53,7 +54,7 @@ Future<PhoneLocationOutcome> locateCustomerFromPhone({
   );
   if (district == null) return const PhoneLocationOutcome.outsideArea();
 
-  filter.setDetectedLocation(district);
+  onFound(district);
   return PhoneLocationOutcome.found(district);
 }
 
@@ -61,34 +62,33 @@ Future<PhoneLocationOutcome> locateCustomerFromPhone({
 /// phone or browser starts from their own account and phone, never from the last person's district.
 const customerLocationOwnerKey = 'customer_location_owner';
 
-/// Whether this customer has been asked for the location permission on app open. Asked once per
-/// customer: after that the open-time check only reads the position when it was allowed, and never
-/// asks again — asking on every launch is how people learn to refuse everything.
+/// Whether this customer has been shown the system location permission dialog on app open. Shown
+/// once per customer; after that the app asks with its own setup sheet, which explains itself.
 String customerLocationAskedKey(String userId) =>
     'customer_location_permission_asked:$userId';
 
 /// How the open-time check ended, so the app knows whether to ask the customer itself.
 enum CustomerLocationOpen {
-  /// A location is set, or the customer set one up and later chose to see everywhere.
+  /// The customer's location is set.
   settled,
 
-  /// The customer has never set a location, and the phone or browser gave none: the permission
-  /// is blocked, no fix came, or the place is outside the area. Setup is required, so the app
-  /// shows its setup sheet until they set one. Browsers remember "Block" per site, so on the web
-  /// the automatic ask can end without any popup at all.
+  /// No location yet, and the phone or browser gave none: the permission is blocked, no fix came,
+  /// or the place is outside the area. Setting it is required, so the app shows its setup sheet
+  /// until they do. Browsers remember "Block" per site, so on the web the automatic ask can end
+  /// without any popup at all.
   needsChoice,
 }
 
 /// Runs when the customer app opens, and again whenever a different customer signs in.
 ///
-/// 1. A location on this device that belongs to another customer is forgotten.
+/// 1. A location on this device that belongs to another customer is forgotten (theirs and their
+///    search filter).
 /// 2. A device with no location of its own takes the one kept in the customer's account.
-/// 3. Unless the customer picked or cleared a location themselves, the phone's position is read —
-///    asking for the permission the first time for this customer — and becomes their district.
-/// 4. From then on, every change to the location is saved to their account.
+/// 3. Unless the customer picked their district by hand, the phone's position is read — asking for
+///    the permission the first time for this customer — and becomes their location.
+/// 4. From then on, every change to their location is saved to their account.
 ///
-/// Never fails out loud: no permission, no signal or no network leaves the location as it was, and
-/// the customer can still pick one by hand.
+/// Only the customer's location: the search filter (the pin button) is never set from here.
 @Riverpod(keepAlive: true)
 Future<CustomerLocationOpen> customerLocationSync(Ref ref) async {
   final userId = ref.watch(
@@ -101,42 +101,44 @@ Future<CustomerLocationOpen> customerLocationSync(Ref ref) async {
   );
   if (userId == null) return CustomerLocationOpen.settled;
 
+  final home = ref.read(customerHomeLocationProvider.notifier);
   final filter = ref.read(customerSearchFilterProvider.notifier);
   final api = ref.read(customerLocationApiProvider);
+  await home.ready;
   await filter.ready;
   final store = await SharedPreferences.getInstance();
 
   // 1. Someone else's location on this device. A device from before owners were kept has its
   //    location adopted by whoever signs in first.
   final owner = store.getString(customerLocationOwnerKey);
-  if (owner != null && owner != userId) await filter.forget();
+  if (owner != null && owner != userId) {
+    await home.forget();
+    await filter.forget();
+  }
   await store.setString(customerLocationOwnerKey, userId);
 
-  // 2. The account, for a device that has never been told anything for this customer.
-  if (ref.read(customerSearchFilterProvider).locationSource == null) {
+  // 2. The account, for a device that holds nothing for this customer.
+  if (!ref.read(customerHomeLocationProvider).isSet) {
     try {
-      filter.applySaved(await api.myLocation());
+      await home.applySaved(await api.myLocation());
     } on Object {
-      // Offline, or a server without the field yet: the device simply starts at everywhere.
+      // Offline, or a server without the field yet: the setup below asks instead.
     }
   }
 
   // 4. Every change from here on is saved to the account — but not the one just read from it.
-  var saved = _accountKey(ref.read(customerSearchFilterProvider));
-  ref.listen(customerSearchFilterProvider, (_, next) {
-    final source = next.locationSource;
+  var saved = _accountKey(ref.read(customerHomeLocationProvider));
+  ref.listen(customerHomeLocationProvider, (_, next) {
+    final source = next.source;
     final key = _accountKey(next);
-    if (source == null || key == saved) return;
+    if (source == null || !next.isSet || key == saved) return;
     saved = key;
-    unawaited(
-      api.save(next.districtIds.firstOrNull, source).catchError((Object _) {}),
-    );
+    unawaited(api.save(next.district!.id, source).catchError((Object _) {}));
   });
 
-  // 3. The phone — unless the customer chose a place, or everywhere, themselves.
-  final source = ref.read(customerSearchFilterProvider).locationSource;
-  if (source == CustomerLocationSource.manual ||
-      source == CustomerLocationSource.cleared) {
+  // 3. The phone — unless the customer picked their district themselves.
+  final current = ref.read(customerHomeLocationProvider);
+  if (current.isSet && current.source == CustomerLocationSource.manual) {
     return CustomerLocationOpen.settled;
   }
 
@@ -144,26 +146,23 @@ Future<CustomerLocationOpen> customerLocationSync(Ref ref) async {
   final asked = store.getBool(askedKey) ?? false;
   await store.setBool(askedKey, true);
 
-  var found = false;
   try {
-    final outcome = await locateCustomerFromPhone(
+    await locateCustomerFromPhone(
       locationService: ref.read(locationServiceProvider),
       api: api,
-      filter: filter,
+      onFound: (d) => home.set(d, CustomerLocationSource.gps),
       askPermission: !asked,
     );
-    found = outcome.district != null;
   } on Object {
     // No district found is the same as no location read: nothing changes.
   }
 
   // Setting a location is required: until the customer has one, every open asks with the app's
   // own setup sheet. (The system permission dialog is still asked only once, above.)
-  final hasLocation = ref.read(customerSearchFilterProvider).hasLocation;
-  return !found && !hasLocation
-      ? CustomerLocationOpen.needsChoice
-      : CustomerLocationOpen.settled;
+  return ref.read(customerHomeLocationProvider).isSet
+      ? CustomerLocationOpen.settled
+      : CustomerLocationOpen.needsChoice;
 }
 
-String _accountKey(CustomerSearchFilter filter) =>
-    '${filter.locationSource?.code}|${filter.districtIds.firstOrNull}';
+String _accountKey(CustomerHomeLocation location) =>
+    '${location.source?.code}|${location.district?.id}';

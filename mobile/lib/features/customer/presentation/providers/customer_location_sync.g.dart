@@ -10,28 +10,28 @@ part of 'customer_location_sync.dart';
 // ignore_for_file: type=lint, type=warning
 /// Runs when the customer app opens, and again whenever a different customer signs in.
 ///
-/// 1. A location on this device that belongs to another customer is forgotten.
+/// 1. A location on this device that belongs to another customer is forgotten (theirs and their
+///    search filter).
 /// 2. A device with no location of its own takes the one kept in the customer's account.
-/// 3. Unless the customer picked or cleared a location themselves, the phone's position is read —
-///    asking for the permission the first time for this customer — and becomes their district.
-/// 4. From then on, every change to the location is saved to their account.
+/// 3. Unless the customer picked their district by hand, the phone's position is read — asking for
+///    the permission the first time for this customer — and becomes their location.
+/// 4. From then on, every change to their location is saved to their account.
 ///
-/// Never fails out loud: no permission, no signal or no network leaves the location as it was, and
-/// the customer can still pick one by hand.
+/// Only the customer's location: the search filter (the pin button) is never set from here.
 
 @ProviderFor(customerLocationSync)
 final customerLocationSyncProvider = CustomerLocationSyncProvider._();
 
 /// Runs when the customer app opens, and again whenever a different customer signs in.
 ///
-/// 1. A location on this device that belongs to another customer is forgotten.
+/// 1. A location on this device that belongs to another customer is forgotten (theirs and their
+///    search filter).
 /// 2. A device with no location of its own takes the one kept in the customer's account.
-/// 3. Unless the customer picked or cleared a location themselves, the phone's position is read —
-///    asking for the permission the first time for this customer — and becomes their district.
-/// 4. From then on, every change to the location is saved to their account.
+/// 3. Unless the customer picked their district by hand, the phone's position is read — asking for
+///    the permission the first time for this customer — and becomes their location.
+/// 4. From then on, every change to their location is saved to their account.
 ///
-/// Never fails out loud: no permission, no signal or no network leaves the location as it was, and
-/// the customer can still pick one by hand.
+/// Only the customer's location: the search filter (the pin button) is never set from here.
 
 final class CustomerLocationSyncProvider
     extends
@@ -45,14 +45,14 @@ final class CustomerLocationSyncProvider
         $FutureProvider<CustomerLocationOpen> {
   /// Runs when the customer app opens, and again whenever a different customer signs in.
   ///
-  /// 1. A location on this device that belongs to another customer is forgotten.
+  /// 1. A location on this device that belongs to another customer is forgotten (theirs and their
+  ///    search filter).
   /// 2. A device with no location of its own takes the one kept in the customer's account.
-  /// 3. Unless the customer picked or cleared a location themselves, the phone's position is read —
-  ///    asking for the permission the first time for this customer — and becomes their district.
-  /// 4. From then on, every change to the location is saved to their account.
+  /// 3. Unless the customer picked their district by hand, the phone's position is read — asking for
+  ///    the permission the first time for this customer — and becomes their location.
+  /// 4. From then on, every change to their location is saved to their account.
   ///
-  /// Never fails out loud: no permission, no signal or no network leaves the location as it was, and
-  /// the customer can still pick one by hand.
+  /// Only the customer's location: the search filter (the pin button) is never set from here.
   CustomerLocationSyncProvider._()
     : super(
         from: null,
@@ -80,4 +80,4 @@ final class CustomerLocationSyncProvider
 }
 
 String _$customerLocationSyncHash() =>
-    r'677d36807b09e065f0d6ed29eaa408201125e5f7';
+    r'44e738167c1c13e1781e86e8e39c93f3b79e058c';

@@ -1,5 +1,7 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:zuno/features/customer/domain/entities/service_listing.dart';
+import 'package:zuno/features/customer/presentation/providers/customer_home_location_provider.dart';
 import 'package:zuno/features/customer/presentation/providers/customer_providers.dart';
 import 'package:zuno/features/customer/presentation/providers/customer_search_filter_provider.dart';
 
@@ -49,4 +51,18 @@ class ServiceSearchNotifier extends _$ServiceSearchNotifier {
           ),
     );
   }
+}
+
+/// "Recommended services near you": what is offered in the customer's own district — the one set up
+/// on first open and kept in their account. Not the search filter: the listings below are unchanged
+/// by it. Empty when no location is set.
+@Riverpod(keepAlive: true)
+Future<List<ServiceListing>> recommendedServices(Ref ref) {
+  final districtId = ref.watch(
+    customerHomeLocationProvider.select((l) => l.district?.id),
+  );
+  if (districtId == null) return Future.value(const []);
+  return ref
+      .watch(customerRepositoryProvider)
+      .searchServices(districtIds: [districtId]);
 }

@@ -5,10 +5,9 @@ import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_state.dart';
+import 'package:zuno/features/customer/presentation/providers/customer_home_location_provider.dart';
 import 'package:zuno/features/customer/presentation/providers/customer_search_filter_provider.dart';
 import 'package:zuno/features/customer/presentation/screens/customer_home_header.dart';
-import 'package:zuno/features/customer/presentation/screens/customer_search_tab.dart'
-    show locationSummary;
 import 'package:zuno/features/customer/presentation/widgets/customer_location_picker.dart';
 import 'package:zuno/features/rental/domain/entities/rental_customer.dart';
 import 'package:zuno/features/rental/domain/entities/rental_item.dart';
@@ -71,6 +70,7 @@ class _RentalHomeTabState extends ConsumerState<RentalHomeTab> {
     ref.read(rentalHomeSeedProvider.notifier).reroll();
     ref
       ..invalidate(rentalBannersProvider)
+      ..invalidate(rentalRecommendedProvider)
       ..invalidate(rentalSearchProvider);
     await ref.read(rentalHomeProvider.future);
   }
@@ -124,10 +124,10 @@ class _RentalHomeTabState extends ConsumerState<RentalHomeTab> {
                 SliverToBoxAdapter(
                   child: CustomerHomeHeader(
                     user: auth is AuthAuthenticated ? auth.user : null,
-                    location: locationSummary(
-                      primaryName: location.primaryDistrictName,
-                      districtCount: location.districtIds.length,
-                    ),
+                    location: ref
+                        .watch(customerHomeLocationProvider)
+                        .district
+                        ?.name,
                     trailing: widget.notificationBell,
                   ),
                 ),
@@ -169,12 +169,7 @@ class _RentalHomeTabState extends ConsumerState<RentalHomeTab> {
                   ),
                 ),
 
-                // 3. First on the page: what can be rented where the customer is, while nothing is
-                // being searched — as on the Service home.
-                if (location.hasLocation && !browse.isSearching)
-                  ..._recommended(location),
-
-                // 4. Featured: a few items with photos, the same all day.
+                // 3. Featured: a few items with photos, the same all day.
                 const SliverToBoxAdapter(child: _BannerCarousel()),
 
                 // 4. Categories, from the Rent server's table.
@@ -204,8 +199,14 @@ class _RentalHomeTabState extends ConsumerState<RentalHomeTab> {
                       ),
                 ),
 
-                // 5. What was asked for, above the home — the home below stays to browse.
-                if (browse.isSearching) ..._searchResults(browse),
+                // 5. Right under the categories: what can be rented in the customer's own district,
+                // only when something can — as on the Service home. Not while searching.
+                if (!browse.isSearching && !location.hasLocation)
+                  ..._recommended(),
+
+                // 6. What was asked for, above the home — the home below stays to browse.
+                if (browse.isSearching || location.hasLocation)
+                  ..._searchResults(browse),
 
                 // 6. The home: strips and grids, as the server's section table lays them out.
                 ...ref
@@ -278,67 +279,36 @@ class _RentalHomeTabState extends ConsumerState<RentalHomeTab> {
     );
   }
 
-  /// "Recommended rentals near you": everything offered in the customer's district, in one strip
-  /// — a strip, not a grid, so the featured items and categories below stay in reach.
-  List<Widget> _recommended(CustomerSearchFilter location) {
-    final near = ref.watch(rentalSearchProvider);
+  /// "Recommended rentals near you": what can be rented in the customer's own district, in one
+  /// strip. Nothing at all while it loads or when the district has nothing listed — the page below
+  /// is the same either way.
+  List<Widget> _recommended() {
+    final cards = ref.watch(rentalRecommendedProvider).value ?? const [];
+    if (cards.isEmpty) return const [];
     return [
       SliverToBoxAdapter(
         child: SectionHeader(
           title: recommendedRentalsTitle,
-          count: near.value?.length,
+          count: cards.length,
         ),
       ),
       SliverToBoxAdapter(
-        child: near.when(
-          loading: () => const SizedBox(
-            height: 120,
-            child: Center(child: CircularProgressIndicator()),
-          ),
-          error: (error, _) => Padding(
+        child: SizedBox(
+          height: 236,
+          child: ListView.separated(
+            key: const ValueKey('rent-recommended-strip'),
+            scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: ErrorBanner(message: error.toString()),
+            itemCount: cards.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 12),
+            itemBuilder: (context, index) => SizedBox(
+              width: 168,
+              child: RentalItemCard(
+                card: cards[index],
+                onTap: () => _open(cards[index]),
+              ),
+            ),
           ),
-          data: (cards) => cards.isEmpty
-              ? Padding(
-                  key: const ValueKey('rent-recommended-empty'),
-                  padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Nothing to rent near '
-                          '${location.primaryDistrictName ?? 'you'} yet. '
-                          'Everything else is below.',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () => ref
-                            .read(customerSearchFilterProvider.notifier)
-                            .clearLocation(),
-                        child: const Text('Search everywhere'),
-                      ),
-                    ],
-                  ),
-                )
-              : SizedBox(
-                  height: 236,
-                  child: ListView.separated(
-                    key: const ValueKey('rent-recommended-strip'),
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: cards.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: 12),
-                    itemBuilder: (context, index) => SizedBox(
-                      width: 168,
-                      child: RentalItemCard(
-                        card: cards[index],
-                        onTap: () => _open(cards[index]),
-                      ),
-                    ),
-                  ),
-                ),
         ),
       ),
     ];
@@ -352,9 +322,14 @@ class _RentalHomeTabState extends ConsumerState<RentalHomeTab> {
         ),
         count: ref.watch(rentalSearchProvider).value?.length,
         actionLabel: 'Clear',
+        // The whole search, the district filter included — the customer's own location is kept
+        // apart and is not touched.
         onAction: () {
           _search.clear();
           ref.read(rentalBrowseProvider.notifier).clear();
+          if (ref.read(customerSearchFilterProvider).hasLocation) {
+            ref.read(customerSearchFilterProvider.notifier).clearLocation();
+          }
         },
       ),
     ),

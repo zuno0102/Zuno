@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
+import 'package:zuno/features/auth/presentation/providers/auth_state.dart';
 import 'package:zuno/features/customer/presentation/providers/customer_location_sync.dart';
 import 'package:zuno/features/customer/presentation/screens/customer_dashboard_shell.dart';
 import 'package:zuno/features/customer/presentation/widgets/customer_location_picker.dart';
@@ -31,7 +33,8 @@ class CustomerAppShell extends ConsumerWidget {
     // Location setup is required: a customer without one gets a setup sheet that stays until they
     // set it — a tap on "Use my current location" makes the browser show its permission popup.
     ref.listen(customerLocationSyncProvider, (_, next) {
-      if (next.value == CustomerLocationOpen.needsChoice && context.mounted) {
+      if (shouldAskCustomerLocation(next, ref.read(authProvider).value) &&
+          context.mounted) {
         unawaited(requireCustomerLocation(context, ref));
       }
     });
@@ -79,6 +82,17 @@ class CustomerAppShell extends ConsumerWidget {
     );
   }
 }
+
+/// Whether the app should show the location setup sheet: only once the open-time check has
+/// finished and says so, for a customer still signed in. While the check re-runs — on logout — it
+/// still carries its last answer, and acting on that put the setup sheet over the login screen.
+bool shouldAskCustomerLocation(
+  AsyncValue<CustomerLocationOpen> check,
+  AuthState? auth,
+) =>
+    !check.isLoading &&
+    check.value == CustomerLocationOpen.needsChoice &&
+    auth is AuthAuthenticated;
 
 /// The two business lines as two cards side by side with a gap between — the chosen one filled in
 /// the theme's colour, the other a plain card — so the switch reads as a pair of big doors.

@@ -109,3 +109,56 @@ abstract class _$ServiceSearchNotifier
     return element.handleCreate(ref, build);
   }
 }
+
+/// "Recommended services near you": what is offered in the customer's own district — the one set up
+/// on first open and kept in their account. Not the search filter: the listings below are unchanged
+/// by it. Empty when no location is set.
+
+@ProviderFor(recommendedServices)
+final recommendedServicesProvider = RecommendedServicesProvider._();
+
+/// "Recommended services near you": what is offered in the customer's own district — the one set up
+/// on first open and kept in their account. Not the search filter: the listings below are unchanged
+/// by it. Empty when no location is set.
+
+final class RecommendedServicesProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<ServiceListing>>,
+          List<ServiceListing>,
+          FutureOr<List<ServiceListing>>
+        >
+    with
+        $FutureModifier<List<ServiceListing>>,
+        $FutureProvider<List<ServiceListing>> {
+  /// "Recommended services near you": what is offered in the customer's own district — the one set up
+  /// on first open and kept in their account. Not the search filter: the listings below are unchanged
+  /// by it. Empty when no location is set.
+  RecommendedServicesProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'recommendedServicesProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$recommendedServicesHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<ServiceListing>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<ServiceListing>> create(Ref ref) {
+    return recommendedServices(ref);
+  }
+}
+
+String _$recommendedServicesHash() =>
+    r'51c6c3358ec02d007645cdbed2be708e2c1dd7fa';

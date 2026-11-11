@@ -2,52 +2,163 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/location/location_service.dart';
+import 'package:zuno/features/catalog/domain/entities/district.dart';
 import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
 import 'package:zuno/features/customer/data/datasources/customer_location_api.dart';
+import 'package:zuno/features/customer/domain/entities/customer_location.dart';
+import 'package:zuno/features/customer/presentation/providers/customer_home_location_provider.dart';
 import 'package:zuno/features/customer/presentation/providers/customer_location_sync.dart';
 import 'package:zuno/features/customer/presentation/providers/customer_search_filter_provider.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/multi_select_sheet.dart';
+import 'package:zuno/shared/widgets/select_field.dart';
 
 enum _LocationChoice { current, pick, everywhere }
 
-/// Where the customer is looking: their phone's location, districts they pick, or everywhere — kept
-/// in [customerSearchFilterProvider]. One location for the whole customer app: the Service home and
-/// the Rent home both search where this says.
-///
-/// [firstTime] is the setup version, for a customer with no location yet (see
-/// [requireCustomerLocation]): it says why it is asking, cannot be closed, and offers no way out
-/// but a location — the tap on "Use my current location" makes the browser show its popup. There,
-/// [problem] is why the last try gave no location, shown inside the sheet (a message at the bottom
-/// of the screen would sit behind it), and the result is the new problem, if any.
-Future<String?> pickCustomerLocation(
-  BuildContext context,
-  WidgetRef ref, {
-  bool firstTime = false,
-  String? problem,
-}) async {
+/// The search filter behind the pin button: the phone's district, districts picked by hand, or
+/// everywhere — kept in [customerSearchFilterProvider], on this device. A filter only: it does not
+/// change the customer's own location (set up on first open, kept in their account).
+Future<void> pickCustomerLocation(BuildContext context, WidgetRef ref) async {
   final hasLocation = ref.read(customerSearchFilterProvider).hasLocation;
   final choice = await showModalBottomSheet<_LocationChoice>(
     context: context,
-    isDismissible: !firstTime,
-    enableDrag: !firstTime,
+    builder: (context) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const ListTile(title: Text('Search where?')),
+          ListTile(
+            key: const ValueKey('location-use-current'),
+            leading: const Icon(Icons.my_location),
+            title: const Text('Use my current location'),
+            onTap: () => Navigator.of(context).pop(_LocationChoice.current),
+          ),
+          ListTile(
+            key: const ValueKey('location-pick'),
+            leading: const Icon(Icons.map_outlined),
+            title: const Text('Choose state and district'),
+            onTap: () => Navigator.of(context).pop(_LocationChoice.pick),
+          ),
+          if (hasLocation)
+            ListTile(
+              key: const ValueKey('location-everywhere'),
+              leading: const Icon(Icons.public),
+              title: const Text('Show everywhere'),
+              onTap: () =>
+                  Navigator.of(context).pop(_LocationChoice.everywhere),
+            ),
+        ],
+      ),
+    ),
+  );
+  if (choice == null || !context.mounted) return;
+
+  switch (choice) {
+    case _LocationChoice.current:
+      await _filterByCurrentLocation(context, ref);
+    case _LocationChoice.pick:
+      await _pickDistricts(context, ref);
+    case _LocationChoice.everywhere:
+      ref.read(customerSearchFilterProvider.notifier).clearLocation();
+  }
+}
+
+/// Narrows the search to the district the phone is in, saying in a line what happened.
+Future<void> _filterByCurrentLocation(
+  BuildContext context,
+  WidgetRef ref,
+) async {
+  final messenger = AppMessenger.of(context);
+  try {
+    final outcome = await locateCustomerFromPhone(
+      locationService: ref.read(locationServiceProvider),
+      api: ref.read(customerLocationApiProvider),
+      onFound: ref
+          .read(customerSearchFilterProvider.notifier)
+          .setDetectedLocation,
+      askPermission: true,
+    );
+    if (outcome.district case final district?) {
+      messenger.showSuccess('Showing listings near ${district.name}.');
+    } else {
+      messenger.showInfo(_problemText(outcome));
+    }
+  } on Object {
+    messenger.showFailure(
+      'Could not find your district. Check your connection and try again.',
+    );
+  }
+}
+
+String _problemText(PhoneLocationOutcome outcome) {
+  if (outcome.isOutsideArea) {
+    return 'Zuno does not serve where you are yet. Choose a district instead.';
+  }
+  return switch (outcome.problem) {
+    // A browser remembers "Block" for the site and never shows the popup again by itself.
+    LocationProblem.deniedForever when kIsWeb =>
+      'Location is blocked for this website. Click the icon left of the web address, '
+          'allow Location and reload — or choose a district.',
+    LocationProblem.deniedForever =>
+      'Location is blocked for Zuno. Allow it in your phone settings, or choose a district.',
+    LocationProblem.serviceDisabled when kIsWeb =>
+      'Location is off on this computer or browser. Turn it on, or choose a district.',
+    LocationProblem.serviceDisabled =>
+      'Location is off on your phone. Turn it on, or choose a district.',
+    LocationProblem.denied =>
+      'Allow location to find services near you, or choose a district.',
+    _ => 'Could not read your location. Try again, or choose a district.',
+  };
+}
+
+enum _SetupChoice { turnOn, pick }
+
+/// Location setup is required: a customer without a location gets this sheet, and it comes back
+/// until one is set — from the phone ("Turn on location") or a district picked by hand. It cannot be
+/// closed. Why the last try gave nothing is shown inside it (a message at the bottom of the screen
+/// would sit behind it).
+///
+/// Sets the customer's own location ([customerHomeLocationProvider]), saved to their account — never
+/// the search filter.
+Future<void> requireCustomerLocation(
+  BuildContext context,
+  WidgetRef ref,
+) async {
+  String? problem;
+  while (context.mounted && !ref.read(customerHomeLocationProvider).isSet) {
+    try {
+      problem = await _setupOnce(context, ref, problem);
+    } on Object {
+      // The district list failed to load (offline): the sheet comes back so they can try again.
+      problem =
+          'Could not load the districts. Check your connection and try again.';
+    }
+  }
+}
+
+Future<String?> _setupOnce(
+  BuildContext context,
+  WidgetRef ref,
+  String? problem,
+) async {
+  final choice = await showModalBottomSheet<_SetupChoice>(
+    context: context,
+    isDismissible: false,
+    enableDrag: false,
     builder: (context) => PopScope(
-      canPop: !firstTime,
+      canPop: false,
       child: SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (firstTime)
-              const ListTile(
-                key: ValueKey('location-first-time'),
-                title: Text('Find services near you'),
-                subtitle: Text(
-                  'Set your location to see services and rentals in your district first. '
-                  'You can change it any time with the location button.',
-                ),
-              )
-            else
-              const ListTile(title: Text('Where are you?')),
+            const ListTile(
+              key: ValueKey('location-first-time'),
+              title: Text('Find services near you'),
+              subtitle: Text(
+                'Turn on your location so we can show services and rentals in your district. '
+                'It is saved to your account.',
+              ),
+            ),
             if (problem != null)
               Padding(
                 key: const ValueKey('location-problem'),
@@ -57,119 +168,103 @@ Future<String?> pickCustomerLocation(
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
               ),
-            ListTile(
-              key: const ValueKey('location-use-current'),
-              leading: const Icon(Icons.my_location),
-              title: const Text('Use my current location'),
-              onTap: () => Navigator.of(context).pop(_LocationChoice.current),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+              child: FilledButton.icon(
+                key: const ValueKey('location-turn-on'),
+                onPressed: () => Navigator.of(context).pop(_SetupChoice.turnOn),
+                icon: const Icon(Icons.my_location),
+                label: const Text('Turn on location'),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                ),
+              ),
             ),
             ListTile(
               key: const ValueKey('location-pick'),
               leading: const Icon(Icons.map_outlined),
               title: const Text('Choose state and district'),
-              onTap: () => Navigator.of(context).pop(_LocationChoice.pick),
+              onTap: () => Navigator.of(context).pop(_SetupChoice.pick),
             ),
-            if (hasLocation && !firstTime)
-              ListTile(
-                key: const ValueKey('location-everywhere'),
-                leading: const Icon(Icons.public),
-                title: const Text('Show everywhere'),
-                onTap: () =>
-                    Navigator.of(context).pop(_LocationChoice.everywhere),
-              ),
           ],
         ),
       ),
     ),
   );
-  if (choice == null || !context.mounted) return null;
+  if (choice == null || !context.mounted) return problem;
 
   switch (choice) {
-    case _LocationChoice.current:
-      return useCurrentCustomerLocation(context, ref, announce: !firstTime);
-    case _LocationChoice.pick:
-      await _pickDistricts(context, ref);
-    case _LocationChoice.everywhere:
-      ref.read(customerSearchFilterProvider.notifier).clearLocation();
-  }
-  return null;
-}
-
-/// Location setup is required: the setup sheet comes back until the customer has a location — from
-/// the phone, or a state and district picked by hand. A blocked permission, a place outside the
-/// area or a district list closed half-way leaves the question open, so it is asked again.
-///
-/// Once set, the customer can still widen the search to everywhere from the location button.
-Future<void> requireCustomerLocation(
-  BuildContext context,
-  WidgetRef ref,
-) async {
-  String? problem;
-  while (context.mounted &&
-      !ref.read(customerSearchFilterProvider).hasLocation) {
-    try {
-      problem = await pickCustomerLocation(
-        context,
-        ref,
-        firstTime: true,
-        problem: problem,
-      );
-    } on Object {
-      // The district list failed to load (offline): the sheet comes back so they can try again.
-      problem =
-          'Could not load the districts. Check your connection and try again.';
-    }
+    case _SetupChoice.turnOn:
+      return _turnOnLocation(context, ref);
+    case _SetupChoice.pick:
+      await _pickHomeDistrict(context, ref);
+      return null;
   }
 }
 
-/// Reads the phone's location now — asking for the permission if need be — and sets its district.
-///
-/// Returns why no district was set, or null when one was. With [announce] it also says so in a
-/// line at the bottom of the screen; the setup sheet shows the reason inside itself instead.
-Future<String?> useCurrentCustomerLocation(
-  BuildContext context,
-  WidgetRef ref, {
-  bool announce = true,
-}) async {
+/// Reads the phone's location — asking for the permission — and saves its district as the
+/// customer's location. On a phone where location is off or blocked, opens the settings page that
+/// turns it on. Returns why no district was set, or null when one was.
+Future<String?> _turnOnLocation(BuildContext context, WidgetRef ref) async {
   final messenger = AppMessenger.of(context);
-  String? problem;
+  final service = ref.read(locationServiceProvider);
+  final home = ref.read(customerHomeLocationProvider.notifier);
   try {
     final outcome = await locateCustomerFromPhone(
-      locationService: ref.read(locationServiceProvider),
+      locationService: service,
       api: ref.read(customerLocationApiProvider),
-      filter: ref.read(customerSearchFilterProvider.notifier),
+      onFound: (d) => home.set(d, CustomerLocationSource.gps),
       askPermission: true,
     );
     if (outcome.district case final district?) {
-      messenger.showSuccess('Showing listings near ${district.name}.');
+      messenger.showSuccess('Your location is set to ${district.name}.');
       return null;
-    } else if (outcome.isOutsideArea) {
-      problem =
-          'Zuno does not serve where you are yet. Choose a district instead.';
-    } else {
-      problem = (switch (outcome.problem) {
-        // A browser remembers "Block" for the site and never shows the popup again by itself.
-        LocationProblem.deniedForever when kIsWeb =>
-          'Location is blocked for this website. Click the icon left of the web address, '
-              'allow Location and reload — or choose a district.',
-        LocationProblem.deniedForever =>
-          'Location is blocked for Zuno. Allow it in your phone settings, or choose a district.',
-        LocationProblem.serviceDisabled when kIsWeb =>
-          'Location is off on this computer or browser. Turn it on, or choose a district.',
-        LocationProblem.serviceDisabled =>
-          'Location is off on your phone. Turn it on, or choose a district.',
-        LocationProblem.denied =>
-          'Zuno needs your location for this. You can choose a district instead.',
-        _ => 'Could not read your location. Try again, or choose a district.',
-      });
     }
-    if (announce) messenger.showInfo(problem);
+    // A phone can take the customer straight to the switch; a browser cannot.
+    if (!kIsWeb) {
+      if (outcome.problem == LocationProblem.serviceDisabled) {
+        await service.openLocationSettings();
+        return 'Turn on location, then come back and tap Turn on location again.';
+      }
+      if (outcome.problem == LocationProblem.deniedForever) {
+        await service.openSettings();
+        return 'Allow location for Zuno in settings, then tap Turn on location again.';
+      }
+    }
+    return _problemText(outcome);
   } on Object {
-    problem =
-        'Could not find your district. Check your connection and try again.';
-    if (announce) messenger.showFailure(problem);
+    return 'Could not find your district. Check your connection and try again.';
   }
-  return problem;
+}
+
+/// One state, then one district, as the customer's location.
+Future<void> _pickHomeDistrict(BuildContext context, WidgetRef ref) async {
+  final states = await ref.read(locationStatesProvider.future);
+  if (!context.mounted) return;
+
+  final state = await showSelectSheet<String>(
+    context,
+    title: 'Your state',
+    options: [for (final s in states) SelectOption(s.id, s.name)],
+  );
+  if (state == null || !context.mounted) return;
+
+  final districts = await ref.read(
+    districtsForStatesProvider(state.value).future,
+  );
+  if (!context.mounted) return;
+
+  final picked = await showSelectSheet<String>(
+    context,
+    title: 'Your district',
+    options: [for (final d in districts) SelectOption(d.id, d.name)],
+  );
+  if (picked == null) return;
+
+  final District district = districts.firstWhere((d) => d.id == picked.value);
+  await ref
+      .read(customerHomeLocationProvider.notifier)
+      .set(district, CustomerLocationSource.manual);
 }
 
 /// States, then districts, picked by hand.

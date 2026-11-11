@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_state.dart';
+import 'package:zuno/features/customer/presentation/providers/customer_home_location_provider.dart';
 import 'package:zuno/features/customer/presentation/providers/customer_search_filter_provider.dart';
 import 'package:zuno/features/customer/presentation/providers/daily_banners_provider.dart';
 import 'package:zuno/features/customer/presentation/providers/service_search_notifier.dart';
@@ -178,6 +179,7 @@ class _CustomerSearchTabState extends ConsumerState<CustomerSearchTab> {
       // what a pull means.
       onRefresh: () async {
         ref.read(homeShuffleSeedProvider.notifier).reroll();
+        ref.invalidate(recommendedServicesProvider);
         await ref.read(serviceSearchProvider.notifier).refresh();
       },
       child: CustomScrollView(
@@ -185,14 +187,11 @@ class _CustomerSearchTabState extends ConsumerState<CustomerSearchTab> {
         // Scrolling the results is as clear a sign as any that somebody has finished typing.
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         slivers: [
-          // 1. Who is signed in, and where results are drawn from.
+          // 1. Who is signed in, and where they are — their own location, kept in their account.
           SliverToBoxAdapter(
             child: CustomerHomeHeader(
               user: user,
-              location: locationSummary(
-                primaryName: filter.primaryDistrictName,
-                districtCount: filter.districtIds.length,
-              ),
+              location: ref.watch(customerHomeLocationProvider).district?.name,
               trailing: widget.notificationBell,
             ),
           ),
@@ -226,13 +225,7 @@ class _CustomerSearchTabState extends ConsumerState<CustomerSearchTab> {
             ),
           ),
 
-          // 3. First on the page: what is offered where the customer is — their district, read from
-          // the phone or picked. Only while nothing is being searched; a search gets its own band
-          // below, under the headings it has always had.
-          if (filter.hasLocation && !filter.hasSearchTerms)
-            ..._recommendedSlivers(filter, servicesAsync),
-
-          // 4. The banner strip: seven real services, a different seven tomorrow.
+          // 3. The banner strip: seven real services, a different seven tomorrow.
           const SliverToBoxAdapter(child: HomeBannerSection()),
 
           // 4. Categories.
@@ -266,13 +259,18 @@ class _CustomerSearchTabState extends ConsumerState<CustomerSearchTab> {
             ),
           ),
 
-          // 5. What was asked for, first and under its own name.
+          // 5. Right under the categories: what is offered in the customer's own district. Shown
+          // only when something is — a district with nothing listed leaves the page as it was.
+          // Not while searching; a search has its own band below.
+          if (!filter.isFiltering) ..._recommendedSlivers(),
+
+          // 6. What was asked for, first and under its own name.
           //
           // A band at the top rather than a page that replaces itself: the filter answers "show me
           // catering in Kanyakumari", and the home screen below still answers "what else is here".
           // Replacing the whole page meant a district — which the app now remembers between
           // launches — cost the customer their home screen permanently.
-          if (filter.hasSearchTerms) ...[
+          if (filter.isFiltering) ...[
             SliverToBoxAdapter(
               child: SectionHeader(
                 title: matchingSectionTitle(
@@ -385,58 +383,27 @@ class _CustomerSearchTabState extends ConsumerState<CustomerSearchTab> {
     );
   }
 
-  /// "Recommended services near you": what is offered in the customer's district, in one strip at
-  /// the top. A strip, not a grid, so the banner and categories below stay in reach.
-  List<Widget> _recommendedSlivers(
-    CustomerSearchFilter filter,
-    AsyncValue<List<ServiceListing>> servicesAsync,
-  ) => [
-    SliverToBoxAdapter(
-      child: SectionHeader(
-        title: recommendedSectionTitle,
-        count: servicesAsync.value?.length,
-      ),
-    ),
-    SliverToBoxAdapter(
-      child: servicesAsync.when(
-        loading: () => const SizedBox(
-          height: 120,
-          child: Center(child: CircularProgressIndicator()),
+  /// "Recommended services near you": what is offered in the customer's own district, in one strip.
+  /// A strip, not a grid, so the rest of the home stays in reach. Nothing at all while it loads, or
+  /// when the district has nothing listed — the page below is the same either way.
+  List<Widget> _recommendedSlivers() {
+    final services = ref.watch(recommendedServicesProvider).value ?? const [];
+    if (services.isEmpty) return const [];
+    return [
+      SliverToBoxAdapter(
+        child: SectionHeader(
+          title: recommendedSectionTitle,
+          count: services.length,
         ),
-        error: (error, _) => Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: ErrorBanner(message: error.toString()),
-        ),
-        data: (services) => services.isEmpty
-            ? Padding(
-                key: const ValueKey('recommended-empty'),
-                padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Nothing is listed near ${filter.primaryDistrictName ?? 'you'} yet. '
-                        'Everything else is below.',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        _dismissKeyboard();
-                        _filter.clearLocation();
-                      },
-                      child: const Text('Search everywhere'),
-                    ),
-                  ],
-                ),
-              )
-            : PopularServicesStrip(
-                key: const ValueKey('recommended-strip'),
-                services: services,
-              ),
       ),
-    ),
-  ];
+      SliverToBoxAdapter(
+        child: PopularServicesStrip(
+          key: const ValueKey('recommended-strip'),
+          services: services,
+        ),
+      ),
+    ];
+  }
 
   /// The categories that did not fit in the grid.
   ///
@@ -468,15 +435,16 @@ class _CustomerSearchTabState extends ConsumerState<CustomerSearchTab> {
     _filter.setCategory(picked.id);
   }
 
-  /// Clears the category and the words typed. Not the district.
+  /// Clears the whole search: category, words typed and the district filter.
   ///
-  /// The district is where the customer lives, kept between launches — so this Clear, which sits
-  /// beside the results, would otherwise be a one-tap way to lose a standing preference they set
-  /// once. Clearing the location is offered inside the location picker, where somebody goes when
-  /// changing where they are looking is what they actually mean.
+  /// The district filter is only a filter now — where the customer lives is their own location,
+  /// kept in their account, and nothing here touches it.
   void _clearFilters() {
     _searchController.clear();
     _filter.clearSearch();
+    if (ref.read(customerSearchFilterProvider).hasLocation) {
+      _filter.clearLocation();
+    }
   }
 }
 

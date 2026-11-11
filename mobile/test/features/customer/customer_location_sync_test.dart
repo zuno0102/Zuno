@@ -9,6 +9,7 @@ import 'package:zuno/features/auth/presentation/providers/auth_state.dart';
 import 'package:zuno/features/catalog/domain/entities/district.dart';
 import 'package:zuno/features/customer/data/datasources/customer_location_api.dart';
 import 'package:zuno/features/customer/domain/entities/customer_location.dart';
+import 'package:zuno/features/customer/presentation/providers/customer_home_location_provider.dart';
 import 'package:zuno/features/customer/presentation/providers/customer_location_sync.dart';
 import 'package:zuno/features/customer/presentation/providers/customer_search_filter_provider.dart';
 
@@ -122,94 +123,76 @@ CustomerSearchFilter _filter(ProviderContainer c) =>
 
 Future<void> _settle() => Future<void>.delayed(Duration.zero);
 
+CustomerHomeLocation _home(ProviderContainer c) =>
+    c.read(customerHomeLocationProvider);
+
+const _homeEkm = {
+  'customer_home_district_id': 'd-ekm',
+  'customer_home_district_name': 'Ernakulam',
+  'customer_home_state_id': 's-kl',
+  'customer_home_state_name': 'Kerala',
+};
+
 void main() {
   test(
-    'first open: asks for permission, sets the district, saves it to the account',
+    'first open: asks for permission, sets their location, saves it to the account',
     () async {
       final phone = _Phone();
       final api = _Api();
-
       final c = await _open(phone: phone, api: api);
       await _settle();
 
-      expect(phone.asks, [true], reason: 'asked the first time');
-      expect(_filter(c).districtIds, {'d-ekm'});
-      expect(_filter(c).primaryDistrictName, 'Ernakulam');
-      expect(_filter(c).locationSource, CustomerLocationSource.gps);
+      expect(phone.asks, [true]);
+      expect(_home(c).district?.id, 'd-ekm');
+      expect(_home(c).source, CustomerLocationSource.gps);
       expect(api.saves, ['d-ekm:Gps']);
     },
   );
 
+  // The report: the location set up on first open must not become a search filter.
+  test('the search filter is left alone: listings stay unfiltered', () async {
+    final c = await _open(phone: _Phone(), api: _Api());
+    await _settle();
+
+    expect(_filter(c).hasLocation, isFalse);
+    expect(_filter(c).isFiltering, isFalse);
+  });
+
   test('later opens read the phone quietly, without asking again', () async {
     final phone = _Phone();
     final api = _Api(nearest: _thrissur);
-
     final c = await _open(
       phone: phone,
       api: api,
       saved: {
         customerLocationAskedKey('u1'): true,
         customerLocationOwnerKey: 'u1',
-        'customer_filter_district_ids': ['d-ekm'],
-        'customer_filter_state_ids': ['s-kl'],
-        'customer_filter_primary_district': 'Ernakulam',
-        'customer_filter_location_source': 'Gps',
+        ..._homeEkm,
+        'customer_home_location_source': 'Gps',
       },
     );
     await _settle();
 
     expect(phone.asks, [false], reason: 'never asked twice');
-    expect(_filter(c).districtIds, {'d-tsr'}, reason: 'they moved');
+    expect(_home(c).district?.id, 'd-tsr', reason: 'they moved');
     expect(api.saves, ['d-tsr:Gps']);
   });
 
   test('a district picked by hand is never replaced by the phone', () async {
     final phone = _Phone();
-    final api = _Api(nearest: _thrissur);
-
     final c = await _open(
       phone: phone,
-      api: api,
+      api: _Api(nearest: _thrissur),
       saved: {
-        'customer_filter_district_ids': ['d-ekm'],
-        'customer_filter_primary_district': 'Ernakulam',
-        'customer_filter_location_source': 'Manual',
+        customerLocationOwnerKey: 'u1',
+        ..._homeEkm,
+        'customer_home_location_source': 'Manual',
       },
     );
+    await _settle();
 
     expect(phone.asks, isEmpty);
-    expect(_filter(c).districtIds, {'d-ekm'});
-    expect(api.saves, isEmpty);
-  });
-
-  test(
-    'a district saved before this version counts as picked by hand',
-    () async {
-      final phone = _Phone();
-      final c = await _open(
-        phone: phone,
-        api: _Api(nearest: _thrissur),
-        saved: {
-          'customer_filter_district_ids': ['d-ekm'],
-          'customer_filter_primary_district': 'Ernakulam',
-        },
-      );
-
-      expect(phone.asks, isEmpty);
-      expect(_filter(c).districtIds, {'d-ekm'});
-    },
-  );
-
-  test('cleared to everywhere on purpose stays everywhere', () async {
-    final phone = _Phone();
-    final c = await _open(
-      phone: phone,
-      api: _Api(),
-      saved: {'customer_filter_location_source': 'Cleared'},
-    );
-
-    expect(phone.asks, isEmpty);
-    expect(_filter(c).hasLocation, isFalse);
+    expect(_home(c).district?.id, 'd-ekm');
   });
 
   test('a new phone takes the location kept in the account', () async {
@@ -220,21 +203,15 @@ void main() {
         source: CustomerLocationSource.manual,
       ),
     );
-
     final c = await _open(phone: phone, api: api);
     await _settle();
 
-    expect(_filter(c).districtIds, {'d-tsr'});
-    expect(_filter(c).locationSource, CustomerLocationSource.manual);
-    expect(phone.asks, isEmpty, reason: 'picked by hand in the account');
-    expect(
-      api.saves,
-      isEmpty,
-      reason: 'what came from the account is not sent back',
-    );
+    expect(_home(c).district?.id, 'd-tsr');
+    expect(phone.asks, isEmpty, reason: 'picked by hand: the phone stays out');
+    expect(api.saves, isEmpty, reason: 'not written back what was just read');
   });
 
-  test('a new phone whose account was cleared stays everywhere', () async {
+  test('an older account cleared to everywhere is set up again', () async {
     final phone = _Phone();
     final c = await _open(
       phone: phone,
@@ -244,110 +221,122 @@ void main() {
         ),
       ),
     );
+    await _settle();
 
-    expect(_filter(c).hasLocation, isFalse);
-    expect(phone.asks, isEmpty);
+    expect(phone.asks, [true]);
+    expect(_home(c).district?.id, 'd-ekm');
+  });
+
+  test('outside every served district: nothing set', () async {
+    final c = await _open(phone: _Phone(), api: _Api(nearest: null));
+    expect(_home(c).isSet, isFalse);
+  });
+
+  test('offline: nothing set and nothing fails', () async {
+    final c = await _open(phone: _Phone(), api: _Api()..offline = true);
+    expect(_home(c).isSet, isFalse);
   });
 
   test(
-    'permission refused: nothing changes, and the screen is not broken',
+    'a district filter on the pin button is not saved to the account',
     () async {
-      final phone = _Phone(
-        const LocationResult.unavailable(LocationProblem.denied),
-      );
       final api = _Api();
+      final c = await _open(phone: _Phone(), api: api);
+      await _settle();
+      api.saves.clear();
 
-      final c = await _open(phone: phone, api: api);
+      c
+          .read(customerSearchFilterProvider.notifier)
+          .setLocation(
+            stateIds: {'s-kl'},
+            districtIds: {'d-tsr'},
+            primaryDistrictName: 'Thrissur',
+          );
+      await _settle();
 
-      expect(_filter(c).hasLocation, isFalse);
       expect(api.saves, isEmpty);
+      expect(_home(c).district?.id, 'd-ekm');
     },
   );
 
-  test('outside every served district: nothing changes', () async {
-    final api = _Api()..nearest = null;
-    final c = await _open(phone: _Phone(), api: api);
-
-    expect(_filter(c).hasLocation, isFalse);
-    expect(api.saves, isEmpty);
-  });
-
-  test('offline: nothing changes and nothing fails', () async {
-    final api = _Api()..offline = true;
-    final c = await _open(phone: _Phone(), api: api);
-
-    expect(_filter(c).hasLocation, isFalse);
-  });
-
-  test('picking or clearing afterwards is saved to the account', () async {
+  test('changing their location afterwards is saved to the account', () async {
     final api = _Api();
     final c = await _open(phone: _Phone(), api: api);
     await _settle();
-    final filter = c.read(customerSearchFilterProvider.notifier);
+    api.saves.clear();
 
-    filter.setLocation(
-      stateIds: {'s-kl'},
-      districtIds: {'d-tsr'},
-      primaryDistrictName: 'Thrissur',
-    );
-    await _settle();
-    filter.clearLocation();
+    await c
+        .read(customerHomeLocationProvider.notifier)
+        .set(_thrissur, CustomerLocationSource.manual);
     await _settle();
 
-    expect(api.saves, ['d-ekm:Gps', 'd-tsr:Manual', 'null:Cleared']);
+    expect(api.saves, ['d-tsr:Manual']);
   });
 
-  test('a search does not touch the account', () async {
-    final api = _Api();
-    final c = await _open(phone: _Phone(), api: api);
-    await _settle();
-
-    c.read(customerSearchFilterProvider.notifier)
-      ..setKeyword('tent')
-      ..clearSearch();
-    await _settle();
-
-    expect(api.saves, ['d-ekm:Gps']);
-    expect(_filter(c).locationSource, CustomerLocationSource.gps);
-  });
-
-  // The report: a new customer signing in on the web was never asked. Asking is once per customer,
-  // and a device's location belongs to the customer who set it.
   test(
-    'a second customer on the same device is asked, and starts fresh',
+    'a filter the phone set in an older version is not brought back',
     () async {
-      final phone = _Phone();
-      final api = _Api(nearest: _thrissur);
-
       final c = await _open(
-        phone: phone,
-        api: api,
+        phone: _Phone(),
+        api: _Api(),
         saved: {
-          // The first customer was asked, and picked Ernakulam by hand on this device.
-          customerLocationAskedKey('u-first'): true,
-          customerLocationOwnerKey: 'u-first',
+          customerLocationOwnerKey: 'u1',
           'customer_filter_district_ids': ['d-ekm'],
           'customer_filter_primary_district': 'Ernakulam',
-          'customer_filter_location_source': 'Manual',
+          'customer_filter_location_source': 'Gps',
         },
       );
       await _settle();
 
-      expect(phone.asks, [
-        true,
-      ], reason: 'a customer never asked before is asked');
-      expect(_filter(c).districtIds, {
-        'd-tsr',
-      }, reason: 'not the last person\'s district');
-      expect(_filter(c).locationSource, CustomerLocationSource.gps);
-      expect(api.saves, ['d-tsr:Gps']);
+      expect(_filter(c).hasLocation, isFalse);
     },
   );
 
+  test('a filter picked by hand stays, apart from their location', () async {
+    final c = await _open(
+      phone: _Phone(),
+      api: _Api(),
+      saved: {
+        customerLocationOwnerKey: 'u1',
+        'customer_filter_district_ids': ['d-tsr'],
+        'customer_filter_primary_district': 'Thrissur',
+        'customer_filter_location_source': 'Manual',
+      },
+    );
+    await _settle();
+
+    expect(_filter(c).districtIds, {'d-tsr'});
+    expect(_home(c).district?.id, 'd-ekm');
+  });
+
+  test('a second customer on the same device starts fresh', () async {
+    final phone = _Phone();
+    final api = _Api(nearest: _thrissur);
+    final c = await _open(
+      phone: phone,
+      api: api,
+      saved: {
+        customerLocationAskedKey('u-first'): true,
+        customerLocationOwnerKey: 'u-first',
+        ..._homeEkm,
+        'customer_home_location_source': 'Manual',
+        'customer_filter_district_ids': ['d-ekm'],
+        'customer_filter_location_source': 'Manual',
+      },
+    );
+    await _settle();
+
+    expect(phone.asks, [
+      true,
+    ], reason: 'a customer never asked before is asked');
+    expect(_home(c).district?.id, 'd-tsr', reason: 'not the last person\'s');
+    expect(_filter(c).hasLocation, isFalse, reason: 'nor their filter');
+    expect(api.saves, ['d-tsr:Gps']);
+  });
+
   test('signing out and in as someone else runs it again for them', () async {
     final phone = _Phone();
-    final api = _Api();
-    final c = await _open(phone: phone, api: api);
+    final c = await _open(phone: phone, api: _Api());
     await _settle();
     expect(phone.asks, [true]);
 
@@ -355,8 +344,8 @@ void main() {
     await c.read(customerLocationSyncProvider.future);
     await _settle();
 
-    expect(phone.asks, [true, true], reason: 'the new customer is asked too');
-    expect(_filter(c).districtIds, {'d-ekm'});
+    expect(phone.asks, [true, true]);
+    expect(_home(c).district?.id, 'd-ekm');
   });
 
   test('the same customer coming back is not asked again', () async {
@@ -368,27 +357,11 @@ void main() {
     await c.read(customerLocationSyncProvider.future);
     await _settle();
 
-    expect(phone.asks, [true], reason: 'one customer, asked once');
+    expect(phone.asks, [true]);
   });
 
-  test('a device from before owners were kept keeps its district', () async {
-    final phone = _Phone();
-    final c = await _open(
-      phone: phone,
-      api: _Api(nearest: _thrissur),
-      saved: {
-        'customer_filter_district_ids': ['d-ekm'],
-        'customer_filter_primary_district': 'Ernakulam',
-        'customer_filter_location_source': 'Manual',
-      },
-    );
-
-    expect(_filter(c).districtIds, {'d-ekm'});
-    expect(phone.asks, isEmpty);
-  });
-
-  // The report: on the web a new customer saw no popup. A browser that remembers "Block" for the
-  // site answers without asking, so the app asks itself with its own chooser.
+  // The web report: a browser that remembers "Block" answers without asking, so the app asks
+  // itself — and setting a location is required.
   group('what the open tells the app', () {
     Future<CustomerLocationOpen> openWith(
       _Phone phone, {
@@ -399,42 +372,25 @@ void main() {
       return c.read(customerLocationSyncProvider.future);
     }
 
-    test('first open, location found: nothing more to ask', () async {
+    test('location found: nothing more to ask', () async {
       expect(await openWith(_Phone()), CustomerLocationOpen.settled);
     });
 
-    test('first open, blocked in the browser: the app asks itself', () async {
+    test('blocked: the app asks itself', () async {
       final phone = _Phone(
         const LocationResult.unavailable(LocationProblem.deniedForever),
       );
       expect(await openWith(phone), CustomerLocationOpen.needsChoice);
-      expect(phone.asks, [true]);
     });
 
-    test('first open, no fix came: the app asks itself', () async {
-      final phone = _Phone(
-        const LocationResult.unavailable(LocationProblem.timedOut),
-      );
-      expect(await openWith(phone), CustomerLocationOpen.needsChoice);
-    });
-
-    test('first open, outside the area: the app asks itself', () async {
+    test('outside the area: the app asks itself', () async {
       expect(
-        await openWith(_Phone(), api: _Api()..nearest = null),
+        await openWith(_Phone(), api: _Api(nearest: null)),
         CustomerLocationOpen.needsChoice,
       );
     });
 
-    test('first open, offline: the app asks itself', () async {
-      expect(
-        await openWith(_Phone(), api: _Api()..offline = true),
-        CustomerLocationOpen.needsChoice,
-      );
-    });
-
-    // Location setup is required: skipped once (app closed), asked again on the next open — but
-    // the system permission dialog is not shown a second time.
-    test('asked before but still no location: setup is asked again', () async {
+    test('still no location on a later open: asked again', () async {
       final phone = _Phone(
         const LocationResult.unavailable(LocationProblem.denied),
       );
@@ -449,19 +405,7 @@ void main() {
       expect(phone.asks, [false], reason: 'the system dialog only once');
     });
 
-    test('set up, then chose "everywhere": not asked again', () async {
-      final result = await openWith(
-        _Phone(),
-        saved: {
-          customerLocationAskedKey('u1'): true,
-          customerLocationOwnerKey: 'u1',
-          'customer_filter_location_source': 'Cleared',
-        },
-      );
-      expect(result, CustomerLocationOpen.settled);
-    });
-
-    test('a location already in the account: nothing to ask', () async {
+    test('a location in the account: nothing to ask', () async {
       final phone = _Phone(
         const LocationResult.unavailable(LocationProblem.deniedForever),
       );
@@ -482,9 +426,8 @@ void main() {
         _Phone(),
         saved: {
           customerLocationOwnerKey: 'u1',
-          'customer_filter_district_ids': ['d-ekm'],
-          'customer_filter_primary_district': 'Ernakulam',
-          'customer_filter_location_source': 'Manual',
+          ..._homeEkm,
+          'customer_home_location_source': 'Manual',
         },
       );
       expect(result, CustomerLocationOpen.settled);

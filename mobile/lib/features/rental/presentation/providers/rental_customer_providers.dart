@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_state.dart';
+import 'package:zuno/features/customer/presentation/providers/customer_home_location_provider.dart';
 import 'package:zuno/features/customer/presentation/providers/customer_search_filter_provider.dart';
 import 'package:zuno/features/rental/domain/entities/rental_customer.dart';
 import 'package:zuno/features/rental/presentation/providers/rental_order_providers.dart';
@@ -114,3 +115,16 @@ Future<List<RentalCard>> rentalSearch(Ref ref) {
 @riverpod
 Future<RentalItemDetail> rentalItemDetail(Ref ref, String id) =>
     ref.watch(rentalCustomerRepositoryProvider).item(id);
+
+/// "Recommended rentals near you": what can be rented in the customer's own district — set up on
+/// first open and kept in their account. Not the search filter. Empty when no location is set.
+@riverpod
+Future<List<RentalCard>> rentalRecommended(Ref ref) {
+  final districtId = ref.watch(
+    customerHomeLocationProvider.select((l) => l.district?.id),
+  );
+  if (districtId == null) return Future.value(const []);
+  return ref
+      .watch(rentalCustomerRepositoryProvider)
+      .search(districtIds: [districtId]);
+}

@@ -450,3 +450,50 @@ final class RentalItemDetailFamily extends $Family
   @override
   String toString() => r'rentalItemDetailProvider';
 }
+
+/// "Recommended rentals near you": what can be rented in the customer's own district — set up on
+/// first open and kept in their account. Not the search filter. Empty when no location is set.
+
+@ProviderFor(rentalRecommended)
+final rentalRecommendedProvider = RentalRecommendedProvider._();
+
+/// "Recommended rentals near you": what can be rented in the customer's own district — set up on
+/// first open and kept in their account. Not the search filter. Empty when no location is set.
+
+final class RentalRecommendedProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<RentalCard>>,
+          List<RentalCard>,
+          FutureOr<List<RentalCard>>
+        >
+    with $FutureModifier<List<RentalCard>>, $FutureProvider<List<RentalCard>> {
+  /// "Recommended rentals near you": what can be rented in the customer's own district — set up on
+  /// first open and kept in their account. Not the search filter. Empty when no location is set.
+  RentalRecommendedProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'rentalRecommendedProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$rentalRecommendedHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<RentalCard>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<RentalCard>> create(Ref ref) {
+    return rentalRecommended(ref);
+  }
+}
+
+String _$rentalRecommendedHash() => r'2ee4fae71a3e4c30d29fbf7616d32e5a1f9074e7';

@@ -124,6 +124,11 @@ class CustomerSearchFilterNotifier extends _$CustomerSearchFilterNotifier {
       // must not have it overwritten by where they were yesterday.
       if (state.hasLocation || state.locationSource != null) return;
 
+      // Before 1.12.4 the phone's district was put into this filter on every open. It now sets the
+      // customer's own location instead (customerHomeLocationProvider), so a filter the phone set
+      // is not brought back: the listings start unfiltered, as they were before.
+      if (source == CustomerLocationSource.gps) return;
+
       if (districtIds == null || districtIds.isEmpty) {
         // Cleared on purpose is remembered too, so the next open does not set it again.
         if (source == CustomerLocationSource.cleared) {
@@ -215,29 +220,18 @@ class CustomerSearchFilterNotifier extends _$CustomerSearchFilterNotifier {
     _saveLocation();
   }
 
-  /// The district the phone is in, found when the app opens or when the customer asks for it.
-  void setDetectedLocation(District district) =>
-      _setOne(district, CustomerLocationSource.gps);
-
-  /// The location kept in the customer's account, for a phone that has none of its own yet.
-  void applySaved(SavedCustomerLocation saved) {
-    final source = saved.source;
-    if (source == null) return;
-    if (saved.district case final district?) {
-      _setOne(district, source);
-    } else if (source == CustomerLocationSource.cleared) {
-      clearLocation();
-    }
-  }
-
-  void _setOne(District district, CustomerLocationSource source) {
+  /// Narrows the search to the district the phone is in — the pin button's "Use my current
+  /// location". Kept on this device only, as a filter: it is not the customer's saved location.
+  ///
+  /// Stored as picked by hand: the app never changes a filter by itself.
+  void setDetectedLocation(District district) {
     state = CustomerSearchFilter(
       categoryId: state.categoryId,
       keyword: state.keyword,
       stateIds: {district.stateId},
       districtIds: {district.id},
       primaryDistrictName: district.name,
-      locationSource: source,
+      locationSource: CustomerLocationSource.manual,
     );
     _saveLocation();
   }
