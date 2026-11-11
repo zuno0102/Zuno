@@ -18,9 +18,17 @@ import 'package:zuno/core/permissions/permission_service.dart';
 /// picture, and a worker also scans a job's QR code, so the camera is the one answer every side of
 /// the app needs.
 class StartupPermissionPrimer extends ConsumerStatefulWidget {
-  const StartupPermissionPrimer({required this.child, super.key});
+  const StartupPermissionPrimer({
+    required this.child,
+    this.waitUntil,
+    super.key,
+  });
 
   final Widget child;
+
+  /// Something to finish before the camera is asked — for a customer, setting their location, so
+  /// the two questions come one after the other instead of on top of each other.
+  final Future<void> Function(WidgetRef ref)? waitUntil;
 
   /// Remembered per install, so this is asked once and never again.
   ///
@@ -53,6 +61,12 @@ class _StartupPermissionPrimerState
     } on Exception {
       // Storage that cannot be read is not a reason to block the app. The cost of asking twice is
       // one dialog; the cost of failing here would be a dashboard that never appears.
+    }
+
+    // First things first: a customer sets their location, then is asked about the camera.
+    if (widget.waitUntil case final wait?) {
+      await wait(ref);
+      if (!mounted) return;
     }
 
     // Nothing to ask for if it is already granted — reinstalls and upgrades land here.

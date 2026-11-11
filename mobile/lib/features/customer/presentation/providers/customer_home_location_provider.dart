@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:zuno/features/catalog/domain/entities/district.dart';
@@ -110,5 +111,22 @@ class CustomerHomeLocationNotifier extends _$CustomerHomeLocationNotifier {
     } on Exception {
       // Nothing to undo.
     }
+  }
+}
+
+/// Completes once the customer's location is set — at once if it already is. Used to hold other
+/// first-open questions (the camera) until the location setup is done, so they come one at a time.
+Future<void> customerLocationIsSet(WidgetRef ref) async {
+  await ref.read(customerHomeLocationProvider.notifier).ready;
+  if (ref.read(customerHomeLocationProvider).isSet) return;
+
+  final done = Completer<void>();
+  final sub = ref.listenManual(customerHomeLocationProvider, (_, next) {
+    if (next.isSet && !done.isCompleted) done.complete();
+  });
+  try {
+    await done.future;
+  } finally {
+    sub.close();
   }
 }

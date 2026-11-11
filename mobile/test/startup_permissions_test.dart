@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -181,6 +183,32 @@ void main() {
       // Reinstalls and upgrades land here: nothing to ask, so nothing is asked.
       expect(find.text('Zuno needs your camera'), findsNothing);
       expect(permissions.essentialsRequested, 0);
+    });
+  });
+
+  // The report: the camera popup sat on top of the location setup. A customer sets their
+  // location first, and only then is asked about the camera.
+  group('waiting for something first', () {
+    testWidgets('no camera question until the location is set', (tester) async {
+      final locationSet = Completer<void>();
+      final permissions = FakePermissionService();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [permissionServiceProvider.overrideWithValue(permissions)],
+          child: MaterialApp(
+            home: StartupPermissionPrimer(
+              waitUntil: (_) => locationSet.future,
+              child: const Scaffold(body: Text('dashboard')),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Zuno needs your camera'), findsNothing);
+
+      locationSet.complete();
+      await tester.pumpAndSettle();
+      expect(find.text('Zuno needs your camera'), findsOneWidget);
     });
   });
 }

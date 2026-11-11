@@ -8,6 +8,7 @@ import 'package:zuno/features/booking/presentation/providers/booking_providers.d
 import 'package:zuno/features/booking/presentation/providers/customer_bookings_notifier.dart';
 import 'package:zuno/features/booking/presentation/providers/booking_message_providers.dart';
 import 'package:zuno/features/booking/presentation/screens/booking_chat_screen.dart';
+import 'package:zuno/features/customer/presentation/providers/customer_home_location_provider.dart';
 import 'package:zuno/features/customer/presentation/screens/customer_booking_detail_screen.dart';
 import 'package:zuno/features/customer/presentation/screens/customer_bookings_hub.dart';
 import 'package:zuno/features/customer/presentation/screens/customer_profile_tab.dart';
@@ -161,6 +162,8 @@ class _CustomerDashboardShellState
     ];
 
     return StartupPermissionPrimer(
+      // Location first: the camera is asked only once the customer has set where they are.
+      waitUntil: customerLocationIsSet,
       child: RoleTheme(
         role: ZunoRole.customer,
         child: Scaffold(
