@@ -390,12 +390,7 @@ class _CustomerSearchTabState extends ConsumerState<CustomerSearchTab> {
     final services = ref.watch(recommendedServicesProvider).value ?? const [];
     if (services.isEmpty) return const [];
     return [
-      SliverToBoxAdapter(
-        child: SectionHeader(
-          title: recommendedSectionTitle,
-          count: services.length,
-        ),
-      ),
+      SliverToBoxAdapter(child: SectionHeader(title: recommendedSectionTitle)),
       SliverToBoxAdapter(
         child: PopularServicesStrip(
           key: const ValueKey('recommended-strip'),

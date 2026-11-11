@@ -22,6 +22,7 @@ import 'package:zuno/features/customer/presentation/providers/daily_banners_prov
 import 'package:zuno/features/customer/presentation/providers/service_search_notifier.dart';
 import 'package:zuno/features/customer/presentation/screens/customer_search_tab.dart';
 import 'package:zuno/features/customer/presentation/widgets/customer_location_picker.dart';
+import 'package:zuno/shared/widgets/section_header.dart';
 
 /// The Service home. The customer's own location (set up on first open, kept in the account) gives
 /// "Recommended services near you" — below the categories, and only when something is listed there.
@@ -191,6 +192,17 @@ void main() {
 
       expect(find.text(recommendedSectionTitle), findsOneWidget);
       expect(find.text('Deep clean near you'), findsOneWidget);
+      // The heading on its own, no number beside it.
+      expect(
+        find.descendant(
+          of: find.ancestor(
+            of: find.text(recommendedSectionTitle),
+            matching: find.byType(SectionHeader),
+          ),
+          matching: find.textContaining(RegExp(r'^\d+$')),
+        ),
+        findsNothing,
+      );
       expect(
         find.text('Ernakulam'),
         findsWidgets,

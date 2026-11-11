@@ -39,6 +39,7 @@ import 'package:zuno/features/rental/presentation/screens/rental_item_screen.dar
 import 'package:zuno/features/rental/presentation/screens/rental_order_detail_screen.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_booking_sheet.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_item_card.dart';
+import 'package:zuno/shared/widgets/section_header.dart';
 
 const _ekm = RentalItemDistrict(
   id: 'd-ekm',
@@ -701,6 +702,17 @@ void main() {
         expect(
           find.byKey(const ValueKey('rent-recommended-strip')),
           findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.ancestor(
+              of: find.text(recommendedRentalsTitle),
+              matching: find.byType(SectionHeader),
+            ),
+            matching: find.textContaining(RegExp(r'^\d+$')),
+          ),
+          findsNothing,
+          reason: 'the heading on its own, no number beside it',
         );
         expect(
           repository.searches.last,

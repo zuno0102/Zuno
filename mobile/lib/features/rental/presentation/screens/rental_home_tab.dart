@@ -286,12 +286,7 @@ class _RentalHomeTabState extends ConsumerState<RentalHomeTab> {
     final cards = ref.watch(rentalRecommendedProvider).value ?? const [];
     if (cards.isEmpty) return const [];
     return [
-      SliverToBoxAdapter(
-        child: SectionHeader(
-          title: recommendedRentalsTitle,
-          count: cards.length,
-        ),
-      ),
+      SliverToBoxAdapter(child: SectionHeader(title: recommendedRentalsTitle)),
       SliverToBoxAdapter(
         child: SizedBox(
           height: 236,
