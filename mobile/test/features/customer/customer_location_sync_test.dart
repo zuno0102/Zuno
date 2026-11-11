@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:zuno/core/location/location_service.dart';
+import 'package:zuno/features/auth/domain/entities/user.dart';
+import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
+import 'package:zuno/features/auth/presentation/providers/auth_state.dart';
 import 'package:zuno/features/catalog/domain/entities/district.dart';
 import 'package:zuno/features/customer/data/datasources/customer_location_api.dart';
 import 'package:zuno/features/customer/domain/entities/customer_location.dart';
@@ -76,6 +79,25 @@ class _Api extends CustomerLocationApi {
   }
 }
 
+/// A signed-in customer who can be swapped for another, as signing out and in does.
+class _Auth extends AuthNotifier {
+  @override
+  Future<AuthState> build() async => _as('u1');
+
+  void signInAs(String id) => state = AsyncData(_as(id));
+
+  static AuthState _as(String id) => AuthAuthenticated(
+    User(
+      id: id,
+      firstName: 'Asha',
+      lastName: 'K',
+      role: 'Customer',
+      emailConfirmed: true,
+      phoneNumberConfirmed: true,
+    ),
+  );
+}
+
 Future<ProviderContainer> _open({
   required _Phone phone,
   required _Api api,
@@ -84,11 +106,13 @@ Future<ProviderContainer> _open({
   SharedPreferences.setMockInitialValues(saved);
   final container = ProviderContainer(
     overrides: [
+      authProvider.overrideWith(_Auth.new),
       locationServiceProvider.overrideWithValue(phone),
       customerLocationApiProvider.overrideWithValue(api),
     ],
   );
   addTearDown(container.dispose);
+  await container.read(authProvider.future);
   await container.read(customerLocationSyncProvider.future);
   return container;
 }
@@ -124,7 +148,8 @@ void main() {
       phone: phone,
       api: api,
       saved: {
-        customerLocationAskedKey: true,
+        customerLocationAskedKey('u1'): true,
+        customerLocationOwnerKey: 'u1',
         'customer_filter_district_ids': ['d-ekm'],
         'customer_filter_state_ids': ['s-kl'],
         'customer_filter_primary_district': 'Ernakulam',
@@ -284,5 +309,81 @@ void main() {
 
     expect(api.saves, ['d-ekm:Gps']);
     expect(_filter(c).locationSource, CustomerLocationSource.gps);
+  });
+
+  // The report: a new customer signing in on the web was never asked. Asking is once per customer,
+  // and a device's location belongs to the customer who set it.
+  test(
+    'a second customer on the same device is asked, and starts fresh',
+    () async {
+      final phone = _Phone();
+      final api = _Api(nearest: _thrissur);
+
+      final c = await _open(
+        phone: phone,
+        api: api,
+        saved: {
+          // The first customer was asked, and picked Ernakulam by hand on this device.
+          customerLocationAskedKey('u-first'): true,
+          customerLocationOwnerKey: 'u-first',
+          'customer_filter_district_ids': ['d-ekm'],
+          'customer_filter_primary_district': 'Ernakulam',
+          'customer_filter_location_source': 'Manual',
+        },
+      );
+      await _settle();
+
+      expect(phone.asks, [
+        true,
+      ], reason: 'a customer never asked before is asked');
+      expect(_filter(c).districtIds, {
+        'd-tsr',
+      }, reason: 'not the last person\'s district');
+      expect(_filter(c).locationSource, CustomerLocationSource.gps);
+      expect(api.saves, ['d-tsr:Gps']);
+    },
+  );
+
+  test('signing out and in as someone else runs it again for them', () async {
+    final phone = _Phone();
+    final api = _Api();
+    final c = await _open(phone: phone, api: api);
+    await _settle();
+    expect(phone.asks, [true]);
+
+    (c.read(authProvider.notifier) as _Auth).signInAs('u2');
+    await c.read(customerLocationSyncProvider.future);
+    await _settle();
+
+    expect(phone.asks, [true, true], reason: 'the new customer is asked too');
+    expect(_filter(c).districtIds, {'d-ekm'});
+  });
+
+  test('the same customer coming back is not asked again', () async {
+    final phone = _Phone();
+    final c = await _open(phone: phone, api: _Api());
+    await _settle();
+
+    (c.read(authProvider.notifier) as _Auth).signInAs('u1');
+    await c.read(customerLocationSyncProvider.future);
+    await _settle();
+
+    expect(phone.asks, [true], reason: 'one customer, asked once');
+  });
+
+  test('a device from before owners were kept keeps its district', () async {
+    final phone = _Phone();
+    final c = await _open(
+      phone: phone,
+      api: _Api(nearest: _thrissur),
+      saved: {
+        'customer_filter_district_ids': ['d-ekm'],
+        'customer_filter_primary_district': 'Ernakulam',
+        'customer_filter_location_source': 'Manual',
+      },
+    );
+
+    expect(_filter(c).districtIds, {'d-ekm'});
+    expect(phone.asks, isEmpty);
   });
 }

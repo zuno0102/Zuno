@@ -45,6 +45,44 @@ void main() {
     return picked;
   }
 
+  // The report: an empty "Job type" printed its label and a "Choose" placeholder over each other.
+  testWidgets('nothing chosen: only the label, nothing drawn over it', (
+    tester,
+  ) async {
+    await pump(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Choose'), findsNothing);
+    final texts = tester
+        .widgetList<Text>(
+          find.descendant(
+            of: find.byType(SelectField<String>),
+            matching: find.byType(Text),
+          ),
+        )
+        .map((t) => t.data ?? '')
+        .where((t) => t.isNotEmpty)
+        .toList();
+    expect(texts, [
+      'Salary is paid',
+    ], reason: 'the label is the only words in the box');
+  });
+
+  testWidgets('once chosen, the label moves up and the choice sits below it', (
+    tester,
+  ) async {
+    await pump(tester, initial: 'w');
+    await tester.pumpAndSettle();
+
+    final label = tester.getRect(find.text('Salary is paid'));
+    final value = tester.getRect(find.text('Per week'));
+    expect(
+      label.bottom,
+      lessThanOrEqualTo(value.top + 1),
+      reason: 'no overlap',
+    );
+  });
+
   testWidgets('shows the label and the chosen option, like a text box', (
     tester,
   ) async {
@@ -109,12 +147,12 @@ void main() {
       validator: (v) => v == null ? 'Choose how often' : null,
     );
 
-    expect(find.text('Choose'), findsOneWidget, reason: 'nothing chosen yet');
+    expect(find.text('Per week'), findsNothing, reason: 'nothing chosen yet');
     expect(form.currentState!.validate(), isFalse);
     await tester.pump();
     expect(find.text('Choose how often'), findsOneWidget);
 
-    await tester.tap(find.text('Choose'));
+    await tester.tap(find.byType(SelectField<String>));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Per week'));
     await tester.pumpAndSettle();
@@ -139,7 +177,7 @@ void main() {
         ),
       ),
     );
-    await tester.tap(find.text('Choose'));
+    await tester.tap(find.byType(SelectField<int>));
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);

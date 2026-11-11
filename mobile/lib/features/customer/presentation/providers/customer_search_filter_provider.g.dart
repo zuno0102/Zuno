@@ -43,7 +43,7 @@ final class CustomerSearchFilterNotifierProvider
 }
 
 String _$customerSearchFilterNotifierHash() =>
-    r'2188821d93a05375b8f5eab23cd448d77c875654';
+    r'a75567b754bca21eaa0cd9f39012e2143d922679';
 
 abstract class _$CustomerSearchFilterNotifier
     extends $Notifier<CustomerSearchFilter> {

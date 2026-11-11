@@ -256,6 +256,13 @@ class CustomerSearchFilterNotifier extends _$CustomerSearchFilterNotifier {
     _saveLocation();
   }
 
+  /// Forgets the location kept on this device — for a different customer signing in on it, who
+  /// must start from their own account and phone, not from the last person's district.
+  Future<void> forget() async {
+    state = const CustomerSearchFilter();
+    await _saveLocation();
+  }
+
   /// Clears what they were looking for, and leaves where they are alone.
   ///
   /// This is what the Clear beside "Matching services" does. It used to clear the location too,

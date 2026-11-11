@@ -24,7 +24,6 @@ class SelectField<T> extends FormField<T> {
     required ValueChanged<T> onChanged,
     super.initialValue,
     super.validator,
-    String placeholder = 'Choose',
     bool isDense = false,
     super.key,
   }) : super(
@@ -55,6 +54,9 @@ class SelectField<T> extends FormField<T> {
              child: InkWell(
                onTap: open,
                borderRadius: BorderRadius.circular(12),
+               // Nothing chosen: the label alone sits in the box, as on an empty text field, and
+               // moves up once a choice is made. A "Choose" placeholder drawn there as well landed
+               // on top of the label — "Job type" and "Choose" printed over each other.
                child: InputDecorator(
                  isEmpty: chosen == null,
                  decoration: InputDecoration(
@@ -64,14 +66,10 @@ class SelectField<T> extends FormField<T> {
                    suffixIcon: const Icon(Icons.keyboard_arrow_down_rounded),
                  ),
                  child: Text(
-                   chosen?.label ?? placeholder,
+                   chosen?.label ?? '',
                    maxLines: 1,
                    overflow: TextOverflow.ellipsis,
-                   style: chosen == null
-                       ? theme.textTheme.bodyLarge?.copyWith(
-                           color: theme.colorScheme.onSurfaceVariant,
-                         )
-                       : theme.textTheme.bodyLarge,
+                   style: theme.textTheme.bodyLarge,
                  ),
                ),
              ),
