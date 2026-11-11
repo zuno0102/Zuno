@@ -211,6 +211,145 @@ void main() {
     expect(api.saves, isEmpty, reason: 'not written back what was just read');
   });
 
+  test(
+    'phone B with an older location of its own takes the one set on phone A',
+    () async {
+      final phone = _Phone(); // Phone B stands in Ernakulam.
+      final api = _Api(
+        account: const SavedCustomerLocation(
+          district: _thrissur,
+          source: CustomerLocationSource.manual,
+        ),
+      );
+      final c = await _open(
+        phone: phone,
+        api: api,
+        saved: {
+          customerLocationOwnerKey: 'u1',
+          ..._homeEkm,
+          'customer_home_location_source': 'Manual',
+        },
+      );
+      await _settle();
+
+      expect(_home(c).district?.id, 'd-tsr');
+      expect(_home(c).source, CustomerLocationSource.manual);
+      expect(
+        phone.asks,
+        isEmpty,
+        reason: 'picked by hand on A: the phone stays out',
+      );
+      expect(api.saves, isEmpty, reason: 'not written back what was just read');
+    },
+  );
+
+  test(
+    'a location only this device has is saved to an account without one',
+    () async {
+      final api = _Api();
+      final c = await _open(
+        phone: _Phone(),
+        api: api,
+        saved: {
+          customerLocationOwnerKey: 'u1',
+          ..._homeEkm,
+          'customer_home_location_source': 'Manual',
+        },
+      );
+      await _settle();
+
+      expect(_home(c).district?.id, 'd-ekm');
+      expect(api.saves, ['d-ekm:Manual'], reason: 'so phone B finds it');
+    },
+  );
+
+  test(
+    'an account cleared to everywhere takes this device\'s location',
+    () async {
+      final api = _Api(
+        account: const SavedCustomerLocation(
+          source: CustomerLocationSource.cleared,
+        ),
+      );
+      final c = await _open(
+        phone: _Phone(),
+        api: api,
+        saved: {
+          customerLocationOwnerKey: 'u1',
+          ..._homeEkm,
+          'customer_home_location_source': 'Manual',
+        },
+      );
+      await _settle();
+
+      expect(_home(c).district?.id, 'd-ekm');
+      expect(api.saves, ['d-ekm:Manual']);
+    },
+  );
+
+  test(
+    'a phone location the account lacks is saved once, even when unchanged',
+    () async {
+      final api = _Api(); // The phone still reads Ernakulam.
+      final c = await _open(
+        phone: _Phone(),
+        api: api,
+        saved: {
+          customerLocationAskedKey('u1'): true,
+          customerLocationOwnerKey: 'u1',
+          ..._homeEkm,
+          'customer_home_location_source': 'Gps',
+        },
+      );
+      await _settle();
+
+      expect(_home(c).district?.id, 'd-ekm');
+      expect(api.saves, ['d-ekm:Gps']);
+    },
+  );
+
+  test('the account and the device agree: nothing is saved', () async {
+    final api = _Api(
+      account: const SavedCustomerLocation(
+        district: _ernakulam,
+        source: CustomerLocationSource.manual,
+      ),
+    );
+    final c = await _open(
+      phone: _Phone(),
+      api: api,
+      saved: {
+        customerLocationOwnerKey: 'u1',
+        ..._homeEkm,
+        'customer_home_location_source': 'Manual',
+      },
+    );
+    await _settle();
+
+    expect(_home(c).district?.id, 'd-ekm');
+    expect(api.saves, isEmpty);
+  });
+
+  test(
+    'offline: the device keeps its own location and saves nothing',
+    () async {
+      final api = _Api()..offline = true;
+      final c = await _open(
+        phone: _Phone(),
+        api: api,
+        saved: {
+          customerLocationOwnerKey: 'u1',
+          ..._homeEkm,
+          'customer_home_location_source': 'Manual',
+        },
+      );
+      await _settle();
+
+      expect(_home(c).district?.id, 'd-ekm');
+      expect(api.saves, isEmpty);
+    },
+  );
+
   test('an older account cleared to everywhere is set up again', () async {
     final phone = _Phone();
     final c = await _open(
