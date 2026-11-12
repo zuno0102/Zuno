@@ -7,6 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:zuno/core/error/app_exceptions.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/business_owner/domain/entities/business_service.dart';
+import 'package:zuno/features/business_owner/domain/entities/business_profile.dart';
+import 'package:zuno/features/business_owner/presentation/providers/business_profile_notifier.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_services_notifier.dart';
 import 'package:zuno/features/catalog/domain/entities/app_options.dart';
 import 'package:zuno/features/catalog/domain/entities/district.dart';
@@ -242,6 +244,7 @@ MarketplacePost _post({
   String? condition,
   bool isOutOfStock = false,
   bool canUpdateStock = false,
+  List<MarketplaceVariant> variants = const [],
   List<MarketplacePostAction> actions = const [
     MarketplacePostAction(
       toStatus: 'Paused',
@@ -259,6 +262,7 @@ MarketplacePost _post({
   condition: condition,
   isOutOfStock: isOutOfStock,
   canUpdateStock: canUpdateStock,
+  variants: variants,
   categoryId: categoryId,
   categoryName: categoryName,
   subCategoryId: subCategoryId,
@@ -303,6 +307,7 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
   final updated = <(String, MarketplacePostInput)>[];
   final statusChanges = <(String, String)>[];
   final stockChanges = <(String, int)>[];
+  final stockVariantIds = <String?>[];
   final deleted = <String>[];
   final uploads = <(String, int)>[];
   final savedCategories = <MarketplaceCategoryInput>[];
@@ -379,8 +384,13 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
   }
 
   @override
-  Future<MarketplacePost> updateStock(String id, int quantity) async {
+  Future<MarketplacePost> updateStock(
+    String id,
+    int quantity, {
+    String? variantId,
+  }) async {
     stockChanges.add((id, quantity));
+    stockVariantIds.add(variantId);
     return _post(id: id, quantity: quantity);
   }
 
@@ -461,6 +471,22 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
   ) async => _products;
 }
 
+/// The signed-in business — no address unless a test gives one.
+const _profile = BusinessProfile(
+  id: 'b-1',
+  businessName: 'shajil shajil',
+  verificationStatus: 'Verified',
+);
+
+class _Profile extends BusinessProfileNotifier {
+  _Profile(this.profile);
+
+  final BusinessProfile profile;
+
+  @override
+  Future<BusinessProfile> build() async => profile;
+}
+
 class _NoServices extends BusinessServicesNotifier {
   @override
   Future<List<BusinessService>> build() async => const [];
@@ -471,6 +497,7 @@ Future<_FakeMarketplaceRepository> _pump(
   Widget child, {
   _FakeMarketplaceRepository? repository,
   Future<List<District>> Function()? districts,
+  BusinessProfile profile = _profile,
 }) async {
   // A tall phone, so a long form needs no scrolling to reach a field.
   tester.view.physicalSize = const Size(1080, 4000);
@@ -482,6 +509,7 @@ Future<_FakeMarketplaceRepository> _pump(
       overrides: [
         marketplaceRepositoryProvider.overrideWithValue(repo),
         businessServicesProvider.overrideWith(_NoServices.new),
+        businessProfileProvider.overrideWith(() => _Profile(profile)),
         currentAppOptionsProvider.overrideWithValue(AppOptions.defaults),
         locationStatesProvider.overrideWith(
           (ref) async => const [LocationState(id: 's-tn', name: 'Tamil Nadu')],
@@ -530,6 +558,7 @@ Future<void> _fillWholesale(WidgetTester tester) async {
 
 Future<void> _choose(WidgetTester tester, String field, String value) async {
   await tester.ensureVisible(find.byKey(ValueKey(field)));
+  await tester.pumpAndSettle();
   await tester.tap(find.byKey(ValueKey(field)));
   await tester.pumpAndSettle();
   await tester.tap(find.byKey(ValueKey('select-option-$value')));
@@ -1288,6 +1317,198 @@ void main() {
       final at = tester.getTopLeft(reason).dy;
       expect(at, greaterThanOrEqualTo(sheet.top));
       expect(at - sheet.top, lessThan(200));
+    });
+  });
+
+  group('Product details like a shopping site', () {
+    Future<void> fillSaree(WidgetTester tester) async {
+      await _type(tester, 'marketplace-title', 'Cotton saree');
+      await _type(tester, 'marketplace-price', '499');
+      await _choose(tester, 'marketplace-state', 's-tn');
+      await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
+    }
+
+    testWidgets('colours and sizes each carry their own stock', (tester) async {
+      final repo = await _pump(tester, const BusinessMarketplaceTab());
+      await _openFormFor(
+        tester,
+        _products,
+        sub: 's-sarees',
+        condition: MarketplaceItemCondition.newItem,
+      );
+      expect(find.byKey(const ValueKey('marketplace-stock')), findsOneWidget);
+
+      for (var i = 0; i < 2; i++) {
+        final add = find.byKey(const ValueKey('marketplace-add-variant'));
+        await tester.ensureVisible(add);
+        await tester.tap(add);
+        await tester.pumpAndSettle();
+      }
+      expect(
+        find.byKey(const ValueKey('marketplace-stock')),
+        findsNothing,
+        reason: 'each colour / size has its own stock now',
+      );
+      await _type(tester, 'marketplace-variant-colour-0', 'Red');
+      await _type(tester, 'marketplace-variant-stock-0', '4');
+      await _type(tester, 'marketplace-variant-colour-1', 'Blue');
+      await _type(tester, 'marketplace-variant-stock-1', '0');
+      await _type(tester, 'marketplace-variant-price-1', '549');
+      await fillSaree(tester);
+      await _save(tester);
+
+      final input = repo.created.single;
+      expect(input.quantity, isNull, reason: 'the server adds them up');
+      expect(
+        [for (final v in input.variants) (v.name, v.stock, v.price)],
+        [('Red', 4, null), ('Blue', 0, 549.0)],
+      );
+    });
+
+    testWidgets('a colour / size row needs a colour or a size', (tester) async {
+      final repo = await _pump(tester, const BusinessMarketplaceTab());
+      await _openFormFor(
+        tester,
+        _products,
+        sub: 's-sarees',
+        condition: MarketplaceItemCondition.newItem,
+      );
+      final add = find.byKey(const ValueKey('marketplace-add-variant'));
+      await tester.ensureVisible(add);
+      await tester.tap(add);
+      await tester.pumpAndSettle();
+      await _type(tester, 'marketplace-variant-stock-0', '3');
+      await fillSaree(tester);
+      await _save(tester);
+
+      expect(repo.created, isEmpty);
+      expect(find.text('Colour or size.'), findsOneWidget);
+    });
+
+    testWidgets('MRP below the price is refused; own details are sent', (
+      tester,
+    ) async {
+      final repo = await _pump(tester, const BusinessMarketplaceTab());
+      await _openFormFor(tester, _products, sub: 's-sarees');
+      await _type(tester, 'marketplace-mrp', '300');
+      final add = find.byKey(const ValueKey('marketplace-add-detail'));
+      await tester.ensureVisible(add);
+      await tester.tap(add);
+      await tester.pumpAndSettle();
+      await _type(tester, 'marketplace-detail-name-0', 'Leather type');
+      await _type(tester, 'marketplace-detail-value-0', 'Genuine');
+      await fillSaree(tester);
+      await _save(tester);
+      expect(repo.created, isEmpty);
+      expect(find.text('Cannot be less than the price.'), findsOneWidget);
+
+      await _type(tester, 'marketplace-mrp', '799');
+      await _save(tester);
+
+      final input = repo.created.single;
+      expect(input.originalPrice, 799);
+      expect(
+        [for (final d in input.customDetails) (d.name, d.value)],
+        [('Leather type', 'Genuine')],
+      );
+    });
+
+    testWidgets('a new post starts from the registered business address', (
+      tester,
+    ) async {
+      final repo = await _pump(
+        tester,
+        const BusinessMarketplaceTab(),
+        profile: const BusinessProfile(
+          id: 'b-1',
+          businessName: 'shajil shajil',
+          verificationStatus: 'Verified',
+          addressLine1: '12 Main Road',
+          city: 'Marthandam',
+          state: 'Tamil Nadu',
+          latitude: 8.3,
+          longitude: 77.2,
+        ),
+      );
+      await _openFormFor(tester, _products, sub: 's-sarees');
+
+      expect(find.text('12 Main Road'), findsOneWidget);
+      expect(find.byKey(const ValueKey('marketplace-pin-set')), findsOneWidget);
+      await _type(tester, 'marketplace-title', 'Cotton saree');
+      await _type(tester, 'marketplace-price', '499');
+      await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
+      await _save(tester);
+
+      final input = repo.created.single;
+      expect(input.addressLine, '12 Main Road');
+      expect(input.area, 'Marthandam');
+      expect((input.latitude, input.longitude), (8.3, 77.2));
+      expect(input.deliversEverywhere, isTrue);
+    });
+
+    testWidgets('it can ship to chosen districts only', (tester) async {
+      final repo = await _pump(tester, const BusinessMarketplaceTab());
+      await _openFormFor(tester, _products, sub: 's-sarees');
+      await fillSaree(tester);
+      await _choose(tester, 'marketplace-ships-to', 'false');
+      await _save(tester);
+      expect(repo.created, isEmpty);
+      expect(find.text('Choose at least one district.'), findsOneWidget);
+
+      final field = find.byKey(
+        const ValueKey('marketplace-delivery-districts-s-tn'),
+      );
+      await tester.ensureVisible(field);
+      await tester.tap(field);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Kanyakumari').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+      await _save(tester);
+
+      final input = repo.created.single;
+      expect(input.deliversEverywhere, isFalse);
+      expect(input.deliveryDistrictIds, ['d-kk']);
+    });
+
+    testWidgets('Update stock asks which colour / size first', (tester) async {
+      final repo = await _pump(
+        tester,
+        const BusinessMarketplaceTab(),
+        repository: _FakeMarketplaceRepository(
+          posts: [
+            _post(
+              title: 'Cotton shirt',
+              condition: MarketplaceItemCondition.newItem,
+              quantity: 4,
+              canUpdateStock: true,
+              variants: const [
+                MarketplaceVariant(id: 'v-red', colour: 'Red', stock: 4),
+                MarketplaceVariant(id: 'v-blue', colour: 'Blue', stock: 0),
+              ],
+            ),
+          ],
+        ),
+      );
+      expect(find.text('New · 4 in stock · 2 colours / sizes'), findsOneWidget);
+
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Update stock'));
+      await tester.pumpAndSettle();
+      expect(find.text('0 in stock'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('select-option-v-blue')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('marketplace-stock-more')));
+      await tester.tap(find.byKey(const ValueKey('marketplace-stock-more')));
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('marketplace-stock-save')));
+      await tester.pumpAndSettle();
+
+      expect(repo.stockChanges, [('p-1', 2)]);
+      expect(repo.stockVariantIds, ['v-blue']);
+      expect(find.text('Cotton shirt · Blue: 2 in stock.'), findsOneWidget);
     });
   });
 

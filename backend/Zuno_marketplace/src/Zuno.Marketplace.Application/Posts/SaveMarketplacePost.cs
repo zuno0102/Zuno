@@ -56,6 +56,43 @@ public abstract class MarketplacePostFields
 
     /// <summary>The category's own details, by field key. Keys the category does not have are refused.</summary>
     public Dictionary<string, string?> Attributes { get; set; } = [];
+
+    /// <summary>Details the business names itself, in its order — "Leather type: Genuine".</summary>
+    public List<MarketplaceCustomDetailInput> CustomDetails { get; set; } = [];
+
+    /// <summary>A new product's colours and sizes, each with its stock. Empty for one stock count.</summary>
+    public List<MarketplaceVariantInput> Variants { get; set; } = [];
+
+    /// <summary>The product's street address; the pin is the latitude and longitude.</summary>
+    public string? AddressLine { get; set; }
+
+    /// <summary>Products only: ships anywhere (the default), or only to <see cref="DeliveryDistrictIds"/>.</summary>
+    public bool DeliversEverywhere { get; set; } = true;
+
+    public List<Guid> DeliveryDistrictIds { get; set; } = [];
+}
+
+/// <summary>One detail the business adds itself.</summary>
+public class MarketplaceCustomDetailInput
+{
+    public string Name { get; set; } = string.Empty;
+
+    public string Value { get; set; } = string.Empty;
+}
+
+/// <summary>One colour / size of a new product. <see cref="Id"/> keeps an existing one on an edit.</summary>
+public class MarketplaceVariantInput
+{
+    public Guid? Id { get; set; }
+
+    public string? Colour { get; set; }
+
+    public string? Size { get; set; }
+
+    /// <summary>Null sells at the post's price.</summary>
+    public decimal? Price { get; set; }
+
+    public int Stock { get; set; }
 }
 
 /// <summary>Puts up a new post. It goes live at once, so it needs a free slot on the business's plan.</summary>
@@ -77,6 +114,13 @@ public abstract class MarketplacePostFieldsValidator<T> : AbstractValidator<T>
     public const int AreaMax = 120;
     public const int AttributeValueMax = 200;
     public const int MaxAttributes = 30;
+    public const int MaxCustomDetails = 15;
+    public const int CustomNameMax = 40;
+    public const int MaxVariants = 50;
+    public const int ColourMax = 40;
+    public const int SizeMax = 20;
+    public const int AddressMax = 200;
+    public const int MaxDeliveryDistricts = 100;
 
     protected MarketplacePostFieldsValidator(IOptions<MarketplaceSettings> settings)
     {
@@ -103,6 +147,27 @@ public abstract class MarketplacePostFieldsValidator<T> : AbstractValidator<T>
         RuleFor(x => x.Longitude).InclusiveBetween(-180, 180).When(x => x.Longitude.HasValue);
         RuleFor(x => x).Must(x => x.Latitude.HasValue == x.Longitude.HasValue)
             .WithName("Location").WithMessage("Send both latitude and longitude, or neither.");
+        RuleFor(x => x.AddressLine).MaximumLength(AddressMax);
+        RuleFor(x => x.CustomDetails.Count).LessThanOrEqualTo(MaxCustomDetails)
+            .OverridePropertyName("CustomDetails").WithMessage($"Add at most {MaxCustomDetails} details of your own.");
+        RuleForEach(x => x.CustomDetails).ChildRules(detail =>
+        {
+            detail.RuleFor(d => d.Name).NotEmpty().WithMessage("Name the detail, e.g. Leather type.").MaximumLength(CustomNameMax);
+            detail.RuleFor(d => d.Value).NotEmpty().WithMessage("Give the detail a value.").MaximumLength(AttributeValueMax);
+        });
+        RuleFor(x => x.Variants.Count).LessThanOrEqualTo(MaxVariants)
+            .OverridePropertyName("Variants").WithMessage($"Add at most {MaxVariants} colours and sizes.");
+        RuleForEach(x => x.Variants).ChildRules(variant =>
+        {
+            variant.RuleFor(v => v).Must(v => !string.IsNullOrWhiteSpace(v.Colour) || !string.IsNullOrWhiteSpace(v.Size))
+                .OverridePropertyName("Colour").WithMessage("Give a colour, a size, or both.");
+            variant.RuleFor(v => v.Colour).MaximumLength(ColourMax);
+            variant.RuleFor(v => v.Size).MaximumLength(SizeMax);
+            variant.RuleFor(v => v.Stock).InclusiveBetween(0, limits.MaxQuantity);
+            variant.RuleFor(v => v.Price).GreaterThan(0).LessThanOrEqualTo(limits.MaxPrice).When(v => v.Price.HasValue);
+        });
+        RuleFor(x => x.DeliveryDistrictIds.Count).LessThanOrEqualTo(MaxDeliveryDistricts)
+            .OverridePropertyName("DeliveryDistrictIds").WithMessage($"Choose at most {MaxDeliveryDistricts} districts.");
         RuleFor(x => x.Attributes.Count).LessThanOrEqualTo(MaxAttributes).OverridePropertyName("Attributes");
         RuleForEach(x => x.Attributes).Must(a => (a.Value?.Length ?? 0) <= AttributeValueMax)
             .WithMessage($"Each detail must be {AttributeValueMax} characters or fewer.");
@@ -136,6 +201,7 @@ public class SaveMarketplacePostHandlers(
 
         var post = new MarketplacePost { OwnerUserId = ownerId, Status = MarketplacePostStatus.Active };
         Apply(post, request, category);
+        ApplyVariants(post, request, category);
 
         return await dbContext.WithOwnerLockAsync(ownerId, async () =>
         {
@@ -162,6 +228,7 @@ public class SaveMarketplacePostHandlers(
 
         var category = await CheckedCategoryAsync(request, now, cancellationToken);
         Apply(post, request, category);
+        ApplyVariants(post, request, category);
 
         return await dbContext.WithOwnerLockAsync(ownerId, async () =>
         {
@@ -196,7 +263,57 @@ public class SaveMarketplacePostHandlers(
             throw new ValidationException(failures);
         }
 
+        if (category.TracksStock && !request.DeliversEverywhere)
+        {
+            var wanted = request.DeliveryDistrictIds.Distinct().ToList();
+            var known = await dbContext.Districts.CountAsync(d => wanted.Contains(d.Id), cancellationToken);
+            if (known != wanted.Count)
+            {
+                throw new ValidationException([new ValidationFailure(nameof(request.DeliveryDistrictIds), "Choose the districts it ships to from the list.")]);
+            }
+        }
+
         return category;
+    }
+
+    /// <summary>
+    /// A new product's colours and sizes: one sent with an id updates that row, a row not sent any more
+    /// is removed, the rest are added. With any, the post's stock is theirs added up.
+    /// </summary>
+    private void ApplyVariants(MarketplacePost post, MarketplacePostFields request, MarketplaceCategory category)
+    {
+        var wanted = post.KeepsStock && category.TracksStock ? request.Variants : [];
+        var kept = wanted.Where(v => v.Id is not null).Select(v => v.Id!.Value).ToHashSet();
+        foreach (var gone in post.Variants.Where(v => !kept.Contains(v.Id)).ToList())
+        {
+            post.Variants.Remove(gone);
+            dbContext.PostVariants.Remove(gone);
+        }
+
+        short order = 0;
+        foreach (var input in wanted)
+        {
+            var variant = post.Variants.FirstOrDefault(v => v.Id == input.Id);
+            if (variant is null)
+            {
+                // Added through the set: with its key preset, one found only on the collection would
+                // be taken for a row that is already there.
+                variant = new MarketplacePostVariant { PostId = post.Id, Post = post };
+                dbContext.PostVariants.Add(variant);
+                post.Variants.AddIfMissing(variant);
+            }
+
+            variant.Colour = Clean(input.Colour);
+            variant.Size = Clean(input.Size);
+            variant.Price = input.Price;
+            variant.Stock = input.Stock;
+            variant.SortOrder = order++;
+        }
+
+        if (wanted.Count != 0)
+        {
+            post.Quantity = wanted.Sum(v => v.Stock);
+        }
     }
 
     private static void Apply(MarketplacePost post, MarketplacePostFields request, MarketplaceCategory category)
@@ -213,7 +330,8 @@ public class SaveMarketplacePostHandlers(
         post.MinOrderQuantity = post.TradeType == MarketplaceTradeType.Wholesale ? request.MinOrderQuantity : null;
         post.Condition = MarketplacePostRules.ConditionOf(category, request);
         post.Quantity = post.Condition == MarketplaceItemCondition.Used ? null : request.Quantity;
-        post.OriginalPrice = kind == MarketplacePostKind.FoodOffer ? request.OriginalPrice : null;
+        // A food offer's usual price, or a product's MRP.
+        post.OriginalPrice = kind == MarketplacePostKind.FoodOffer || category.TracksStock ? request.OriginalPrice : null;
         post.StartsAt = kind == MarketplacePostKind.Listing ? null : request.StartsAt;
         post.EndsAt = kind == MarketplacePostKind.Listing ? null : request.EndsAt;
         post.ContactPhone = kind == MarketplacePostKind.Advertisement ? Clean(request.ContactPhone) : null;
@@ -222,6 +340,13 @@ public class SaveMarketplacePostHandlers(
         post.Latitude = request.Latitude;
         post.Longitude = request.Longitude;
         post.Attributes = MarketplacePostRules.Attributes(category, request);
+        post.CustomDetails = request.CustomDetails
+            .Where(d => !string.IsNullOrWhiteSpace(d.Name) && !string.IsNullOrWhiteSpace(d.Value))
+            .Select(d => new MarketplacePostAttribute { Key = d.Name.Trim(), Value = d.Value.Trim() })
+            .ToList();
+        post.AddressLine = Clean(request.AddressLine);
+        post.DeliversEverywhere = !category.TracksStock || request.DeliversEverywhere;
+        post.DeliveryDistrictIds = post.DeliversEverywhere ? [] : request.DeliveryDistrictIds.Distinct().ToList();
     }
 
     private async Task<MarketplacePostDto> ReloadAsync(Guid postId, Guid ownerId, DateTimeOffset now, CancellationToken cancellationToken)
@@ -313,6 +438,8 @@ public static class MarketplacePostRules
         CheckSubCategory(category, request, Fail);
         CheckTrade(category, request, Fail);
         CheckStock(category, request, Fail);
+        CheckProductExtras(category, request, Fail);
+        CheckCustomDetails(category, request, Fail);
         switch (category.Kind)
         {
             case MarketplacePostKind.Listing:
@@ -388,11 +515,68 @@ public static class MarketplacePostRules
             case null:
                 fail(nameof(request.Condition), "Choose New or Used.");
                 break;
-            case MarketplaceItemCondition.New when request.Quantity is null:
+            case MarketplaceItemCondition.New when request.Quantity is null && request.Variants.Count == 0:
                 fail(nameof(request.Quantity), "Enter how many you have in stock.");
                 break;
         }
     }
+
+    /// <summary>
+    /// What only a product in a category that keeps stock may have: colours and sizes (a new one
+    /// only), an MRP no lower than the price, and where it ships.
+    /// </summary>
+    private static void CheckProductExtras(MarketplaceCategory category, MarketplacePostFields request, Action<string, string> fail)
+    {
+        var isNewProduct = category.TracksStock && RequestedCondition(request) == MarketplaceItemCondition.New;
+        if (request.Variants.Count != 0)
+        {
+            if (!isNewProduct)
+            {
+                fail(nameof(request.Variants), "Only a new product has colours and sizes, each with its stock.");
+            }
+            else if (request.Variants
+                .GroupBy(v => (Colour: Key(v.Colour), Size: Key(v.Size)))
+                .FirstOrDefault(g => g.Count() > 1) is { } twice)
+            {
+                fail(nameof(request.Variants), $"{VariantName(twice.First())} is listed twice.");
+            }
+        }
+
+        if (category.TracksStock && request.OriginalPrice is { } mrp && request.Price is { } price && mrp < price)
+        {
+            fail(nameof(request.OriginalPrice), "The MRP cannot be less than the price.");
+        }
+
+        if (category.TracksStock && !request.DeliversEverywhere && request.DeliveryDistrictIds.Count == 0)
+        {
+            fail(nameof(request.DeliveryDistrictIds), "Choose the districts it ships to, or ship everywhere.");
+        }
+    }
+
+    /// <summary>The business's own details: each named once, and not one the category already asks.</summary>
+    private static void CheckCustomDetails(MarketplaceCategory category, MarketplacePostFields request, Action<string, string> fail)
+    {
+        var asked = FieldsFor(category, request).Select(f => Key(f.Label)).ToHashSet();
+        var seen = new HashSet<string>();
+        foreach (var detail in request.CustomDetails.Where(d => !string.IsNullOrWhiteSpace(d.Name)))
+        {
+            var name = Key(detail.Name);
+            if (asked.Contains(name))
+            {
+                fail(nameof(request.CustomDetails), $"{detail.Name.Trim()} is already asked above.");
+            }
+            else if (!seen.Add(name))
+            {
+                fail(nameof(request.CustomDetails), $"{detail.Name.Trim()} is added twice.");
+            }
+        }
+    }
+
+    /// <summary>"Red · M" for a message.</summary>
+    public static string VariantName(MarketplaceVariantInput variant) =>
+        string.Join(" · ", new[] { variant.Colour?.Trim(), variant.Size?.Trim() }.Where(p => !string.IsNullOrEmpty(p)));
+
+    private static string Key(string? text) => (text ?? string.Empty).Trim().ToUpperInvariant();
 
     private static void CheckTrade(MarketplaceCategory category, MarketplacePostFields request, Action<string, string> fail)
     {

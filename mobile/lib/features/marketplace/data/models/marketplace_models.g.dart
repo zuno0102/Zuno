@@ -57,6 +57,29 @@ MarketplacePostModel _$MarketplacePostModelFromJson(
   condition: json['condition'] as String?,
   isOutOfStock: json['isOutOfStock'] as bool? ?? false,
   canUpdateStock: json['canUpdateStock'] as bool? ?? false,
+  customDetails:
+      (json['customDetails'] as List<dynamic>?)
+          ?.map(
+            (e) => MarketplaceCustomDetailModel.fromJson(
+              e as Map<String, dynamic>,
+            ),
+          )
+          .toList() ??
+      const [],
+  variants:
+      (json['variants'] as List<dynamic>?)
+          ?.map(
+            (e) => MarketplaceVariantModel.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const [],
+  addressLine: json['addressLine'] as String?,
+  deliversEverywhere: json['deliversEverywhere'] as bool? ?? true,
+  deliveryDistrictIds:
+      (json['deliveryDistrictIds'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      const [],
   attributes:
       (json['attributes'] as Map<String, dynamic>?)?.map(
         (k, e) => MapEntry(k, e as String),
@@ -78,6 +101,23 @@ MarketplacePostModel _$MarketplacePostModelFromJson(
           )
           .toList() ??
       const [],
+);
+
+MarketplaceCustomDetailModel _$MarketplaceCustomDetailModelFromJson(
+  Map<String, dynamic> json,
+) => MarketplaceCustomDetailModel(
+  name: json['name'] as String,
+  value: json['value'] as String,
+);
+
+MarketplaceVariantModel _$MarketplaceVariantModelFromJson(
+  Map<String, dynamic> json,
+) => MarketplaceVariantModel(
+  id: json['id'] as String,
+  stock: (json['stock'] as num).toInt(),
+  colour: json['colour'] as String?,
+  size: json['size'] as String?,
+  price: (json['price'] as num?)?.toDouble(),
 );
 
 MarketplacePostPageModel _$MarketplacePostPageModelFromJson(

@@ -36,6 +36,7 @@ internal static class MarketplaceQueries
             .Include(p => p.Category)
             .Include(p => p.SubCategory)
             .Include(p => p.Media)
+            .Include(p => p.Variants)
             .Include(p => p.District).ThenInclude(d => d.State);
 
     /// <summary>Posts that use a plan slot: Active and not yet ended.</summary>

@@ -107,6 +107,13 @@ public class MarketplacePostConfiguration : IEntityTypeConfiguration<Marketplace
             attributes.Property(a => a.Key).HasMaxLength(60);
             attributes.Property(a => a.Value).HasMaxLength(200);
         });
+        builder.OwnsMany(p => p.CustomDetails, details =>
+        {
+            details.ToJson("custom_details");
+            details.Property(a => a.Key).HasMaxLength(60);
+            details.Property(a => a.Value).HasMaxLength(200);
+        });
+        builder.Property(p => p.AddressLine).HasMaxLength(200);
 
         // Postgres's own row version (xmin — no column is added): two edits of one post at once
         // cannot both win silently.
@@ -123,6 +130,33 @@ public class MarketplacePostConfiguration : IEntityTypeConfiguration<Marketplace
         builder.HasOne(p => p.Category).WithMany().HasForeignKey(p => p.CategoryId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(p => p.SubCategory).WithMany().HasForeignKey(p => p.SubCategoryId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(p => p.District).WithMany().HasForeignKey(p => p.DistrictId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class MarketplacePostVariantConfiguration : IEntityTypeConfiguration<MarketplacePostVariant>
+{
+    public void Configure(EntityTypeBuilder<MarketplacePostVariant> builder)
+    {
+        builder.ToTable("marketplace_post_variants", t =>
+        {
+            t.HasCheckConstraint("ck_marketplace_post_variants_stock", "stock >= 0");
+            t.HasCheckConstraint("ck_marketplace_post_variants_price", "price IS NULL OR price > 0");
+            t.HasCheckConstraint("ck_marketplace_post_variants_named", "colour IS NOT NULL OR size IS NOT NULL");
+        });
+        builder.Property(v => v.Colour).HasMaxLength(40);
+        builder.Property(v => v.Size).HasMaxLength(20);
+        builder.Property(v => v.Price).HasPrecision(14, 2);
+        builder.Ignore(v => v.Name);
+
+        // One row per colour and size of a post; a removed one (soft-deleted) frees its name.
+        builder.HasIndex(v => new { v.PostId, v.Colour, v.Size })
+            .IsUnique()
+            .AreNullsDistinct(false)
+            .HasFilter("is_deleted = false");
+        builder.HasOne(v => v.Post)
+            .WithMany(p => p.Variants)
+            .HasForeignKey(v => v.PostId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
 

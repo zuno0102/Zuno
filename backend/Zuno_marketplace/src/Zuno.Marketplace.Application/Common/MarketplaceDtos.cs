@@ -68,12 +68,48 @@ public class MarketplacePostDto
     /// <summary>The category's own details, by field key.</summary>
     public Dictionary<string, string> Attributes { get; set; } = [];
 
+    /// <summary>Details the business named itself, in its order.</summary>
+    public List<MarketplaceCustomDetailDto> CustomDetails { get; set; } = [];
+
+    /// <summary>A new product's colours and sizes with their stock.</summary>
+    public List<MarketplaceVariantDto> Variants { get; set; } = [];
+
+    public string? AddressLine { get; set; }
+
+    public bool DeliversEverywhere { get; set; } = true;
+
+    public List<Guid> DeliveryDistrictIds { get; set; } = [];
+
     public List<MarketplacePostMediaDto> Media { get; set; } = [];
 
     /// <summary>The moves the business may make now, in menu order (from the transitions table).</summary>
     public List<MarketplacePostActionDto> Actions { get; set; } = [];
 
     public DateTimeOffset CreatedDate { get; set; }
+}
+
+public class MarketplaceCustomDetailDto
+{
+    public string Name { get; set; } = string.Empty;
+
+    public string Value { get; set; } = string.Empty;
+}
+
+public class MarketplaceVariantDto
+{
+    public Guid Id { get; set; }
+
+    public string? Colour { get; set; }
+
+    public string? Size { get; set; }
+
+    /// <summary>"Red · M".</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>Null sells at the post's price.</summary>
+    public decimal? Price { get; set; }
+
+    public int Stock { get; set; }
 }
 
 public class MarketplacePostMediaDto

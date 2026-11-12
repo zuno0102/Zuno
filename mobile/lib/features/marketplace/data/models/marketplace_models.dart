@@ -68,6 +68,11 @@ class MarketplacePostModel {
     this.condition,
     this.isOutOfStock = false,
     this.canUpdateStock = false,
+    this.customDetails = const [],
+    this.variants = const [],
+    this.addressLine,
+    this.deliversEverywhere = true,
+    this.deliveryDistrictIds = const [],
     this.attributes = const {},
     this.media = const [],
     this.actions = const [],
@@ -105,6 +110,11 @@ class MarketplacePostModel {
   final String? condition;
   final bool isOutOfStock;
   final bool canUpdateStock;
+  final List<MarketplaceCustomDetailModel> customDetails;
+  final List<MarketplaceVariantModel> variants;
+  final String? addressLine;
+  final bool deliversEverywhere;
+  final List<String> deliveryDistrictIds;
   final Map<String, String> attributes;
   final List<MarketplacePostMediaModel> media;
   final List<MarketplacePostActionModel> actions;
@@ -139,9 +149,56 @@ class MarketplacePostModel {
     condition: condition,
     isOutOfStock: isOutOfStock,
     canUpdateStock: canUpdateStock,
+    customDetails: [for (final d in customDetails) d.toEntity()],
+    variants: [for (final v in variants) v.toEntity()],
+    addressLine: addressLine,
+    deliversEverywhere: deliversEverywhere,
+    deliveryDistrictIds: deliveryDistrictIds,
     attributes: attributes,
     imageUrls: {for (final m in media) m.sortOrder: m.url},
     actions: [for (final a in actions) a.toEntity()],
+  );
+}
+
+@JsonSerializable(createToJson: false)
+class MarketplaceCustomDetailModel {
+  const MarketplaceCustomDetailModel({required this.name, required this.value});
+
+  factory MarketplaceCustomDetailModel.fromJson(Map<String, dynamic> json) =>
+      _$MarketplaceCustomDetailModelFromJson(json);
+
+  final String name;
+  final String value;
+
+  MarketplaceCustomDetail toEntity() =>
+      MarketplaceCustomDetail(name: name, value: value);
+}
+
+@JsonSerializable(createToJson: false)
+class MarketplaceVariantModel {
+  const MarketplaceVariantModel({
+    required this.id,
+    required this.stock,
+    this.colour,
+    this.size,
+    this.price,
+  });
+
+  factory MarketplaceVariantModel.fromJson(Map<String, dynamic> json) =>
+      _$MarketplaceVariantModelFromJson(json);
+
+  final String id;
+  final String? colour;
+  final String? size;
+  final double? price;
+  final int stock;
+
+  MarketplaceVariant toEntity() => MarketplaceVariant(
+    id: id,
+    colour: colour,
+    size: size,
+    price: price,
+    stock: stock,
   );
 }
 

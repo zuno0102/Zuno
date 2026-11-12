@@ -2,15 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/features/business_owner/presentation/providers/business_profile_notifier.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/service_form_message_banner.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/service_media_slots.dart';
+import 'package:zuno/features/catalog/domain/entities/district.dart';
+import 'package:zuno/features/catalog/domain/entities/location_state.dart';
 import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
 import 'package:zuno/features/marketplace/data/marketplace_api.dart';
 import 'package:zuno/features/marketplace/domain/entities/marketplace_post.dart';
 import 'package:zuno/features/marketplace/presentation/providers/marketplace_providers.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_category_fields_section.dart';
+import 'package:zuno/features/marketplace/presentation/widgets/marketplace_product_sections.dart';
 import 'package:zuno/shared/widgets/date_time_field.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
+import 'package:zuno/shared/widgets/location_pin_picker.dart';
+import 'package:zuno/shared/widgets/multi_select_sheet.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
 import 'package:zuno/shared/widgets/select_field.dart';
 
@@ -83,6 +89,29 @@ class _MarketplacePostFormSheetState
   late DateTime? _startsAt = _old?.startsAt;
   late DateTime? _endsAt = _old?.endsAt;
 
+  /// A new product's colours and sizes, and the business's own details.
+  late final _variants = MarketplaceVariantRows(_old?.variants ?? const [])
+    ..addListener(_rebuild);
+  late final _customDetails = MarketplaceCustomDetailRows(
+    _old?.customDetails ?? const [],
+  );
+
+  /// Where the product is: a street line, and the pin from the map or the phone.
+  late final _addressLine = TextEditingController(text: _old?.addressLine);
+  late double? _latitude = _old?.latitude;
+  late double? _longitude = _old?.longitude;
+
+  /// A product ships anywhere, or only to the districts chosen.
+  late bool _deliversEverywhere = _old?.deliversEverywhere ?? true;
+  late Set<String> _deliveryDistrictIds = {...?_old?.deliveryDistrictIds};
+
+  /// A new post starts from the business's registered address, once.
+  bool _prefilledAddress = false;
+
+  void _rebuild() {
+    if (mounted) setState(() {});
+  }
+
   late final _media = ServiceMediaSelection(
     slotCount:
         ref.read(marketplaceOptionsProvider).value?.imageSlots ??
@@ -116,9 +145,12 @@ class _MarketplacePostFormSheetState
       _minOrder,
       _area,
       _phone,
+      _addressLine,
     ]) {
       c.dispose();
     }
+    _variants.dispose();
+    _customDetails.dispose();
     _attributes.dispose();
     _media.dispose();
     _scroll.dispose();
@@ -153,13 +185,44 @@ class _MarketplacePostFormSheetState
       onChanged: (v) => setState(() => _condition = v),
     ),
     const SizedBox(height: 14),
+    // MRP: what it usually sells for, shown struck through beside the price.
+    TextFormField(
+      key: const ValueKey('marketplace-mrp'),
+      controller: _originalPrice,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+      decoration: const InputDecoration(
+        labelText: 'MRP (optional)',
+        prefixText: '₹ ',
+        border: OutlineInputBorder(),
+      ),
+      validator: (v) {
+        final text = (v ?? '').trim();
+        if (text.isEmpty) return null;
+        final mrp = double.tryParse(text);
+        if (mrp == null || mrp <= 0) return 'Enter a valid price.';
+        final price = double.tryParse(_price.text.trim());
+        return price != null && mrp < price
+            ? 'Cannot be less than the price.'
+            : null;
+      },
+    ),
+    const SizedBox(height: 14),
     if (_keepsStock(category)) ...[
-      _wholeNumber(
-        _quantity,
-        key: 'marketplace-stock',
-        label: 'Stock available',
-        required: true,
-        min: 0,
+      // One stock count, until the product has colours or sizes: then each has its own.
+      if (_variants.isEmpty) ...[
+        _wholeNumber(
+          _quantity,
+          key: 'marketplace-stock',
+          label: 'Stock available',
+          required: true,
+          min: 0,
+        ),
+        const SizedBox(height: 14),
+      ],
+      MarketplaceVariantsSection(
+        rows: _variants,
+        maxQuantity: options?.maxQuantity ?? marketplaceDefaultMaxQuantity,
       ),
       const SizedBox(height: 14),
     ],
@@ -184,15 +247,27 @@ class _MarketplacePostFormSheetState
           : MarketplaceTradeType.retail,
       minOrderQuantity: wholesale ? int.tryParse(_minOrder.text.trim()) : null,
       condition: category.tracksStock ? _condition : null,
+      // With colours and sizes the server adds their stock up; otherwise the one count.
       quantity:
           kind == MarketplacePostKind.foodOffer ||
               wholesale ||
-              _keepsStock(category)
+              (_keepsStock(category) && _variants.isEmpty)
           ? int.tryParse(_quantity.text.trim())
           : null,
-      originalPrice: kind == MarketplacePostKind.foodOffer
+      variants: _keepsStock(category) ? _variants.values : const [],
+      // A food offer's usual price, or a product's MRP.
+      originalPrice:
+          kind == MarketplacePostKind.foodOffer || category.tracksStock
           ? double.tryParse(_originalPrice.text.trim())
           : null,
+      customDetails: _customDetails.values,
+      addressLine: _clean(_addressLine),
+      latitude: _latitude,
+      longitude: _longitude,
+      deliversEverywhere: !category.tracksStock || _deliversEverywhere,
+      deliveryDistrictIds: category.tracksStock && !_deliversEverywhere
+          ? [..._deliveryDistrictIds]
+          : const [],
       startsAt: kind == MarketplacePostKind.listing ? null : _startsAt,
       endsAt: kind == MarketplacePostKind.listing ? null : _endsAt,
       contactPhone: kind == MarketplacePostKind.advertisement
@@ -411,7 +486,11 @@ class _MarketplacePostFormSheetState
                   values: _attributes,
                   onChanged: () => setState(() {}),
                 ),
-              ..._placeSection(),
+              if (category != null) ...[
+                MarketplaceCustomDetailsSection(rows: _customDetails),
+                const SizedBox(height: 14),
+              ],
+              ..._placeSection(category),
               const SizedBox(height: 20),
               PrimaryButton(
                 label: _old == null ? 'Save post' : 'Save changes',
@@ -625,8 +704,84 @@ class _MarketplacePostFormSheetState
     ];
   }
 
-  List<Widget> _placeSection() {
+  /// A new post starts where the business is registered: its street, town, state and pin. Once,
+  /// when both the profile and the states have loaded; anything typed since is never overwritten.
+  void _prefillFromBusiness(List<LocationState> states) {
+    if (_old != null || _prefilledAddress) return;
+    final profile = ref.watch(businessProfileProvider).value;
+    if (profile == null || states.isEmpty) return;
+    _prefilledAddress = true;
+    final street = [
+      profile.addressLine1,
+      profile.addressLine2,
+    ].where((p) => p != null && p.trim().isNotEmpty).join(', ');
+    if (_addressLine.text.isEmpty && street.isNotEmpty) {
+      _addressLine.text = street;
+    }
+    if (_area.text.isEmpty && (profile.city?.isNotEmpty ?? false)) {
+      _area.text = profile.city!;
+    }
+    _latitude ??= profile.latitude;
+    _longitude ??= profile.longitude;
+    _stateId ??= _stateNamed(states, profile.state);
+  }
+
+  static String? _stateNamed(List<LocationState> states, String? name) {
+    final wanted = name?.trim().toLowerCase();
+    if (wanted == null || wanted.isEmpty) return null;
+    return states.where((s) => s.name.toLowerCase() == wanted).firstOrNull?.id;
+  }
+
+  /// Pins the product on a map — from search, or the phone's position — and fills the street and
+  /// town from it where they are still empty.
+  Future<void> _pickLocation(
+    List<LocationState> states, {
+    required bool fromCurrentLocation,
+  }) async {
+    FocusScope.of(context).unfocus();
+    final picked = await showLocationPinPicker(
+      context,
+      title: 'Where is the product?',
+      // Starting without a point makes the picker go to the phone's position first.
+      initialLatitude: fromCurrentLocation ? null : _latitude,
+      initialLongitude: fromCurrentLocation ? null : _longitude,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _latitude = picked.latitude;
+      _longitude = picked.longitude;
+      if (_addressLine.text.trim().isEmpty) {
+        _addressLine.text = picked.street ?? picked.summary;
+      }
+      if (_area.text.trim().isEmpty) {
+        _area.text = picked.locality ?? picked.city ?? '';
+      }
+      final pickedState = _stateNamed(states, picked.state);
+      if (pickedState != null && pickedState != _stateId) {
+        _stateId = pickedState;
+        _districtId = null;
+      }
+    });
+  }
+
+  Future<void> _pickDeliveryDistricts(List<District> districts) async {
+    final picked = await showMultiSelectSheet(
+      context: context,
+      title: 'Ships to',
+      options: [
+        for (final d in districts) MultiSelectOption(id: d.id, label: d.name),
+      ],
+      initialSelectedIds: _deliveryDistrictIds,
+    );
+    if (picked != null && mounted) {
+      setState(() => _deliveryDistrictIds = picked);
+    }
+  }
+
+  List<Widget> _placeSection(MarketplaceCategory? category) {
+    final theme = Theme.of(context);
     final states = ref.watch(locationStatesProvider).value ?? const [];
+    _prefillFromBusiness(states);
     final stateId = _stateId;
     final districtsAsync = stateId == null
         ? null
@@ -641,7 +796,71 @@ class _MarketplacePostFormSheetState
         : districtsAsync.hasError && districts.isEmpty
         ? 'Could not load districts. Choose the state again.'
         : null;
+    final hasPin = _latitude != null && _longitude != null;
     return [
+      Text(
+        'Where it is',
+        style: theme.textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        _old == null
+            ? 'Starts from your registered business address. Change it if the product is elsewhere.'
+            : 'Where the product is kept.',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+      const SizedBox(height: 10),
+      TextFormField(
+        key: const ValueKey('marketplace-address'),
+        controller: _addressLine,
+        maxLength: 200,
+        decoration: const InputDecoration(
+          labelText: 'Street address (optional)',
+          hintText: 'e.g. 12 Main Road, near the bus stand',
+          border: OutlineInputBorder(),
+          counterText: '',
+        ),
+      ),
+      const SizedBox(height: 8),
+      Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        children: [
+          ActionChip(
+            key: const ValueKey('marketplace-search-location'),
+            avatar: const Icon(Icons.search, size: 18),
+            label: const Text('Search on map'),
+            onPressed: () => _pickLocation(states, fromCurrentLocation: false),
+          ),
+          ActionChip(
+            key: const ValueKey('marketplace-current-location'),
+            avatar: const Icon(Icons.my_location, size: 18),
+            label: const Text('Current location'),
+            onPressed: () => _pickLocation(states, fromCurrentLocation: true),
+          ),
+          if (hasPin)
+            InputChip(
+              key: const ValueKey('marketplace-pin-set'),
+              avatar: Icon(
+                Icons.check_circle,
+                size: 18,
+                color: theme.colorScheme.primary,
+              ),
+              label: const Text('Exact pin set'),
+              onPressed: () =>
+                  _pickLocation(states, fromCurrentLocation: false),
+              onDeleted: () => setState(() {
+                _latitude = null;
+                _longitude = null;
+              }),
+            ),
+        ],
+      ),
+      const SizedBox(height: 14),
       SelectField<String>(
         key: const ValueKey('marketplace-state'),
         label: 'State',
@@ -678,6 +897,55 @@ class _MarketplacePostFormSheetState
           counterText: '',
         ),
       ),
+      if (category?.tracksStock ?? false) ...[
+        const SizedBox(height: 4),
+        SelectField<bool>(
+          key: const ValueKey('marketplace-ships-to'),
+          label: 'Ships to',
+          options: const [
+            SelectOption(true, 'All areas', detail: 'Anyone can order it'),
+            SelectOption(
+              false,
+              'Chosen districts only',
+              detail: 'Only customers in the districts you pick',
+            ),
+          ],
+          initialValue: _deliversEverywhere,
+          onChanged: (v) => setState(() => _deliversEverywhere = v),
+        ),
+        if (!_deliversEverywhere) ...[
+          const SizedBox(height: 14),
+          FormField<Set<String>>(
+            key: ValueKey('marketplace-delivery-districts-$_stateId'),
+            validator: (_) => _deliveryDistrictIds.isEmpty
+                ? 'Choose at least one district.'
+                : null,
+            builder: (field) => InkWell(
+              onTap: districts.isEmpty
+                  ? null
+                  : () => _pickDeliveryDistricts([...districts]),
+              borderRadius: BorderRadius.circular(12),
+              child: InputDecorator(
+                isEmpty: _deliveryDistrictIds.isEmpty,
+                decoration: InputDecoration(
+                  labelText: 'Districts it ships to',
+                  helperText: districtHelp ?? 'From the state above.',
+                  errorText: field.errorText,
+                  suffixIcon: const Icon(Icons.keyboard_arrow_down_rounded),
+                ),
+                child: Text(
+                  [
+                    for (final d in districts)
+                      if (_deliveryDistrictIds.contains(d.id)) d.name,
+                  ].join(', '),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
     ];
   }
 

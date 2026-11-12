@@ -146,6 +146,47 @@ public class MarketplaceEndpointsTests(MarketplaceApiFactory factory) : IClassFi
     }
 
     [Fact]
+    public async Task Products_ColoursSizesOwnDetailsAndShipping_RoundTrip()
+    {
+        var client = factory.ClientFor(Guid.NewGuid());
+        var shirt = new
+        {
+            categoryId = Products,
+            subCategoryId = MarketplaceCatalogSeedData.SubId(3, 2),
+            title = "Cotton shirt",
+            price = 499,
+            originalPrice = 799,
+            condition = "New",
+            districtId = Kanyakumari,
+            addressLine = "12 Main Road",
+            latitude = 8.3,
+            longitude = 77.2,
+            deliversEverywhere = false,
+            deliveryDistrictIds = new[] { Kanyakumari },
+            attributes = new Dictionary<string, string> { ["fabric"] = "Cotton" },
+            customDetails = new[] { new { name = "Fit", value = "Slim" } },
+            variants = new[]
+            {
+                new { colour = "Red", size = "M", stock = 4 },
+                new { colour = "Blue", size = "M", stock = 0 },
+            },
+        };
+
+        var created = await client.PostAsJsonAsync(Posts, shirt);
+        created.StatusCode.Should().Be(HttpStatusCode.Created, await created.Content.ReadAsStringAsync());
+        var post = await Data(created);
+        post.GetProperty("quantity").GetInt32().Should().Be(4);
+        post.GetProperty("variants").GetArrayLength().Should().Be(2);
+        post.GetProperty("customDetails")[0].GetProperty("name").GetString().Should().Be("Fit");
+        post.GetProperty("deliveryDistrictIds")[0].GetString().Should().Be(Kanyakumari);
+        var blueId = post.GetProperty("variants")[1].GetProperty("id").GetString();
+
+        var restocked = await Data(await client.PatchAsJsonAsync(
+            $"{Posts}/{post.GetProperty("id").GetString()}/stock", new { variantId = blueId, quantity = 3 }));
+        restocked.GetProperty("quantity").GetInt32().Should().Be(7);
+    }
+
+    [Fact]
     public async Task FreePlan_OneLivePost_ThenPauseFreesTheSlot()
     {
         var client = factory.ClientFor(Guid.NewGuid());

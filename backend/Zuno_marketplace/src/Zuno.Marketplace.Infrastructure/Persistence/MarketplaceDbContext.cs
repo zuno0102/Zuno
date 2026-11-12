@@ -20,6 +20,8 @@ public class MarketplaceDbContext(DbContextOptions<MarketplaceDbContext> options
 
     public DbSet<MarketplacePostMedia> PostMedia => Set<MarketplacePostMedia>();
 
+    public DbSet<MarketplacePostVariant> PostVariants => Set<MarketplacePostVariant>();
+
     public DbSet<MarketplaceBusiness> Businesses => Set<MarketplaceBusiness>();
 
     public DbSet<MarketplacePlan> Plans => Set<MarketplacePlan>();

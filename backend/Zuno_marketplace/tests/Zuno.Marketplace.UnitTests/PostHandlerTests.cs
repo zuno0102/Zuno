@@ -38,7 +38,7 @@ public class PostHandlerTests
         using var test = new TestMarketplace();
 
         var dto = await test.SaveHandlers.Handle(
-            TestMarketplace.Car(c => { c.StartsAt = test.Now; c.EndsAt = test.Now.AddHours(1); c.OriginalPrice = 1; c.ContactPhone = "9876543210"; }),
+            TestMarketplace.Bananas(c => { c.StartsAt = test.Now; c.EndsAt = test.Now.AddHours(1); c.OriginalPrice = 1; c.ContactPhone = "9876543210"; }),
             default);
 
         dto.StartsAt.Should().BeNull();

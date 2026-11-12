@@ -56,8 +56,15 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
       (await _remote.changeStatus(id, status)).toEntity();
 
   @override
-  Future<MarketplacePost> updateStock(String id, int quantity) async =>
-      (await _remote.updateStock(id, quantity)).toEntity();
+  Future<MarketplacePost> updateStock(
+    String id,
+    int quantity, {
+    String? variantId,
+  }) async => (await _remote.updateStock(
+    id,
+    quantity,
+    variantId: variantId,
+  )).toEntity();
 
   @override
   Future<void> delete(String id) => _remote.delete(id);

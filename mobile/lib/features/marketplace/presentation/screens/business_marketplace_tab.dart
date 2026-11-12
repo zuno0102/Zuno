@@ -15,6 +15,7 @@ import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/category_square_row.dart';
 import 'package:zuno/shared/widgets/media_list_card.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
+import 'package:zuno/shared/widgets/select_field.dart';
 
 /// The status pill for [status], named and coloured from the server's status table.
 StatusPill marketplaceStatusPill(MarketplaceOptions? options, String status) {
@@ -321,24 +322,42 @@ class MarketplacePostCard extends ConsumerWidget {
   }
 
   /// "Update stock": the count alone, without the whole form.
+  /// With colours and sizes it first asks which one, each listed with its stock.
   Future<void> _updateStock(BuildContext context, WidgetRef ref) async {
     final options = ref.read(marketplaceOptionsProvider).value;
+    MarketplaceVariant? variant;
+    if (post.variants.isNotEmpty) {
+      final pick = await showSelectSheet<String>(
+        context,
+        title: 'Update stock of',
+        options: [
+          for (final v in post.variants)
+            SelectOption(v.id!, v.name, detail: '${v.stock} in stock'),
+        ],
+      );
+      if (pick == null || !context.mounted) return;
+      variant = post.variants.firstWhere((v) => v.id == pick.value);
+    }
+
+    final name = variant == null
+        ? post.title
+        : '${post.title} · ${variant.name}';
     final count = await showMarketplaceStockDialog(
       context,
-      title: post.title,
-      current: post.quantity ?? 0,
+      title: name,
+      current: variant?.stock ?? post.quantity ?? 0,
       max: options?.maxQuantity ?? marketplaceDefaultMaxQuantity,
     );
     if (count == null || !context.mounted) return;
 
     final messenger = AppMessenger.of(context);
     try {
-      await ref.read(marketplaceRepositoryProvider).updateStock(post.id, count);
+      await ref
+          .read(marketplaceRepositoryProvider)
+          .updateStock(post.id, count, variantId: variant?.id);
       reloadMarketplace(ref);
       messenger.showSuccess(
-        count == 0
-            ? '${post.title}: out of stock.'
-            : '${post.title}: $count in stock.',
+        count == 0 ? '$name: out of stock.' : '$name: $count in stock.',
       );
     } catch (e) {
       messenger.showFailure(e.toString());

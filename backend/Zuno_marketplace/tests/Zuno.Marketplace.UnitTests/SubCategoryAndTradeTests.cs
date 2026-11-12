@@ -229,17 +229,17 @@ public class SubCategoryAndTradeTests
         {
             CategoryId = MarketplaceCatalogSeedData.Products,
             SubCategoryId = Sarees,
-            Label = "Fabric",
+            Label = "Weave",
             FieldType = "Text",
         }, default);
         var clothing = await test.AdminHandlers.Handle(new CreateMarketplaceFieldCommand
         {
             CategoryId = MarketplaceCatalogSeedData.Products,
             SubCategoryId = MarketplaceCatalogSeedData.SubId(3, 2),
-            Label = "Fabric",
+            Label = "Weave",
             FieldType = "Text",
         }, default);
-        clothing.Fields.Count(f => f.Key == "fabric").Should().Be(2);
+        clothing.Fields.Count(f => f.Key == "weave").Should().Be(2);
         var clash = () => test.AdminHandlers.Handle(new CreateMarketplaceFieldCommand
         {
             CategoryId = MarketplaceCatalogSeedData.Products,

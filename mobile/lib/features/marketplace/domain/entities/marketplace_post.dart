@@ -195,6 +195,11 @@ class MarketplacePost {
     this.condition,
     this.isOutOfStock = false,
     this.canUpdateStock = false,
+    this.customDetails = const [],
+    this.variants = const [],
+    this.addressLine,
+    this.deliversEverywhere = true,
+    this.deliveryDistrictIds = const [],
   });
 
   final String id;
@@ -209,6 +214,19 @@ class MarketplacePost {
 
   /// Whether the menu offers "Update stock": a new item not yet closed or sold.
   final bool canUpdateStock;
+
+  /// Details the business named itself, in its order — ("Fit", "Slim").
+  final List<MarketplaceCustomDetail> customDetails;
+
+  /// A new product's colours and sizes with their stock; empty for one stock count.
+  final List<MarketplaceVariant> variants;
+
+  /// The product's street address; the pin is [latitude] and [longitude].
+  final String? addressLine;
+
+  /// A product ships anywhere, or only to [deliveryDistrictIds].
+  final bool deliversEverywhere;
+  final List<String> deliveryDistrictIds;
   final String? categoryIconName;
   final String? subCategoryId;
   final String? subCategoryName;
@@ -260,9 +278,57 @@ class MarketplacePost {
       [if (area?.isNotEmpty ?? false) area!, districtName].join(', ');
 }
 
+/// A detail the business named itself — "Leather type: Genuine".
+class MarketplaceCustomDetail {
+  const MarketplaceCustomDetail({required this.name, required this.value});
+
+  final String name;
+  final String value;
+
+  Map<String, dynamic> toJson() => {'name': name, 'value': value};
+}
+
+/// One colour / size of a new product, with its own stock and, when it differs, price.
+class MarketplaceVariant {
+  const MarketplaceVariant({
+    required this.stock,
+    this.id,
+    this.colour,
+    this.size,
+    this.price,
+  });
+
+  /// Null for one not saved yet.
+  final String? id;
+  final String? colour;
+  final String? size;
+
+  /// Null sells at the post's price.
+  final double? price;
+  final int stock;
+
+  /// "Red · M".
+  String get name => [?colour, ?size].join(' · ');
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'colour': colour,
+    'size': size,
+    'price': price,
+    'stock': stock,
+  };
+}
+
 /// What the post form sends, for a new post and an edit alike.
 class MarketplacePostInput {
   const MarketplacePostInput({
+    this.customDetails = const [],
+    this.variants = const [],
+    this.addressLine,
+    this.latitude,
+    this.longitude,
+    this.deliversEverywhere = true,
+    this.deliveryDistrictIds = const [],
     required this.categoryId,
     this.subCategoryId,
     this.condition,
@@ -301,6 +367,13 @@ class MarketplacePostInput {
   final String districtId;
   final String? area;
   final Map<String, String> attributes;
+  final List<MarketplaceCustomDetail> customDetails;
+  final List<MarketplaceVariant> variants;
+  final String? addressLine;
+  final double? latitude;
+  final double? longitude;
+  final bool deliversEverywhere;
+  final List<String> deliveryDistrictIds;
 
   Map<String, dynamic> toJson() => {
     'categoryId': categoryId,
@@ -320,6 +393,13 @@ class MarketplacePostInput {
     'districtId': districtId,
     'area': area,
     'attributes': attributes,
+    'customDetails': [for (final d in customDetails) d.toJson()],
+    'variants': [for (final v in variants) v.toJson()],
+    'addressLine': addressLine,
+    'latitude': latitude,
+    'longitude': longitude,
+    'deliversEverywhere': deliversEverywhere,
+    'deliveryDistrictIds': deliveryDistrictIds,
   };
 }
 

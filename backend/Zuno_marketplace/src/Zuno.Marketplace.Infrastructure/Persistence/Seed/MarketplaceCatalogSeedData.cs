@@ -74,6 +74,15 @@ public static class MarketplaceCatalogSeedData
         Field(3, 1, Products, null, LegacyConditionKey, "Condition", MarketplaceFieldType.Select, options: ["New", "Used"], isActive: false),
         Field(3, 2, Products, null, "brand", "Brand", MarketplaceFieldType.Text, isActive: false),
 
+        // What a shopper filters a product by, per kind — rows the super admin can rename or extend.
+        Field(3, 3, Products, SubId(3, 1), "fabric", "Fabric", MarketplaceFieldType.Select, options: ["Silk", "Cotton", "Georgette", "Chiffon", "Crepe", "Other"]),
+        Field(3, 4, Products, SubId(3, 2), "fabric", "Fabric", MarketplaceFieldType.Select, options: ["Cotton", "Polyester", "Linen", "Denim", "Wool", "Other"]),
+        Field(3, 5, Products, SubId(3, 2), "for", "For", MarketplaceFieldType.Select, options: ["Men", "Women", "Kids", "Unisex"]),
+        Field(3, 6, Products, SubId(3, 3), "material", "Material", MarketplaceFieldType.Select, options: ["Genuine leather", "Synthetic leather", "Canvas", "Rubber", "Other"]),
+        Field(3, 7, Products, SubId(3, 3), "for", "For", MarketplaceFieldType.Select, options: ["Men", "Women", "Kids", "Unisex"]),
+        Field(3, 8, Products, SubId(3, 5), "brand", "Brand", MarketplaceFieldType.Text),
+        Field(3, 9, Products, SubId(3, 7), "material", "Material", MarketplaceFieldType.Select, options: ["Wood", "Metal", "Plastic", "Glass", "Other"]),
+
         Field(4, 1, B2BWholesale, null, "produce_type", "Produce", MarketplaceFieldType.Select, options: ["Vegetables", "Fruits", "Grains", "Coconut", "Spices", "Dairy", "Other"], isActive: false),
         Field(4, 2, B2BWholesale, null, "organic", "Organic", MarketplaceFieldType.Select, options: ["Yes", "No"]),
 

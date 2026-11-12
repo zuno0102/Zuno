@@ -76,6 +76,27 @@ public class MarketplacePost : BaseEntity
     /// <summary>The category's own details (year, km, fuel …), keyed by the field's key.</summary>
     public List<MarketplacePostAttribute> Attributes { get; set; } = [];
 
+    /// <summary>
+    /// Details the business adds itself where the category's list has none — "Leather type: Genuine",
+    /// keyed by the business's own name for it. Stored with the post as JSON.
+    /// </summary>
+    public List<MarketplacePostAttribute> CustomDetails { get; set; } = [];
+
+    /// <summary>The product's street address; the pin is <see cref="Latitude"/> / <see cref="Longitude"/>.</summary>
+    public string? AddressLine { get; set; }
+
+    /// <summary>A product that ships: anywhere, or only to <see cref="DeliveryDistrictIds"/>.</summary>
+    public bool DeliversEverywhere { get; set; } = true;
+
+    /// <summary>Where it ships when not everywhere.</summary>
+    public List<Guid> DeliveryDistrictIds { get; set; } = [];
+
+    /// <summary>
+    /// A new product's colours and sizes, each with its own stock (and price, when it differs). With
+    /// any, <see cref="Quantity"/> is their stock added up.
+    /// </summary>
+    public ICollection<MarketplacePostVariant> Variants { get; set; } = new List<MarketplacePostVariant>();
+
     public ICollection<MarketplacePostMedia> Media { get; set; } = new List<MarketplacePostMedia>();
 
     /// <summary>True when the post's time has passed — it then neither shows to customers nor uses a plan slot.</summary>
@@ -107,6 +128,32 @@ public class MarketplacePostAttribute
     public string Key { get; set; } = string.Empty;
 
     public string Value { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// One colour / size of a new product — "Red · M" — with its own stock, and its own price when it
+/// differs from the post's. Its own row, so an order can name exactly what was bought.
+/// </summary>
+public class MarketplacePostVariant : BaseEntity
+{
+    public Guid PostId { get; set; }
+
+    public MarketplacePost Post { get; set; } = null!;
+
+    public string? Colour { get; set; }
+
+    public string? Size { get; set; }
+
+    /// <summary>Null sells at the post's price.</summary>
+    public decimal? Price { get; set; }
+
+    /// <summary>How many are left; 0 is out of stock.</summary>
+    public int Stock { get; set; }
+
+    public short SortOrder { get; set; }
+
+    /// <summary>"Red · M", "Red", "M".</summary>
+    public string Name => string.Join(" · ", new[] { Colour, Size }.Where(p => !string.IsNullOrWhiteSpace(p)));
 }
 
 /// <summary>A photo of a post. Slot 0 is the cover, and an advertisement's banner.</summary>

@@ -40,6 +40,14 @@ internal static class MarketplacePostMapper
             Latitude = post.Latitude,
             Longitude = post.Longitude,
             Attributes = post.Attributes.ToDictionary(a => a.Key, a => a.Value),
+            CustomDetails = post.CustomDetails.Select(d => new MarketplaceCustomDetailDto { Name = d.Key, Value = d.Value }).ToList(),
+            Variants = post.Variants
+                .OrderBy(v => v.SortOrder)
+                .Select(v => new MarketplaceVariantDto { Id = v.Id, Colour = v.Colour, Size = v.Size, Name = v.Name, Price = v.Price, Stock = v.Stock })
+                .ToList(),
+            AddressLine = post.AddressLine,
+            DeliversEverywhere = post.DeliversEverywhere,
+            DeliveryDistrictIds = post.DeliveryDistrictIds,
             Media = post.Media
                 .OrderBy(m => m.SortOrder)
                 .Select(m => new MarketplacePostMediaDto { Url = m.Url, SortOrder = m.SortOrder })

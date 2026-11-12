@@ -555,6 +555,111 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         },
                         new
                         {
+                            Id = new Guid("f6666666-0000-0000-0003-000000000003"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)3,
+                            FieldType = (short)3,
+                            IsActive = true,
+                            IsDeleted = false,
+                            IsRequired = false,
+                            Key = "fabric",
+                            Label = "Fabric",
+                            Options = new List<string> { "Silk", "Cotton", "Georgette", "Chiffon", "Crepe", "Other" },
+                            SubCategoryId = new Guid("c7777777-0000-0000-0003-000000000001")
+                        },
+                        new
+                        {
+                            Id = new Guid("f6666666-0000-0000-0003-000000000004"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)4,
+                            FieldType = (short)3,
+                            IsActive = true,
+                            IsDeleted = false,
+                            IsRequired = false,
+                            Key = "fabric",
+                            Label = "Fabric",
+                            Options = new List<string> { "Cotton", "Polyester", "Linen", "Denim", "Wool", "Other" },
+                            SubCategoryId = new Guid("c7777777-0000-0000-0003-000000000002")
+                        },
+                        new
+                        {
+                            Id = new Guid("f6666666-0000-0000-0003-000000000005"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)5,
+                            FieldType = (short)3,
+                            IsActive = true,
+                            IsDeleted = false,
+                            IsRequired = false,
+                            Key = "for",
+                            Label = "For",
+                            Options = new List<string> { "Men", "Women", "Kids", "Unisex" },
+                            SubCategoryId = new Guid("c7777777-0000-0000-0003-000000000002")
+                        },
+                        new
+                        {
+                            Id = new Guid("f6666666-0000-0000-0003-000000000006"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)6,
+                            FieldType = (short)3,
+                            IsActive = true,
+                            IsDeleted = false,
+                            IsRequired = false,
+                            Key = "material",
+                            Label = "Material",
+                            Options = new List<string> { "Genuine leather", "Synthetic leather", "Canvas", "Rubber", "Other" },
+                            SubCategoryId = new Guid("c7777777-0000-0000-0003-000000000003")
+                        },
+                        new
+                        {
+                            Id = new Guid("f6666666-0000-0000-0003-000000000007"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)7,
+                            FieldType = (short)3,
+                            IsActive = true,
+                            IsDeleted = false,
+                            IsRequired = false,
+                            Key = "for",
+                            Label = "For",
+                            Options = new List<string> { "Men", "Women", "Kids", "Unisex" },
+                            SubCategoryId = new Guid("c7777777-0000-0000-0003-000000000003")
+                        },
+                        new
+                        {
+                            Id = new Guid("f6666666-0000-0000-0003-000000000008"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)8,
+                            FieldType = (short)1,
+                            IsActive = true,
+                            IsDeleted = false,
+                            IsRequired = false,
+                            Key = "brand",
+                            Label = "Brand",
+                            Options = new List<string>(),
+                            SubCategoryId = new Guid("c7777777-0000-0000-0003-000000000005")
+                        },
+                        new
+                        {
+                            Id = new Guid("f6666666-0000-0000-0003-000000000009"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)9,
+                            FieldType = (short)3,
+                            IsActive = true,
+                            IsDeleted = false,
+                            IsRequired = false,
+                            Key = "material",
+                            Label = "Material",
+                            Options = new List<string> { "Wood", "Metal", "Plastic", "Glass", "Other" },
+                            SubCategoryId = new Guid("c7777777-0000-0000-0003-000000000007")
+                        },
+                        new
+                        {
                             Id = new Guid("f6666666-0000-0000-0004-000000000001"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
@@ -764,6 +869,11 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("AddressLine")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("address_line");
+
                     b.Property<string>("Area")
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)")
@@ -789,6 +899,15 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedDate")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_date");
+
+                    b.Property<bool>("DeliversEverywhere")
+                        .HasColumnType("boolean")
+                        .HasColumnName("delivers_everywhere");
+
+                    b.PrimitiveCollection<List<Guid>>("DeliveryDistrictIds")
+                        .IsRequired()
+                        .HasColumnType("uuid[]")
+                        .HasColumnName("delivery_district_ids");
 
                     b.Property<string>("Description")
                         .HasMaxLength(2000)
@@ -1173,6 +1292,80 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             Condition = (short)2,
                             DisplayOrder = (short)6,
                             NeedsConfirm = true
+                        });
+                });
+
+            modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplacePostVariant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Colour")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("colour");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_date");
+
+                    b.Property<Guid>("PostId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("post_id");
+
+                    b.Property<decimal?>("Price")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)")
+                        .HasColumnName("price");
+
+                    b.Property<string>("Size")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("size");
+
+                    b.Property<short>("SortOrder")
+                        .HasColumnType("smallint")
+                        .HasColumnName("sort_order");
+
+                    b.Property<int>("Stock")
+                        .HasColumnType("integer")
+                        .HasColumnName("stock");
+
+                    b.HasKey("Id")
+                        .HasName("pk_marketplace_post_variants");
+
+                    b.HasIndex("PostId", "Colour", "Size")
+                        .IsUnique()
+                        .HasDatabaseName("ix_marketplace_post_variants_post_id_colour_size")
+                        .HasFilter("is_deleted = false");
+
+                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("PostId", "Colour", "Size"), false);
+
+                    b.ToTable("marketplace_post_variants", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_marketplace_post_variants_named", "colour IS NOT NULL OR size IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_marketplace_post_variants_price", "price IS NULL OR price > 0");
+
+                            t.HasCheckConstraint("ck_marketplace_post_variants_stock", "stock >= 0");
                         });
                 });
 
@@ -6574,9 +6767,42 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                                 .HasConstraintName("fk_marketplace_posts_marketplace_posts_marketplace_post_id");
                         });
 
+                    b.OwnsMany("Zuno.Marketplace.Domain.Entities.MarketplacePostAttribute", "CustomDetails", b1 =>
+                        {
+                            b1.Property<Guid>("MarketplacePostId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("integer");
+
+                            b1.Property<string>("Key")
+                                .IsRequired()
+                                .HasMaxLength(60)
+                                .HasColumnType("character varying(60)");
+
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)");
+
+                            b1.HasKey("MarketplacePostId", "__synthesizedOrdinal")
+                                .HasName("pk_marketplace_posts");
+
+                            b1.ToTable("marketplace_posts");
+
+                            b1.ToJson("custom_details");
+
+                            b1.WithOwner()
+                                .HasForeignKey("MarketplacePostId")
+                                .HasConstraintName("fk_marketplace_posts_marketplace_posts_marketplace_post_id");
+                        });
+
                     b.Navigation("Attributes");
 
                     b.Navigation("Category");
+
+                    b.Navigation("CustomDetails");
 
                     b.Navigation("District");
 
@@ -6591,6 +6817,18 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_marketplace_post_media_marketplace_posts_post_id");
+
+                    b.Navigation("Post");
+                });
+
+            modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplacePostVariant", b =>
+                {
+                    b.HasOne("Zuno.Marketplace.Domain.Entities.MarketplacePost", "Post")
+                        .WithMany("Variants")
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_marketplace_post_variants_marketplace_posts_post_id");
 
                     b.Navigation("Post");
                 });
@@ -6629,6 +6867,8 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplacePost", b =>
                 {
                     b.Navigation("Media");
+
+                    b.Navigation("Variants");
                 });
 #pragma warning restore 612, 618
         }

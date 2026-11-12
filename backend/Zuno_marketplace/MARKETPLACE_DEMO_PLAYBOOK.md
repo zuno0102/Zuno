@@ -85,6 +85,12 @@ Sign in as a business (e.g. shajil shajil, Marthandam).
 | B15b | ⋮ → **Update stock** → − / + or type → Save | Count changes without the form ("Silk saree: 11 in stock."). At **0**: an **Out of stock** pill; still Active and on the plan, but customers will not see it until restocked |
 | B15c | A **Used** product: ⋮ | No Update stock; **Mark as sold** asks first, then a green **Sold** pill, no Edit, and the plan slot is free |
 | B15d | Mark as sold on a New item (API) | Refused — "Only a used item is marked sold…" |
+| B15e | Products → Clothing → New: **Add colour / size** twice (Red · M stock 4; Blue · M stock 0, own price ₹549) | The single Stock box goes away; card "New · 4 in stock · 2 colours / sizes". Same colour + size twice → "Red · M is listed twice." |
+| B15f | ⋮ → **Update stock** on that shirt | Asks which colour / size first (each with its stock), then the − / + box; only that one changes, the total follows |
+| B15g | Clothing asks **Fabric** and **For**; Footwear **Material** (Genuine / Synthetic leather…); Sarees **Fabric**; Mobiles **Brand**; Furniture **Material**. **More details → Add a detail**: "Leather type: Genuine" | Saved in order; a name the list already asks ("Fabric") is refused |
+| B15h | **MRP** ₹799 for a ₹499 product (₹300 refused: "Cannot be less than the price.") | Saved as the MRP |
+| B15i | New post → **Where it is** | Street, town, state and pin start from the registered business address. **Search on map** / **Current location** move the pin and fill empty boxes; ✕ on "Exact pin set" clears it |
+| B15j | **Ships to → Chosen districts only** → pick Kanyakumari | Saved; with none picked: "Choose at least one district." Food / Ads / B2B always ship anywhere |
 | B16 | ⋮ → **Remove** | Asks first; post leaves the list; Home tiles update |
 | B17 | The 4 category squares (Products · B2B · Food · Ads) | No counts. Tap **Food** → Add post opens with Category = Nearby food already picked; choose the sub-category next. With the plan full, a square shows the plan message instead. More categories wrap to a second row of the same size; a Home tile's list has no squares |
 | B17a | **Orders → Marketplace** | Two chip rows: categories on top (All · Products · B2B · Food · Ads, each with its count), statuses below (All · Active · Paused · Expired · Closed · Sold, from the status table). Tap **Food** → only food posts, and the status counts become food's; then **Paused** → paused food posts, and the category counts become paused ones. Nothing there says e.g. "No paused posts in Nearby food" |
@@ -108,7 +114,7 @@ on a reservation; enquiries open Call or Chat.
 
 ## Checks behind this playbook
 
-- `dotnet test backend/Zuno_marketplace/Zuno.Marketplace.sln` — 160 unit + 19 integration tests (migration tests: first-release posts into the 4 categories, Products onto New / Used with stock, and rolling that back and forward)
+- `dotnet test backend/Zuno_marketplace/Zuno.Marketplace.sln` — 176 unit + 20 integration tests (migration tests: first-release posts into the 4 categories, Products onto New / Used with stock, and rolling that back and forward)
   (integration needs Docker or `ZUNO_TEST_POSTGRES`).
 - `node backend/Zuno_marketplace/tests/e2e/e2e-marketplace-business.js` — 52 checks over HTTP.
 - `flutter test test/features/marketplace` — list, plan banner, form per kind, tiles, admin.

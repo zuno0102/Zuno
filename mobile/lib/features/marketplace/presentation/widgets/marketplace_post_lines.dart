@@ -28,6 +28,10 @@ String? marketplaceQuantityLine(
       options?.conditions.where((c) => c.code == condition).firstOrNull?.name ??
           condition,
     if (post.keepsStock && !post.isOutOfStock) '${post.quantity} in stock',
+    if (post.variants.isNotEmpty)
+      post.variants.length == 1
+          ? '1 colour / size'
+          : '${post.variants.length} colours / sizes',
     if (condition == MarketplaceItemCondition.used) 'one piece',
     if (post.isFoodOffer && post.quantity != null) '${post.quantity} portions',
     if (post.isWholesale) 'Wholesale',

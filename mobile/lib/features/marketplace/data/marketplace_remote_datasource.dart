@@ -68,10 +68,14 @@ class MarketplaceRemoteDataSource {
   );
 
   /// How many of a new item are left; 0 is out of stock.
-  Future<MarketplacePostModel> updateStock(String id, int quantity) => _post(
+  Future<MarketplacePostModel> updateStock(
+    String id,
+    int quantity, {
+    String? variantId,
+  }) => _post(
     () => _dio.patch(
       MarketplaceApi.postStockPath(id),
-      data: {'quantity': quantity},
+      data: {'quantity': quantity, 'variantId': ?variantId},
     ),
   );
 

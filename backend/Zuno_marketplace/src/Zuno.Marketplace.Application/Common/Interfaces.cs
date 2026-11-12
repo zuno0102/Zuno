@@ -16,6 +16,8 @@ public interface IMarketplaceDbContext
 
     public DbSet<MarketplacePostMedia> PostMedia { get; }
 
+    public DbSet<MarketplacePostVariant> PostVariants { get; }
+
     public DbSet<MarketplaceBusiness> Businesses { get; }
 
     public DbSet<MarketplacePlan> Plans { get; }
