@@ -1,519 +1,510 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/marketplace/domain/entities/marketplace_post.dart';
+import 'package:zuno/features/marketplace/presentation/widgets/marketplace_post_lines.dart';
+import 'package:zuno/shared/widgets/confirm_dialog.dart';
+import 'package:zuno/shared/widgets/primary_button.dart';
 
-/// One price and one stock being typed — the product's own, or one colour / size's.
-class MarketplacePriceStock {
-  MarketplacePriceStock({this.id, double? price, int? stock})
-    : price = TextEditingController(text: _plain(price)),
-      stock = TextEditingController(text: stock?.toString());
+/// "449", "449.5" — a price as it is typed.
+String _plain(double? v) => v == null
+    ? ''
+    : v == v.roundToDouble()
+    ? '${v.toInt()}'
+    : v.toStringAsFixed(2);
 
-  /// The saved colour / size this row edits; null for a new one.
-  final String? id;
-  final TextEditingController price;
-  final TextEditingController stock;
+final _money = [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))];
+final _wholeNumber = [FilteringTextInputFormatter.digitsOnly];
 
-  double? get priceValue => double.tryParse(price.text.trim());
-  int? get stockValue => int.tryParse(stock.text.trim());
-
-  static String _plain(double? v) => v == null
-      ? ''
-      : v == v.roundToDouble()
-      ? '${v.toInt()}'
-      : '$v';
-
-  void dispose() {
-    price.dispose();
-    stock.dispose();
-  }
-}
-
-/// A colour and a size it comes in — either may be absent, never both.
-typedef MarketplaceCombination = ({String? colour, String? size});
-
-/// A new product's price and stock while the form is open: one of each, or one per colour / size
-/// combination, like a shopping site. The colours and sizes are picked once; every combination of
-/// them is a row, and a combination not sold is left out with ×.
-class MarketplaceVariantGrid extends ChangeNotifier {
-  MarketplaceVariantGrid({
-    List<MarketplaceVariant> saved = const [],
-    double? price,
-    int? stock,
-  }) : single = MarketplacePriceStock(
-         price: saved.isEmpty ? price : null,
-         stock: saved.isEmpty ? stock : null,
-       ) {
-    for (final v in saved) {
-      if (v.colour case final c? when !_has(colours, c)) colours.add(c);
-      if (v.size case final s? when !_has(sizes, s)) sizes.add(s);
-      _rows[_key((colour: v.colour, size: v.size))] = MarketplacePriceStock(
-        id: v.id,
-        price: v.price ?? price,
-        stock: v.stock,
-      );
-    }
-    // A combination the product was saved without stays left out.
-    for (final c in _allCombinations) {
-      if (!_rows.containsKey(_key(c))) _removed.add(_key(c));
-    }
-  }
-
-  /// Chosen colours and sizes, in the order picked.
-  final colours = <String>[];
-  final sizes = <String>[];
-
-  /// The one price and stock of a product without colours or sizes.
-  final MarketplacePriceStock single;
-
-  final _rows = <String, MarketplacePriceStock>{};
-  final _removed = <String>{};
-
-  bool get hasVariants => colours.isNotEmpty || sizes.isNotEmpty;
-
-  static bool _has(List<String> list, String value) =>
-      list.any((v) => v.toLowerCase() == value.toLowerCase());
-
-  static String _key(MarketplaceCombination c) =>
-      '${c.colour?.toLowerCase() ?? ''}\u0000${c.size?.toLowerCase() ?? ''}';
-
-  List<MarketplaceCombination> get _allCombinations => [
-    if (colours.isNotEmpty && sizes.isNotEmpty)
-      for (final c in colours)
-        for (final s in sizes) (colour: c, size: s)
-    else if (colours.isNotEmpty)
-      for (final c in colours) (colour: c, size: null)
-    else
-      for (final s in sizes) (colour: null, size: s),
-  ];
-
-  /// The rows shown: every combination of the chosen colours and sizes not left out.
-  List<MarketplaceCombination> get combinations => [
-    for (final c in _allCombinations)
-      if (!_removed.contains(_key(c))) c,
-  ];
-
-  MarketplacePriceStock rowFor(MarketplaceCombination c) =>
-      _rows.putIfAbsent(_key(c), MarketplacePriceStock.new);
-
-  bool isColourChosen(String colour) => _has(colours, colour);
-  bool isSizeChosen(String size) => _has(sizes, size);
-
-  void toggleColour(String colour) => _toggle(colours, colour);
-  void toggleSize(String size) => _toggle(sizes, size);
-
-  void _toggle(List<String> list, String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return;
-    if (_has(list, trimmed)) {
-      list.removeWhere((v) => v.toLowerCase() == trimmed.toLowerCase());
-    } else {
-      list.add(trimmed);
-      // Picking a colour or size again brings back its combinations.
-      _removed.removeWhere(
-        (k) => k.split('\u0000').contains(trimmed.toLowerCase()),
-      );
-    }
-    notifyListeners();
-  }
-
-  /// Leaves out one combination that is not sold, e.g. Red in XXL.
-  void leaveOut(MarketplaceCombination c) {
-    _removed.add(_key(c));
-    notifyListeners();
-  }
-
-  /// Copies one price and stock into every row shown; an empty value leaves that column alone.
-  void applyToAll({required String price, required String stock}) {
-    for (final c in combinations) {
-      final row = rowFor(c);
-      if (price.trim().isNotEmpty) row.price.text = price.trim();
-      if (stock.trim().isNotEmpty) row.stock.text = stock.trim();
-    }
-    notifyListeners();
-  }
-
-  /// What the server is sent: a row per combination shown, each with its own price and stock.
-  List<MarketplaceVariant> get variants => [
-    for (final c in combinations)
-      if (rowFor(c) case final row)
-        MarketplaceVariant(
-          id: row.id,
-          colour: c.colour,
-          size: c.size,
-          price: row.priceValue,
-          stock: row.stockValue ?? 0,
-        ),
-  ];
-
-  /// The post's own price and stock, when it has no colours or sizes.
-  double? get price => hasVariants ? null : single.priceValue;
-  int? get stock => hasVariants ? null : single.stockValue;
-
-  /// The dearest price it sells at, which an MRP may not be under.
-  double? get highestPrice {
-    final prices = hasVariants
-        ? [for (final v in variants) ?v.price]
-        : [?single.priceValue];
-    return prices.isEmpty ? null : prices.reduce((a, b) => a > b ? a : b);
-  }
-
-  @override
-  void dispose() {
-    single.dispose();
-    for (final r in _rows.values) {
-      r.dispose();
-    }
-    super.dispose();
-  }
-}
-
-/// "Price and stock": the colours and sizes to tap (from the server's list, or the business's
-/// own), then a price and stock for each combination — or one of each when there are none.
-class MarketplaceVariantEditor extends StatefulWidget {
-  const MarketplaceVariantEditor({
-    required this.grid,
-    required this.colourOptions,
-    required this.sizeOptions,
-    required this.maxQuantity,
-    required this.limits,
+/// A product's price, its MRP and the offer between them, kept in step: typing an offer works the
+/// price out from the MRP; changing the price or the MRP works the offer out again. With [showPrice]
+/// false (each variant has its own price) only the MRP is asked.
+class MarketplacePriceFields extends StatefulWidget {
+  const MarketplacePriceFields({
+    required this.price,
+    required this.mrp,
+    required this.highestPrice,
+    this.showPrice = true,
     super.key,
   });
 
-  final MarketplaceVariantGrid grid;
-  final List<String> colourOptions;
-  final List<String> sizeOptions;
-  final int maxQuantity;
+  final TextEditingController price;
+  final TextEditingController mrp;
 
-  /// The longest colour and size the server takes.
-  final MarketplaceTextLimits limits;
+  /// The dearest price it sells at, which the MRP may not be under.
+  final double? Function() highestPrice;
+  final bool showPrice;
 
   @override
-  State<MarketplaceVariantEditor> createState() =>
-      _MarketplaceVariantEditorState();
+  State<MarketplacePriceFields> createState() => _MarketplacePriceFieldsState();
 }
 
-class _MarketplaceVariantEditorState extends State<MarketplaceVariantEditor> {
-  final _sameStock = TextEditingController();
-  final _samePrice = TextEditingController();
+class _MarketplacePriceFieldsState extends State<MarketplacePriceFields> {
+  final _offer = TextEditingController();
+
+  /// Set while the offer itself is being typed, so the price it writes does not write it back.
+  bool _typingOffer = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.price.addListener(_showOffer);
+    widget.mrp.addListener(_showOffer);
+    _showOffer();
+  }
 
   @override
   void dispose() {
-    _sameStock.dispose();
-    _samePrice.dispose();
+    widget.price.removeListener(_showOffer);
+    widget.mrp.removeListener(_showOffer);
+    _offer.dispose();
     super.dispose();
+  }
+
+  void _showOffer() {
+    if (_typingOffer) return;
+    final percent = marketplaceOfferPercent(
+      double.tryParse(widget.price.text.trim()),
+      double.tryParse(widget.mrp.text.trim()),
+    );
+    final text = percent == null ? '' : '$percent';
+    if (_offer.text != text) _offer.text = text;
+  }
+
+  void _offerTyped(String text) {
+    final percent = double.tryParse(text.trim());
+    final mrp = double.tryParse(widget.mrp.text.trim());
+    if (percent == null || mrp == null || percent <= 0 || percent >= 100) {
+      return;
+    }
+    _typingOffer = true;
+    widget.price.text = _plain(mrp * (100 - percent) / 100);
+    _typingOffer = false;
+  }
+
+  InputDecoration _box(String label) =>
+      InputDecoration(labelText: label, border: const OutlineInputBorder());
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (widget.showPrice) ...[
+            Expanded(
+              child: TextFormField(
+                key: const ValueKey('marketplace-price'),
+                controller: widget.price,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                inputFormatters: _money,
+                decoration: _box('Price').copyWith(prefixText: '₹ '),
+                validator: (v) {
+                  final n = double.tryParse((v ?? '').trim());
+                  return n == null || n <= 0 ? 'Enter a valid price.' : null;
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+          ],
+          Expanded(
+            child: TextFormField(
+              key: const ValueKey('marketplace-mrp'),
+              controller: widget.mrp,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              inputFormatters: _money,
+              decoration: _box(
+                'MRP (optional)',
+              ).copyWith(prefixText: '₹ ', errorMaxLines: 2),
+              validator: (v) {
+                final text = (v ?? '').trim();
+                if (text.isEmpty) return null;
+                final mrp = double.tryParse(text);
+                if (mrp == null || mrp <= 0) return 'Enter a valid price.';
+                final price = widget.highestPrice();
+                return price != null && mrp < price
+                    ? 'Cannot be less than the price.'
+                    : null;
+              },
+            ),
+          ),
+        ],
+      ),
+      if (widget.showPrice) ...[
+        const SizedBox(height: 14),
+        TextFormField(
+          key: const ValueKey('marketplace-offer'),
+          controller: _offer,
+          keyboardType: TextInputType.number,
+          inputFormatters: _wholeNumber,
+          onChanged: _offerTyped,
+          decoration: _box('Offer (optional)').copyWith(
+            suffixText: '% off',
+            helperText: 'Type it to work the price out from the MRP.',
+          ),
+          validator: (v) {
+            final text = (v ?? '').trim();
+            if (text.isEmpty) return null;
+            if (widget.mrp.text.trim().isEmpty) return 'Enter the MRP first.';
+            final n = int.tryParse(text);
+            return n == null || n <= 0 || n >= 100 ? 'Between 1 and 99.' : null;
+          },
+        ),
+      ],
+    ],
+  );
+}
+
+/// A new product's variants while the form is open — one per colour / size, each with its own
+/// price and stock, kept as a list like a service's items.
+class MarketplaceVariantList extends ChangeNotifier {
+  MarketplaceVariantList(List<MarketplaceVariant> saved, {double? price})
+    : _items = [
+        // A variant saved without its own price sold at the post's: it shows that price now.
+        for (final v in saved)
+          MarketplaceVariant(
+            id: v.id,
+            colour: v.colour,
+            size: v.size,
+            price: v.price ?? price,
+            stock: v.stock,
+          ),
+      ];
+
+  final List<MarketplaceVariant> _items;
+
+  List<MarketplaceVariant> get items => List.unmodifiable(_items);
+  bool get isEmpty => _items.isEmpty;
+
+  /// All the variants' stock added up — the product's quantity.
+  int get totalStock => _items.fold(0, (sum, v) => sum + v.stock);
+
+  /// The dearest variant, which an MRP may not be under.
+  double? get highestPrice => _items
+      .map((v) => v.price)
+      .whereType<double>()
+      .fold<double?>(null, (a, b) => a == null || b > a ? b : a);
+
+  void put(MarketplaceVariant variant, {int? at}) {
+    at == null ? _items.add(variant) : _items[at] = variant;
+    notifyListeners();
+  }
+
+  void removeAt(int index) {
+    _items.removeAt(index);
+    notifyListeners();
+  }
+}
+
+/// "Variants": a card per colour / size with its price and stock, edited or removed from its menu,
+/// and "Add variant" for another — the way a service's items are managed.
+class MarketplaceVariantsSection extends StatelessWidget {
+  const MarketplaceVariantsSection({
+    required this.variants,
+    required this.mrp,
+    required this.defaultPrice,
+    required this.limits,
+    required this.maxQuantity,
+    super.key,
+  });
+
+  final MarketplaceVariantList variants;
+
+  /// The product's MRP, for each variant's offer.
+  final double? Function() mrp;
+
+  /// What a new variant's price starts at.
+  final double? Function() defaultPrice;
+  final MarketplaceTextLimits limits;
+  final int maxQuantity;
+
+  Future<void> _edit(BuildContext context, {int? index}) async {
+    final existing = index == null ? null : variants.items[index];
+    final saved = await showMarketplaceVariantSheet(
+      context,
+      existing: existing,
+      startPrice: existing?.price ?? defaultPrice(),
+      others: [
+        for (final (i, v) in variants.items.indexed)
+          if (i != index) v,
+      ],
+      limits: limits,
+      maxQuantity: maxQuantity,
+    );
+    if (saved != null) variants.put(saved, at: index);
+  }
+
+  Future<void> _remove(BuildContext context, int index) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Remove variant?',
+      message: '"${variants.items[index].name}" will no longer be sold.',
+      confirmLabel: 'Remove',
+    );
+    if (confirmed) variants.removeAt(index);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final grid = widget.grid;
     return ListenableBuilder(
-      listenable: grid,
+      listenable: variants,
       builder: (context, _) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Price and stock',
+            'Variants',
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w600,
             ),
           ),
           Text(
-            grid.hasVariants
-                ? 'A price and stock for each. Tap × on any you do not sell.'
-                : 'Sold in colours or sizes? Tap them below.',
+            variants.isEmpty
+                ? 'Optional. Sold in colours or sizes? Add each with its own price and stock.'
+                : 'Quantity: ${variants.totalStock} in stock across all variants.',
+            key: const ValueKey('marketplace-variants-summary'),
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 10),
-          _ChoiceChips(
-            what: 'colour',
-            label: 'Colours',
-            options: widget.colourOptions,
-            chosen: grid.colours,
-            isChosen: grid.isColourChosen,
-            onToggle: grid.toggleColour,
-            maxLength: widget.limits.colour,
-          ),
-          const SizedBox(height: 10),
-          _ChoiceChips(
-            what: 'size',
-            label: 'Sizes',
-            options: widget.sizeOptions,
-            chosen: grid.sizes,
-            isChosen: grid.isSizeChosen,
-            onToggle: grid.toggleSize,
-            maxLength: widget.limits.size,
-          ),
-          const SizedBox(height: 14),
-          if (!grid.hasVariants)
-            _PriceStockRow(
-              row: grid.single,
-              maxQuantity: widget.maxQuantity,
-              priceKey: 'marketplace-price',
-              stockKey: 'marketplace-stock',
-            )
-          else ...[
-            _sameForAll(),
-            FormField<void>(
-              key: ValueKey(
-                'marketplace-variant-rows-${grid.combinations.length}',
-              ),
-              validator: (_) => grid.combinations.isEmpty
-                  ? 'Keep at least one colour / size.'
-                  : null,
-              builder: (field) => Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (final (i, c) in grid.combinations.indexed)
-                    _combinationCard(i, c),
-                  if (field.errorText case final error?)
-                    Text(
-                      error,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.error,
-                      ),
-                    ),
-                ],
+          for (final (i, v) in variants.items.indexed)
+            Card(
+              key: ValueKey('marketplace-variant-$i'),
+              margin: const EdgeInsets.only(top: 10),
+              child: ListTile(
+                title: Text(
+                  v.name,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  [
+                    if (v.price case final price?) rupees(price),
+                    '${v.stock} in stock',
+                    if (marketplaceOfferPercent(v.price, mrp()) case final p?)
+                      '$p% off',
+                  ].join(' · '),
+                ),
+                trailing: PopupMenuButton<String>(
+                  key: ValueKey('marketplace-variant-menu-$i'),
+                  onSelected: (action) => action == 'edit'
+                      ? _edit(context, index: i)
+                      : _remove(context, i),
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(value: 'edit', child: Text('Edit')),
+                    PopupMenuItem(value: 'remove', child: Text('Remove')),
+                  ],
+                ),
               ),
             ),
-          ],
+          const SizedBox(height: 6),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              key: const ValueKey('marketplace-add-variant'),
+              onPressed: () => _edit(context),
+              icon: const Icon(Icons.add),
+              label: const Text('Add variant'),
+            ),
+          ),
         ],
       ),
     );
   }
-
-  /// One price and stock typed once and copied into every row.
-  Widget _sameForAll() => Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Expanded(
-        child: TextField(
-          key: const ValueKey('marketplace-same-price'),
-          controller: _samePrice,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-          ],
-          decoration: const InputDecoration(
-            labelText: 'Same price',
-            prefixText: '₹ ',
-            isDense: true,
-            border: OutlineInputBorder(),
-          ),
-        ),
-      ),
-      const SizedBox(width: 8),
-      Expanded(
-        child: TextField(
-          key: const ValueKey('marketplace-same-stock'),
-          controller: _sameStock,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: const InputDecoration(
-            labelText: 'Same stock',
-            isDense: true,
-            border: OutlineInputBorder(),
-          ),
-        ),
-      ),
-      TextButton(
-        key: const ValueKey('marketplace-apply-all'),
-        onPressed: () => widget.grid.applyToAll(
-          price: _samePrice.text,
-          stock: _sameStock.text,
-        ),
-        child: const Text('Fill all'),
-      ),
-    ],
-  );
-
-  Widget _combinationCard(int i, MarketplaceCombination c) {
-    final theme = Theme.of(context);
-    return Card(
-      key: ValueKey('marketplace-variant-${c.colour}-${c.size}'),
-      margin: const EdgeInsets.only(top: 10),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 4, 4, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    [?c.colour, ?c.size].join(' · '),
-                    style: theme.textTheme.titleSmall,
-                  ),
-                ),
-                IconButton(
-                  key: ValueKey('marketplace-variant-remove-$i'),
-                  tooltip: 'Not sold',
-                  icon: const Icon(Icons.close),
-                  onPressed: () => widget.grid.leaveOut(c),
-                ),
-              ],
-            ),
-            _PriceStockRow(
-              row: widget.grid.rowFor(c),
-              maxQuantity: widget.maxQuantity,
-              priceKey: 'marketplace-variant-price-$i',
-              stockKey: 'marketplace-variant-stock-$i',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
-/// A price and its stock, side by side; both required.
-class _PriceStockRow extends StatelessWidget {
-  const _PriceStockRow({
-    required this.row,
+/// Adds or edits one variant: its colour and / or size, typed in, its price and its stock. Null when
+/// closed without saving.
+Future<MarketplaceVariant?> showMarketplaceVariantSheet(
+  BuildContext context, {
+  required MarketplaceVariant? existing,
+  required double? startPrice,
+  required List<MarketplaceVariant> others,
+  required MarketplaceTextLimits limits,
+  required int maxQuantity,
+}) => showModalBottomSheet<MarketplaceVariant>(
+  context: context,
+  isScrollControlled: true,
+  builder: (_) => _VariantSheet(
+    existing: existing,
+    startPrice: startPrice,
+    others: others,
+    limits: limits,
+    maxQuantity: maxQuantity,
+  ),
+);
+
+class _VariantSheet extends StatefulWidget {
+  const _VariantSheet({
+    required this.existing,
+    required this.startPrice,
+    required this.others,
+    required this.limits,
     required this.maxQuantity,
-    required this.priceKey,
-    required this.stockKey,
   });
 
-  final MarketplacePriceStock row;
+  final MarketplaceVariant? existing;
+  final double? startPrice;
+  final List<MarketplaceVariant> others;
+  final MarketplaceTextLimits limits;
   final int maxQuantity;
-  final String priceKey;
-  final String stockKey;
 
   @override
-  Widget build(BuildContext context) => Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Expanded(
-        child: TextFormField(
-          key: ValueKey(priceKey),
-          controller: row.price,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-          ],
-          decoration: const InputDecoration(
-            labelText: 'Price',
-            prefixText: '₹ ',
-            border: OutlineInputBorder(),
-          ),
-          validator: (v) {
-            final n = double.tryParse((v ?? '').trim());
-            return n == null || n <= 0 ? 'Enter a valid price.' : null;
-          },
-        ),
-      ),
-      const SizedBox(width: 8),
-      Expanded(
-        child: TextFormField(
-          key: ValueKey(stockKey),
-          controller: row.stock,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: const InputDecoration(
-            labelText: 'Stock',
-            border: OutlineInputBorder(),
-          ),
-          validator: (v) {
-            final n = int.tryParse((v ?? '').trim());
-            if (n == null) return 'Required.';
-            return n > maxQuantity ? 'At most $maxQuantity.' : null;
-          },
-        ),
-      ),
-    ],
+  State<_VariantSheet> createState() => _VariantSheetState();
+}
+
+class _VariantSheetState extends State<_VariantSheet> {
+  final _formKey = GlobalKey<FormState>();
+  late final _colour = TextEditingController(text: widget.existing?.colour);
+  late final _size = TextEditingController(text: widget.existing?.size);
+  late final _price = TextEditingController(text: _plain(widget.startPrice));
+  late final _stock = TextEditingController(
+    text: widget.existing?.stock.toString(),
   );
-}
-
-/// The colours (or sizes) to tap — the server's list, then any the business typed itself — and a
-/// box to add one more.
-class _ChoiceChips extends StatefulWidget {
-  const _ChoiceChips({
-    required this.what,
-    required this.label,
-    required this.options,
-    required this.chosen,
-    required this.isChosen,
-    required this.onToggle,
-    required this.maxLength,
-  });
-
-  final String what;
-  final String label;
-  final List<String> options;
-  final List<String> chosen;
-  final bool Function(String) isChosen;
-  final ValueChanged<String> onToggle;
-  final int maxLength;
-
-  @override
-  State<_ChoiceChips> createState() => _ChoiceChipsState();
-}
-
-class _ChoiceChipsState extends State<_ChoiceChips> {
-  final _own = TextEditingController();
 
   @override
   void dispose() {
-    _own.dispose();
+    for (final c in [_colour, _size, _price, _stock]) {
+      c.dispose();
+    }
     super.dispose();
   }
 
-  void _addOwn() {
-    final value = _own.text.trim();
-    if (value.isEmpty) return;
-    if (!widget.isChosen(value)) widget.onToggle(value);
-    _own.clear();
+  static String? _clean(TextEditingController c) =>
+      c.text.trim().isEmpty ? null : c.text.trim();
+
+  /// "Red · M" is listed once: the same colour and size twice cannot be told apart.
+  String? _checkName(String? _) {
+    final colour = _clean(_colour)?.toLowerCase();
+    final size = _clean(_size)?.toLowerCase();
+    if (colour == null && size == null) {
+      return 'Give a colour, a size, or both.';
+    }
+    final twice = widget.others.any(
+      (v) => v.colour?.toLowerCase() == colour && v.size?.toLowerCase() == size,
+    );
+    return twice ? 'This colour and size is already a variant.' : null;
+  }
+
+  void _save() {
+    if (!_formKey.currentState!.validate()) return;
+    Navigator.of(context).pop(
+      MarketplaceVariant(
+        id: widget.existing?.id,
+        colour: _clean(_colour),
+        size: _clean(_size),
+        price: double.tryParse(_price.text.trim()),
+        stock: int.parse(_stock.text.trim()),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final offered = {for (final o in widget.options) o.toLowerCase()};
-    final all = [
-      ...widget.options,
-      for (final c in widget.chosen)
-        if (!offered.contains(c.toLowerCase())) c,
-    ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(widget.label, style: theme.textTheme.labelLarge),
-        const SizedBox(height: 4),
-        Wrap(
-          spacing: 6,
-          runSpacing: 2,
+    InputDecoration box(String label, {String? hint}) => InputDecoration(
+      labelText: label,
+      hintText: hint,
+      border: const OutlineInputBorder(),
+      counterText: '',
+    );
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (final o in all)
-              FilterChip(
-                key: ValueKey('marketplace-${widget.what}-$o'),
-                label: Text(o),
-                selected: widget.isChosen(o),
-                onSelected: (_) => widget.onToggle(o),
+            Text(
+              widget.existing == null ? 'Add variant' : 'Edit variant',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
               ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    key: const ValueKey('marketplace-variant-colour'),
+                    controller: _colour,
+                    maxLength: widget.limits.colour,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: box('Colour', hint: 'e.g. Maroon'),
+                    validator: _checkName,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextFormField(
+                    key: const ValueKey('marketplace-variant-size'),
+                    controller: _size,
+                    maxLength: widget.limits.size,
+                    decoration: box('Size', hint: 'e.g. M, 6.3 m'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    key: const ValueKey('marketplace-variant-price'),
+                    controller: _price,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: _money,
+                    decoration: box('Price').copyWith(prefixText: '₹ '),
+                    validator: (v) {
+                      final n = double.tryParse((v ?? '').trim());
+                      return n == null || n <= 0
+                          ? 'Enter a valid price.'
+                          : null;
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextFormField(
+                    key: const ValueKey('marketplace-variant-stock'),
+                    controller: _stock,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: _wholeNumber,
+                    decoration: box('Stock'),
+                    validator: (v) {
+                      final n = int.tryParse((v ?? '').trim());
+                      if (n == null) return 'Required.';
+                      return n > widget.maxQuantity
+                          ? 'At most ${widget.maxQuantity}.'
+                          : null;
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            PrimaryButton(
+              key: const ValueKey('marketplace-variant-save'),
+              label: widget.existing == null ? 'Add variant' : 'Save variant',
+              onPressed: _save,
+            ),
           ],
         ),
-        TextField(
-          key: ValueKey('marketplace-${widget.what}-own'),
-          controller: _own,
-          maxLength: widget.maxLength,
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) => _addOwn(),
-          decoration: InputDecoration(
-            hintText: 'Another ${widget.what}',
-            isDense: true,
-            counterText: '',
-            suffixIcon: IconButton(
-              key: ValueKey('marketplace-${widget.what}-add'),
-              tooltip: 'Add',
-              icon: const Icon(Icons.add),
-              onPressed: _addOwn,
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

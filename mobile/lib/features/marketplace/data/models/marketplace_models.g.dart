@@ -187,16 +187,6 @@ MarketplaceSubCategoryModel _$MarketplaceSubCategoryModelFromJson(
   displayOrder: (json['displayOrder'] as num).toInt(),
   isActive: json['isActive'] as bool,
   iconName: json['iconName'] as String?,
-  colourOptions:
-      (json['colourOptions'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ??
-      const [],
-  sizeOptions:
-      (json['sizeOptions'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ??
-      const [],
 );
 
 MarketplacePlanModel _$MarketplacePlanModelFromJson(

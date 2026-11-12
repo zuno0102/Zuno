@@ -74,14 +74,15 @@ public static class MarketplaceCatalogSeedData
         Field(3, 1, Products, null, LegacyConditionKey, "Condition", MarketplaceFieldType.Select, options: ["New", "Used"], isActive: false),
         Field(3, 2, Products, null, "brand", "Brand", MarketplaceFieldType.Text, isActive: false),
 
-        // What a shopper filters a product by, per kind — rows the super admin can rename or extend.
-        Field(3, 3, Products, SubId(3, 1), "fabric", "Fabric", MarketplaceFieldType.Select, options: ["Silk", "Cotton", "Georgette", "Chiffon", "Crepe", "Other"]),
-        Field(3, 4, Products, SubId(3, 2), "fabric", "Fabric", MarketplaceFieldType.Select, options: ["Cotton", "Polyester", "Linen", "Denim", "Wool", "Other"]),
-        Field(3, 5, Products, SubId(3, 2), "for", "For", MarketplaceFieldType.Select, options: ["Men", "Women", "Kids", "Unisex"]),
-        Field(3, 6, Products, SubId(3, 3), "material", "Material", MarketplaceFieldType.Select, options: ["Genuine leather", "Synthetic leather", "Canvas", "Rubber", "Other"]),
-        Field(3, 7, Products, SubId(3, 3), "for", "For", MarketplaceFieldType.Select, options: ["Men", "Women", "Kids", "Unisex"]),
-        Field(3, 8, Products, SubId(3, 5), "brand", "Brand", MarketplaceFieldType.Text),
-        Field(3, 9, Products, SubId(3, 7), "material", "Material", MarketplaceFieldType.Select, options: ["Wood", "Metal", "Plastic", "Glass", "Other"]),
+        // Switched off: a product asks only its basic fields; the business adds any other detail itself
+        // ("More details"). The super admin can switch one back on.
+        Field(3, 3, Products, SubId(3, 1), "fabric", "Fabric", MarketplaceFieldType.Select, options: ["Silk", "Cotton", "Georgette", "Chiffon", "Crepe", "Other"], isActive: false),
+        Field(3, 4, Products, SubId(3, 2), "fabric", "Fabric", MarketplaceFieldType.Select, options: ["Cotton", "Polyester", "Linen", "Denim", "Wool", "Other"], isActive: false),
+        Field(3, 5, Products, SubId(3, 2), "for", "For", MarketplaceFieldType.Select, options: ["Men", "Women", "Kids", "Unisex"], isActive: false),
+        Field(3, 6, Products, SubId(3, 3), "material", "Material", MarketplaceFieldType.Select, options: ["Genuine leather", "Synthetic leather", "Canvas", "Rubber", "Other"], isActive: false),
+        Field(3, 7, Products, SubId(3, 3), "for", "For", MarketplaceFieldType.Select, options: ["Men", "Women", "Kids", "Unisex"], isActive: false),
+        Field(3, 8, Products, SubId(3, 5), "brand", "Brand", MarketplaceFieldType.Text, isActive: false),
+        Field(3, 9, Products, SubId(3, 7), "material", "Material", MarketplaceFieldType.Select, options: ["Wood", "Metal", "Plastic", "Glass", "Other"], isActive: false),
 
         Field(4, 1, B2BWholesale, null, "produce_type", "Produce", MarketplaceFieldType.Select, options: ["Vegetables", "Fruits", "Grains", "Coconut", "Spices", "Dairy", "Other"], isActive: false),
         Field(4, 2, B2BWholesale, null, "organic", "Organic", MarketplaceFieldType.Select, options: ["Yes", "No"]),
@@ -187,27 +188,8 @@ public static class MarketplaceCatalogSeedData
             Slug = Slug(name),
             DisplayOrder = (short)(i + 1),
             IsActive = true,
-            ColourOptions = categoryId == Products && ProductChoices.TryGetValue(name, out var choices) ? [.. choices.Colours] : [],
-            SizeOptions = categoryId == Products && ProductChoices.TryGetValue(name, out var sized) ? [.. sized.Sizes] : [],
             CreatedDate = SeedDate,
         });
-
-    private static readonly string[] CommonColours =
-        ["Red", "Blue", "Green", "Black", "White", "Yellow", "Pink", "Maroon", "Orange", "Purple", "Grey", "Brown", "Gold", "Silver", "Multicolour"];
-
-    /// <summary>The colours and sizes each kind of product offers to tap; the super admin edits them later.</summary>
-    private static readonly Dictionary<string, (string[] Colours, string[] Sizes)> ProductChoices = new()
-    {
-        ["Sarees"] = (CommonColours, []),
-        ["Clothing"] = (CommonColours, ["XS", "S", "M", "L", "XL", "XXL", "3XL", "Free size"]),
-        ["Footwear"] = (["Black", "Brown", "Tan", "White", "Blue", "Red", "Grey", "Multicolour"],
-            ["UK 3", "UK 4", "UK 5", "UK 6", "UK 7", "UK 8", "UK 9", "UK 10", "UK 11"]),
-        ["Toys"] = (CommonColours, []),
-        ["Mobiles & electronics"] = (["Black", "White", "Blue", "Silver", "Gold", "Green"], []),
-        ["Home & kitchen"] = (CommonColours, ["Small", "Medium", "Large"]),
-        ["Furniture"] = (["Brown", "Black", "White", "Grey", "Natural wood"], []),
-        ["Other"] = (CommonColours, []),
-    };
 
     private static string Slug(string name) =>
         string.Join('-', name.ToLowerInvariant().Split([' ', '&', '/'], StringSplitOptions.RemoveEmptyEntries));

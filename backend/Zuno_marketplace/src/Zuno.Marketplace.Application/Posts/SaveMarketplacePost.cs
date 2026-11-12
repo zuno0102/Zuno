@@ -248,6 +248,7 @@ public class SaveMarketplacePostHandlers(
         }
 
         MarketplacePostRules.AcceptLegacyCondition(category, request);
+        MarketplacePostRules.AcceptSwitchedOffDetails(category, request);
         var failures = MarketplacePostRules.Check(category, request, now, settings.Value);
         if (failures.Count != 0)
         {
@@ -439,6 +440,33 @@ public static class MarketplacePostRules
         if (RequestedCondition(request) == MarketplaceItemCondition.New)
         {
             request.Quantity ??= 1;
+        }
+    }
+
+    /// <summary>
+    /// A detail the super admin switched off, sent by an app that still asks it (Fabric on a saree):
+    /// its value becomes one of the post's own details of the same name rather than a refusal, so an
+    /// older app saves and nothing it said is lost. One already named the same is kept as it is.
+    /// </summary>
+    public static void AcceptSwitchedOffDetails(MarketplaceCategory category, MarketplacePostFields request)
+    {
+        var subCategoryId = SubCategoryOf(category, request);
+        var switchedOff = category.Fields
+            .Where(f => !f.IsActive && !f.IsDeleted && (f.SubCategoryId is null || f.SubCategoryId == subCategoryId))
+            .DistinctBy(f => f.Key, StringComparer.Ordinal)
+            .Where(f => !FieldsFor(category, request).Any(asked => asked.Key == f.Key))
+            .ToList();
+        foreach (var field in switchedOff)
+        {
+            if (!request.Attributes.Remove(field.Key, out var value) || string.IsNullOrWhiteSpace(value))
+            {
+                continue;
+            }
+
+            if (!request.CustomDetails.Any(d => string.Equals(d.Name.Trim(), field.Label, StringComparison.OrdinalIgnoreCase)))
+            {
+                request.CustomDetails.Add(new MarketplaceCustomDetailInput { Name = field.Label, Value = value.Trim() });
+            }
         }
     }
 

@@ -240,12 +240,6 @@ public class MarketplaceSubCategoryDto
     public short DisplayOrder { get; set; }
 
     public bool IsActive { get; set; }
-
-    /// <summary>Colours the post form offers to tap.</summary>
-    public List<string> ColourOptions { get; set; } = [];
-
-    /// <summary>Sizes the post form offers to tap.</summary>
-    public List<string> SizeOptions { get; set; } = [];
 }
 
 public class MarketplaceCategoryFieldDto

@@ -85,13 +85,12 @@ class _MarketplacePostFormSheetState
   late DateTime? _startsAt = _old?.startsAt;
   late DateTime? _endsAt = _old?.endsAt;
 
-  /// A new product's price and stock — one of each, or one per colour / size — and the
+  /// A new product's variants — each colour / size with its own price and stock — and the
   /// business's own details.
-  late final _grid = MarketplaceVariantGrid(
-    saved: _old?.variants ?? const [],
+  late final _variants = MarketplaceVariantList(
+    _old?.variants ?? const [],
     price: _old?.price,
-    stock: _old?.quantity,
-  );
+  )..addListener(_rebuild);
   late final _customDetails = MarketplaceCustomDetailRows(
     _old?.customDetails ?? const [],
   );
@@ -108,6 +107,11 @@ class _MarketplacePostFormSheetState
         marketplaceDefaultImageSlots,
     savedImageUrl: _old?.imageUrlForSlot,
   );
+
+  /// The first variant hides the one price and quantity; the last one brings them back.
+  void _rebuild() {
+    if (mounted) setState(() {});
+  }
 
   bool _isSaving = false;
   String? _errorMessage;
@@ -137,7 +141,7 @@ class _MarketplacePostFormSheetState
     ]) {
       c.dispose();
     }
-    _grid.dispose();
+    _variants.dispose();
     _customDetails.dispose();
     _attributes.dispose();
     _media.dispose();
@@ -155,70 +159,64 @@ class _MarketplacePostFormSheetState
   bool _keepsStock(MarketplaceCategory category) =>
       category.tracksStock && _condition == MarketplaceItemCondition.newItem;
 
-  /// New or Used — from the server's table — then, for a new item, its stock. A used item is a
-  /// single piece: it has no stock and is marked sold from the post's menu.
+  /// New or Used — from the server's table — then the basics a product is sold by: its price, MRP
+  /// and offer; for a new item its quantity, or its variants each with their own price and stock.
+  /// A used item is a single piece: it has no stock and is marked sold from the post's menu.
   List<Widget> _stockSection(
     MarketplaceCategory category,
     MarketplaceOptions? options,
-  ) => [
-    SelectField<String>(
-      key: const ValueKey('marketplace-condition'),
-      label: 'Condition',
-      options: [
-        for (final c in options?.conditions ?? const <MarketplaceOption>[])
-          SelectOption(c.code, c.name, detail: c.detail),
-      ],
-      initialValue: _condition,
-      validator: (v) => v == null ? 'Choose New or Used.' : null,
-      onChanged: (v) => setState(() => _condition = v),
-    ),
-    const SizedBox(height: 14),
-    if (_keepsStock(category)) ...[
-      MarketplaceVariantEditor(
-        grid: _grid,
-        colourOptions: _subCategory(category)?.colourOptions ?? const [],
-        sizeOptions: _subCategory(category)?.sizeOptions ?? const [],
-        maxQuantity: options?.maxQuantity ?? marketplaceDefaultMaxQuantity,
-        limits: _limits,
+  ) {
+    final keepsStock = _keepsStock(category);
+    final byVariant = keepsStock && !_variants.isEmpty;
+    return [
+      SelectField<String>(
+        key: const ValueKey('marketplace-condition'),
+        label: 'Condition',
+        options: [
+          for (final c in options?.conditions ?? const <MarketplaceOption>[])
+            SelectOption(c.code, c.name, detail: c.detail),
+        ],
+        initialValue: _condition,
+        validator: (v) => v == null ? 'Choose New or Used.' : null,
+        onChanged: (v) => setState(() => _condition = v),
       ),
       const SizedBox(height: 14),
-    ],
-    // MRP: what it usually sells for, shown struck through beside the price.
-    TextFormField(
-      key: const ValueKey('marketplace-mrp'),
-      controller: _originalPrice,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-      decoration: const InputDecoration(
-        labelText: 'MRP (optional)',
-        prefixText: '₹ ',
-        border: OutlineInputBorder(),
+      MarketplacePriceFields(
+        price: _price,
+        mrp: _originalPrice,
+        showPrice: !byVariant,
+        highestPrice: () => byVariant
+            ? _variants.highestPrice
+            : double.tryParse(_price.text.trim()),
       ),
-      validator: (v) {
-        final text = (v ?? '').trim();
-        if (text.isEmpty) return null;
-        final mrp = double.tryParse(text);
-        if (mrp == null || mrp <= 0) return 'Enter a valid price.';
-        // Above every price it sells at: each colour / size's, or the one price.
-        final price = _keepsStock(category)
-            ? _grid.highestPrice
-            : double.tryParse(_price.text.trim());
-        return price != null && mrp < price
-            ? 'Cannot be less than the price.'
-            : null;
-      },
-    ),
-    const SizedBox(height: 14),
-  ];
+      const SizedBox(height: 14),
+      if (keepsStock) ...[
+        if (!byVariant) ...[
+          _wholeNumber(
+            _quantity,
+            key: 'marketplace-stock',
+            label: 'Quantity in stock',
+            required: true,
+            min: 0,
+          ),
+          const SizedBox(height: 14),
+        ],
+        MarketplaceVariantsSection(
+          variants: _variants,
+          mrp: () => double.tryParse(_originalPrice.text.trim()),
+          defaultPrice: () => double.tryParse(_price.text.trim()),
+          limits: _limits,
+          maxQuantity: options?.maxQuantity ?? marketplaceDefaultMaxQuantity,
+        ),
+        const SizedBox(height: 14),
+      ],
+    ];
+  }
 
   /// How long each text may be, from the server's options.
   MarketplaceTextLimits get _limits =>
       ref.watch(marketplaceOptionsProvider).value?.textLimits ??
       const MarketplaceTextLimits();
-
-  /// The sub-category picked — whose colours and sizes the form offers to tap.
-  MarketplaceSubCategory? _subCategory(MarketplaceCategory category) =>
-      category.subCategories.where((s) => s.id == _subCategoryId).firstOrNull;
 
   /// The business's district, when its registered address says it.
   District? get _businessDistrict =>
@@ -232,6 +230,7 @@ class _MarketplacePostFormSheetState
     final kind = category.kind;
     final wholesale = _sellsWholesale(category);
     final keepsStock = _keepsStock(category);
+    final byVariant = keepsStock && !_variants.isEmpty;
     final fromBusiness = _businessDistrict != null;
     final profile = ref.read(businessProfileProvider).value;
     final shipsTo = category.tracksStock
@@ -242,13 +241,13 @@ class _MarketplacePostFormSheetState
       subCategoryId: category.subCategories.isEmpty ? null : _subCategoryId,
       title: _title.text.trim(),
       description: _clean(_description),
-      // A new product with colours or sizes is priced by them; the server takes the lowest.
-      price: kind == MarketplacePostKind.advertisement
+      // A product with variants is priced by them; the server takes the lowest.
+      price: kind == MarketplacePostKind.advertisement || byVariant
           ? null
-          : keepsStock
-          ? _grid.price
           : double.tryParse(_price.text.trim()),
-      priceUnit: kind == MarketplacePostKind.advertisement || keepsStock
+      // A product sells by the piece.
+      priceUnit:
+          kind == MarketplacePostKind.advertisement || category.tracksStock
           ? null
           : _clean(_priceUnit),
       tradeType: wholesale
@@ -257,12 +256,12 @@ class _MarketplacePostFormSheetState
       minOrderQuantity: wholesale ? int.tryParse(_minOrder.text.trim()) : null,
       condition: category.tracksStock ? _condition : null,
       // With colours and sizes the server adds their stock up; otherwise the one count.
-      quantity: keepsStock
-          ? _grid.stock
-          : kind == MarketplacePostKind.foodOffer || wholesale
+      quantity: byVariant
+          ? null
+          : keepsStock || kind == MarketplacePostKind.foodOffer || wholesale
           ? int.tryParse(_quantity.text.trim())
           : null,
-      variants: keepsStock ? _grid.variants : const [],
+      variants: keepsStock ? _variants.items : const [],
       // A food offer's usual price, or a product's MRP.
       originalPrice:
           kind == MarketplacePostKind.foodOffer || category.tracksStock
@@ -557,8 +556,8 @@ class _MarketplacePostFormSheetState
         ),
         const SizedBox(height: 14),
       ],
-      // A new product is priced in "Price and stock" above, per colour / size.
-      if (!_keepsStock(category)) ...[
+      // A product is priced above, with its MRP and offer — sold by the piece, no "Per".
+      if (!category.tracksStock) ...[
         _priceRow(
           priceLabel: wholesale ? 'Price per unit' : 'Price',
           unitHint: 'kg, dozen, piece',

@@ -17,7 +17,20 @@ String? marketplacePriceLine(MarketplacePost post) {
       ? '${rupees(lowest)} – ${rupees(highest)}'
       : rupees(price);
   final was = post.originalPrice;
-  return was == null ? '$now$unit' : '${rupees(was)} → $now$unit';
+  if (was == null) return '$now$unit';
+  // A product's offer against its MRP; a food offer already reads as usual → offer price.
+  final offer = post.condition == null
+      ? null
+      : marketplaceOfferPercent(lowest, was);
+  return '${rupees(was)} → $now$unit${offer == null ? '' : ' · $offer% off'}';
+}
+
+/// How much below the MRP a price is, in whole per cent — 25 for ₹449 against ₹599; null without
+/// an MRP, or when the price is not below it.
+int? marketplaceOfferPercent(double? price, double? mrp) {
+  if (price == null || mrp == null || mrp <= 0 || price >= mrp) return null;
+  final percent = ((mrp - price) / mrp * 100).round();
+  return percent == 0 ? null : percent;
 }
 
 /// "20 portions", "Wholesale · min 100 kg · 2000 kg for sale" — what is on offer and how it sells.

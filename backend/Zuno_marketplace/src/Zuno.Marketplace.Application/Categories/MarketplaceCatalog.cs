@@ -85,8 +85,6 @@ internal static class MarketplaceCategoryMapper
                 IconName = s.IconName,
                 DisplayOrder = s.DisplayOrder,
                 IsActive = s.IsActive,
-                ColourOptions = s.ColourOptions,
-                SizeOptions = s.SizeOptions,
             })
             .ToList(),
         Fields = category.Fields

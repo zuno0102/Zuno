@@ -179,6 +179,62 @@ public class MigrationUpgradeTests(MarketplaceApiFactory factory) : IClassFixtur
             .DeliveryStateId.Should().Be(LocationSeedData.StateId("Tamil Nadu"));
     }
 
+    [Fact]
+    public async Task BasicFieldsOnly_MovesAProductsSwitchedOffDetails_IntoItsOwn_AndLeavesVehicles()
+    {
+        var connectionString = await factory.NewDatabaseAsync();
+        await using var db = new MarketplaceDbContext(new DbContextOptionsBuilder<MarketplaceDbContext>()
+            .UseNpgsql(connectionString)
+            .UseSnakeCaseNamingConvention()
+            .Options);
+        var migrator = db.GetService<IMigrator>();
+        await migrator.MigrateAsync(ColourAndSizeChoices);
+
+        var saree = Guid.NewGuid();
+        var named = Guid.NewGuid();
+        var car = Guid.NewGuid();
+        await using (var connection = new NpgsqlConnection(connectionString))
+        {
+            await connection.OpenAsync();
+            await InsertAsync(connection, saree, MarketplaceCatalogSeedData.Products, "Silk saree", minOrder: null,
+                attributes: """[{"Key":"fabric","Value":"Silk"}]""");
+            await InsertAsync(connection, named, MarketplaceCatalogSeedData.Products, "Shirt", minOrder: null,
+                attributes: """[{"Key":"fabric","Value":"Linen"},{"Key":"for","Value":"Men"}]""");
+            await InsertAsync(connection, car, MarketplaceCatalogSeedData.Products, "Swift", minOrder: null,
+                attributes: """[{"Key":"brand","Value":"Maruti"}]""");
+            await using var command = new NpgsqlCommand(
+                "UPDATE marketplace_posts SET sub_category_id = @sarees WHERE id = @saree; " +
+                "UPDATE marketplace_posts SET sub_category_id = @clothing, custom_details = '[{\"Key\":\"Fabric\",\"Value\":\"Pure linen\"}]' WHERE id = @named; " +
+                "UPDATE marketplace_posts SET sub_category_id = @vehicles WHERE id = @car;",
+                connection);
+            command.Parameters.AddWithValue("sarees", MarketplaceCatalogSeedData.SubId(3, 1));
+            command.Parameters.AddWithValue("clothing", MarketplaceCatalogSeedData.SubId(3, 2));
+            command.Parameters.AddWithValue("vehicles", MarketplaceCatalogSeedData.Vehicles);
+            command.Parameters.AddWithValue("saree", saree);
+            command.Parameters.AddWithValue("named", named);
+            command.Parameters.AddWithValue("car", car);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        await migrator.MigrateAsync();
+
+        var posts = await db.Posts.IgnoreQueryFilters().AsNoTracking().ToDictionaryAsync(p => p.Id);
+        posts[saree].Attributes.Should().BeEmpty();
+        posts[saree].CustomDetails.Select(d => (d.Key, d.Value)).Should().Equal([("Fabric", "Silk")]);
+        posts[named].CustomDetails.Select(d => (d.Key, d.Value)).Should().Equal(
+            [("Fabric", "Pure linen"), ("For", "Men")], "an own detail of the same name is kept as it was");
+        posts[car].Attributes.Select(a => (a.Key, a.Value)).Should().Equal([("brand", "Maruti")], "a vehicle still asks its brand");
+        posts[car].CustomDetails.Should().BeEmpty();
+        (await db.CategoryFields.AsNoTracking().Where(f => f.Key == "fabric").ToListAsync())
+            .Should().OnlyContain(f => !f.IsActive);
+
+        await migrator.MigrateAsync(ColourAndSizeChoices);
+        (await db.CategoryFields.AsNoTracking().Where(f => f.Key == "fabric").ToListAsync())
+            .Should().OnlyContain(f => f.IsActive, "rolling back asks them again");
+        await migrator.MigrateAsync();
+    }
+
+    private const string ColourAndSizeChoices = "20261112140726_SubCategoryColourAndSizeChoices";
     private const string FourCategories = "20261112070639_MainCategoriesAndSubCategories";
     private const string VariantsAndDelivery = "20261112100833_ProductVariantsDetailsAndDelivery";
 

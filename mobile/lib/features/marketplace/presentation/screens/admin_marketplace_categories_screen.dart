@@ -111,11 +111,7 @@ class _CategoryCard extends StatelessWidget {
               trailing: const Icon(Icons.edit_outlined, size: 18),
               onTap: () => _showSheet(
                 context,
-                _SubCategorySheet(
-                  categoryId: category.id,
-                  existing: s,
-                  offersColoursAndSizes: category.tracksStock,
-                ),
+                _SubCategorySheet(categoryId: category.id, existing: s),
               ),
             ),
           if (wholeCategory.isNotEmpty) ...[
@@ -140,7 +136,6 @@ class _CategoryCard extends StatelessWidget {
                   _SubCategorySheet(
                     categoryId: category.id,
                     nextOrder: subs.length + 1,
-                    offersColoursAndSizes: category.tracksStock,
                   ),
                 ),
                 icon: const Icon(Icons.add),
@@ -464,15 +459,11 @@ class _SubCategorySheet extends ConsumerStatefulWidget {
     required this.categoryId,
     this.existing,
     this.nextOrder = 1,
-    this.offersColoursAndSizes = false,
   });
 
   final String categoryId;
   final MarketplaceSubCategory? existing;
   final int nextOrder;
-
-  /// A category that keeps stock (Products): its kinds offer colours and sizes to tap.
-  final bool offersColoursAndSizes;
 
   @override
   ConsumerState<_SubCategorySheet> createState() => _SubCategorySheetState();
@@ -484,18 +475,12 @@ class _SubCategorySheetState extends ConsumerState<_SubCategorySheet> {
   late final _order = TextEditingController(
     text: '${widget.existing?.displayOrder ?? widget.nextOrder}',
   );
-  late final _colours = TextEditingController(
-    text: widget.existing?.colourOptions.join(', '),
-  );
-  late final _sizes = TextEditingController(
-    text: widget.existing?.sizeOptions.join(', '),
-  );
   late bool _active = widget.existing?.isActive ?? true;
   bool _saving = false;
 
   @override
   void dispose() {
-    for (final c in [_name, _order, _colours, _sizes]) {
+    for (final c in [_name, _order]) {
       c.dispose();
     }
     super.dispose();
@@ -508,8 +493,6 @@ class _SubCategorySheetState extends ConsumerState<_SubCategorySheet> {
       name: _name.text.trim(),
       displayOrder: int.tryParse(_order.text) ?? widget.nextOrder,
       isActive: _active,
-      colourOptions: _commaList(_colours.text),
-      sizeOptions: _commaList(_sizes.text),
     );
     final repository = ref.read(marketplaceRepositoryProvider);
     final existing = widget.existing;
@@ -544,22 +527,6 @@ class _SubCategorySheetState extends ConsumerState<_SubCategorySheet> {
       ),
       const SizedBox(height: 14),
       _orderField(_order),
-      if (widget.offersColoursAndSizes) ...[
-        const SizedBox(height: 14),
-        _ChoicesField(
-          key: const ValueKey('admin-marketplace-sub-colours'),
-          controller: _colours,
-          label: 'Colours to tap, separated by commas',
-          hint: 'Red, Maroon, Rani pink',
-        ),
-        const SizedBox(height: 14),
-        _ChoicesField(
-          key: const ValueKey('admin-marketplace-sub-sizes'),
-          controller: _sizes,
-          label: 'Sizes to tap, separated by commas',
-          hint: 'S, M, L, XL',
-        ),
-      ],
       SwitchListTile(
         contentPadding: EdgeInsets.zero,
         title: const Text('Shown on the post form'),
@@ -717,7 +684,6 @@ class _FieldSheetState extends ConsumerState<_FieldSheet> {
             controller: _choices,
             label: 'Choices, separated by commas',
             hint: 'Petrol, Diesel, Electric',
-            required: true,
           ),
           const SizedBox(height: 14),
         ],
@@ -768,21 +734,17 @@ List<String> _commaList(String text) => [
     if (c.trim().isNotEmpty) c.trim(),
 ];
 
-/// A list typed with commas — a detail's choices, a kind of product's colours or sizes. Each must
-/// be different; [required] asks for at least one.
+/// A detail's choices, typed with commas: at least one, each different.
 class _ChoicesField extends StatelessWidget {
   const _ChoicesField({
     required this.controller,
     required this.label,
     required this.hint,
-    this.required = false,
-    super.key,
   });
 
   final TextEditingController controller;
   final String label;
   final String hint;
-  final bool required;
 
   @override
   Widget build(BuildContext context) => TextFormField(
@@ -794,7 +756,7 @@ class _ChoicesField extends StatelessWidget {
     ),
     validator: (_) {
       final choices = _commaList(controller.text);
-      if (required && choices.isEmpty) return 'Give at least one choice.';
+      if (choices.isEmpty) return 'Give at least one choice.';
       final distinct = {for (final c in choices) c.toLowerCase()};
       return distinct.length == choices.length
           ? null

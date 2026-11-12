@@ -33,10 +33,6 @@ public class MarketplaceSubCategoryConfiguration : IEntityTypeConfiguration<Mark
         builder.Property(s => s.Name).HasMaxLength(100).IsRequired();
         builder.Property(s => s.Slug).HasMaxLength(100).IsRequired();
         builder.Property(s => s.IconName).HasMaxLength(50);
-
-        // A sub-category the super admin adds offers no colours or sizes until given some.
-        builder.Property(s => s.ColourOptions).HasDefaultValueSql("'{}'").Metadata.SetValueComparer(ChoiceListComparer.Instance);
-        builder.Property(s => s.SizeOptions).HasDefaultValueSql("'{}'").Metadata.SetValueComparer(ChoiceListComparer.Instance);
         builder.HasIndex(s => new { s.CategoryId, s.Slug }).IsUnique().HasFilter("is_deleted = false");
         builder.HasOne(s => s.Category)
             .WithMany(c => c.SubCategories)

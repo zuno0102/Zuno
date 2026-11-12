@@ -316,8 +316,6 @@ class MarketplaceSubCategoryModel {
     required this.displayOrder,
     required this.isActive,
     this.iconName,
-    this.colourOptions = const [],
-    this.sizeOptions = const [],
   });
 
   factory MarketplaceSubCategoryModel.fromJson(Map<String, dynamic> json) =>
@@ -329,8 +327,6 @@ class MarketplaceSubCategoryModel {
   final String? iconName;
   final int displayOrder;
   final bool isActive;
-  final List<String> colourOptions;
-  final List<String> sizeOptions;
 
   MarketplaceSubCategory toEntity() => MarketplaceSubCategory(
     id: id,
@@ -339,8 +335,6 @@ class MarketplaceSubCategoryModel {
     iconName: iconName,
     displayOrder: displayOrder,
     isActive: isActive,
-    colourOptions: colourOptions,
-    sizeOptions: sizeOptions,
   );
 }
 

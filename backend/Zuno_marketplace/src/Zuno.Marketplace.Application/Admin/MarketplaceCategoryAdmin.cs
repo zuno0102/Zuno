@@ -56,12 +56,6 @@ public abstract class MarketplaceSubCategoryFields
     public short DisplayOrder { get; set; }
 
     public bool IsActive { get; set; } = true;
-
-    /// <summary>Colours the post form offers to tap, in order.</summary>
-    public List<string> ColourOptions { get; set; } = [];
-
-    /// <summary>Sizes the post form offers to tap, in order.</summary>
-    public List<string> SizeOptions { get; set; } = [];
 }
 
 public class CreateMarketplaceSubCategoryCommand : MarketplaceSubCategoryFields, IRequest<MarketplaceCategoryDto>;
@@ -139,19 +133,7 @@ public abstract class MarketplaceSubCategoryFieldsValidator<T> : AbstractValidat
         RuleFor(x => x.Name).NotEmpty().MaximumLength(MarketplaceTextLimits.CategoryName).Matches("[A-Za-z0-9]").WithMessage("Name must have a letter or digit.");
         RuleFor(x => x.IconName).MaximumLength(MarketplaceTextLimits.IconName);
         RuleFor(x => x.DisplayOrder).GreaterThanOrEqualTo((short)0);
-
-        // The same limits a post's own colour or size has, each offered once.
-        RuleFor(x => x.ColourOptions).Must(Fits).WithMessage($"Offer at most {MaxChoices} colours, each once.");
-        RuleForEach(x => x.ColourOptions).NotEmpty().MaximumLength(MarketplaceTextLimits.Colour);
-        RuleFor(x => x.SizeOptions).Must(Fits).WithMessage($"Offer at most {MaxChoices} sizes, each once.");
-        RuleForEach(x => x.SizeOptions).NotEmpty().MaximumLength(MarketplaceTextLimits.Size);
     }
-
-    public const int MaxChoices = 30;
-
-    private static bool Fits(List<string> choices) =>
-        choices.Count <= MaxChoices
-        && choices.Select(c => c.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Count() == choices.Count;
 }
 
 public class CreateMarketplaceSubCategoryCommandValidator : MarketplaceSubCategoryFieldsValidator<CreateMarketplaceSubCategoryCommand>;
@@ -291,8 +273,6 @@ public partial class MarketplaceCategoryAdminHandlers(IMarketplaceDbContext dbCo
         sub.IconName = Clean(request.IconName);
         sub.DisplayOrder = request.DisplayOrder;
         sub.IsActive = request.IsActive;
-        sub.ColourOptions = [.. request.ColourOptions.Select(c => c.Trim())];
-        sub.SizeOptions = [.. request.SizeOptions.Select(s => s.Trim())];
     }
 
     private static void Apply(MarketplaceCategoryField field, MarketplaceFieldFields request)

@@ -112,8 +112,6 @@ class MarketplaceSubCategory {
     required this.displayOrder,
     required this.isActive,
     this.iconName,
-    this.colourOptions = const [],
-    this.sizeOptions = const [],
   });
 
   final String id;
@@ -122,12 +120,6 @@ class MarketplaceSubCategory {
   final String? iconName;
   final int displayOrder;
   final bool isActive;
-
-  /// Colours the post form offers to tap, from the server's table — "Red", "Maroon".
-  final List<String> colourOptions;
-
-  /// Sizes the post form offers to tap — "S", "M", "XL" for Clothing, "UK 7" for Footwear.
-  final List<String> sizeOptions;
 }
 
 /// A detail a category asks for, e.g. "KM driven" (a number in km) or "Fuel" (one of a list).
@@ -650,22 +642,16 @@ class MarketplaceSubCategoryInput {
     required this.name,
     required this.displayOrder,
     required this.isActive,
-    this.colourOptions = const [],
-    this.sizeOptions = const [],
   });
 
   final String name;
   final int displayOrder;
   final bool isActive;
-  final List<String> colourOptions;
-  final List<String> sizeOptions;
 
   Map<String, dynamic> toJson() => {
     'name': name,
     'displayOrder': displayOrder,
     'isActive': isActive,
-    'colourOptions': colourOptions,
-    'sizeOptions': sizeOptions,
   };
 }
 

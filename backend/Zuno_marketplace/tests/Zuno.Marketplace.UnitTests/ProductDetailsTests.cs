@@ -25,7 +25,7 @@ public class ProductDetailsTests
             c.Price = 499m;
             c.Condition = "New";
             c.Quantity = null;
-            c.Attributes = new() { ["fabric"] = "Cotton", ["for"] = "Men" };
+            c.Attributes = [];
             c.Variants =
             [
                 new() { Colour = "Red", Size = "M", Stock = 4 },
@@ -43,13 +43,16 @@ public class ProductDetailsTests
     {
         using var test = new TestMarketplace();
 
-        var dto = await test.SaveHandlers.Handle(Shirt(), default);
+        // As the 1.17 app sends it: Fabric and For, which a shirt is no longer asked.
+        var dto = await test.SaveHandlers.Handle(Shirt(c => c.Attributes = new() { ["fabric"] = "Cotton", ["for"] = "Men" }), default);
 
         dto.Variants.Select(v => (v.Name, v.Stock, v.Price)).Should().Equal(
             ("Red · M", 4, (decimal?)null), ("Red · L", 0, null), ("Blue · M", 6, 549m));
         dto.Quantity.Should().Be(10, "the colours and sizes added up");
         dto.IsOutOfStock.Should().BeFalse();
-        dto.Attributes.Should().Contain("fabric", "Cotton");
+        dto.Attributes.Should().BeEmpty("Fabric is no longer asked");
+        dto.CustomDetails.Select(d => (d.Name, d.Value)).Should().Contain([("Fabric", "Cotton"), ("For", "Men")],
+            "what an older app still sends is kept as the post's own details");
     }
 
     [Fact]
@@ -208,9 +211,9 @@ public class ProductDetailsTests
             [new() { Name = "Fit", Value = "Slim" }, new() { Name = "fit", Value = "Regular" }]), default));
         twice.Should().Contain("fit is added twice.");
 
-        var asked = await FailedAsync(() => test.SaveHandlers.Handle(Shirt(c => c.CustomDetails =
-            [new() { Name = "Fabric", Value = "Khadi" }]), default));
-        asked.Should().Contain("Fabric is already asked above.");
+        var asked = await FailedAsync(() => test.SaveHandlers.Handle(TestMarketplace.Car(c => c.CustomDetails =
+            [new() { Name = "Brand", Value = "Tata" }]), default));
+        asked.Should().Contain("Brand is already asked above.", "a vehicle still asks its brand");
 
         var dto = await test.SaveHandlers.Handle(Shirt(c => c.CustomDetails =
             [new() { Name = " Fit ", Value = "Slim" }, new() { Name = "Sleeve", Value = "Full" }]), default);

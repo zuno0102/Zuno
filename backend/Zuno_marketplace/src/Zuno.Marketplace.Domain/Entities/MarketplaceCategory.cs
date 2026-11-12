@@ -61,12 +61,6 @@ public class MarketplaceSubCategory : BaseEntity
 
     /// <summary>Off hides it from the post form and its posts from customers.</summary>
     public bool IsActive { get; set; } = true;
-
-    /// <summary>Colours the post form offers to tap — "Red", "Maroon". The business may type others.</summary>
-    public List<string> ColourOptions { get; set; } = [];
-
-    /// <summary>Sizes the post form offers to tap — "S", "M", "XL" for Clothing, "UK 7" for Footwear.</summary>
-    public List<string> SizeOptions { get; set; } = [];
 }
 
 /// <summary>

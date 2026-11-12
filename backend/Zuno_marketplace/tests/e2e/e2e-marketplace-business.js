@@ -173,11 +173,13 @@ const register = async (first, role) => {
   const everywhere = await ship({ deliversEverywhere: true, deliveryStateId: tamilNadu });
   ok("All India keeps no state", everywhere.data?.deliversEverywhere === true && everywhere.data?.deliveryStateId == null, `${everywhere.status}`);
 
-  // ── Products: colours and sizes to tap, each with its own price and stock ───────────────────
-  const productSubs = all.find(c => c.slug === "products")?.subCategories ?? [];
-  const clothing = productSubs.find(s => s.slug === "clothing");
-  ok("Clothing offers its sizes and colours to tap", clothing?.sizeOptions?.includes("M") && clothing?.colourOptions?.includes("Red"));
-  ok("Sarees offer colours, not sizes", productSubs.find(s => s.slug === "sarees")?.colourOptions?.length > 0 && productSubs.find(s => s.slug === "sarees")?.sizeOptions?.length === 0);
+  // ── Products: basic fields only; variants typed in, each with its own price and stock ───────
+  const products = all.find(c => c.slug === "products");
+  const sareeAsks = (products?.fields ?? []).filter(f => !f.subCategoryId || f.subCategoryId === SAREES.subCategoryId);
+  ok("A saree asks no extra details — only the basics", sareeAsks.length === 0, sareeAsks.map(f => f.label).join(", "));
+  ok("Colours and sizes are typed in, not offered", (products?.subCategories ?? []).every(s => s.colourOptions === undefined && s.sizeOptions === undefined));
+  const fromOldApp = await M_("PUT", `/business/marketplace/${newSaree.data?.id}`, biz2, { ...saree, condition: "New", quantity: 3, attributes: { fabric: "Silk" } });
+  ok("An older app's Fabric is kept as the post's own detail", fromOldApp.data?.customDetails?.some(d => d.name === "Fabric" && d.value === "Silk"), `${fromOldApp.status} ${fromOldApp.text.slice(0, 80)}`);
   const byColour = await M_("PUT", `/business/marketplace/${newSaree.data?.id}`, biz2, {
     ...saree, price: null, condition: "New",
     variants: [{ colour: "Red", stock: 30, price: 499 }, { colour: "Green", stock: 25, price: 449 }],

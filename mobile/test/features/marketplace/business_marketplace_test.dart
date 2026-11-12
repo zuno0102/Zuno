@@ -44,7 +44,6 @@ const _products = MarketplaceCategory(
       slug: 'sarees',
       displayOrder: 1,
       isActive: true,
-      colourOptions: ['Red', 'Green', 'Blue'],
     ),
     MarketplaceSubCategory(
       id: 's-vehicles',
@@ -59,8 +58,6 @@ const _products = MarketplaceCategory(
       slug: 'clothing',
       displayOrder: 3,
       isActive: true,
-      colourOptions: ['Red', 'Blue'],
-      sizeOptions: ['M', 'L', 'XL'],
     ),
   ],
   fields: [
@@ -1109,7 +1106,11 @@ void main() {
         findsNothing,
       );
       expect(find.byKey(const ValueKey('marketplace-min-order')), findsNothing);
-      expect(find.text('Per (optional)'), findsOneWidget);
+      expect(
+        find.text('Per (optional)'),
+        findsNothing,
+        reason: 'a product sells by the piece',
+      );
     });
 
     testWidgets(
@@ -1322,135 +1323,191 @@ void main() {
       await _type(tester, 'marketplace-price', '499');
     }
 
-    Future<void> tapChip(WidgetTester tester, String key) async {
-      final chip = find.byKey(ValueKey(key));
-      await tester.ensureVisible(chip);
+    Future<void> tap(WidgetTester tester, Finder target) async {
+      await tester.ensureVisible(target);
       await tester.pumpAndSettle();
-      await tester.tap(chip);
+      await tester.tap(target);
       await tester.pumpAndSettle();
     }
 
-    Future<void> openNew(WidgetTester tester, String sub) => _openFormFor(
+    Future<void> openNew(WidgetTester tester) => _openFormFor(
       tester,
       _products,
-      sub: sub,
+      sub: 's-sarees',
       condition: MarketplaceItemCondition.newItem,
     );
 
-    testWidgets('a new product is priced and stocked in one place', (
-      tester,
-    ) async {
-      final repo = await _pump(tester, const BusinessMarketplaceTab());
-      await openNew(tester, 's-sarees');
+    /// Opens "Add variant" (or a card's Edit) and fills what is given.
+    Future<void> fillVariant(
+      WidgetTester tester, {
+      String? colour,
+      String? size,
+      String? price,
+      String? stock,
+    }) async {
+      for (final (key, text) in [
+        ('colour', colour),
+        ('size', size),
+        ('price', price),
+        ('stock', stock),
+      ]) {
+        if (text != null) {
+          await tester.enterText(
+            find.byKey(ValueKey('marketplace-variant-$key')),
+            text,
+          );
+        }
+      }
+      await tap(tester, find.byKey(const ValueKey('marketplace-variant-save')));
+    }
 
-      expect(find.text('Price and stock'), findsOneWidget);
-      expect(find.text('Stock available'), findsNothing);
+    testWidgets('a new product asks only the basics', (tester) async {
+      final repo = await _pump(tester, const BusinessMarketplaceTab());
+      await openNew(tester);
+
+      for (final key in [
+        'marketplace-price',
+        'marketplace-mrp',
+        'marketplace-offer',
+        'marketplace-stock',
+        'marketplace-add-variant',
+      ]) {
+        expect(find.byKey(ValueKey(key)), findsOneWidget, reason: key);
+      }
       expect(
         find.byKey(const ValueKey('marketplace-price-unit')),
         findsNothing,
         reason: 'a product sells by the piece',
       );
       await _type(tester, 'marketplace-title', 'Cotton saree');
-      await _type(tester, 'marketplace-price', '499');
-      await _type(tester, 'marketplace-stock', '5');
+      await _type(tester, 'marketplace-price', '200');
+      await _type(tester, 'marketplace-mrp', '350');
+      await tester.pump();
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('marketplace-offer')),
+          matching: find.text('43'),
+        ),
+        findsOneWidget,
+        reason: 'the offer is worked out from the MRP',
+      );
+      await _type(tester, 'marketplace-stock', '500');
       await _save(tester);
 
       final input = repo.created.single;
-      expect((input.price, input.quantity, input.priceUnit), (499, 5, null));
+      expect(
+        (input.price, input.originalPrice, input.quantity, input.priceUnit),
+        (200, 350, 500, null),
+      );
       expect(input.variants, isEmpty);
     });
 
-    testWidgets('a saree: tap its colours, each with its own price and stock', (
+    testWidgets('typing an offer works the price out from the MRP', (
       tester,
     ) async {
-      final repo = await _pump(tester, const BusinessMarketplaceTab());
-      await openNew(tester, 's-sarees');
-      await _type(tester, 'marketplace-title', 'Silk saree');
-      await tapChip(tester, 'marketplace-colour-Red');
-      await tapChip(tester, 'marketplace-colour-Green');
+      await _pump(tester, const BusinessMarketplaceTab());
+      await openNew(tester);
+      await _type(tester, 'marketplace-mrp', '600');
+      await _type(tester, 'marketplace-offer', '25');
+      await tester.pump();
 
       expect(
-        find.byKey(const ValueKey('marketplace-price')),
-        findsNothing,
-        reason: 'the price is in each colour now',
-      );
-      expect(find.byKey(const ValueKey('marketplace-stock')), findsNothing);
-      await _type(tester, 'marketplace-variant-price-0', '499');
-      await _type(tester, 'marketplace-variant-stock-0', '30');
-      await _type(tester, 'marketplace-variant-price-1', '449');
-      await _type(tester, 'marketplace-variant-stock-1', '25');
-      await _save(tester);
-
-      final input = repo.created.single;
-      expect(
-        (input.price, input.quantity),
-        (null, null),
-        reason: 'the server takes them from the colours',
-      );
-      expect(
-        [for (final v in input.variants) (v.name, v.stock, v.price)],
-        [('Red', 30, 499.0), ('Green', 25, 449.0)],
-      );
-    });
-
-    testWidgets('a shirt: colours x sizes, filled at once, one left out', (
-      tester,
-    ) async {
-      final repo = await _pump(tester, const BusinessMarketplaceTab());
-      await openNew(tester, 's-clothing');
-      await _type(tester, 'marketplace-title', 'Cotton shirt');
-      for (final chip in ['colour-Red', 'colour-Blue', 'size-M', 'size-L']) {
-        await tapChip(tester, 'marketplace-$chip');
-      }
-      expect(
-        find.byKey(const ValueKey('marketplace-variant-Blue-L')),
-        findsOneWidget,
-        reason: 'every colour in every size',
-      );
-
-      await _type(tester, 'marketplace-same-price', '399');
-      await _type(tester, 'marketplace-same-stock', '5');
-      await tapChip(tester, 'marketplace-apply-all');
-      await tapChip(tester, 'marketplace-variant-remove-3');
-      await _save(tester);
-
-      final input = repo.created.single;
-      expect(
-        [for (final v in input.variants) (v.name, v.stock, v.price)],
-        [('Red · M', 5, 399.0), ('Red · L', 5, 399.0), ('Blue · M', 5, 399.0)],
-      );
-    });
-
-    testWidgets('a colour of its own can be typed in', (tester) async {
-      final repo = await _pump(tester, const BusinessMarketplaceTab());
-      await openNew(tester, 's-sarees');
-      await _type(tester, 'marketplace-title', 'Silk saree');
-      await _type(tester, 'marketplace-colour-own', 'Rani pink');
-      await tapChip(tester, 'marketplace-colour-add');
-
-      expect(
-        find.byKey(const ValueKey('marketplace-colour-Rani pink')),
+        find.descendant(
+          of: find.byKey(const ValueKey('marketplace-price')),
+          matching: find.text('450'),
+        ),
         findsOneWidget,
       );
-      await _type(tester, 'marketplace-variant-price-0', '899');
-      await _type(tester, 'marketplace-variant-stock-0', '2');
-      await _save(tester);
-
-      expect(repo.created.single.variants.single.colour, 'Rani pink');
     });
 
-    testWidgets('every colour / size needs its price and stock', (
+    testWidgets(
+      'variants are managed like a service items: add, edit, remove',
+      (tester) async {
+        final repo = await _pump(tester, const BusinessMarketplaceTab());
+        await openNew(tester);
+        await _type(tester, 'marketplace-title', 'Silk saree');
+        await _type(tester, 'marketplace-price', '499');
+        await _type(tester, 'marketplace-mrp', '599');
+
+        await tap(
+          tester,
+          find.byKey(const ValueKey('marketplace-add-variant')),
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('marketplace-variant-price')),
+            matching: find.text('499'),
+          ),
+          findsOneWidget,
+          reason: 'a new variant starts at the product price',
+        );
+        await fillVariant(tester, colour: 'Red', size: 'M', stock: '30');
+        await tap(
+          tester,
+          find.byKey(const ValueKey('marketplace-add-variant')),
+        );
+        await fillVariant(tester, colour: 'Green', price: '449', stock: '25');
+
+        expect(find.text('₹499 · 30 in stock · 17% off'), findsOneWidget);
+        expect(
+          find.text('Quantity: 55 in stock across all variants.'),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('marketplace-price')),
+          findsNothing,
+          reason: 'each variant has its own price now',
+        );
+        expect(find.byKey(const ValueKey('marketplace-stock')), findsNothing);
+
+        await tap(
+          tester,
+          find.byKey(const ValueKey('marketplace-variant-menu-0')),
+        );
+        await tap(tester, find.text('Edit'));
+        await fillVariant(tester, stock: '31');
+        await tap(
+          tester,
+          find.byKey(const ValueKey('marketplace-variant-menu-1')),
+        );
+        await tap(tester, find.text('Remove').last);
+        await tap(tester, find.widgetWithText(FilledButton, 'Remove'));
+        await _save(tester);
+
+        final input = repo.created.single;
+        expect((input.price, input.quantity), (null, null));
+        expect(
+          [for (final v in input.variants) (v.name, v.stock, v.price)],
+          [('Red · M', 31, 499.0)],
+        );
+      },
+    );
+
+    testWidgets('a variant needs a colour or size, a price and stock, once', (
       tester,
     ) async {
       final repo = await _pump(tester, const BusinessMarketplaceTab());
-      await openNew(tester, 's-sarees');
+      await openNew(tester);
       await _type(tester, 'marketplace-title', 'Silk saree');
-      await tapChip(tester, 'marketplace-colour-Red');
-      await _save(tester);
 
-      expect(repo.created, isEmpty);
+      await tap(tester, find.byKey(const ValueKey('marketplace-add-variant')));
+      await fillVariant(tester);
+      expect(find.text('Give a colour, a size, or both.'), findsOneWidget);
       expect(find.text('Enter a valid price.'), findsOneWidget);
       expect(find.text('Required.'), findsOneWidget);
+
+      await fillVariant(tester, colour: 'Red', price: '899', stock: '2');
+      await tap(tester, find.byKey(const ValueKey('marketplace-add-variant')));
+      await fillVariant(tester, colour: ' red ', price: '899', stock: '2');
+      expect(
+        find.text('This colour and size is already a variant.'),
+        findsOneWidget,
+      );
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+      await _save(tester);
+
+      expect(repo.created.single.variants.single.colour, 'Red');
     });
 
     testWidgets('MRP below the price is refused; own details are sent', (
@@ -2141,64 +2198,6 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Hidden'), findsOneWidget);
-    });
-
-    testWidgets('a kind of product is given its colours and sizes to tap', (
-      tester,
-    ) async {
-      final repo = await _pump(
-        tester,
-        const AdminMarketplaceCategoriesScreen(),
-      );
-      await tester.tap(find.text('Products'));
-      await tester.pumpAndSettle();
-      await tester.tap(
-        find.byKey(const ValueKey('admin-marketplace-sub-sarees')),
-      );
-      await tester.pumpAndSettle();
-
-      final colours = find.byKey(
-        const ValueKey('admin-marketplace-sub-colours'),
-      );
-      expect(
-        find.descendant(of: colours, matching: find.text('Red, Green, Blue')),
-        findsOneWidget,
-        reason: 'starts from what it offers now',
-      );
-      await tester.enterText(colours, 'Red, Rani pink , , Mustard');
-      await tester.enterText(
-        find.byKey(const ValueKey('admin-marketplace-sub-sizes')),
-        '5.5 m, 6.3 m',
-      );
-      await tester.tap(find.byKey(const ValueKey('primary-button')));
-      await tester.pumpAndSettle();
-
-      final (categoryId, input) = repo.savedSubCategories.single;
-      expect(categoryId, 'cat-products');
-      expect(input.colourOptions, ['Red', 'Rani pink', 'Mustard']);
-      expect(input.sizeOptions, ['5.5 m', '6.3 m']);
-    });
-
-    testWidgets('colours named twice are refused', (tester) async {
-      final repo = await _pump(
-        tester,
-        const AdminMarketplaceCategoriesScreen(),
-      );
-      await tester.tap(find.text('Products'));
-      await tester.pumpAndSettle();
-      await tester.tap(
-        find.byKey(const ValueKey('admin-marketplace-sub-sarees')),
-      );
-      await tester.pumpAndSettle();
-      await tester.enterText(
-        find.byKey(const ValueKey('admin-marketplace-sub-colours')),
-        'Red, red',
-      );
-      await tester.tap(find.byKey(const ValueKey('primary-button')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Each choice must be different.'), findsOneWidget);
-      expect(repo.savedSubCategories, isEmpty);
     });
 
     testWidgets('a new category is saved', (tester) async {
