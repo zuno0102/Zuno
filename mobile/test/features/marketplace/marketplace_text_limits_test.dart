@@ -35,8 +35,25 @@ void main() {
       'maxAdDays': 30,
       'maxStartDaysAhead': 45,
       'textLimits': {'title': 90},
+      'conditions': [
+        {
+          'code': 'New',
+          'name': 'New',
+          'detail': 'Brand new — keep a stock count',
+        },
+        {
+          'code': 'Used',
+          'name': 'Used',
+          'detail': 'One piece — mark it sold when it goes',
+        },
+      ],
     }).toEntity();
 
+    expect(
+      [for (final c in options.conditions) c.code],
+      [MarketplaceItemCondition.newItem, MarketplaceItemCondition.used],
+      reason: 'the Condition box offers New and Used',
+    );
     expect(options.maxStartDaysAhead, 45);
     expect(options.textLimits.title, 90);
   });

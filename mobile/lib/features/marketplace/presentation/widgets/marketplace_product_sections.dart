@@ -17,14 +17,12 @@ final _money = [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))];
 final _wholeNumber = [FilteringTextInputFormatter.digitsOnly];
 
 /// A product's price, its MRP and the offer between them, kept in step: typing an offer works the
-/// price out from the MRP; changing the price or the MRP works the offer out again. With [showPrice]
-/// false (each variant has its own price) only the MRP is asked.
+/// price out from the MRP; changing the price or the MRP works the offer out again.
 class MarketplacePriceFields extends StatefulWidget {
   const MarketplacePriceFields({
     required this.price,
     required this.mrp,
     required this.highestPrice,
-    this.showPrice = true,
     super.key,
   });
 
@@ -33,7 +31,6 @@ class MarketplacePriceFields extends StatefulWidget {
 
   /// The dearest price it sells at, which the MRP may not be under.
   final double? Function() highestPrice;
-  final bool showPrice;
 
   @override
   State<MarketplacePriceFields> createState() => _MarketplacePriceFieldsState();
@@ -92,24 +89,22 @@ class _MarketplacePriceFieldsState extends State<MarketplacePriceFields> {
       Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (widget.showPrice) ...[
-            Expanded(
-              child: TextFormField(
-                key: const ValueKey('marketplace-price'),
-                controller: widget.price,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                inputFormatters: _money,
-                decoration: _box('Price').copyWith(prefixText: '₹ '),
-                validator: (v) {
-                  final n = double.tryParse((v ?? '').trim());
-                  return n == null || n <= 0 ? 'Enter a valid price.' : null;
-                },
+          Expanded(
+            child: TextFormField(
+              key: const ValueKey('marketplace-price'),
+              controller: widget.price,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
               ),
+              inputFormatters: _money,
+              decoration: _box('Price').copyWith(prefixText: '₹ '),
+              validator: (v) {
+                final n = double.tryParse((v ?? '').trim());
+                return n == null || n <= 0 ? 'Enter a valid price.' : null;
+              },
             ),
-            const SizedBox(width: 12),
-          ],
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: TextFormField(
               key: const ValueKey('marketplace-mrp'),
@@ -135,27 +130,25 @@ class _MarketplacePriceFieldsState extends State<MarketplacePriceFields> {
           ),
         ],
       ),
-      if (widget.showPrice) ...[
-        const SizedBox(height: 14),
-        TextFormField(
-          key: const ValueKey('marketplace-offer'),
-          controller: _offer,
-          keyboardType: TextInputType.number,
-          inputFormatters: _wholeNumber,
-          onChanged: _offerTyped,
-          decoration: _box('Offer (optional)').copyWith(
-            suffixText: '% off',
-            helperText: 'Type it to work the price out from the MRP.',
-          ),
-          validator: (v) {
-            final text = (v ?? '').trim();
-            if (text.isEmpty) return null;
-            if (widget.mrp.text.trim().isEmpty) return 'Enter the MRP first.';
-            final n = int.tryParse(text);
-            return n == null || n <= 0 || n >= 100 ? 'Between 1 and 99.' : null;
-          },
+      const SizedBox(height: 14),
+      TextFormField(
+        key: const ValueKey('marketplace-offer'),
+        controller: _offer,
+        keyboardType: TextInputType.number,
+        inputFormatters: _wholeNumber,
+        onChanged: _offerTyped,
+        decoration: _box('Offer (optional)').copyWith(
+          suffixText: '% off',
+          helperText: 'Type it to work the price out from the MRP.',
         ),
-      ],
+        validator: (v) {
+          final text = (v ?? '').trim();
+          if (text.isEmpty) return null;
+          if (widget.mrp.text.trim().isEmpty) return 'Enter the MRP first.';
+          final n = int.tryParse(text);
+          return n == null || n <= 0 || n >= 100 ? 'Between 1 and 99.' : null;
+        },
+      ),
     ],
   );
 }
@@ -206,6 +199,7 @@ class MarketplaceVariantList extends ChangeNotifier {
 class MarketplaceVariantsSection extends StatelessWidget {
   const MarketplaceVariantsSection({
     required this.variants,
+    required this.alsoTaken,
     required this.mrp,
     required this.defaultPrice,
     required this.limits,
@@ -214,6 +208,9 @@ class MarketplaceVariantsSection extends StatelessWidget {
   });
 
   final MarketplaceVariantList variants;
+
+  /// The colour / size typed on the form itself, which an added one may not repeat.
+  final List<MarketplaceVariant> Function() alsoTaken;
 
   /// The product's MRP, for each variant's offer.
   final double? Function() mrp;
@@ -230,6 +227,7 @@ class MarketplaceVariantsSection extends StatelessWidget {
       existing: existing,
       startPrice: existing?.price ?? defaultPrice(),
       others: [
+        ...alsoTaken(),
         for (final (i, v) in variants.items.indexed)
           if (i != index) v,
       ],
@@ -258,16 +256,13 @@ class MarketplaceVariantsSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Variants',
+            'More colours and sizes',
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w600,
             ),
           ),
           Text(
-            variants.isEmpty
-                ? 'Optional. Sold in colours or sizes? Add each with its own price and stock.'
-                : 'Quantity: ${variants.totalStock} in stock across all variants.',
-            key: const ValueKey('marketplace-variants-summary'),
+            'Sold in another colour or size too? Add each with its own price and stock.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -308,7 +303,7 @@ class MarketplaceVariantsSection extends StatelessWidget {
               key: const ValueKey('marketplace-add-variant'),
               onPressed: () => _edit(context),
               icon: const Icon(Icons.add),
-              label: const Text('Add variant'),
+              label: const Text('Add another colour / size'),
             ),
           ),
         ],

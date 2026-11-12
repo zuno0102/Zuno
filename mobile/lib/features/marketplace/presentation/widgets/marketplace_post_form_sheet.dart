@@ -60,14 +60,21 @@ class _MarketplacePostFormSheetState
   late final MarketplacePost? _old = widget.existing;
   late final _title = TextEditingController(text: _old?.title);
   late final _description = TextEditingController(text: _old?.description);
-  late final _price = TextEditingController(text: _plain(_old?.price));
+
+  /// A product's first colour / size: asked on the form itself, the rest added as variants.
+  late final MarketplaceVariant? _firstSaved = _old?.variants.firstOrNull;
+  late final _price = TextEditingController(
+    text: _plain(_firstSaved?.price ?? _old?.price),
+  );
+  late final _colour = TextEditingController(text: _firstSaved?.colour);
+  late final _size = TextEditingController(text: _firstSaved?.size);
   late final _originalPrice = TextEditingController(
     text: _plain(_old?.originalPrice),
   );
   late final _priceUnit = TextEditingController(text: _old?.priceUnit);
   late final _quantity = TextEditingController(
-    text: _old?.quantity?.toString(),
-  );
+    text: (_firstSaved?.stock ?? _old?.quantity)?.toString(),
+  )..addListener(_rebuild);
   late final _minOrder = TextEditingController(
     text: _old?.minOrderQuantity?.toString(),
   );
@@ -80,15 +87,18 @@ class _MarketplacePostFormSheetState
   late String? _subCategoryId = _old?.subCategoryId;
   late String _tradeType = _old?.tradeType ?? MarketplaceTradeType.retail;
 
-  /// New or Used, in a category that keeps stock (Products).
-  late String? _condition = _old?.condition;
+  /// New or Used, in a category that keeps stock (Products). A new post starts as New, so its
+  /// quantity, colour, size and stock are on the form at once.
+  late String? _condition = _old == null
+      ? MarketplaceItemCondition.newItem
+      : _old.condition;
   late DateTime? _startsAt = _old?.startsAt;
   late DateTime? _endsAt = _old?.endsAt;
 
-  /// A new product's variants — each colour / size with its own price and stock — and the
+  /// A new product's further colours / sizes, each with its own price and stock — and the
   /// business's own details.
   late final _variants = MarketplaceVariantList(
-    _old?.variants ?? const [],
+    _old?.variants.skip(1).toList() ?? const [],
     price: _old?.price,
   )..addListener(_rebuild);
   late final _customDetails = MarketplaceCustomDetailRows(
@@ -137,6 +147,8 @@ class _MarketplacePostFormSheetState
       _priceUnit,
       _quantity,
       _minOrder,
+      _colour,
+      _size,
       _phone,
     ]) {
       c.dispose();
@@ -159,15 +171,15 @@ class _MarketplacePostFormSheetState
   bool _keepsStock(MarketplaceCategory category) =>
       category.tracksStock && _condition == MarketplaceItemCondition.newItem;
 
-  /// New or Used — from the server's table — then the basics a product is sold by: its price, MRP
-  /// and offer; for a new item its quantity, or its variants each with their own price and stock.
-  /// A used item is a single piece: it has no stock and is marked sold from the post's menu.
+  /// New or Used — from the server's table — then the basics a product is sold by: price, MRP and
+  /// offer; for a new item its quantity, colour, size and stock on the form itself, and any further
+  /// colour / size added below with its own price and stock. A used item is a single piece: it has
+  /// no stock and is marked sold from the post's menu.
   List<Widget> _stockSection(
     MarketplaceCategory category,
     MarketplaceOptions? options,
   ) {
     final keepsStock = _keepsStock(category);
-    final byVariant = keepsStock && !_variants.isEmpty;
     return [
       SelectField<String>(
         key: const ValueKey('marketplace-condition'),
@@ -184,25 +196,46 @@ class _MarketplacePostFormSheetState
       MarketplacePriceFields(
         price: _price,
         mrp: _originalPrice,
-        showPrice: !byVariant,
-        highestPrice: () => byVariant
-            ? _variants.highestPrice
-            : double.tryParse(_price.text.trim()),
+        highestPrice: () =>
+            [double.tryParse(_price.text.trim()), _variants.highestPrice]
+                .whereType<double>()
+                .fold<double?>(null, (a, b) => a == null || b > a ? b : a),
       ),
       const SizedBox(height: 14),
       if (keepsStock) ...[
-        if (!byVariant) ...[
-          _wholeNumber(
-            _quantity,
-            key: 'marketplace-stock',
-            label: 'Quantity in stock',
-            required: true,
-            min: 0,
+        // The total: this colour / size's stock and every other one's, added up.
+        InputDecorator(
+          key: const ValueKey('marketplace-quantity-total'),
+          decoration: const InputDecoration(
+            labelText: 'Quantity',
+            helperText: 'Every colour and size in stock, added up.',
+            border: OutlineInputBorder(),
           ),
-          const SizedBox(height: 14),
-        ],
+          child: Text(
+            '${(int.tryParse(_quantity.text.trim()) ?? 0) + _variants.totalStock}',
+          ),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: _variantText(_colour, 'colour', _limits.colour)),
+            const SizedBox(width: 12),
+            Expanded(child: _variantText(_size, 'size', _limits.size)),
+          ],
+        ),
+        const SizedBox(height: 14),
+        _wholeNumber(
+          _quantity,
+          key: 'marketplace-stock',
+          label: 'Stock',
+          required: true,
+          min: 0,
+        ),
+        const SizedBox(height: 14),
         MarketplaceVariantsSection(
           variants: _variants,
+          alsoTaken: () => [?_firstVariant],
           mrp: () => double.tryParse(_originalPrice.text.trim()),
           defaultPrice: () => double.tryParse(_price.text.trim()),
           limits: _limits,
@@ -212,6 +245,44 @@ class _MarketplacePostFormSheetState
       ],
     ];
   }
+
+  /// Colour or Size on the form. Optional while it is the only one; once another colour / size is
+  /// added, this one needs one of the two so the variants can be told apart.
+  Widget _variantText(
+    TextEditingController controller,
+    String what,
+    int maxLength,
+  ) => TextFormField(
+    key: ValueKey('marketplace-$what'),
+    controller: controller,
+    maxLength: maxLength,
+    textCapitalization: TextCapitalization.words,
+    decoration: InputDecoration(
+      labelText: what == 'colour' ? 'Colour' : 'Size',
+      hintText: what == 'colour' ? 'e.g. Maroon' : 'e.g. M, 6.3 m',
+      border: const OutlineInputBorder(),
+      counterText: '',
+    ),
+    validator: (_) =>
+        what == 'colour' &&
+            !_variants.isEmpty &&
+            _clean(_colour) == null &&
+            _clean(_size) == null
+        ? 'Give this one a colour or size too.'
+        : null,
+  );
+
+  /// The colour / size typed on the form, as a variant; null when neither is given.
+  MarketplaceVariant? get _firstVariant =>
+      _clean(_colour) == null && _clean(_size) == null
+      ? null
+      : MarketplaceVariant(
+          id: _firstSaved?.id,
+          colour: _clean(_colour),
+          size: _clean(_size),
+          price: double.tryParse(_price.text.trim()),
+          stock: int.tryParse(_quantity.text.trim()) ?? 0,
+        );
 
   /// How long each text may be, from the server's options.
   MarketplaceTextLimits get _limits =>
@@ -230,7 +301,11 @@ class _MarketplacePostFormSheetState
     final kind = category.kind;
     final wholesale = _sellsWholesale(category);
     final keepsStock = _keepsStock(category);
-    final byVariant = keepsStock && !_variants.isEmpty;
+    // The colour / size on the form, then each one added below.
+    final variants = keepsStock
+        ? [?_firstVariant, ..._variants.items]
+        : const <MarketplaceVariant>[];
+    final byVariant = variants.isNotEmpty;
     final fromBusiness = _businessDistrict != null;
     final profile = ref.read(businessProfileProvider).value;
     final shipsTo = category.tracksStock
@@ -261,7 +336,7 @@ class _MarketplacePostFormSheetState
           : keepsStock || kind == MarketplacePostKind.foodOffer || wholesale
           ? int.tryParse(_quantity.text.trim())
           : null,
-      variants: keepsStock ? _variants.items : const [],
+      variants: variants,
       // A food offer's usual price, or a product's MRP.
       originalPrice:
           kind == MarketplacePostKind.foodOffer || category.tracksStock
@@ -389,6 +464,8 @@ class _MarketplacePostFormSheetState
     MarketplaceCategory? category,
     MarketplaceOptions? options,
   ) {
+    // A product is named and described as one; other posts keep their title.
+    final isProduct = category?.tracksStock ?? false;
     return Padding(
       padding: EdgeInsets.only(
         left: 20,
@@ -468,23 +545,29 @@ class _MarketplacePostFormSheetState
                 key: const ValueKey('marketplace-title'),
                 controller: _title,
                 maxLength: _limits.title,
-                decoration: const InputDecoration(
-                  labelText: 'Title',
-                  hintText: 'e.g. Swift VXi 2019, 10 cents land, Veg biryani',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: isProduct ? 'Product name' : 'Title',
+                  hintText: isProduct
+                      ? 'e.g. Silk saree, Cotton shirt, Swift VXi 2019'
+                      : 'e.g. 10 kg bananas, Veg biryani, Cricket tournament',
+                  border: const OutlineInputBorder(),
                   counterText: '',
                 ),
-                validator: (v) =>
-                    (v ?? '').trim().isEmpty ? 'Title is required.' : null,
+                validator: (v) => (v ?? '').trim().isEmpty
+                    ? '${isProduct ? 'Product name' : 'Title'} is required.'
+                    : null,
               ),
               const SizedBox(height: 14),
               TextFormField(
+                key: const ValueKey('marketplace-description'),
                 controller: _description,
                 maxLines: 3,
                 maxLength: _limits.description,
-                decoration: const InputDecoration(
-                  labelText: 'Description (optional)',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: isProduct
+                      ? 'Product description (optional)'
+                      : 'Description (optional)',
+                  border: const OutlineInputBorder(),
                   counterText: '',
                 ),
               ),
@@ -813,15 +896,12 @@ class _MarketplacePostFormSheetState
         const SizedBox(height: 14),
       ],
       if (category?.tracksStock ?? false)
-        ..._shipsToSection(
-          ref.watch(locationStatesProvider).value ?? const [],
-          business.value,
-        ),
+        ..._shipsToSection(ref.watch(locationStatesProvider).value ?? const []),
     ];
   }
 
   /// "Ships to": All India; a whole state; or a state and the districts in it.
-  List<Widget> _shipsToSection(List<LocationState> states, District? home) {
+  List<Widget> _shipsToSection(List<LocationState> states) {
     final stateId = _shipStateId;
     final districtsAsync =
         _shipsTo == MarketplaceShipsTo.districts && stateId != null
@@ -850,11 +930,8 @@ class _MarketplacePostFormSheetState
           ),
         ],
         initialValue: _shipsTo,
-        onChanged: (v) => setState(() {
-          _shipsTo = v;
-          // Most ship in their own state first.
-          _shipStateId ??= home?.stateId;
-        }),
+        // No state is picked for the business: it chooses where it ships.
+        onChanged: (v) => setState(() => _shipsTo = v),
       ),
       if (_shipsTo != MarketplaceShipsTo.allIndia) ...[
         const SizedBox(height: 14),
