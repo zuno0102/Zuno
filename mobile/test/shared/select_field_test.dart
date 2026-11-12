@@ -305,4 +305,31 @@ void main() {
     expect(picked, ['PerDay']);
     expect(find.text('Day'), findsOneWidget);
   });
+
+  testWidgets('a sheet with nothing in it says so, never only a title', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showSelectSheet<String>(
+                context,
+                title: 'District',
+                options: const [],
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nothing to choose yet.'), findsOneWidget);
+  });
 }

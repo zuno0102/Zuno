@@ -149,6 +149,18 @@ Future<SelectPick<T>?> showSelectSheet<T>(
               shrinkWrap: true,
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
               children: [
+                // Never a blank sheet with only a title: say there is nothing to pick yet.
+                if (options.isEmpty)
+                  Padding(
+                    key: const ValueKey('select-sheet-empty'),
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+                    child: Text(
+                      'Nothing to choose yet.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
                 for (final o in options)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 4),

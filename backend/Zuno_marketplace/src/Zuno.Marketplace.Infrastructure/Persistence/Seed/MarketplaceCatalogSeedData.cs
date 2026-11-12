@@ -27,7 +27,7 @@ public static class MarketplaceCatalogSeedData
     public static readonly Guid FreePlan = new("e5555555-0000-0000-0000-000000000001");
 
     /// <summary>The first releases kept New / Used as a Products detail under this key; it is now the post's own condition.</summary>
-    public const string LegacyConditionKey = "condition";
+    public const string LegacyConditionKey = MarketplacePost.LegacyConditionKey;
 
     /// <summary>Products › Vehicles: cars and bikes, with their own details.</summary>
     public static Guid Vehicles => SubId(3, 10);

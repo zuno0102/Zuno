@@ -81,6 +81,12 @@ public class MarketplacePost : BaseEntity
     /// <summary>True when the post's time has passed — it then neither shows to customers nor uses a plan slot.</summary>
     public bool HasEnded(DateTimeOffset now) => EndsAt is { } end && end <= now;
 
+    /// <summary>
+    /// The detail key apps before 1.15 kept New / Used under. Still read from older apps (an APK not
+    /// yet updated, a browser tab left open), which send it as a detail instead of the condition.
+    /// </summary>
+    public const string LegacyConditionKey = "condition";
+
     /// <summary>A new item with a stock count: the business keeps the count up to date.</summary>
     public bool KeepsStock => Condition == MarketplaceItemCondition.New;
 

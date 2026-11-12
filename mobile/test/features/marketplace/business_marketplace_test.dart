@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -469,6 +470,7 @@ Future<_FakeMarketplaceRepository> _pump(
   WidgetTester tester,
   Widget child, {
   _FakeMarketplaceRepository? repository,
+  Future<List<District>> Function()? districts,
 }) async {
   // A tall phone, so a long form needs no scrolling to reach a field.
   tester.view.physicalSize = const Size(1080, 4000);
@@ -485,7 +487,7 @@ Future<_FakeMarketplaceRepository> _pump(
           (ref) async => const [LocationState(id: 's-tn', name: 'Tamil Nadu')],
         ),
         districtsForStatesProvider.overrideWith(
-          (ref, csv) async => const [_kanyakumari],
+          (ref, csv) => districts?.call() ?? Future.value(const [_kanyakumari]),
         ),
       ],
       child: MaterialApp(home: Scaffold(body: child)),
@@ -1286,6 +1288,40 @@ void main() {
       final at = tester.getTopLeft(reason).dy;
       expect(at, greaterThanOrEqualTo(sheet.top));
       expect(at - sheet.top, lessThan(200));
+    });
+  });
+
+  group('District', () {
+    testWidgets('stays locked and says so until the districts have loaded', (
+      tester,
+    ) async {
+      final loading = Completer<List<District>>();
+      await _pump(
+        tester,
+        const BusinessMarketplaceTab(),
+        districts: () => loading.future,
+      );
+      await _openFormFor(tester, _food);
+      await _choose(tester, 'marketplace-state', 's-tn');
+
+      final district = find.byKey(const ValueKey('marketplace-district-s-tn'));
+      expect(find.text('Loading districts…'), findsOneWidget);
+      await tester.tap(district);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('select-option-d-kk')),
+        findsNothing,
+        reason: 'no empty list opens while loading',
+      );
+
+      loading.complete(const [_kanyakumari]);
+      await tester.pumpAndSettle();
+      expect(find.text('Loading districts…'), findsNothing);
+      await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
+      expect(
+        find.descendant(of: district, matching: find.text('Kanyakumari')),
+        findsOneWidget,
+      );
     });
   });
 

@@ -189,6 +189,7 @@ public class SaveMarketplacePostHandlers(
             throw new ValidationException([new ValidationFailure(nameof(request.DistrictId), "Choose a district from the list.")]);
         }
 
+        MarketplacePostRules.AcceptLegacyCondition(category, request);
         var failures = MarketplacePostRules.Check(category, request, now, settings.Value);
         if (failures.Count != 0)
         {
@@ -265,6 +266,28 @@ public static class MarketplacePostRules
         Enum.TryParse<MarketplaceItemCondition>(request.Condition, ignoreCase: true, out var condition) && Enum.IsDefined(condition)
             ? condition
             : null;
+
+    /// <summary>
+    /// Apps before 1.15 — an APK not yet updated, a browser tab left open — send New / Used as a
+    /// detail and no stock. In a category that keeps stock, that detail becomes the condition (a new
+    /// item with no count gets 1, as the upgrade gave live posts) and leaves the details, so an older
+    /// app can still post.
+    /// </summary>
+    public static void AcceptLegacyCondition(MarketplaceCategory category, MarketplacePostFields request)
+    {
+        if (!category.TracksStock
+            || !request.Attributes.Remove(MarketplacePost.LegacyConditionKey, out var legacy)
+            || !string.IsNullOrWhiteSpace(request.Condition))
+        {
+            return;
+        }
+
+        request.Condition = legacy?.Trim();
+        if (RequestedCondition(request) == MarketplaceItemCondition.New)
+        {
+            request.Quantity ??= 1;
+        }
+    }
 
     /// <summary>The post's condition: only a category that keeps stock has one.</summary>
     public static MarketplaceItemCondition? ConditionOf(MarketplaceCategory category, MarketplacePostFields request) =>

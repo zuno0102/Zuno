@@ -107,6 +107,47 @@ public class ProductStockTests
         failed.Should().Contain("The quantity must be at least 1.");
     }
 
+    [Theory]
+    [InlineData("New", "New", 1)]
+    [InlineData("Used", "Used", null)]
+    public async Task Create_FromAnOlderApp_TakesTheConditionDetail_AsTheCondition(string sent, string condition, int? stock)
+    {
+        using var test = new TestMarketplace();
+        var olderApp = Saree(c =>
+        {
+            c.Condition = null;
+            c.Quantity = null;
+            c.Attributes = new() { [MarketplacePost.LegacyConditionKey] = sent };
+        });
+
+        var dto = await test.SaveHandlers.Handle(olderApp, default);
+
+        dto.Condition.Should().Be(condition);
+        dto.Quantity.Should().Be(stock);
+        dto.Attributes.Should().BeEmpty("the old detail is not kept as a detail");
+    }
+
+    [Fact]
+    public async Task Create_FromAnOlderApp_WithoutACondition_StillAsksForOne()
+    {
+        using var test = new TestMarketplace();
+
+        var failed = await FailedAsync(() => test.SaveHandlers.Handle(Saree(c => { c.Condition = null; c.Quantity = null; }), default));
+
+        failed.Should().Contain("Choose New or Used.");
+    }
+
+    [Fact]
+    public async Task Create_TheConditionDetail_OutsideProducts_IsStillRefused()
+    {
+        using var test = new TestMarketplace();
+        var food = test.Biryani(c => c.Attributes[MarketplacePost.LegacyConditionKey] = "New");
+
+        var failed = await FailedAsync(() => test.SaveHandlers.Handle(food, default));
+
+        failed.Should().Contain(m => m.Contains("no detail called"));
+    }
+
     [Fact]
     public async Task MarkAsSold_UsedItem_IsFinal_AndFreesThePlanSlot()
     {

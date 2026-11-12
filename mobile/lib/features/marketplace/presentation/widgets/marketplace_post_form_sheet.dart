@@ -628,9 +628,19 @@ class _MarketplacePostFormSheetState
   List<Widget> _placeSection() {
     final states = ref.watch(locationStatesProvider).value ?? const [];
     final stateId = _stateId;
-    final districts = stateId == null
-        ? const []
-        : ref.watch(districtsForStatesProvider(stateId)).value ?? const [];
+    final districtsAsync = stateId == null
+        ? null
+        : ref.watch(districtsForStatesProvider(stateId));
+    final districts = districtsAsync?.value ?? const [];
+    // The districts come from the server after a state is picked: until they are here the field
+    // stays locked and says so, rather than opening an empty list.
+    final districtHelp = stateId == null
+        ? 'Choose the state first.'
+        : districtsAsync!.isLoading && districts.isEmpty
+        ? 'Loading districts…'
+        : districtsAsync.hasError && districts.isEmpty
+        ? 'Could not load districts. Choose the state again.'
+        : null;
     return [
       SelectField<String>(
         key: const ValueKey('marketplace-state'),
@@ -640,6 +650,8 @@ class _MarketplacePostFormSheetState
         validator: (v) => v == null ? 'Choose the state.' : null,
         onChanged: (id) => setState(() {
           if (id != _stateId) _districtId = null;
+          // The same state again is how a failed district list is asked for once more.
+          if (id == _stateId) ref.invalidate(districtsForStatesProvider(id));
           _stateId = id;
         }),
       ),
@@ -649,8 +661,9 @@ class _MarketplacePostFormSheetState
         label: 'District',
         options: [for (final d in districts) SelectOption(d.id, d.name)],
         initialValue: _districtId,
+        helperText: districtHelp,
         validator: (v) => v == null ? 'Choose the district.' : null,
-        onChanged: stateId == null
+        onChanged: districts.isEmpty
             ? null
             : (id) => setState(() => _districtId = id),
       ),
