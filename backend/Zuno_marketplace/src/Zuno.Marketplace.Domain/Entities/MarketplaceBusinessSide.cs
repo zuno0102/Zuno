@@ -118,5 +118,25 @@ public class MarketplacePostTransition
     /// <summary>Ask "are you sure?" first — for a move that cannot be undone.</summary>
     public bool NeedsConfirm { get; set; }
 
+    /// <summary>Offered only on posts in this condition — "Mark as sold" on used items; null for every post.</summary>
+    public MarketplaceItemCondition? Condition { get; set; }
+
+    public short DisplayOrder { get; set; }
+
+    /// <summary>Whether this move is offered on <paramref name="post"/>, from its stored status and condition.</summary>
+    public bool AppliesTo(MarketplacePost post) =>
+        FromStatus == post.Status && (Condition is null || Condition == post.Condition);
+}
+
+/// <summary>How New and Used are named, with the line under each on the post form. Keyed by the enum.</summary>
+public class MarketplaceItemConditionOption
+{
+    public MarketplaceItemCondition Code { get; set; }
+
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>E.g. "Brand new — keep a stock count".</summary>
+    public string Detail { get; set; } = string.Empty;
+
     public short DisplayOrder { get; set; }
 }

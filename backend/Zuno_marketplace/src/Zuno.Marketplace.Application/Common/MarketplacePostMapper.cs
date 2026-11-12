@@ -25,6 +25,9 @@ internal static class MarketplacePostMapper
             TradeType = post.TradeType.ToString(),
             MinOrderQuantity = post.MinOrderQuantity,
             Quantity = post.Quantity,
+            Condition = post.Condition?.ToString(),
+            IsOutOfStock = post.IsOutOfStock,
+            CanUpdateStock = post.KeepsStock && !post.IsFinal,
             OriginalPrice = post.OriginalPrice,
             StartsAt = post.StartsAt,
             EndsAt = post.EndsAt,
@@ -42,7 +45,7 @@ internal static class MarketplacePostMapper
                 .Select(m => new MarketplacePostMediaDto { Url = m.Url, SortOrder = m.SortOrder })
                 .ToList(),
             Actions = transitions
-                .Where(t => t.FromStatus == post.Status)
+                .Where(t => t.AppliesTo(post))
                 .Where(t => !(t.ToStatus == MarketplacePostStatus.Active && post.HasEnded(now)))
                 .OrderBy(t => t.DisplayOrder)
                 .Select(t => new MarketplacePostActionDto

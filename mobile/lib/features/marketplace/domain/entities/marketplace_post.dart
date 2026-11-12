@@ -11,6 +11,16 @@ abstract final class MarketplacePostStatus {
   static const paused = 'Paused';
   static const closed = 'Closed';
   static const expired = 'Expired';
+
+  /// A used item that went to a buyer. Final, like Closed.
+  static const sold = 'Sold';
+}
+
+/// New or Used, in a category that keeps stock (Products). A new item has a stock count; a used
+/// one is a single piece, marked Sold when it goes. Names for people come from the server's table.
+abstract final class MarketplaceItemCondition {
+  static const newItem = 'New';
+  static const used = 'Used';
 }
 
 /// Retail sells one at a time; wholesale sells in bulk to other businesses (B2B).
@@ -49,10 +59,14 @@ class MarketplaceCategory {
     required this.fields,
     this.description,
     this.iconName,
+    this.tracksStock = false,
   });
 
   final String id;
   final String name;
+
+  /// Posts here say New or Used: new items keep a stock count, used ones are marked Sold.
+  final bool tracksStock;
 
   /// The few letters the category squares have room for, e.g. "B2B".
   final String shortName;
@@ -178,11 +192,23 @@ class MarketplacePost {
     this.area,
     this.latitude,
     this.longitude,
+    this.condition,
+    this.isOutOfStock = false,
+    this.canUpdateStock = false,
   });
 
   final String id;
   final String categoryId;
   final String categoryName;
+
+  /// [MarketplaceItemCondition] in a category that keeps stock; null elsewhere.
+  final String? condition;
+
+  /// A new item at 0 stock: still listed, but customers do not see it.
+  final bool isOutOfStock;
+
+  /// Whether the menu offers "Update stock": a new item not yet closed or sold.
+  final bool canUpdateStock;
   final String? categoryIconName;
   final String? subCategoryId;
   final String? subCategoryName;
@@ -223,6 +249,9 @@ class MarketplacePost {
 
   bool get isWholesale => tradeType == MarketplaceTradeType.wholesale;
 
+  /// A new item with a stock count.
+  bool get keepsStock => condition == MarketplaceItemCondition.newItem;
+
   /// "Products › Sarees" — the category, then the sub-category when it has one.
   String get categoryLine => [categoryName, ?subCategoryName].join(' › ');
 
@@ -236,6 +265,7 @@ class MarketplacePostInput {
   const MarketplacePostInput({
     required this.categoryId,
     this.subCategoryId,
+    this.condition,
     required this.title,
     required this.districtId,
     required this.tradeType,
@@ -254,6 +284,9 @@ class MarketplacePostInput {
 
   final String categoryId;
   final String? subCategoryId;
+
+  /// [MarketplaceItemCondition], in a category that keeps stock.
+  final String? condition;
   final String title;
   final String? description;
   final double? price;
@@ -272,6 +305,7 @@ class MarketplacePostInput {
   Map<String, dynamic> toJson() => {
     'categoryId': categoryId,
     'subCategoryId': subCategoryId,
+    'condition': condition,
     'title': title,
     'description': description,
     'price': price,
@@ -318,6 +352,7 @@ class MarketplaceSummary {
     required this.expired,
     required this.closed,
     required this.plan,
+    this.sold = 0,
     this.categories = const [],
   });
 
@@ -325,6 +360,7 @@ class MarketplaceSummary {
   final int paused;
   final int expired;
   final int closed;
+  final int sold;
   final MarketplacePlan plan;
 
   /// The same counts per main category posted in; a category with no posts is not listed.
@@ -340,6 +376,7 @@ class MarketplaceSummary {
         paused: paused,
         expired: expired,
         closed: closed,
+        sold: sold,
       );
     }
     return categories
@@ -358,6 +395,7 @@ class MarketplaceCategoryCount {
     required this.paused,
     required this.expired,
     required this.closed,
+    this.sold = 0,
   });
 
   final String categoryId;
@@ -365,6 +403,7 @@ class MarketplaceCategoryCount {
   final int paused;
   final int expired;
   final int closed;
+  final int sold;
 
   int of(String? status) => pick(
     status,
@@ -372,21 +411,24 @@ class MarketplaceCategoryCount {
     paused: paused,
     expired: expired,
     closed: closed,
+    sold: sold,
   );
 
-  /// The count for [status], or all four added up when it is null.
+  /// The count for [status], or all of them added up when it is null.
   static int pick(
     String? status, {
     required int active,
     required int paused,
     required int expired,
     required int closed,
+    required int sold,
   }) => switch (status) {
     MarketplacePostStatus.active => active,
     MarketplacePostStatus.paused => paused,
     MarketplacePostStatus.expired => expired,
     MarketplacePostStatus.closed => closed,
-    _ => active + paused + expired + closed,
+    MarketplacePostStatus.sold => sold,
+    _ => active + paused + expired + closed + sold,
   };
 }
 
@@ -407,6 +449,9 @@ class MarketplaceOption {
   final String? detail;
 }
 
+/// The largest quantity until the server's own number has loaded — `Marketplace:MaxQuantity`.
+const marketplaceDefaultMaxQuantity = 1000000;
+
 /// The post kinds, statuses and limits the Marketplace screens are drawn from.
 class MarketplaceOptions {
   const MarketplaceOptions({
@@ -414,8 +459,10 @@ class MarketplaceOptions {
     required this.statuses,
     required this.imageSlots,
     this.tradeModes = const [],
+    this.conditions = const [],
     required this.maxFoodOfferHours,
     required this.maxAdDays,
+    this.maxQuantity = marketplaceDefaultMaxQuantity,
   });
 
   final List<MarketplaceOption> kinds;
@@ -423,9 +470,15 @@ class MarketplaceOptions {
 
   /// How a category may sell, named for the super admin.
   final List<MarketplaceOption> tradeModes;
+
+  /// New and Used, with the line under each on the post form.
+  final List<MarketplaceOption> conditions;
   final int imageSlots;
   final int maxFoodOfferHours;
   final int maxAdDays;
+
+  /// The most a quantity or stock may be — `Marketplace:MaxQuantity` on the server.
+  final int maxQuantity;
 
   /// The table's name for [code], or [code] itself until the list has loaded.
   String kindName(String code) =>
@@ -459,9 +512,11 @@ class MarketplaceCategoryInput {
     this.shortName,
     this.description,
     this.iconName,
+    this.tracksStock = false,
   });
 
   final String name;
+  final bool tracksStock;
   final String? shortName;
   final String? description;
   final String? iconName;
@@ -477,6 +532,7 @@ class MarketplaceCategoryInput {
     'iconName': iconName,
     'kind': kind,
     'tradeMode': tradeMode,
+    'tracksStock': tracksStock,
     'displayOrder': displayOrder,
     'isActive': isActive,
   };

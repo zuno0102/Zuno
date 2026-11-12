@@ -35,14 +35,15 @@ Seeded on first start (all rows the super admin can edit):
 
 | Main category (square) | How it sells | Sub-categories |
 |---|---|---|
-| Products ("Products") | Retail only | Sarees, Clothing, Footwear, Toys, Mobiles & electronics, Home & kitchen, Furniture, Beauty, Books & stationery, **Vehicles** (brand, year, km, fuel), **Property** (type, for, area, bedrooms), Other |
+| Products ("Products") | Retail only — **New or Used**: new keeps a stock count, used is marked Sold | Sarees, Clothing, Footwear, Toys, Mobiles & electronics, Home & kitchen, Furniture, Beauty, Books & stationery, **Vehicles** (brand, year, km, fuel), **Property** (type, for, area, bedrooms), Other |
 | B2B Wholesale ("B2B") | **Wholesale only** — price per unit and a smallest order | Fruits, Vegetables, Coconut, Chicken & meat, Fish, Grains & pulses, Spices, Dairy, Other |
 | Nearby food ("Food") | Retail only — usual vs offer price, portions, hours | Biryani & meals, Pizza & burgers, Sandwiches & snacks, Bakery & sweets, Tea & juice, Other |
 | Advertisements ("Ads") | — run of dates, contact phone | Sale & offers, Cricket tournament, Football tournament, Shop opening, New brand opening, Events & celebrations, Other |
 
 Plus the **Free plan = 1 active post**, and the post kinds, statuses, trade modes and moves.
 Posts made before the 4 categories moved automatically: Vehicles and Property posts now sit under
-Products › Vehicles / Property, and farm posts became wholesale.
+Products › Vehicles / Property, and farm posts became wholesale. Products posts took their
+Condition from the old "condition" detail (Used when it said so, else New with a stock of 1).
 
 ## A. Super admin — categories (phase 1)
 
@@ -55,6 +56,7 @@ Sign in as the super admin → **Marketplace categories**.
 | A3 | Products → **+ Detail** → "Strap", Text, Applies to **Watches** → Save | A Watches post asks Strap; a Sarees post does not |
 | A4 | Detail of type List with no choices, or "Yes, yes" | "Give at least one choice" / "Each choice must be different" |
 | A5 | Edit category → switch off "Shown to businesses and customers" | Marked **Hidden**; businesses can no longer pick it |
+| A5a | Edit category → **New / used, with stock** | On for Products (the card says so); switching it on elsewhere makes that category ask New or Used too |
 | A6 | Same name again ("MOBILES") | "A category with this name already exists." |
 | A7 | Admin API with a business login | 403 |
 
@@ -66,9 +68,9 @@ Sign in as a business (e.g. shajil shajil, Marthandam).
 |---|---|---|
 | B1 | **Home** | New **Marketplace** section under Rent: Live posts, Paused, Expired, Free plan `0 / 1` |
 | B2 | **Services → Marketplace** (third tab) | Plan banner "Free plan · 0 of 1 active post used", "Nothing posted yet" |
-| B3 | **Add post** → Products → Sub-category **Vehicles** | Picker shows each category with what goes in it; form asks Condition, then Brand, Model year, KM driven (km), Fuel (list), Owners (optional) |
+| B3 | **Add post** → Products → Sub-category **Vehicles** | Picker shows each category with what goes in it; form asks **Condition** (New / Used, required), then Brand, Model year, KM driven (km), Fuel (list), Owners (optional) |
 | B4 | Save with nothing filled | Each missing field says so; nothing is sent |
-| B5 | Swift VXi 2019, ₹4,20,000, details, Tamil Nadu › Kanyakumari, Marthandam, 2 photos → Save | Card: "Products › Vehicles · Marthandam, Kanyakumari", ₹4,20,000, **Active**, "2019 · 48000 km · Petrol"; Home `1 / 1` |
+| B5 | Swift VXi 2019, ₹4,20,000, **Used**, details, Tamil Nadu › Kanyakumari, Marthandam, 2 photos → Save | Card: "Products › Vehicles · Marthandam, Kanyakumari", ₹4,20,000, **Active**, "Used · one piece", "2019 · 48000 km · Petrol"; Home `1 / 1` |
 | B6 | **Add post** again | Message: "Your Free plan allows 1 active post. Pause or close one to put up another."; no form |
 | B7 | ⋮ → **Pause**, then Add post → Nearby food → Biryani & meals | Asks Usual price, Offer price, Portions, Per, Starts, Ends ("Up to 24 hours…") |
 | B8 | Offer price ≥ usual, or Ends before Starts | "Must be less than the usual price." / "Must be after the start." |
@@ -78,10 +80,14 @@ Sign in as a business (e.g. shajil shajil, Marthandam).
 | B12 | Events & Sales advert: Aadi sale, 17 Jul – 16 Aug, phone | No price asked; first photo is the banner; phone must be 10–15 digits |
 | B13 | B2B Wholesale → Fruits: Nendran banana, ₹45 per kg, smallest order 100 | No "Sell as" — B2B is always wholesale; "Per" and "Smallest order" are required. Card "₹45/kg", "Wholesale · min 100 kg" |
 | B14 | Products with Wholesale (API) | Refused — "Products does not take wholesale posts." (the form does not offer it) |
-| B15 | ⋮ → **Close (sold / done)** | Asks first; then Closed, no Edit, cannot be put up again |
+| B15 | ⋮ → **Close** (taken down, not sold) | Asks first; then Closed, no Edit, cannot be put up again. A used product also has **Mark as sold** (B15c) |
+| B15a | Products → Sarees → **New** | Asks **Stock available** (required; 0 allowed). Card "New · 12 in stock" |
+| B15b | ⋮ → **Update stock** → − / + or type → Save | Count changes without the form ("Silk saree: 11 in stock."). At **0**: an **Out of stock** pill; still Active and on the plan, but customers will not see it until restocked |
+| B15c | A **Used** product: ⋮ | No Update stock; **Mark as sold** asks first, then a green **Sold** pill, no Edit, and the plan slot is free |
+| B15d | Mark as sold on a New item (API) | Refused — "Only a used item is marked sold…" |
 | B16 | ⋮ → **Remove** | Asks first; post leaves the list; Home tiles update |
 | B17 | The 4 category squares (Products · B2B · Food · Ads) | No counts. Tap **Food** → Add post opens with Category = Nearby food already picked; choose the sub-category next. With the plan full, a square shows the plan message instead. More categories wrap to a second row of the same size; a Home tile's list has no squares |
-| B17a | **Orders → Marketplace** | Two chip rows: categories on top (All · Products · B2B · Food · Ads, each with its count), statuses below (All · Active · Paused · Expired · Closed). Tap **Food** → only food posts, and the status counts become food's; then **Paused** → paused food posts, and the category counts become paused ones. Nothing there says e.g. "No paused posts in Nearby food" |
+| B17a | **Orders → Marketplace** | Two chip rows: categories on top (All · Products · B2B · Food · Ads, each with its count), statuses below (All · Active · Paused · Expired · Closed · Sold, from the status table). Tap **Food** → only food posts, and the status counts become food's; then **Paused** → paused food posts, and the category counts become paused ones. Nothing there says e.g. "No paused posts in Nearby food" |
 | B18 | Tap a Home tile (Paused) | Opens just those posts, without "Add post" |
 | B19 | Another business edits/removes this post (API) | 403 |
 | B20 | Marketplace server stopped | Home shows an error only in the Marketplace section; the tab shows "Try again" |
@@ -102,7 +108,7 @@ on a reservation; enquiries open Call or Chat.
 
 ## Checks behind this playbook
 
-- `dotnet test backend/Zuno_marketplace/Zuno.Marketplace.sln` — 142 unit + 16 integration tests (one migrates first-release posts into the 4 categories)
+- `dotnet test backend/Zuno_marketplace/Zuno.Marketplace.sln` — 160 unit + 19 integration tests (migration tests: first-release posts into the 4 categories, Products onto New / Used with stock, and rolling that back and forward)
   (integration needs Docker or `ZUNO_TEST_POSTGRES`).
-- `node backend/Zuno_marketplace/tests/e2e/e2e-marketplace-business.js` — 41 checks over HTTP.
+- `node backend/Zuno_marketplace/tests/e2e/e2e-marketplace-business.js` — 52 checks over HTTP.
 - `flutter test test/features/marketplace` — list, plan banner, form per kind, tiles, admin.

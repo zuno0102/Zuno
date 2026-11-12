@@ -16,14 +16,24 @@ String? marketplacePriceLine(MarketplacePost post) {
 }
 
 /// "20 portions", "Wholesale · min 100 kg · 2000 kg for sale" — what is on offer and how it sells.
-String? marketplaceQuantityLine(MarketplacePost post) {
+String? marketplaceQuantityLine(
+  MarketplacePost post, {
+  MarketplaceOptions? options,
+}) {
   final unit = post.priceUnit == null ? '' : ' ${post.priceUnit}';
+  final condition = post.condition;
   final parts = [
+    // "New · 12 in stock", "Used · one piece" — the condition named from the server's table.
+    if (condition != null)
+      options?.conditions.where((c) => c.code == condition).firstOrNull?.name ??
+          condition,
+    if (post.keepsStock && !post.isOutOfStock) '${post.quantity} in stock',
+    if (condition == MarketplaceItemCondition.used) 'one piece',
     if (post.isFoodOffer && post.quantity != null) '${post.quantity} portions',
     if (post.isWholesale) 'Wholesale',
     if (post.isWholesale && post.minOrderQuantity != null)
       'min ${post.minOrderQuantity}$unit',
-    if (!post.isFoodOffer && post.quantity != null)
+    if (!post.isFoodOffer && condition == null && post.quantity != null)
       '${post.quantity}$unit for sale',
   ];
   return parts.isEmpty ? null : parts.join(' · ');

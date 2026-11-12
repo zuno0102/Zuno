@@ -26,6 +26,7 @@ public class MarketplaceEndpointsTests(MarketplaceApiFactory factory) : IClassFi
         subCategoryId = Vehicles,
         title = "Swift VXi 2019",
         price,
+        condition = "Used",
         districtId = Kanyakumari,
         attributes = new Dictionary<string, string> { ["brand"] = "Maruti", ["model_year"] = "2019", ["km_driven"] = "48000", ["fuel"] = "Petrol" },
     };
@@ -105,7 +106,43 @@ public class MarketplaceEndpointsTests(MarketplaceApiFactory factory) : IClassFi
             .Should().StartWith(["products", "b2b-wholesale", "nearby-food", "advertisements"]);
         options.GetProperty("imageSlots").GetInt32().Should().Be(5);
         options.GetProperty("statuses").EnumerateArray().Select(s => s.GetProperty("code").GetString())
-            .Should().Equal("Active", "Paused", "Expired", "Closed");
+            .Should().Equal("Active", "Paused", "Expired", "Closed", "Sold");
+    }
+
+    [Fact]
+    public async Task Products_NewKeepsStockDownToZero_UsedIsMarkedSold()
+    {
+        var client = factory.ClientFor(Guid.NewGuid());
+        var saree = new
+        {
+            categoryId = Products,
+            subCategoryId = MarketplaceCatalogSeedData.SubId(3, 1),
+            title = "Silk saree",
+            price = 2400,
+            condition = "New",
+            quantity = 3,
+            districtId = Kanyakumari,
+        };
+
+        var created = await client.PostAsJsonAsync(Posts, saree);
+        created.StatusCode.Should().Be(HttpStatusCode.Created);
+        var sareeId = (await Data(created)).GetProperty("id").GetString();
+
+        var empty = await Data(await client.PatchAsJsonAsync($"{Posts}/{sareeId}/stock", new { quantity = 0 }));
+        empty.GetProperty("isOutOfStock").GetBoolean().Should().BeTrue();
+        empty.GetProperty("status").GetString().Should().Be("Active");
+
+        (await client.PatchAsJsonAsync($"{Posts}/{sareeId}/status", new { status = "Sold" })).StatusCode
+            .Should().Be(HttpStatusCode.BadRequest, "a new item is kept by its stock, not sold");
+        (await client.PatchAsJsonAsync($"{Posts}/{sareeId}/status", new { status = "Paused" })).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var carId = (await Data(await client.PostAsJsonAsync(Posts, Car()))).GetProperty("id").GetString();
+        var sold = await Data(await client.PatchAsJsonAsync($"{Posts}/{carId}/status", new { status = "Sold" }));
+        sold.GetProperty("status").GetString().Should().Be("Sold");
+
+        var summary = await Data(await client.GetAsync($"{Posts}/summary"));
+        summary.GetProperty("sold").GetInt32().Should().Be(1);
+        summary.GetProperty("plan").GetProperty("canAddActivePost").GetBoolean().Should().BeTrue();
     }
 
     [Fact]
@@ -204,6 +241,7 @@ public class MarketplaceEndpointsTests(MarketplaceApiFactory factory) : IClassFi
             subCategoryId = Vehicles,
             title = "Swift VXi 2019",
             price = 400000,
+            condition = "Used",
             districtId = Kanyakumari,
             attributes = new Dictionary<string, string> { ["brand"] = "Maruti", ["model_year"] = "2019", ["km_driven"] = "50000", ["fuel"] = "Diesel" },
         };

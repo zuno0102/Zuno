@@ -32,7 +32,11 @@ public abstract class MarketplacePostFields
 
     public int? MinOrderQuantity { get; set; }
 
+    /// <summary>How many are for sale; for a new item in a category that keeps stock, the stock (0 = out of stock).</summary>
     public int? Quantity { get; set; }
+
+    /// <summary><c>New</c> or <c>Used</c>: required in a category that keeps stock (Products), ignored elsewhere.</summary>
+    public string? Condition { get; set; }
 
     public decimal? OriginalPrice { get; set; }
 
@@ -85,11 +89,14 @@ public abstract class MarketplacePostFieldsValidator<T> : AbstractValidator<T>
         RuleFor(x => x.Area).MaximumLength(AreaMax);
         RuleFor(x => x.Price).GreaterThan(0).LessThanOrEqualTo(limits.MaxPrice).When(x => x.Price.HasValue);
         RuleFor(x => x.OriginalPrice).GreaterThan(0).LessThanOrEqualTo(limits.MaxPrice).When(x => x.OriginalPrice.HasValue);
-        RuleFor(x => x.Quantity).InclusiveBetween(1, limits.MaxQuantity).When(x => x.Quantity.HasValue);
+        RuleFor(x => x.Quantity).InclusiveBetween(0, limits.MaxQuantity).When(x => x.Quantity.HasValue);
         RuleFor(x => x.MinOrderQuantity).InclusiveBetween(1, limits.MaxQuantity).When(x => x.MinOrderQuantity.HasValue);
         RuleFor(x => x.TradeType)
             .Must(t => string.IsNullOrEmpty(t) || Enum.TryParse<MarketplaceTradeType>(t, ignoreCase: true, out var parsed) && Enum.IsDefined(parsed))
             .WithMessage("Trade type must be Retail or Wholesale.");
+        RuleFor(x => x.Condition)
+            .Must(c => string.IsNullOrEmpty(c) || Enum.TryParse<MarketplaceItemCondition>(c, ignoreCase: true, out var parsed) && Enum.IsDefined(parsed))
+            .WithMessage("Condition must be New or Used.");
         RuleFor(x => x.ContactPhone).Matches(@"^\+?[0-9]{10,15}$").When(x => !string.IsNullOrEmpty(x.ContactPhone))
             .WithMessage("Contact phone must be 10 to 15 digits.");
         RuleFor(x => x.Latitude).InclusiveBetween(-90, 90).When(x => x.Latitude.HasValue);
@@ -148,9 +155,9 @@ public class SaveMarketplacePostHandlers(
         var ownerId = currentUser.OwnerId();
         var now = clock.GetUtcNow();
         var post = await dbContext.OwnedPostAsync(request.Id, ownerId, cancellationToken);
-        if (post.Status == MarketplacePostStatus.Closed)
+        if (post.IsFinal)
         {
-            throw new DomainException("A closed post cannot be changed.");
+            throw new DomainException("A closed or sold post cannot be changed.");
         }
 
         var category = await CheckedCategoryAsync(request, now, cancellationToken);
@@ -203,7 +210,8 @@ public class SaveMarketplacePostHandlers(
         post.PriceUnit = Clean(request.PriceUnit);
         post.TradeType = MarketplacePostRules.TradeTypeOf(category, request);
         post.MinOrderQuantity = post.TradeType == MarketplaceTradeType.Wholesale ? request.MinOrderQuantity : null;
-        post.Quantity = request.Quantity;
+        post.Condition = MarketplacePostRules.ConditionOf(category, request);
+        post.Quantity = post.Condition == MarketplaceItemCondition.Used ? null : request.Quantity;
         post.OriginalPrice = kind == MarketplacePostKind.FoodOffer ? request.OriginalPrice : null;
         post.StartsAt = kind == MarketplacePostKind.Listing ? null : request.StartsAt;
         post.EndsAt = kind == MarketplacePostKind.Listing ? null : request.EndsAt;
@@ -252,6 +260,16 @@ public static class MarketplacePostRules
             ? request.SubCategoryId
             : null;
 
+    /// <summary>New or Used as sent; null when missing or not one of them.</summary>
+    public static MarketplaceItemCondition? RequestedCondition(MarketplacePostFields request) =>
+        Enum.TryParse<MarketplaceItemCondition>(request.Condition, ignoreCase: true, out var condition) && Enum.IsDefined(condition)
+            ? condition
+            : null;
+
+    /// <summary>The post's condition: only a category that keeps stock has one.</summary>
+    public static MarketplaceItemCondition? ConditionOf(MarketplaceCategory category, MarketplacePostFields request) =>
+        category.TracksStock ? RequestedCondition(request) : null;
+
     /// <summary>The details a post in this category and sub-category is asked, in form order.</summary>
     public static IEnumerable<MarketplaceCategoryField> FieldsFor(MarketplaceCategory category, MarketplacePostFields request)
     {
@@ -271,6 +289,7 @@ public static class MarketplacePostRules
 
         CheckSubCategory(category, request, Fail);
         CheckTrade(category, request, Fail);
+        CheckStock(category, request, Fail);
         switch (category.Kind)
         {
             case MarketplacePostKind.Listing:
@@ -322,6 +341,33 @@ public static class MarketplacePostRules
         if (SubCategoryOf(category, request) is null)
         {
             fail(nameof(request.SubCategoryId), $"Choose a sub-category of {category.Name} from the list.");
+        }
+    }
+
+    /// <summary>
+    /// A category that keeps stock asks New or Used: a new item needs its stock (0 is allowed: out of
+    /// stock), a used one is a single piece and has none. Elsewhere a quantity is at least 1.
+    /// </summary>
+    private static void CheckStock(MarketplaceCategory category, MarketplacePostFields request, Action<string, string> fail)
+    {
+        if (!category.TracksStock)
+        {
+            if (request.Quantity == 0)
+            {
+                fail(nameof(request.Quantity), "The quantity must be at least 1.");
+            }
+
+            return;
+        }
+
+        switch (RequestedCondition(request))
+        {
+            case null:
+                fail(nameof(request.Condition), "Choose New or Used.");
+                break;
+            case MarketplaceItemCondition.New when request.Quantity is null:
+                fail(nameof(request.Quantity), "Enter how many you have in stock.");
+                break;
         }
     }
 

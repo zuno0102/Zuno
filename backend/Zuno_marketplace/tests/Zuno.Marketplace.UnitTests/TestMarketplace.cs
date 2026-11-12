@@ -54,6 +54,8 @@ internal sealed class TestMarketplace : IDisposable
 
     public ManageMarketplacePostHandlers ManageHandlers => new(User, Db, Storage, Reference, Clock);
 
+    public UpdateMarketplacePostStockHandler StockHandler => new(User, Db, Reference, Clock);
+
     public MarketplacePostQueryHandlers QueryHandlers => new(User, Db, Reference, Clock, Settings);
 
     public MarketplaceCatalogHandlers CatalogHandlers => new(Db, Reference, Settings);
@@ -68,6 +70,7 @@ internal sealed class TestMarketplace : IDisposable
             SubCategoryId = MarketplaceCatalogSeedData.Vehicles,
             Title = "Swift VXi 2019",
             Price = 420_000m,
+            Condition = "Used",
             DistrictId = Kanyakumari,
             Area = "Marthandam",
             Attributes = new() { ["brand"] = "Maruti", ["model_year"] = "2019", ["km_driven"] = "48000", ["fuel"] = "Petrol" },

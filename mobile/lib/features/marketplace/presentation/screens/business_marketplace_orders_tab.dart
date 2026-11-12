@@ -30,11 +30,13 @@ class _BusinessMarketplaceOrdersTabState
   /// The status chosen on the second row; null for all.
   String? _status;
 
+  /// Until the status table has loaded; then its rows decide the chips and their order.
   static const _order = [
     MarketplacePostStatus.active,
     MarketplacePostStatus.paused,
     MarketplacePostStatus.expired,
     MarketplacePostStatus.closed,
+    MarketplacePostStatus.sold,
   ];
 
   @override
@@ -83,7 +85,11 @@ class _BusinessMarketplaceOrdersTabState
             ),
           FilterChipBar(
             chips: [
-              for (final status in [null, ..._order])
+              for (final status in [
+                null,
+                ...?options?.statuses.map((s) => s.code),
+                if (options == null) ..._order,
+              ])
                 CountChip(
                   key: ValueKey('marketplace-orders-${status ?? 'all'}'),
                   label: status == null

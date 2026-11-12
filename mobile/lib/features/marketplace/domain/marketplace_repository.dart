@@ -23,6 +23,9 @@ abstract interface class MarketplaceRepository {
 
   Future<MarketplacePost> changeStatus(String id, String status);
 
+  /// Sets how many of a new item are left; 0 is out of stock (still listed, hidden from customers).
+  Future<MarketplacePost> updateStock(String id, int quantity);
+
   Future<void> delete(String id);
 
   Future<MarketplacePost> uploadImage(String id, int slot, Uint8List bytes);

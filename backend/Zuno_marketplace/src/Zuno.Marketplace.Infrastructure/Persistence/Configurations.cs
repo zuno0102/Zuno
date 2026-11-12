@@ -81,10 +81,14 @@ public class MarketplacePostConfiguration : IEntityTypeConfiguration<Marketplace
         {
             // The database refuses what the domain refuses, whoever writes the row.
             t.HasCheckConstraint("ck_marketplace_posts_kind", "kind IN (1, 2, 3)");
-            t.HasCheckConstraint("ck_marketplace_posts_status", "status IN (1, 2, 3)");
+            // 4 (Expired) is never stored: it is an Active post whose end has passed.
+            t.HasCheckConstraint("ck_marketplace_posts_status", "status IN (1, 2, 3, 5)");
             t.HasCheckConstraint("ck_marketplace_posts_trade_type", "trade_type IN (1, 2)");
+            t.HasCheckConstraint("ck_marketplace_posts_condition", "condition IS NULL OR condition IN (1, 2)");
             t.HasCheckConstraint("ck_marketplace_posts_price", "price IS NULL OR price > 0");
-            t.HasCheckConstraint("ck_marketplace_posts_quantity", "quantity IS NULL OR quantity >= 1");
+
+            // 0 is a new item out of stock; every other quantity is at least 1.
+            t.HasCheckConstraint("ck_marketplace_posts_quantity", "quantity IS NULL OR quantity >= 1 OR (quantity = 0 AND condition = 1)");
             t.HasCheckConstraint("ck_marketplace_posts_window", "ends_at IS NULL OR starts_at IS NULL OR ends_at > starts_at");
             t.HasCheckConstraint("ck_marketplace_posts_location", "(latitude IS NULL) = (longitude IS NULL)");
         });
@@ -222,10 +226,24 @@ public class MarketplacePostTransitionConfiguration : IEntityTypeConfiguration<M
 {
     public void Configure(EntityTypeBuilder<MarketplacePostTransition> builder)
     {
-        builder.ToTable("ref_marketplace_post_transitions");
+        builder.ToTable("ref_marketplace_post_transitions", t =>
+            t.HasCheckConstraint("ck_ref_marketplace_post_transitions_condition", "condition IS NULL OR condition IN (1, 2)"));
         builder.HasKey(t => new { t.FromStatus, t.ToStatus });
         builder.Property(t => t.ActionName).HasMaxLength(50).IsRequired();
         builder.HasData(MarketplaceCatalogSeedData.Transitions);
+    }
+}
+
+public class MarketplaceItemConditionOptionConfiguration : IEntityTypeConfiguration<MarketplaceItemConditionOption>
+{
+    public void Configure(EntityTypeBuilder<MarketplaceItemConditionOption> builder)
+    {
+        builder.ToTable("ref_marketplace_item_conditions");
+        builder.HasKey(c => c.Code);
+        builder.Property(c => c.Code).ValueGeneratedNever();
+        builder.Property(c => c.Name).HasMaxLength(50).IsRequired();
+        builder.Property(c => c.Detail).HasMaxLength(150).IsRequired();
+        builder.HasData(MarketplaceCatalogSeedData.ItemConditions);
     }
 }
 

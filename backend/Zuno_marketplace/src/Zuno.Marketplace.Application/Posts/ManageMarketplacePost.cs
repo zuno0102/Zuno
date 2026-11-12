@@ -13,7 +13,7 @@ public class ChangeMarketplacePostStatusCommand : IRequest<MarketplacePostDto>
 {
     public Guid Id { get; set; }
 
-    /// <summary><c>Active</c>, <c>Paused</c> or <c>Closed</c>.</summary>
+    /// <summary><c>Active</c>, <c>Paused</c>, <c>Closed</c> or <c>Sold</c>.</summary>
     public string Status { get; set; } = string.Empty;
 }
 
@@ -51,7 +51,7 @@ public class ChangeMarketplacePostStatusCommandValidator : AbstractValidator<Cha
         RuleFor(x => x.Id).NotEmpty();
         RuleFor(x => x.Status)
             .Must(s => Enum.TryParse<MarketplacePostStatus>(s, true, out var v) && Enum.IsDefined(v) && v != MarketplacePostStatus.Expired)
-            .WithMessage("Status must be Active, Paused or Closed.");
+            .WithMessage("Status must be Active, Paused, Closed or Sold.");
     }
 }
 
@@ -104,7 +104,12 @@ public class ManageMarketplacePostHandlers(
             return post.ToDto(now, transitions);
         }
 
-        if (!transitions.Any(t => t.FromStatus == post.Status && t.ToStatus == target))
+        if (target == MarketplacePostStatus.Sold && post.Condition != MarketplaceItemCondition.Used)
+        {
+            throw new DomainException("Only a used item is marked sold. A new one keeps a stock count: set it to 0 when it runs out.");
+        }
+
+        if (!transitions.Any(t => t.AppliesTo(post) && t.ToStatus == target))
         {
             throw new DomainException($"A {post.Status} post cannot be moved to {target}.");
         }

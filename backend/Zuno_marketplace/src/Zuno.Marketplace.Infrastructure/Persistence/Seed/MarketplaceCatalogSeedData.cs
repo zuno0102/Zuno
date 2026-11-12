@@ -26,6 +26,9 @@ public static class MarketplaceCatalogSeedData
 
     public static readonly Guid FreePlan = new("e5555555-0000-0000-0000-000000000001");
 
+    /// <summary>The first releases kept New / Used as a Products detail under this key; it is now the post's own condition.</summary>
+    public const string LegacyConditionKey = "condition";
+
     /// <summary>Products › Vehicles: cars and bikes, with their own details.</summary>
     public static Guid Vehicles => SubId(3, 10);
 
@@ -36,7 +39,7 @@ public static class MarketplaceCatalogSeedData
     [
         Category(LegacyVehicles, "Vehicles", null, null, "vehicles", "car", MarketplacePostKind.Listing, MarketplaceTradeMode.RetailOnly, 90, isActive: false),
         Category(LegacyProperty, "Property", null, null, "property", "home", MarketplacePostKind.Listing, MarketplaceTradeMode.RetailOnly, 91, isActive: false),
-        Category(Products, "Products", "Products", "Sarees, shirts, toys, mobiles, vehicles, property", "products", "shopping_bag_outlined", MarketplacePostKind.Listing, MarketplaceTradeMode.RetailOnly, 1),
+        Category(Products, "Products", "Products", "Sarees, shirts, toys, mobiles, vehicles, property", "products", "shopping_bag_outlined", MarketplacePostKind.Listing, MarketplaceTradeMode.RetailOnly, 1, tracksStock: true),
         Category(B2BWholesale, "B2B Wholesale", "B2B", "Banana, pineapple, coconut, chicken — in bulk for dealers", "b2b-wholesale", "agriculture_outlined", MarketplacePostKind.Listing, MarketplaceTradeMode.WholesaleOnly, 2),
         Category(NearbyFood, "Nearby food", "Food", "Last-minute offers: biryani, pizza, burgers — no waste", "nearby-food", "restaurant_outlined", MarketplacePostKind.FoodOffer, MarketplaceTradeMode.RetailOnly, 3),
         Category(Advertisements, "Advertisements", "Ads", "Aadi sale, tournaments, shop and brand openings", "advertisements", "campaign_outlined", MarketplacePostKind.Advertisement, MarketplaceTradeMode.RetailOnly, 4),
@@ -68,7 +71,7 @@ public static class MarketplaceCatalogSeedData
         Field(2, 3, Products, Property, "area", "Area", MarketplaceFieldType.Number, required: true, unit: "cents"),
         Field(2, 4, Products, Property, "bedrooms", "Bedrooms", MarketplaceFieldType.Number),
 
-        Field(3, 1, Products, null, "condition", "Condition", MarketplaceFieldType.Select, options: ["New", "Used"]),
+        Field(3, 1, Products, null, LegacyConditionKey, "Condition", MarketplaceFieldType.Select, options: ["New", "Used"], isActive: false),
         Field(3, 2, Products, null, "brand", "Brand", MarketplaceFieldType.Text, isActive: false),
 
         Field(4, 1, B2BWholesale, null, "produce_type", "Produce", MarketplaceFieldType.Select, options: ["Vegetables", "Fruits", "Grains", "Coconut", "Spices", "Dairy", "Other"], isActive: false),
@@ -116,14 +119,23 @@ public static class MarketplaceCatalogSeedData
         new() { Code = MarketplacePostStatus.Paused, Name = "Paused", Tone = "waiting", DisplayOrder = 2 },
         new() { Code = MarketplacePostStatus.Expired, Name = "Expired", Tone = "danger", DisplayOrder = 3 },
         new() { Code = MarketplacePostStatus.Closed, Name = "Closed", Tone = "progress", DisplayOrder = 4 },
+        new() { Code = MarketplacePostStatus.Sold, Name = "Sold", Tone = "success", DisplayOrder = 5 },
+    ];
+
+    public static MarketplaceItemConditionOption[] ItemConditions =>
+    [
+        new() { Code = MarketplaceItemCondition.New, Name = "New", Detail = "Brand new — keep a stock count", DisplayOrder = 1 },
+        new() { Code = MarketplaceItemCondition.Used, Name = "Used", Detail = "One piece — mark it sold when it goes", DisplayOrder = 2 },
     ];
 
     public static MarketplacePostTransition[] Transitions =>
     [
         new() { FromStatus = MarketplacePostStatus.Active, ToStatus = MarketplacePostStatus.Paused, ActionName = "Pause", DisplayOrder = 1 },
         new() { FromStatus = MarketplacePostStatus.Paused, ToStatus = MarketplacePostStatus.Active, ActionName = "Put up again", DisplayOrder = 2 },
-        new() { FromStatus = MarketplacePostStatus.Active, ToStatus = MarketplacePostStatus.Closed, ActionName = "Close (sold / done)", NeedsConfirm = true, DisplayOrder = 3 },
-        new() { FromStatus = MarketplacePostStatus.Paused, ToStatus = MarketplacePostStatus.Closed, ActionName = "Close (sold / done)", NeedsConfirm = true, DisplayOrder = 4 },
+        new() { FromStatus = MarketplacePostStatus.Active, ToStatus = MarketplacePostStatus.Closed, ActionName = "Close", NeedsConfirm = true, DisplayOrder = 3 },
+        new() { FromStatus = MarketplacePostStatus.Paused, ToStatus = MarketplacePostStatus.Closed, ActionName = "Close", NeedsConfirm = true, DisplayOrder = 4 },
+        new() { FromStatus = MarketplacePostStatus.Active, ToStatus = MarketplacePostStatus.Sold, ActionName = "Mark as sold", NeedsConfirm = true, Condition = MarketplaceItemCondition.Used, DisplayOrder = 5 },
+        new() { FromStatus = MarketplacePostStatus.Paused, ToStatus = MarketplacePostStatus.Sold, ActionName = "Mark as sold", NeedsConfirm = true, Condition = MarketplaceItemCondition.Used, DisplayOrder = 6 },
     ];
 
     /// <summary>The fixed id of sub-category <paramref name="order"/> under the first release's category number.</summary>
@@ -139,6 +151,7 @@ public static class MarketplaceCatalogSeedData
         MarketplacePostKind kind,
         MarketplaceTradeMode tradeMode,
         short order,
+        bool tracksStock = false,
         bool isActive = true) =>
         new()
         {
@@ -150,6 +163,7 @@ public static class MarketplaceCatalogSeedData
             IconName = icon,
             Kind = kind,
             TradeMode = tradeMode,
+            TracksStock = tracksStock,
             DisplayOrder = order,
             IsActive = isActive,
             CreatedDate = SeedDate,

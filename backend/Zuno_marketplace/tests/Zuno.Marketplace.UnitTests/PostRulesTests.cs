@@ -214,7 +214,7 @@ public class PostRulesTests
         {
             Title = new string('t', 121),
             Price = 0,
-            Quantity = 0,
+            Quantity = -1,
             TradeType = "Barter",
             ContactPhone = "12ab",
             Latitude = 8.3,

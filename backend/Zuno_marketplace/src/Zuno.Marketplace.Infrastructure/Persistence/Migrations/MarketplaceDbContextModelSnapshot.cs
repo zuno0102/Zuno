@@ -178,6 +178,10 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("slug");
 
+                    b.Property<bool>("TracksStock")
+                        .HasColumnType("boolean")
+                        .HasColumnName("tracks_stock");
+
                     b.Property<short>("TradeMode")
                         .HasColumnType("smallint")
                         .HasColumnName("trade_mode");
@@ -209,6 +213,7 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             Kind = (short)1,
                             Name = "Vehicles",
                             Slug = "vehicles",
+                            TracksStock = false,
                             TradeMode = (short)1
                         },
                         new
@@ -222,6 +227,7 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             Kind = (short)1,
                             Name = "Property",
                             Slug = "property",
+                            TracksStock = false,
                             TradeMode = (short)1
                         },
                         new
@@ -237,6 +243,7 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             Name = "Products",
                             ShortName = "Products",
                             Slug = "products",
+                            TracksStock = true,
                             TradeMode = (short)1
                         },
                         new
@@ -252,6 +259,7 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             Name = "B2B Wholesale",
                             ShortName = "B2B",
                             Slug = "b2b-wholesale",
+                            TracksStock = false,
                             TradeMode = (short)2
                         },
                         new
@@ -267,6 +275,7 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             Name = "Nearby food",
                             ShortName = "Food",
                             Slug = "nearby-food",
+                            TracksStock = false,
                             TradeMode = (short)1
                         },
                         new
@@ -282,6 +291,7 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             Name = "Advertisements",
                             ShortName = "Ads",
                             Slug = "advertisements",
+                            TracksStock = false,
                             TradeMode = (short)1
                         });
                 });
@@ -522,7 +532,7 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)1,
                             FieldType = (short)3,
-                            IsActive = true,
+                            IsActive = false,
                             IsDeleted = false,
                             IsRequired = false,
                             Key = "condition",
@@ -598,6 +608,50 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             Key = "ad_type",
                             Label = "Type",
                             Options = new List<string> { "Sale / offer", "Sports tournament", "Event", "Shop opening" }
+                        });
+                });
+
+            modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceItemConditionOption", b =>
+                {
+                    b.Property<short>("Code")
+                        .HasColumnType("smallint")
+                        .HasColumnName("code");
+
+                    b.Property<string>("Detail")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("detail");
+
+                    b.Property<short>("DisplayOrder")
+                        .HasColumnType("smallint")
+                        .HasColumnName("display_order");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Code")
+                        .HasName("pk_ref_marketplace_item_conditions");
+
+                    b.ToTable("ref_marketplace_item_conditions", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Code = (short)1,
+                            Detail = "Brand new — keep a stock count",
+                            DisplayOrder = (short)1,
+                            Name = "New"
+                        },
+                        new
+                        {
+                            Code = (short)2,
+                            Detail = "One piece — mark it sold when it goes",
+                            DisplayOrder = (short)2,
+                            Name = "Used"
                         });
                 });
 
@@ -718,6 +772,10 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("CategoryId")
                         .HasColumnType("uuid")
                         .HasColumnName("category_id");
+
+                    b.Property<short?>("Condition")
+                        .HasColumnType("smallint")
+                        .HasColumnName("condition");
 
                     b.Property<string>("ContactPhone")
                         .HasMaxLength(20)
@@ -847,15 +905,17 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
 
                     b.ToTable("marketplace_posts", null, t =>
                         {
+                            t.HasCheckConstraint("ck_marketplace_posts_condition", "condition IS NULL OR condition IN (1, 2)");
+
                             t.HasCheckConstraint("ck_marketplace_posts_kind", "kind IN (1, 2, 3)");
 
                             t.HasCheckConstraint("ck_marketplace_posts_location", "(latitude IS NULL) = (longitude IS NULL)");
 
                             t.HasCheckConstraint("ck_marketplace_posts_price", "price IS NULL OR price > 0");
 
-                            t.HasCheckConstraint("ck_marketplace_posts_quantity", "quantity IS NULL OR quantity >= 1");
+                            t.HasCheckConstraint("ck_marketplace_posts_quantity", "quantity IS NULL OR quantity >= 1 OR (quantity = 0 AND condition = 1)");
 
-                            t.HasCheckConstraint("ck_marketplace_posts_status", "status IN (1, 2, 3)");
+                            t.HasCheckConstraint("ck_marketplace_posts_status", "status IN (1, 2, 3, 5)");
 
                             t.HasCheckConstraint("ck_marketplace_posts_trade_type", "trade_type IN (1, 2)");
 
@@ -1017,6 +1077,13 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             DisplayOrder = (short)4,
                             Name = "Closed",
                             Tone = "progress"
+                        },
+                        new
+                        {
+                            Code = (short)5,
+                            DisplayOrder = (short)5,
+                            Name = "Sold",
+                            Tone = "success"
                         });
                 });
 
@@ -1036,6 +1103,10 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("action_name");
 
+                    b.Property<short?>("Condition")
+                        .HasColumnType("smallint")
+                        .HasColumnName("condition");
+
                     b.Property<short>("DisplayOrder")
                         .HasColumnType("smallint")
                         .HasColumnName("display_order");
@@ -1047,7 +1118,10 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                     b.HasKey("FromStatus", "ToStatus")
                         .HasName("pk_ref_marketplace_post_transitions");
 
-                    b.ToTable("ref_marketplace_post_transitions", (string)null);
+                    b.ToTable("ref_marketplace_post_transitions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_ref_marketplace_post_transitions_condition", "condition IS NULL OR condition IN (1, 2)");
+                        });
 
                     b.HasData(
                         new
@@ -1070,7 +1144,7 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         {
                             FromStatus = (short)1,
                             ToStatus = (short)3,
-                            ActionName = "Close (sold / done)",
+                            ActionName = "Close",
                             DisplayOrder = (short)3,
                             NeedsConfirm = true
                         },
@@ -1078,8 +1152,26 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         {
                             FromStatus = (short)2,
                             ToStatus = (short)3,
-                            ActionName = "Close (sold / done)",
+                            ActionName = "Close",
                             DisplayOrder = (short)4,
+                            NeedsConfirm = true
+                        },
+                        new
+                        {
+                            FromStatus = (short)1,
+                            ToStatus = (short)5,
+                            ActionName = "Mark as sold",
+                            Condition = (short)2,
+                            DisplayOrder = (short)5,
+                            NeedsConfirm = true
+                        },
+                        new
+                        {
+                            FromStatus = (short)2,
+                            ToStatus = (short)5,
+                            ActionName = "Mark as sold",
+                            Condition = (short)2,
+                            DisplayOrder = (short)6,
                             NeedsConfirm = true
                         });
                 });

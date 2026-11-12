@@ -26,7 +26,7 @@ public class PostHandlerTests
         dto.SubCategoryName.Should().Be("Vehicles");
         dto.DistrictName.Should().Be("Kanyakumari");
         dto.Attributes.Should().ContainKey("km_driven").WhoseValue.Should().Be("48000");
-        dto.Actions.Select(a => a.ToStatus).Should().Equal("Paused", "Closed");
+        dto.Actions.Select(a => a.ToStatus).Should().Equal("Paused", "Closed", "Sold");
         var saved = await test.NewContext().Posts.SingleAsync();
         saved.OwnerUserId.Should().Be(TestMarketplace.OwnerA);
         saved.CreatedBy.Should().Be(TestMarketplace.OwnerA);
@@ -248,7 +248,7 @@ public class PostHandlerTests
 
         var act = () => test.SaveHandlers.Handle(update, default);
 
-        await act.Should().ThrowAsync<DomainException>().WithMessage("A closed post cannot be changed.");
+        await act.Should().ThrowAsync<DomainException>().WithMessage("A closed or sold post cannot be changed.");
     }
 
     [Fact]
@@ -362,7 +362,7 @@ public class PostHandlerTests
 
     [Theory]
     [InlineData("Expired", false)]
-    [InlineData("Sold", false)]
+    [InlineData("Sold", true)]
     [InlineData("", false)]
     [InlineData("paused", true)]
     public void StatusValidator_OnlyStoredStatuses(string status, bool valid) =>
@@ -493,6 +493,7 @@ public class PostHandlerTests
         update.SubCategoryId = car.SubCategoryId;
         update.Title = car.Title;
         update.Price = car.Price;
+        update.Condition = car.Condition;
         update.DistrictId = car.DistrictId;
         update.Attributes = new(car.Attributes);
         change?.Invoke(update);

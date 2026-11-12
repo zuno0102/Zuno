@@ -24,6 +24,8 @@ public interface IMarketplaceDbContext
 
     public DbSet<MarketplaceTradeModeOption> TradeModes { get; }
 
+    public DbSet<MarketplaceItemConditionOption> ItemConditions { get; }
+
     public DbSet<MarketplacePostKindOption> PostKinds { get; }
 
     public DbSet<MarketplacePostStatusOption> PostStatuses { get; }

@@ -90,11 +90,11 @@ const register = async (first, role) => {
   const VEHICLES = place(all, "products", "vehicles"), SAREES = place(all, "products", "sarees");
   const FRUITS = place(all, "b2b-wholesale", "fruits"), BIRYANI = place(all, "nearby-food", "biryani-meals");
   const CRICKET = place(all, "advertisements", "cricket-tournament");
-  const car = { ...VEHICLES, title: "Swift VXi 2019", price: 420000, districtId: district, area: "Marthandam",
+  const car = { ...VEHICLES, title: "Swift VXi 2019", price: 420000, condition: "Used", districtId: district, area: "Marthandam",
     attributes: { brand: "Maruti", model_year: "2019", km_driven: "48000", fuel: "Petrol" } };
   no("A car without KM driven is refused", await M_("POST", "/business/marketplace", biz, { ...car, attributes: { brand: "Maruti", model_year: "2019", fuel: "Petrol" } }), "KM driven is required");
   no("A fuel not on the list is refused", await M_("POST", "/business/marketplace", biz, { ...car, attributes: { ...car.attributes, fuel: "Steam" } }), "from the list");
-  no("Wholesale where the category does not allow it is refused", await M_("POST", "/business/marketplace", biz, { ...car, ...SAREES, tradeType: "Wholesale", minOrderQuantity: 5, attributes: { condition: "New" } }), "wholesale");
+  no("Wholesale where the category does not allow it is refused", await M_("POST", "/business/marketplace", biz, { ...car, ...SAREES, tradeType: "Wholesale", minOrderQuantity: 5, condition: "New", quantity: 10, attributes: {} }), "wholesale");
   no("A post without its sub-category is refused", await M_("POST", "/business/marketplace", biz, { ...car, subCategoryId: null }), "what kind");
   no("A saree is not asked a vehicle's details", await M_("POST", "/business/marketplace", biz, { ...car, ...SAREES }), "no detail called");
   const posted = await M_("POST", "/business/marketplace", biz, car);
@@ -137,6 +137,27 @@ const register = async (first, role) => {
   yes("...and pausing it frees the slot", await M_("PATCH", `/business/marketplace/${sentRetail.data?.id}/status`, biz2, { status: "Paused" }));
   yes("The second business posts wholesale produce", await M_("POST", "/business/marketplace", biz2, bulk));
   yes("Removing the paused car", await M_("DELETE", `/business/marketplace/${carId}`, biz));
+
+  // ── Products: a new item keeps stock, a used one is marked Sold ──────────────────────────────
+  yes("The second business pauses its produce", await M_("PATCH", `/business/marketplace/${sentRetail.data?.id}/status`, biz2, { status: "Paused" }));
+  const allBulk = (await M_("GET", "/business/marketplace?status=Active", biz2)).data?.items ?? [];
+  for (const p of allBulk) await M_("PATCH", `/business/marketplace/${p.id}/status`, biz2, { status: "Paused" });
+  const saree = { ...SAREES, title: "Silk saree", price: 2400, districtId: district, attributes: {} };
+  no("A product without New or Used is refused", await M_("POST", "/business/marketplace", biz2, saree), "New or Used");
+  no("A new product without its stock is refused", await M_("POST", "/business/marketplace", biz2, { ...saree, condition: "New" }), "in stock");
+  const newSaree = await M_("POST", "/business/marketplace", biz2, { ...saree, condition: "New", quantity: 3 });
+  ok("A new product keeps its stock and offers Update stock", newSaree.data?.quantity === 3 && newSaree.data?.canUpdateStock === true);
+  const emptied = await M_("PATCH", `/business/marketplace/${newSaree.data?.id}/stock`, biz2, { quantity: 0 });
+  ok("Stock 0 is out of stock, still Active", emptied.data?.isOutOfStock === true && emptied.data?.status === "Active", `${emptied.status} ${emptied.text.slice(0, 80)}`);
+  no("A new product cannot be marked sold", await M_("PATCH", `/business/marketplace/${newSaree.data?.id}/status`, biz2, { status: "Sold" }), "used item");
+  yes("Pausing the saree frees the slot", await M_("PATCH", `/business/marketplace/${newSaree.data?.id}/status`, biz2, { status: "Paused" }));
+  const usedCar = await M_("POST", "/business/marketplace", biz2, { ...car, quantity: 5 });
+  ok("A used product is one piece, with Mark as sold", usedCar.data?.quantity == null && usedCar.data?.actions?.some(a => a.toStatus === "Sold"));
+  no("A used product has no stock to update", await M_("PATCH", `/business/marketplace/${usedCar.data?.id}/stock`, biz2, { quantity: 2 }), "new item");
+  const sold = await M_("PATCH", `/business/marketplace/${usedCar.data?.id}/status`, biz2, { status: "Sold" });
+  ok("Marking it sold makes it Sold", sold.data?.status === "Sold", `${sold.status}`);
+  const after = (await M_("GET", "/business/marketplace/summary", biz2)).data;
+  ok("...which frees the slot and counts as sold", after?.sold === 1 && after?.plan?.canAddActivePost === true);
   const mine = (await M_("GET", "/business/marketplace?pageSize=500", biz)).data;
   ok("The list caps the page size and no longer shows the car", mine?.pageSize === 100 && !mine?.items?.some(p => p.id === carId));
 

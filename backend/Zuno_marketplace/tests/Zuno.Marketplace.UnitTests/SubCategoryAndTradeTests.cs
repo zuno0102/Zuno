@@ -60,14 +60,18 @@ public class SubCategoryAndTradeTests
             c.SubCategoryId = Sarees;
             c.Title = "Kanchipuram silk saree";
             c.Price = 2_400m;
-            c.Attributes = new() { ["condition"] = "New" };
+            c.Condition = "New";
+            c.Quantity = 5;
+            c.Attributes = new();
         });
 
         var dto = await test.SaveHandlers.Handle(saree, default);
 
         dto.CategoryName.Should().Be("Products");
         dto.SubCategoryName.Should().Be("Sarees");
-        dto.Attributes.Should().Equal(new Dictionary<string, string> { ["condition"] = "New" });
+        dto.Attributes.Should().BeEmpty();
+        dto.Condition.Should().Be("New");
+        dto.Quantity.Should().Be(5);
     }
 
     [Fact]
@@ -87,9 +91,12 @@ public class SubCategoryAndTradeTests
     {
         using var test = new TestMarketplace();
 
-        var dto = await test.SaveHandlers.Handle(TestMarketplace.Car(c => c.Attributes["condition"] = "Used"), default);
+        // Food type is asked across Nearby food, so a pizza needs it as much as a biryani.
+        var pizza = test.Biryani(c => { c.SubCategoryId = MarketplaceCatalogSeedData.SubId(5, 2); c.Attributes = new(); });
 
-        dto.Attributes["condition"].Should().Be("Used");
+        var failed = await FailedPropertiesAsync(() => test.SaveHandlers.Handle(pizza, default));
+
+        failed.Should().Contain("Attributes.food_type");
     }
 
     [Fact]

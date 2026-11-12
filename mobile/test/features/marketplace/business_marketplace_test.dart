@@ -25,6 +25,7 @@ import 'package:zuno/shared/widgets/stat_tile.dart';
 
 const _products = MarketplaceCategory(
   id: 'cat-products',
+  tracksStock: true,
   name: 'Products',
   shortName: 'Products',
   description: 'Sarees, shirts, toys',
@@ -176,6 +177,19 @@ const _options = MarketplaceOptions(
     MarketplaceOption(code: 'Paused', name: 'On hold', tone: 'waiting'),
     MarketplaceOption(code: 'Expired', name: 'Expired', tone: 'danger'),
     MarketplaceOption(code: 'Closed', name: 'Closed', tone: 'progress'),
+    MarketplaceOption(code: 'Sold', name: 'Sold', tone: 'success'),
+  ],
+  conditions: [
+    MarketplaceOption(
+      code: 'New',
+      name: 'New',
+      detail: 'Brand new — keep a stock count',
+    ),
+    MarketplaceOption(
+      code: 'Used',
+      name: 'Used',
+      detail: 'One piece — mark it sold when it goes',
+    ),
   ],
   tradeModes: [
     MarketplaceOption(code: 'RetailOnly', name: 'Retail only'),
@@ -224,6 +238,9 @@ MarketplacePost _post({
     'km_driven': '48000',
     'fuel': 'Petrol',
   },
+  String? condition,
+  bool isOutOfStock = false,
+  bool canUpdateStock = false,
   List<MarketplacePostAction> actions = const [
     MarketplacePostAction(
       toStatus: 'Paused',
@@ -238,6 +255,9 @@ MarketplacePost _post({
   ],
 }) => MarketplacePost(
   id: id,
+  condition: condition,
+  isOutOfStock: isOutOfStock,
+  canUpdateStock: canUpdateStock,
   categoryId: categoryId,
   categoryName: categoryName,
   subCategoryId: subCategoryId,
@@ -281,6 +301,7 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
   final created = <MarketplacePostInput>[];
   final updated = <(String, MarketplacePostInput)>[];
   final statusChanges = <(String, String)>[];
+  final stockChanges = <(String, int)>[];
   final deleted = <String>[];
   final uploads = <(String, int)>[];
   final savedCategories = <MarketplaceCategoryInput>[];
@@ -305,6 +326,7 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
       paused: posts.where((p) => p.status == 'Paused').length,
       expired: posts.where((p) => p.status == 'Expired').length,
       closed: 0,
+      sold: posts.where((p) => p.status == MarketplacePostStatus.sold).length,
       plan: plan,
       categories: [
         for (final id in {for (final p in posts) p.categoryId})
@@ -314,6 +336,7 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
             paused: _countOf(id, MarketplacePostStatus.paused),
             expired: _countOf(id, MarketplacePostStatus.expired),
             closed: _countOf(id, MarketplacePostStatus.closed),
+            sold: _countOf(id, MarketplacePostStatus.sold),
           ),
       ],
     );
@@ -352,6 +375,12 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
   Future<MarketplacePost> changeStatus(String id, String status) async {
     statusChanges.add((id, status));
     return _post(id: id, status: status);
+  }
+
+  @override
+  Future<MarketplacePost> updateStock(String id, int quantity) async {
+    stockChanges.add((id, quantity));
+    return _post(id: id, quantity: quantity);
   }
 
   @override
@@ -467,12 +496,14 @@ Future<_FakeMarketplaceRepository> _pump(
 }
 
 /// Opens the add sheet from the Marketplace tab and picks [category], then [sub] — its first
-/// sub-category unless said otherwise, none when [pickSub] is false.
+/// sub-category unless said otherwise, none when [pickSub] is false. In a category that keeps stock it
+/// also picks [condition] — Used unless said otherwise, so no stock is asked.
 Future<void> _openFormFor(
   WidgetTester tester,
   MarketplaceCategory category, {
   String? sub,
   bool pickSub = true,
+  String condition = MarketplaceItemCondition.used,
 }) async {
   await tester.tap(find.byKey(const ValueKey('marketplace-add-post')));
   await tester.pumpAndSettle();
@@ -483,6 +514,9 @@ Future<void> _openFormFor(
       'marketplace-sub-category',
       sub ?? category.subCategories.first.id,
     );
+  }
+  if (category.tracksStock) {
+    await _choose(tester, 'marketplace-condition', condition);
   }
 }
 
@@ -1170,7 +1204,9 @@ void main() {
       final repo = await _pump(
         tester,
         const BusinessMarketplaceTab(),
-        repository: _FakeMarketplaceRepository(posts: [_post()]),
+        repository: _FakeMarketplaceRepository(
+          posts: [_post(condition: MarketplaceItemCondition.used)],
+        ),
       );
 
       await tester.tap(find.byType(PopupMenuButton<String>));
@@ -1250,6 +1286,268 @@ void main() {
       final at = tester.getTopLeft(reason).dy;
       expect(at, greaterThanOrEqualTo(sheet.top));
       expect(at - sheet.top, lessThan(200));
+    });
+  });
+
+  group('Products: stock for new, Sold for used', () {
+    testWidgets('a new item asks its stock, and 0 is allowed', (tester) async {
+      final repo = await _pump(tester, const BusinessMarketplaceTab());
+      await _openFormFor(
+        tester,
+        _products,
+        sub: 's-sarees',
+        condition: MarketplaceItemCondition.newItem,
+      );
+
+      expect(find.byKey(const ValueKey('marketplace-stock')), findsOneWidget);
+      await _type(tester, 'marketplace-title', 'Silk saree');
+      await _type(tester, 'marketplace-price', '2400');
+      await _choose(tester, 'marketplace-state', 's-tn');
+      await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
+      await _save(tester);
+      expect(repo.created, isEmpty, reason: 'stock is required');
+      expect(find.text('Required.'), findsOneWidget);
+
+      await _type(tester, 'marketplace-stock', '0');
+      await _save(tester);
+
+      final input = repo.created.single;
+      expect(input.condition, MarketplaceItemCondition.newItem);
+      expect(input.quantity, 0);
+    });
+
+    testWidgets('a used item is one piece: no stock asked or sent', (
+      tester,
+    ) async {
+      final repo = await _pump(tester, const BusinessMarketplaceTab());
+      await _openFormFor(tester, _products, sub: 's-sarees');
+
+      expect(find.byKey(const ValueKey('marketplace-stock')), findsNothing);
+      expect(find.text('One piece — mark it sold when it goes'), findsNothing);
+      await _type(tester, 'marketplace-title', 'Silk saree');
+      await _type(tester, 'marketplace-price', '900');
+      await _choose(tester, 'marketplace-state', 's-tn');
+      await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
+      await _save(tester);
+
+      final input = repo.created.single;
+      expect(input.condition, MarketplaceItemCondition.used);
+      expect(input.quantity, isNull);
+    });
+
+    testWidgets('a product must say New or Used', (tester) async {
+      final repo = await _pump(tester, const BusinessMarketplaceTab());
+      // By hand, not _openFormFor: that one picks a condition.
+      await tester.tap(find.byKey(const ValueKey('marketplace-add-post')));
+      await tester.pumpAndSettle();
+      await _choose(tester, 'marketplace-category', _products.id);
+      await _choose(tester, 'marketplace-sub-category', 's-sarees');
+
+      await _type(tester, 'marketplace-title', 'Silk saree');
+      await _type(tester, 'marketplace-price', '900');
+      await _choose(tester, 'marketplace-state', 's-tn');
+      await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
+      await _save(tester);
+
+      expect(repo.created, isEmpty);
+      expect(find.text('Choose New or Used.'), findsOneWidget);
+    });
+
+    testWidgets('the card says New with its stock, Used as one piece', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        const BusinessMarketplaceTab(),
+        repository: _FakeMarketplaceRepository(
+          posts: [
+            _post(
+              title: 'Silk saree',
+              condition: MarketplaceItemCondition.newItem,
+              quantity: 12,
+              canUpdateStock: true,
+            ),
+            _post(
+              id: 'p-2',
+              title: 'Cotton saree',
+              condition: MarketplaceItemCondition.newItem,
+              quantity: 0,
+              isOutOfStock: true,
+              canUpdateStock: true,
+            ),
+            _post(
+              id: 'p-3',
+              title: 'Swift VXi 2019',
+              condition: MarketplaceItemCondition.used,
+            ),
+          ],
+          plan: _plan(max: 3, used: 3),
+        ),
+      );
+
+      expect(find.text('New · 12 in stock'), findsOneWidget);
+      expect(find.text('New'), findsOneWidget, reason: 'the empty one');
+      expect(
+        find.byKey(const ValueKey('marketplace-out-of-stock')),
+        findsOneWidget,
+      );
+      expect(find.text('Used · one piece'), findsOneWidget);
+    });
+
+    testWidgets('Update stock sets the count without the whole form', (
+      tester,
+    ) async {
+      final repo = await _pump(
+        tester,
+        const BusinessMarketplaceTab(),
+        repository: _FakeMarketplaceRepository(
+          posts: [
+            _post(
+              title: 'Silk saree',
+              condition: MarketplaceItemCondition.newItem,
+              quantity: 12,
+              canUpdateStock: true,
+            ),
+          ],
+        ),
+      );
+
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Update stock'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MarketplacePostFormSheet), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('marketplace-stock-less')));
+      await tester.pump();
+      expect(find.text('11'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('marketplace-stock-save')));
+      await tester.pumpAndSettle();
+
+      expect(repo.stockChanges, [('p-1', 11)]);
+      expect(find.text('Silk saree: 11 in stock.'), findsOneWidget);
+    });
+
+    testWidgets('a used item has no Update stock', (tester) async {
+      await _pump(
+        tester,
+        const BusinessMarketplaceTab(),
+        repository: _FakeMarketplaceRepository(
+          posts: [_post(condition: MarketplaceItemCondition.used)],
+        ),
+      );
+
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Update stock'), findsNothing);
+    });
+
+    testWidgets('Mark as sold asks first, then moves the post to Sold', (
+      tester,
+    ) async {
+      final repo = await _pump(
+        tester,
+        const BusinessMarketplaceTab(),
+        repository: _FakeMarketplaceRepository(
+          posts: [
+            _post(
+              condition: MarketplaceItemCondition.used,
+              actions: const [
+                MarketplacePostAction(
+                  toStatus: MarketplacePostStatus.sold,
+                  name: 'Mark as sold',
+                  needsConfirm: true,
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Mark as sold'));
+      await tester.pumpAndSettle();
+      expect(find.text('Mark as sold?'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, 'Mark as sold'));
+      await tester.pumpAndSettle();
+
+      expect(repo.statusChanges, [('p-1', MarketplacePostStatus.sold)]);
+    });
+
+    testWidgets('a sold post cannot be edited', (tester) async {
+      await _pump(
+        tester,
+        const BusinessMarketplaceTab(),
+        repository: _FakeMarketplaceRepository(
+          posts: [
+            _post(
+              status: MarketplacePostStatus.sold,
+              condition: MarketplaceItemCondition.used,
+              actions: const [],
+            ),
+          ],
+        ),
+      );
+
+      expect(find.text('Sold'), findsOneWidget);
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      expect(find.text('Edit'), findsNothing);
+    });
+
+    testWidgets('Orders › Marketplace has a Sold chip from the status table', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        const BusinessMarketplaceOrdersTab(),
+        repository: _FakeMarketplaceRepository(
+          posts: [
+            _post(
+              status: MarketplacePostStatus.sold,
+              condition: MarketplaceItemCondition.used,
+              actions: const [],
+            ),
+          ],
+        ),
+      );
+
+      final sold = find.byKey(const ValueKey('marketplace-orders-Sold'));
+      await tester.ensureVisible(sold);
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(of: sold, matching: find.text('Sold 1')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('the super admin turns stock on for a category', (
+      tester,
+    ) async {
+      final repo = await _pump(
+        tester,
+        const AdminMarketplaceCategoriesScreen(),
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey('admin-marketplace-add-category')),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('admin-marketplace-category-name')),
+        'Mobiles',
+      );
+      final toggle = find.byKey(
+        const ValueKey('admin-marketplace-tracks-stock'),
+      );
+      await tester.ensureVisible(toggle);
+      await tester.tap(toggle);
+      await tester.tap(find.byKey(const ValueKey('primary-button')));
+      await tester.pumpAndSettle();
+
+      expect(repo.savedCategories.single.tracksStock, isTrue);
     });
   });
 
@@ -1486,7 +1784,9 @@ void main() {
 
       expect(find.text('Products'), findsOneWidget);
       expect(
-        find.text('Listing · Retail only · 2 sub-categories'),
+        find.text(
+          'Listing · Retail only · New / used, with stock · 2 sub-categories',
+        ),
         findsOneWidget,
       );
       expect(find.text('Hidden'), findsOneWidget);

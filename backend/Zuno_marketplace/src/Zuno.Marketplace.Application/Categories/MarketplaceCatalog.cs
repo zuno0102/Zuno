@@ -38,12 +38,14 @@ public class MarketplaceCatalogHandlers(
             .ToListAsync(cancellationToken);
         var statuses = await dbContext.PostStatuses.AsNoTracking().OrderBy(s => s.DisplayOrder).ToListAsync(cancellationToken);
         var tradeModes = await dbContext.TradeModes.AsNoTracking().OrderBy(t => t.DisplayOrder).ToListAsync(cancellationToken);
+        var conditions = await dbContext.ItemConditions.AsNoTracking().OrderBy(c => c.DisplayOrder).ToListAsync(cancellationToken);
 
         return new MarketplaceOptionsDto
         {
             Kinds = kinds.Select(k => new MarketplaceOptionDto { Code = k.Code.ToString(), Name = k.Name }).ToList(),
             Statuses = statuses.Select(s => new MarketplaceOptionDto { Code = s.Code.ToString(), Name = s.Name, Tone = s.Tone }).ToList(),
             TradeModes = tradeModes.Select(t => new MarketplaceOptionDto { Code = t.Code.ToString(), Name = t.Name, Detail = t.Detail }).ToList(),
+            Conditions = conditions.Select(c => new MarketplaceOptionDto { Code = c.Code.ToString(), Name = c.Name, Detail = c.Detail }).ToList(),
             ImageSlots = limits.ImageSlots,
             MaxFoodOfferHours = limits.MaxFoodOfferHours,
             MaxAdDays = limits.MaxAdDays,
@@ -66,6 +68,7 @@ internal static class MarketplaceCategoryMapper
         IconName = category.IconName,
         Kind = category.Kind.ToString(),
         TradeMode = category.TradeMode.ToString(),
+        TracksStock = category.TracksStock,
         DisplayOrder = category.DisplayOrder,
         IsActive = category.IsActive,
         SubCategories = category.SubCategories

@@ -89,6 +89,7 @@ class _CategoryCard extends StatelessWidget {
           [
             options?.kindName(category.kind) ?? category.kind,
             _optionName(options?.tradeModes, category.tradeMode),
+            if (category.tracksStock) 'New / used, with stock',
             '${subs.length} sub-categor${subs.length == 1 ? 'y' : 'ies'}',
           ].join(' · '),
         ),
@@ -308,6 +309,7 @@ class _CategorySheetState extends ConsumerState<_CategorySheet> {
   late String _kind = _old?.kind ?? MarketplacePostKind.listing;
   late String _tradeMode = _old?.tradeMode ?? MarketplaceTradeMode.retailOnly;
   late bool _active = _old?.isActive ?? true;
+  late bool _tracksStock = _old?.tracksStock ?? false;
   bool _saving = false;
 
   static String? _clean(TextEditingController c) =>
@@ -333,6 +335,7 @@ class _CategorySheetState extends ConsumerState<_CategorySheet> {
       tradeMode: _tradeMode,
       displayOrder: int.tryParse(_order.text) ?? 0,
       isActive: _active,
+      tracksStock: _tracksStock,
     );
     final repository = ref.read(marketplaceRepositoryProvider);
     final old = _old;
@@ -424,6 +427,16 @@ class _CategorySheetState extends ConsumerState<_CategorySheet> {
           const SizedBox(width: 12),
           Expanded(child: _orderField(_order)),
         ],
+      ),
+      SwitchListTile(
+        key: const ValueKey('admin-marketplace-tracks-stock'),
+        contentPadding: EdgeInsets.zero,
+        title: const Text('New / used, with stock'),
+        subtitle: const Text(
+          'Posts say New or Used: new items keep a stock count, used ones are marked sold.',
+        ),
+        value: _tracksStock,
+        onChanged: (v) => setState(() => _tracksStock = v),
       ),
       SwitchListTile(
         contentPadding: EdgeInsets.zero,

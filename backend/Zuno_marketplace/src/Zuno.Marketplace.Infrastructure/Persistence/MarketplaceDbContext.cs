@@ -28,6 +28,8 @@ public class MarketplaceDbContext(DbContextOptions<MarketplaceDbContext> options
 
     public DbSet<MarketplaceTradeModeOption> TradeModes => Set<MarketplaceTradeModeOption>();
 
+    public DbSet<MarketplaceItemConditionOption> ItemConditions => Set<MarketplaceItemConditionOption>();
+
     public DbSet<MarketplacePostKindOption> PostKinds => Set<MarketplacePostKindOption>();
 
     public DbSet<MarketplacePostStatusOption> PostStatuses => Set<MarketplacePostStatusOption>();

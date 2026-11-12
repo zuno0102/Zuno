@@ -114,6 +114,7 @@ public class MarketplacePostQueryHandlers(
                 Expired = g.Count(p => p.Status == MarketplacePostStatus.Active && p.EndsAt != null && p.EndsAt <= now),
                 Paused = g.Count(p => p.Status == MarketplacePostStatus.Paused),
                 Closed = g.Count(p => p.Status == MarketplacePostStatus.Closed),
+                Sold = g.Count(p => p.Status == MarketplacePostStatus.Sold),
             })
             .ToListAsync(cancellationToken);
 
@@ -125,6 +126,7 @@ public class MarketplacePostQueryHandlers(
             Paused = byCategory.Sum(c => c.Paused),
             Expired = byCategory.Sum(c => c.Expired),
             Closed = byCategory.Sum(c => c.Closed),
+            Sold = byCategory.Sum(c => c.Sold),
             Categories = byCategory,
             Plan = new MarketplacePlanDto
             {

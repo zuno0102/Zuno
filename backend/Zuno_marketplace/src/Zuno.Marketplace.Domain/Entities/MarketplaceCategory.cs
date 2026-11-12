@@ -28,6 +28,12 @@ public class MarketplaceCategory : BaseEntity
     /// <summary>Whether posts here sell one at a time, in bulk to businesses (B2B), or either.</summary>
     public MarketplaceTradeMode TradeMode { get; set; } = MarketplaceTradeMode.RetailOnly;
 
+    /// <summary>
+    /// Posts here say New or Used: a new item keeps a stock count (out of stock at 0), a used one is a
+    /// single piece marked Sold when it goes. On for Products.
+    /// </summary>
+    public bool TracksStock { get; set; }
+
     public short DisplayOrder { get; set; }
 
     /// <summary>Off hides the category from the post form and its posts from customers.</summary>

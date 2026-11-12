@@ -168,7 +168,7 @@ public class QueryAndCatalogTests
         categories.Select(c => c.Slug).Should().Equal("products", "b2b-wholesale", "nearby-food", "advertisements");
         categories.Select(c => c.ShortName).Should().Equal("Products", "B2B", "Food", "Ads");
         categories[0].SubCategories.Select(s => s.Name).Should().StartWith(["Sarees", "Clothing", "Footwear", "Toys"]).And.Contain(["Vehicles", "Property"]);
-        categories[0].Fields.Select(f => f.Key).Should().Equal("condition", "brand", "model_year", "km_driven", "fuel", "owners", "property_type", "deal", "area", "bedrooms");
+        categories[0].Fields.Select(f => f.Key).Should().Equal("brand", "model_year", "km_driven", "fuel", "owners", "property_type", "deal", "area", "bedrooms");
         categories.Single(c => c.Slug == "b2b-wholesale").TradeMode.Should().Be("WholesaleOnly");
         categories.Single(c => c.Slug == "nearby-food").Kind.Should().Be("FoodOffer");
     }

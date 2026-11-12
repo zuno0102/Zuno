@@ -34,6 +34,15 @@ public class MarketplacePostDto
 
     public int? Quantity { get; set; }
 
+    /// <summary><c>New</c> or <c>Used</c> in a category that keeps stock; null elsewhere.</summary>
+    public string? Condition { get; set; }
+
+    /// <summary>A new item at 0 stock: listed, but customers do not see it.</summary>
+    public bool IsOutOfStock { get; set; }
+
+    /// <summary>Whether the menu offers "Update stock": a new item not yet closed.</summary>
+    public bool CanUpdateStock { get; set; }
+
     public decimal? OriginalPrice { get; set; }
 
     public DateTimeOffset? StartsAt { get; set; }
@@ -106,6 +115,8 @@ public class MarketplaceSummaryDto
 
     public int Closed { get; set; }
 
+    public int Sold { get; set; }
+
     /// <summary>The same counts per main category the business has posted in.</summary>
     public List<MarketplaceCategoryCountDto> Categories { get; set; } = [];
 
@@ -124,6 +135,8 @@ public class MarketplaceCategoryCountDto
     public int Expired { get; set; }
 
     public int Closed { get; set; }
+
+    public int Sold { get; set; }
 }
 
 /// <summary>The business's plan and how much of it is used.</summary>
@@ -164,6 +177,9 @@ public class MarketplaceCategoryDto
 
     /// <summary><c>RetailOnly</c>, <c>WholesaleOnly</c> or <c>Either</c>.</summary>
     public string TradeMode { get; set; } = string.Empty;
+
+    /// <summary>Posts here say New or Used; new items keep a stock count, used ones are marked Sold.</summary>
+    public bool TracksStock { get; set; }
 
     public short DisplayOrder { get; set; }
 
@@ -220,6 +236,9 @@ public class MarketplaceOptionsDto
 
     /// <summary>How a category may sell, named for the super admin.</summary>
     public List<MarketplaceOptionDto> TradeModes { get; set; } = [];
+
+    /// <summary>New and Used, with the line under each on the post form.</summary>
+    public List<MarketplaceOptionDto> Conditions { get; set; } = [];
 
     public List<MarketplaceOptionDto> Statuses { get; set; } = [];
 

@@ -67,6 +67,14 @@ class MarketplaceRemoteDataSource {
         _dio.patch(MarketplaceApi.postStatusPath(id), data: {'status': status}),
   );
 
+  /// How many of a new item are left; 0 is out of stock.
+  Future<MarketplacePostModel> updateStock(String id, int quantity) => _post(
+    () => _dio.patch(
+      MarketplaceApi.postStockPath(id),
+      data: {'quantity': quantity},
+    ),
+  );
+
   Future<void> delete(String id) =>
       _run(() => _dio.delete<void>(MarketplaceApi.postPath(id)));
 

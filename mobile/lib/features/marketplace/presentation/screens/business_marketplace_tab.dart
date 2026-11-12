@@ -7,6 +7,7 @@ import 'package:zuno/features/marketplace/domain/entities/marketplace_post.dart'
 import 'package:zuno/features/marketplace/presentation/providers/marketplace_providers.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_post_form_sheet.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_post_lines.dart';
+import 'package:zuno/features/marketplace/presentation/widgets/marketplace_stock_dialog.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/confirm_dialog.dart';
 import 'package:zuno/shared/widgets/empty_state.dart';
@@ -224,7 +225,7 @@ class MarketplacePostCard extends ConsumerWidget {
         const <MarketplaceCategory>[];
     final cover = post.imageUrlForSlot(0);
     final price = marketplacePriceLine(post);
-    final quantity = marketplaceQuantityLine(post);
+    final quantity = marketplaceQuantityLine(post, options: options);
     final window = marketplaceWindowLine(post);
     final details = marketplaceDetailsLine(post, categories);
 
@@ -247,6 +248,14 @@ class MarketplacePostCard extends ConsumerWidget {
             if (price != null)
               Text(price, style: const TextStyle(fontWeight: FontWeight.w600)),
             marketplaceStatusPill(options, post.status),
+            // Still listed and counted on the plan, but customers do not see it until restocked.
+            if (post.isOutOfStock)
+              const StatusPill(
+                key: ValueKey('marketplace-out-of-stock'),
+                label: 'Out of stock',
+                tone: StatusTone.danger,
+                compact: true,
+              ),
           ],
         ),
         if (quantity != null) Text(quantity),
@@ -255,7 +264,10 @@ class MarketplacePostCard extends ConsumerWidget {
           Text(details, maxLines: 1, overflow: TextOverflow.ellipsis),
       ],
       menu: [
-        if (post.status != MarketplacePostStatus.closed) ('edit', 'Edit'),
+        if (post.status != MarketplacePostStatus.closed &&
+            post.status != MarketplacePostStatus.sold)
+          ('edit', 'Edit'),
+        if (post.canUpdateStock) ('stock', 'Update stock'),
         for (final action in post.actions)
           ('status:${action.toStatus}', action.name),
         ('delete', 'Remove'),
@@ -269,6 +281,7 @@ class MarketplacePostCard extends ConsumerWidget {
       return showMarketplacePostFormSheet(context, existing: post);
     }
     if (value == 'delete') return _remove(context, ref);
+    if (value == 'stock') return _updateStock(context, ref);
     final action = post.actions.firstWhere(
       (a) => 'status:${a.toStatus}' == value,
     );
@@ -301,6 +314,31 @@ class MarketplacePostCard extends ConsumerWidget {
       reloadMarketplace(ref);
       messenger.showSuccess(
         '${post.title}: ${action.name.toLowerCase()} done.',
+      );
+    } catch (e) {
+      messenger.showFailure(e.toString());
+    }
+  }
+
+  /// "Update stock": the count alone, without the whole form.
+  Future<void> _updateStock(BuildContext context, WidgetRef ref) async {
+    final options = ref.read(marketplaceOptionsProvider).value;
+    final count = await showMarketplaceStockDialog(
+      context,
+      title: post.title,
+      current: post.quantity ?? 0,
+      max: options?.maxQuantity ?? marketplaceDefaultMaxQuantity,
+    );
+    if (count == null || !context.mounted) return;
+
+    final messenger = AppMessenger.of(context);
+    try {
+      await ref.read(marketplaceRepositoryProvider).updateStock(post.id, count);
+      reloadMarketplace(ref);
+      messenger.showSuccess(
+        count == 0
+            ? '${post.title}: out of stock.'
+            : '${post.title}: $count in stock.',
       );
     } catch (e) {
       messenger.showFailure(e.toString());

@@ -65,6 +65,9 @@ class MarketplacePostModel {
     this.area,
     this.latitude,
     this.longitude,
+    this.condition,
+    this.isOutOfStock = false,
+    this.canUpdateStock = false,
     this.attributes = const {},
     this.media = const [],
     this.actions = const [],
@@ -99,6 +102,9 @@ class MarketplacePostModel {
   final String? area;
   final double? latitude;
   final double? longitude;
+  final String? condition;
+  final bool isOutOfStock;
+  final bool canUpdateStock;
   final Map<String, String> attributes;
   final List<MarketplacePostMediaModel> media;
   final List<MarketplacePostActionModel> actions;
@@ -130,6 +136,9 @@ class MarketplacePostModel {
     area: area,
     latitude: latitude,
     longitude: longitude,
+    condition: condition,
+    isOutOfStock: isOutOfStock,
+    canUpdateStock: canUpdateStock,
     attributes: attributes,
     imageUrls: {for (final m in media) m.sortOrder: m.url},
     actions: [for (final a in actions) a.toEntity()],
@@ -197,6 +206,7 @@ class MarketplaceCategoryModel {
     required this.slug,
     required this.kind,
     required this.tradeMode,
+    this.tracksStock = false,
     required this.displayOrder,
     required this.isActive,
     this.shortName,
@@ -217,6 +227,7 @@ class MarketplaceCategoryModel {
   final String? iconName;
   final String kind;
   final String tradeMode;
+  final bool tracksStock;
   final int displayOrder;
   final bool isActive;
   final List<MarketplaceSubCategoryModel> subCategories;
@@ -231,6 +242,7 @@ class MarketplaceCategoryModel {
     iconName: iconName,
     kind: kind,
     tradeMode: tradeMode,
+    tracksStock: tracksStock,
     displayOrder: displayOrder,
     isActive: isActive,
     subCategories: [for (final s in subCategories) s.toEntity()],
@@ -307,6 +319,7 @@ class MarketplaceSummaryModel {
     required this.paused,
     required this.expired,
     required this.closed,
+    this.sold = 0,
     required this.plan,
     this.categories = const [],
   });
@@ -318,6 +331,7 @@ class MarketplaceSummaryModel {
   final int paused;
   final int expired;
   final int closed;
+  final int sold;
   final MarketplacePlanModel plan;
   final List<MarketplaceCategoryCountModel> categories;
 
@@ -326,6 +340,7 @@ class MarketplaceSummaryModel {
     paused: paused,
     expired: expired,
     closed: closed,
+    sold: sold,
     plan: plan.toEntity(),
     categories: [for (final c in categories) c.toEntity()],
   );
@@ -339,6 +354,7 @@ class MarketplaceCategoryCountModel {
     required this.paused,
     required this.expired,
     required this.closed,
+    this.sold = 0,
   });
 
   factory MarketplaceCategoryCountModel.fromJson(Map<String, dynamic> json) =>
@@ -349,6 +365,7 @@ class MarketplaceCategoryCountModel {
   final int paused;
   final int expired;
   final int closed;
+  final int sold;
 
   MarketplaceCategoryCount toEntity() => MarketplaceCategoryCount(
     categoryId: categoryId,
@@ -356,6 +373,7 @@ class MarketplaceCategoryCountModel {
     paused: paused,
     expired: expired,
     closed: closed,
+    sold: sold,
   );
 }
 
@@ -388,7 +406,9 @@ class MarketplaceOptionsModel {
     required this.imageSlots,
     required this.maxFoodOfferHours,
     this.tradeModes = const [],
+    this.conditions = const [],
     required this.maxAdDays,
+    this.maxQuantity = marketplaceDefaultMaxQuantity,
   });
 
   factory MarketplaceOptionsModel.fromJson(Map<String, dynamic> json) =>
@@ -397,17 +417,21 @@ class MarketplaceOptionsModel {
   final List<MarketplaceOptionModel> kinds;
   final List<MarketplaceOptionModel> statuses;
   final List<MarketplaceOptionModel> tradeModes;
+  final List<MarketplaceOptionModel> conditions;
   final int imageSlots;
   final int maxFoodOfferHours;
   final int maxAdDays;
+  final int maxQuantity;
 
   MarketplaceOptions toEntity() => MarketplaceOptions(
     kinds: [for (final k in kinds) k.toEntity()],
     statuses: [for (final s in statuses) s.toEntity()],
     tradeModes: [for (final t in tradeModes) t.toEntity()],
+    conditions: [for (final c in conditions) c.toEntity()],
     imageSlots: imageSlots,
     maxFoodOfferHours: maxFoodOfferHours,
     maxAdDays: maxAdDays,
+    maxQuantity: maxQuantity,
   );
 }
 

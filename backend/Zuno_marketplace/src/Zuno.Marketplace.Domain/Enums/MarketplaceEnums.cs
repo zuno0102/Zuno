@@ -29,6 +29,20 @@ public enum MarketplacePostStatus : short
 
     /// <summary>Shown only: an Active post whose end time has passed.</summary>
     Expired = 4,
+
+    /// <summary>A used item that went to a buyer. Final, like Closed; frees the plan slot.</summary>
+    Sold = 5,
+}
+
+/// <summary>
+/// New or used, in a category that keeps stock (Products): a new item carries a stock count, a used
+/// one is a single piece that is marked Sold when it goes.
+/// </summary>
+public enum MarketplaceItemCondition : short
+{
+    New = 1,
+
+    Used = 2,
 }
 
 /// <summary>Who a listing sells to: one piece at a time, or in bulk to other businesses (B2B).</summary>

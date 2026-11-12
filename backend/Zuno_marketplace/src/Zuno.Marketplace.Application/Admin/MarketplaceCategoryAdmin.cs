@@ -29,6 +29,9 @@ public abstract class MarketplaceCategoryFields
     /// <summary><c>RetailOnly</c>, <c>WholesaleOnly</c> or <c>Either</c>.</summary>
     public string TradeMode { get; set; } = nameof(MarketplaceTradeMode.RetailOnly);
 
+    /// <summary>Posts say New or Used: new items keep a stock count, used ones are marked Sold.</summary>
+    public bool TracksStock { get; set; }
+
     public short DisplayOrder { get; set; }
 
     public bool IsActive { get; set; } = true;
@@ -259,6 +262,7 @@ public partial class MarketplaceCategoryAdminHandlers(IMarketplaceDbContext dbCo
         category.IconName = Clean(request.IconName);
         category.Kind = Enum.Parse<MarketplacePostKind>(request.Kind, ignoreCase: true);
         category.TradeMode = Enum.Parse<MarketplaceTradeMode>(request.TradeMode, ignoreCase: true);
+        category.TracksStock = request.TracksStock;
         category.DisplayOrder = request.DisplayOrder;
         category.IsActive = request.IsActive;
     }

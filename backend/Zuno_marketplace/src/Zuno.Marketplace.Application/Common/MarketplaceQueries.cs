@@ -54,7 +54,7 @@ internal static class MarketplaceQueries
         };
 
     /// <summary>
-    /// What a customer may see: live, started, in an active category, from a verified business.
+    /// What a customer may see: live, started, in stock, in an active category, from a verified business.
     /// The customer screens (phase 2) read through this one rule.
     /// </summary>
     public static IQueryable<MarketplacePost> VisibleToCustomers(
@@ -63,6 +63,7 @@ internal static class MarketplaceQueries
             .Where(p => p.StartsAt == null || p.StartsAt <= now)
             .Where(p => p.Category.IsActive)
             .Where(p => p.SubCategory == null || p.SubCategory.IsActive)
+            .Where(p => p.Condition != MarketplaceItemCondition.New || p.Quantity > 0)
             .Where(p => businesses.Any(b => b.OwnerUserId == p.OwnerUserId && b.IsVerified));
 
     /// <summary>Clamps a page request to the configured limits.</summary>

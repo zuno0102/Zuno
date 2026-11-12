@@ -40,8 +40,14 @@ public class MarketplacePost : BaseEntity
     /// <summary>Wholesale only: the smallest order, in <see cref="PriceUnit"/>.</summary>
     public int? MinOrderQuantity { get; set; }
 
-    /// <summary>How many are for sale (kg of bananas); for a food offer, the portions.</summary>
+    /// <summary>
+    /// How many are for sale (kg of bananas); for a food offer, the portions; for a new item in a
+    /// category that keeps stock, the stock left — 0 is out of stock.
+    /// </summary>
     public int? Quantity { get; set; }
+
+    /// <summary>New or Used, in a category that keeps stock; null elsewhere.</summary>
+    public MarketplaceItemCondition? Condition { get; set; }
 
     /// <summary>Food offer only: the usual price, shown struck through.</summary>
     public decimal? OriginalPrice { get; set; }
@@ -74,6 +80,15 @@ public class MarketplacePost : BaseEntity
 
     /// <summary>True when the post's time has passed — it then neither shows to customers nor uses a plan slot.</summary>
     public bool HasEnded(DateTimeOffset now) => EndsAt is { } end && end <= now;
+
+    /// <summary>A new item with a stock count: the business keeps the count up to date.</summary>
+    public bool KeepsStock => Condition == MarketplaceItemCondition.New;
+
+    /// <summary>A new item whose stock has run out: listed, but not shown to customers.</summary>
+    public bool IsOutOfStock => KeepsStock && Quantity is null or <= 0;
+
+    /// <summary>Closed or Sold: nothing about the post changes any more.</summary>
+    public bool IsFinal => Status is MarketplacePostStatus.Closed or MarketplacePostStatus.Sold;
 
     /// <summary>What the business and customers see: Active turns Expired once its end has passed.</summary>
     public MarketplacePostStatus ShownStatus(DateTimeOffset now) =>

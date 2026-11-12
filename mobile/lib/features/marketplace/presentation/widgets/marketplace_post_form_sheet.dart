@@ -77,6 +77,9 @@ class _MarketplacePostFormSheetState
   late String? _stateId = _old?.stateId;
   late String? _districtId = _old?.districtId;
   late String _tradeType = _old?.tradeType ?? MarketplaceTradeType.retail;
+
+  /// New or Used, in a category that keeps stock (Products).
+  late String? _condition = _old?.condition;
   late DateTime? _startsAt = _old?.startsAt;
   late DateTime? _endsAt = _old?.endsAt;
 
@@ -128,6 +131,40 @@ class _MarketplacePostFormSheetState
       category.isWholesaleOnly ||
       (category.sellsEitherWay && _tradeType == MarketplaceTradeType.wholesale);
 
+  /// A new item in a category that keeps stock: the form asks how many are in stock.
+  bool _keepsStock(MarketplaceCategory category) =>
+      category.tracksStock && _condition == MarketplaceItemCondition.newItem;
+
+  /// New or Used — from the server's table — then, for a new item, its stock. A used item is a
+  /// single piece: it has no stock and is marked sold from the post's menu.
+  List<Widget> _stockSection(
+    MarketplaceCategory category,
+    MarketplaceOptions? options,
+  ) => [
+    SelectField<String>(
+      key: const ValueKey('marketplace-condition'),
+      label: 'Condition',
+      options: [
+        for (final c in options?.conditions ?? const <MarketplaceOption>[])
+          SelectOption(c.code, c.name, detail: c.detail),
+      ],
+      initialValue: _condition,
+      validator: (v) => v == null ? 'Choose New or Used.' : null,
+      onChanged: (v) => setState(() => _condition = v),
+    ),
+    const SizedBox(height: 14),
+    if (_keepsStock(category)) ...[
+      _wholeNumber(
+        _quantity,
+        key: 'marketplace-stock',
+        label: 'Stock available',
+        required: true,
+        min: 0,
+      ),
+      const SizedBox(height: 14),
+    ],
+  ];
+
   MarketplacePostInput _input(MarketplaceCategory category) {
     final kind = category.kind;
     final wholesale = _sellsWholesale(category);
@@ -146,7 +183,11 @@ class _MarketplacePostFormSheetState
           ? MarketplaceTradeType.wholesale
           : MarketplaceTradeType.retail,
       minOrderQuantity: wholesale ? int.tryParse(_minOrder.text.trim()) : null,
-      quantity: kind == MarketplacePostKind.foodOffer || wholesale
+      condition: category.tracksStock ? _condition : null,
+      quantity:
+          kind == MarketplacePostKind.foodOffer ||
+              wholesale ||
+              _keepsStock(category)
           ? int.tryParse(_quantity.text.trim())
           : null,
       originalPrice: kind == MarketplacePostKind.foodOffer
@@ -391,12 +432,16 @@ class _MarketplacePostFormSheetState
   ) => switch (category.kind) {
     MarketplacePostKind.foodOffer => _foodSection(options),
     MarketplacePostKind.advertisement => _adSection(options),
-    _ => _listingSection(category),
+    _ => _listingSection(category, options),
   };
 
-  List<Widget> _listingSection(MarketplaceCategory category) {
+  List<Widget> _listingSection(
+    MarketplaceCategory category,
+    MarketplaceOptions? options,
+  ) {
     final wholesale = _sellsWholesale(category);
     return [
+      if (category.tracksStock) ..._stockSection(category, options),
       if (category.sellsEitherWay) ...[
         SelectField<String>(
           key: const ValueKey('marketplace-trade-type'),
@@ -708,6 +753,7 @@ class _MarketplacePostFormSheetState
     required String key,
     required String label,
     required bool required,
+    int min = 1,
   }) => TextFormField(
     key: ValueKey(key),
     controller: controller,
@@ -721,7 +767,7 @@ class _MarketplacePostFormSheetState
       final text = (v ?? '').trim();
       if (text.isEmpty) return required ? 'Required.' : null;
       final parsed = int.tryParse(text);
-      return parsed == null || parsed < 1 ? 'At least 1.' : null;
+      return parsed == null || parsed < min ? 'At least $min.' : null;
     },
   );
 }

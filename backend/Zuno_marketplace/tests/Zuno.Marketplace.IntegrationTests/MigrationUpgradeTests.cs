@@ -55,13 +55,97 @@ public class MigrationUpgradeTests(MarketplaceApiFactory factory) : IClassFixtur
         categories.Should().OnlyContain(c => Enum.IsDefined(c.TradeMode));
     }
 
+    [Fact]
+    public async Task Upgrade_GivesProductsTheirConditionAndStock_FromTheOldDetail()
+    {
+        var connectionString = await factory.NewDatabaseAsync();
+        await using var db = new MarketplaceDbContext(new DbContextOptionsBuilder<MarketplaceDbContext>()
+            .UseNpgsql(connectionString)
+            .UseSnakeCaseNamingConvention()
+            .Options);
+        var migrator = db.GetService<IMigrator>();
+        await migrator.MigrateAsync(FourCategories);
+
+        var usedCar = Guid.NewGuid();
+        var newSaree = Guid.NewGuid();
+        var unsaid = Guid.NewGuid();
+        var bananas = Guid.NewGuid();
+        await using (var connection = new NpgsqlConnection(connectionString))
+        {
+            await connection.OpenAsync();
+            await InsertAsync(connection, usedCar, MarketplaceCatalogSeedData.Products, "Swift", minOrder: null,
+                attributes: """[{"Key":"condition","Value":"Used"},{"Key":"brand","Value":"Maruti"}]""");
+            await InsertAsync(connection, newSaree, MarketplaceCatalogSeedData.Products, "Silk saree", minOrder: null,
+                attributes: """[{"Key":"condition","Value":"New"}]""");
+            await InsertAsync(connection, unsaid, MarketplaceCatalogSeedData.Products, "Toy car", minOrder: null);
+            await InsertAsync(connection, bananas, MarketplaceCatalogSeedData.B2BWholesale, "Nendran", minOrder: 1);
+        }
+
+        await migrator.MigrateAsync();
+
+        var posts = await db.Posts.IgnoreQueryFilters().AsNoTracking().ToDictionaryAsync(p => p.Id);
+        posts[usedCar].Condition.Should().Be(MarketplaceItemCondition.Used);
+        posts[usedCar].Quantity.Should().BeNull();
+        posts[usedCar].Attributes.Select(a => (a.Key, a.Value)).Should().Equal([("brand", "Maruti")], "the old detail leaves; the rest stay");
+        posts[newSaree].Condition.Should().Be(MarketplaceItemCondition.New);
+        posts[newSaree].Quantity.Should().Be(1);
+        posts[newSaree].Attributes.Should().BeEmpty();
+        posts[unsaid].Condition.Should().Be(MarketplaceItemCondition.New, "a product that never said is taken as new");
+        posts[unsaid].Quantity.Should().Be(1);
+        posts[bananas].Condition.Should().BeNull("B2B keeps no stock");
+
+        var statuses = await db.PostStatuses.AsNoTracking().Select(s => s.Code).ToListAsync();
+        statuses.Should().Contain(MarketplacePostStatus.Sold);
+    }
+
+    [Fact]
+    public async Task StockAndSold_RollsBack_WithSoldAndEmptyStockPosts_AndForwardAgain()
+    {
+        var connectionString = await factory.NewDatabaseAsync();
+        await using var db = new MarketplaceDbContext(new DbContextOptionsBuilder<MarketplaceDbContext>()
+            .UseNpgsql(connectionString)
+            .UseSnakeCaseNamingConvention()
+            .Options);
+        var migrator = db.GetService<IMigrator>();
+        await migrator.MigrateAsync();
+
+        var sold = Guid.NewGuid();
+        var empty = Guid.NewGuid();
+        await using (var connection = new NpgsqlConnection(connectionString))
+        {
+            await connection.OpenAsync();
+            await InsertAsync(connection, sold, MarketplaceCatalogSeedData.Products, "Swift", minOrder: null);
+            await InsertAsync(connection, empty, MarketplaceCatalogSeedData.Products, "Saree", minOrder: null);
+            await using var command = new NpgsqlCommand(
+                $"UPDATE marketplace_posts SET condition = {(short)MarketplaceItemCondition.Used}, status = {(short)MarketplacePostStatus.Sold} WHERE id = @sold; " +
+                $"UPDATE marketplace_posts SET condition = {(short)MarketplaceItemCondition.New}, quantity = 0 WHERE id = @empty;",
+                connection);
+            command.Parameters.AddWithValue("sold", sold);
+            command.Parameters.AddWithValue("empty", empty);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        await migrator.MigrateAsync(FourCategories);
+        await migrator.MigrateAsync();
+
+        var transitions = await db.PostTransitions.AsNoTracking().ToListAsync();
+        transitions.Where(t => t.ToStatus == MarketplacePostStatus.Closed).Select(t => t.ActionName).Should().OnlyContain(n => n == "Close");
+        transitions.Should().Contain(t => t.ToStatus == MarketplacePostStatus.Sold && t.Condition == MarketplaceItemCondition.Used);
+        var posts = await db.Posts.IgnoreQueryFilters().AsNoTracking().ToDictionaryAsync(p => p.Id);
+        posts[sold].Status.Should().Be(MarketplacePostStatus.Closed, "rolling back turned Sold into Closed");
+        posts[empty].Quantity.Should().Be(1, "rolling back turned an empty stock into 1");
+    }
+
+    private const string FourCategories = "20261112070639_MainCategoriesAndSubCategories";
+
     /// <summary>A post as the first release stored it — a retail listing.</summary>
-    private static async Task InsertAsync(NpgsqlConnection connection, Guid id, Guid categoryId, string title, int? minOrder)
+    private static async Task InsertAsync(
+        NpgsqlConnection connection, Guid id, Guid categoryId, string title, int? minOrder, string? attributes = null)
     {
         await using var command = new NpgsqlCommand(
             "INSERT INTO marketplace_posts (id, owner_user_id, category_id, kind, status, title, price, trade_type, " +
-            "min_order_quantity, district_id, created_date, is_deleted) " +
-            "VALUES (@id, @owner, @category, @kind, @status, @title, 100, @retail, @minOrder, @district, now(), false)",
+            "min_order_quantity, district_id, attributes, created_date, is_deleted) " +
+            "VALUES (@id, @owner, @category, @kind, @status, @title, 100, @retail, @minOrder, @district, @attributes::jsonb, now(), false)",
             connection);
         command.Parameters.AddWithValue("id", id);
         command.Parameters.AddWithValue("owner", Guid.NewGuid());
@@ -72,6 +156,7 @@ public class MigrationUpgradeTests(MarketplaceApiFactory factory) : IClassFixtur
         command.Parameters.AddWithValue("retail", (short)MarketplaceTradeType.Retail);
         command.Parameters.AddWithValue("minOrder", (object?)minOrder ?? DBNull.Value);
         command.Parameters.AddWithValue("district", LocationSeedData.DistrictId("Tamil Nadu", "Kanyakumari"));
+        command.Parameters.AddWithValue("attributes", (object?)attributes ?? DBNull.Value);
         await command.ExecuteNonQueryAsync();
     }
 }

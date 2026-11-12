@@ -54,6 +54,9 @@ MarketplacePostModel _$MarketplacePostModelFromJson(
   area: json['area'] as String?,
   latitude: (json['latitude'] as num?)?.toDouble(),
   longitude: (json['longitude'] as num?)?.toDouble(),
+  condition: json['condition'] as String?,
+  isOutOfStock: json['isOutOfStock'] as bool? ?? false,
+  canUpdateStock: json['canUpdateStock'] as bool? ?? false,
   attributes:
       (json['attributes'] as Map<String, dynamic>?)?.map(
         (k, e) => MapEntry(k, e as String),
@@ -110,6 +113,7 @@ MarketplaceCategoryModel _$MarketplaceCategoryModelFromJson(
   slug: json['slug'] as String,
   kind: json['kind'] as String,
   tradeMode: json['tradeMode'] as String,
+  tracksStock: json['tracksStock'] as bool? ?? false,
   displayOrder: (json['displayOrder'] as num).toInt(),
   isActive: json['isActive'] as bool,
   shortName: json['shortName'] as String?,
@@ -165,6 +169,7 @@ MarketplaceSummaryModel _$MarketplaceSummaryModelFromJson(
   paused: (json['paused'] as num).toInt(),
   expired: (json['expired'] as num).toInt(),
   closed: (json['closed'] as num).toInt(),
+  sold: (json['sold'] as num?)?.toInt() ?? 0,
   plan: MarketplacePlanModel.fromJson(json['plan'] as Map<String, dynamic>),
   categories:
       (json['categories'] as List<dynamic>?)
@@ -185,6 +190,7 @@ MarketplaceCategoryCountModel _$MarketplaceCategoryCountModelFromJson(
   paused: (json['paused'] as num).toInt(),
   expired: (json['expired'] as num).toInt(),
   closed: (json['closed'] as num).toInt(),
+  sold: (json['sold'] as num?)?.toInt() ?? 0,
 );
 
 MarketplaceOptionModel _$MarketplaceOptionModelFromJson(
@@ -214,7 +220,16 @@ MarketplaceOptionsModel _$MarketplaceOptionsModelFromJson(
           )
           .toList() ??
       const [],
+  conditions:
+      (json['conditions'] as List<dynamic>?)
+          ?.map(
+            (e) => MarketplaceOptionModel.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const [],
   maxAdDays: (json['maxAdDays'] as num).toInt(),
+  maxQuantity:
+      (json['maxQuantity'] as num?)?.toInt() ?? marketplaceDefaultMaxQuantity,
 );
 
 MarketplaceBusinessModel _$MarketplaceBusinessModelFromJson(

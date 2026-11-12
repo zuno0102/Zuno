@@ -56,6 +56,15 @@ public class BusinessMarketplaceController(
         return Ok(await mediator.Send(command, cancellationToken));
     }
 
+    /// <summary>Sets how many of a new item are left; 0 is out of stock.</summary>
+    [HttpPatch("{id:guid}/stock")]
+    public async Task<IActionResult> UpdateStock(
+        Guid id, [FromBody] UpdateMarketplacePostStockCommand command, CancellationToken cancellationToken)
+    {
+        command.Id = id;
+        return Ok(await mediator.Send(command, cancellationToken));
+    }
+
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
