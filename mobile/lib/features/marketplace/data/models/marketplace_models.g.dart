@@ -187,6 +187,16 @@ MarketplaceSubCategoryModel _$MarketplaceSubCategoryModelFromJson(
   displayOrder: (json['displayOrder'] as num).toInt(),
   isActive: json['isActive'] as bool,
   iconName: json['iconName'] as String?,
+  colourOptions:
+      (json['colourOptions'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      const [],
+  sizeOptions:
+      (json['sizeOptions'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      const [],
 );
 
 MarketplacePlanModel _$MarketplacePlanModelFromJson(
@@ -270,6 +280,14 @@ MarketplaceOptionsModel _$MarketplaceOptionsModelFromJson(
   maxAdDays: (json['maxAdDays'] as num).toInt(),
   maxQuantity:
       (json['maxQuantity'] as num?)?.toInt() ?? marketplaceDefaultMaxQuantity,
+  maxStartDaysAhead:
+      (json['maxStartDaysAhead'] as num?)?.toInt() ??
+      MarketplaceTextLimits.fallbackStartDaysAhead,
+  textLimits: json['textLimits'] == null
+      ? const MarketplaceTextLimits()
+      : marketplaceTextLimitsFromJson(
+          json['textLimits'] as Map<String, dynamic>,
+        ),
 );
 
 MarketplaceBusinessModel _$MarketplaceBusinessModelFromJson(

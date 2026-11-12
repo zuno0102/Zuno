@@ -1,6 +1,7 @@
 using FluentAssertions;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Zuno.Marketplace.Application.Admin;
 using Zuno.Marketplace.Application.Categories;
 using Zuno.Marketplace.Application.Common;
@@ -184,6 +185,39 @@ public class QueryAndCatalogTests
         options.Statuses.Should().ContainSingle(s => s.Code == "Expired").Which.Tone.Should().Be("danger");
         options.ImageSlots.Should().Be(5);
         options.MaxFoodOfferHours.Should().Be(24);
+    }
+
+    [Fact]
+    public async Task Options_SendTheTextLimitsTheValidatorsCheck()
+    {
+        using var test = new TestMarketplace();
+
+        var options = await test.CatalogHandlers.Handle(new GetMarketplaceOptionsQuery(), default);
+
+        options.TextLimits.Should().BeEquivalentTo(MarketplaceTextLimits.ToDto());
+        options.TextLimits.Title.Should().Be(MarketplaceTextLimits.Title);
+        options.MaxStartDaysAhead.Should().BePositive();
+
+        var validator = new CreateMarketplacePostCommandValidator(Options.Create(new MarketplaceSettings()));
+        var tooLong = TestMarketplace.Car(c => c.Title = new string('a', options.TextLimits.Title + 1));
+        var justFits = TestMarketplace.Car(c => c.Title = new string('a', options.TextLimits.Title));
+        validator.Validate(tooLong).Errors.Should().Contain(e => e.PropertyName == "Title");
+        validator.Validate(justFits).Errors.Should().NotContain(e => e.PropertyName == "Title");
+    }
+
+    [Theory]
+    [InlineData("9876543210", true)]
+    [InlineData("+919876543210", true)]
+    [InlineData("987654321", false)]
+    [InlineData("1234567890123456", false)]
+    [InlineData("98765 43210", false)]
+    public void ContactPhone_IsCheckedAgainstTheSentDigits(string phone, bool valid)
+    {
+        var validator = new CreateMarketplacePostCommandValidator(Options.Create(new MarketplaceSettings()));
+
+        var result = validator.Validate(TestMarketplace.Car(c => c.ContactPhone = phone));
+
+        result.Errors.Any(e => e.PropertyName == "ContactPhone").Should().Be(!valid);
     }
 
     [Fact]

@@ -170,6 +170,72 @@ public class SubCategoryAndTradeTests
     }
 
     [Fact]
+    public async Task Catalog_OffersEachProductKindItsColoursAndSizes()
+    {
+        using var test = new TestMarketplace();
+
+        var products = (await test.CatalogHandlers.Handle(new GetMarketplaceCategoriesQuery(), default))
+            .Single(c => c.Id == MarketplaceCatalogSeedData.Products).SubCategories.ToDictionary(s => s.Name);
+
+        products["Clothing"].SizeOptions.Should().StartWith(["XS", "S", "M", "L", "XL"]);
+        products["Clothing"].ColourOptions.Should().Contain("Maroon");
+        products["Sarees"].ColourOptions.Should().NotBeEmpty();
+        products["Sarees"].SizeOptions.Should().BeEmpty("a saree comes in colours, not sizes");
+        products["Footwear"].SizeOptions.Should().Contain("UK 7");
+        products["Vehicles"].ColourOptions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Admin_SubCategoryChoices_AreSavedTrimmed_AndShownToTheForm()
+    {
+        using var test = new TestMarketplace();
+
+        await test.AdminHandlers.Handle(new UpdateMarketplaceSubCategoryCommand
+        {
+            CategoryId = MarketplaceCatalogSeedData.Products,
+            Id = Sarees,
+            Name = "Sarees",
+            DisplayOrder = 1,
+            ColourOptions = [" Rani pink ", "Mustard"],
+            SizeOptions = ["5.5 m", "6.3 m"],
+        }, default);
+        var sarees = (await test.CatalogHandlers.Handle(new GetMarketplaceCategoriesQuery(), default))
+            .Single(c => c.Id == MarketplaceCatalogSeedData.Products).SubCategories.Single(s => s.Id == Sarees);
+
+        sarees.ColourOptions.Should().Equal("Rani pink", "Mustard");
+        sarees.SizeOptions.Should().Equal("5.5 m", "6.3 m");
+    }
+
+    [Theory]
+    [InlineData(new[] { "Red", "red" }, "each once")]
+    [InlineData(new[] { "" }, "must not be empty")]
+    [InlineData(new[] { "A colour name far longer than any shop would ever write" }, "40 characters")]
+    public void Admin_SubCategoryColours_DuplicateEmptyOrLong_AreRefused(string[] colours, string reason)
+    {
+        var result = new CreateMarketplaceSubCategoryCommandValidator().Validate(new CreateMarketplaceSubCategoryCommand
+        {
+            CategoryId = MarketplaceCatalogSeedData.Products,
+            Name = "Kurtis",
+            ColourOptions = [.. colours],
+        });
+
+        result.IsValid.Should().BeFalse(reason);
+    }
+
+    [Fact]
+    public void Admin_SubCategorySizes_MoreThanTheLimit_AreRefused()
+    {
+        var result = new CreateMarketplaceSubCategoryCommandValidator().Validate(new CreateMarketplaceSubCategoryCommand
+        {
+            CategoryId = MarketplaceCatalogSeedData.Products,
+            Name = "Kurtis",
+            SizeOptions = [.. Enumerable.Range(1, CreateMarketplaceSubCategoryCommandValidator.MaxChoices + 1).Select(i => $"S{i}")],
+        });
+
+        result.IsValid.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task Admin_HideSubCategory_HidesItAndItsDetailsFromBusinessesButNotTheAdmin()
     {
         using var test = new TestMarketplace();

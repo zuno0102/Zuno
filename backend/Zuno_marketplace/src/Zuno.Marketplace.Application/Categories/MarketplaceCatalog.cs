@@ -51,6 +51,8 @@ public class MarketplaceCatalogHandlers(
             MaxAdDays = limits.MaxAdDays,
             MaxPrice = limits.MaxPrice,
             MaxQuantity = limits.MaxQuantity,
+            MaxStartDaysAhead = limits.MaxStartDaysAhead,
+            TextLimits = MarketplaceTextLimits.ToDto(),
         };
     }
 }
@@ -83,6 +85,8 @@ internal static class MarketplaceCategoryMapper
                 IconName = s.IconName,
                 DisplayOrder = s.DisplayOrder,
                 IsActive = s.IsActive,
+                ColourOptions = s.ColourOptions,
+                SizeOptions = s.SizeOptions,
             })
             .ToList(),
         Fields = category.Fields

@@ -153,6 +153,53 @@ public class ProductDetailsTests
     }
 
     [Fact]
+    public async Task Create_PricedOnlyByItsColours_SellsFromTheLowest()
+    {
+        using var test = new TestMarketplace();
+
+        var dto = await test.SaveHandlers.Handle(Shirt(c =>
+        {
+            c.Price = null;
+            c.Variants = [new() { Colour = "Red", Stock = 30, Price = 499m }, new() { Colour = "Green", Stock = 25, Price = 449m }];
+        }), default);
+
+        dto.Price.Should().Be(449m, "the list shows the lowest price it sells at");
+        dto.Quantity.Should().Be(55);
+        dto.Variants.Select(v => v.Price).Should().Equal(499m, 449m);
+    }
+
+    [Fact]
+    public async Task Create_AColourWithoutAPrice_AndNoPriceToFallBackOn_IsRefused()
+    {
+        using var test = new TestMarketplace();
+
+        var failed = await FailedAsync(() => test.SaveHandlers.Handle(Shirt(c =>
+        {
+            c.Price = null;
+            c.Variants = [new() { Colour = "Red", Stock = 30, Price = 499m }, new() { Colour = "Green", Stock = 25 }];
+        }), default));
+
+        failed.Should().Contain("Give each colour / size its price.");
+    }
+
+    [Fact]
+    public async Task Create_MrpBelowTheDearestColour_IsRefused()
+    {
+        using var test = new TestMarketplace();
+        void Priced(CreateMarketplacePostCommand c)
+        {
+            c.Price = null;
+            c.Variants = [new() { Colour = "Red", Stock = 3, Price = 549m }, new() { Colour = "Green", Stock = 2, Price = 449m }];
+        }
+
+        var failed = await FailedAsync(() => test.SaveHandlers.Handle(Shirt(c => { Priced(c); c.OriginalPrice = 500m; }), default));
+        failed.Should().Contain("The MRP cannot be less than the price.");
+
+        var dto = await test.SaveHandlers.Handle(Shirt(c => { Priced(c); c.OriginalPrice = 599m; }), default);
+        dto.OriginalPrice.Should().Be(599m);
+    }
+
+    [Fact]
     public async Task Create_OwnDetails_AreKeptInOrder_ButNotTwiceOrBesideAnAskedOne()
     {
         using var test = new TestMarketplace();

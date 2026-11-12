@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -45,6 +44,7 @@ const _products = MarketplaceCategory(
       slug: 'sarees',
       displayOrder: 1,
       isActive: true,
+      colourOptions: ['Red', 'Green', 'Blue'],
     ),
     MarketplaceSubCategory(
       id: 's-vehicles',
@@ -52,6 +52,15 @@ const _products = MarketplaceCategory(
       slug: 'vehicles',
       displayOrder: 2,
       isActive: true,
+    ),
+    MarketplaceSubCategory(
+      id: 's-clothing',
+      name: 'Clothing',
+      slug: 'clothing',
+      displayOrder: 3,
+      isActive: true,
+      colourOptions: ['Red', 'Blue'],
+      sizeOptions: ['M', 'L', 'XL'],
     ),
   ],
   fields: [
@@ -496,9 +505,8 @@ Future<_FakeMarketplaceRepository> _pump(
   WidgetTester tester,
   Widget child, {
   _FakeMarketplaceRepository? repository,
-  Future<List<District>> Function()? districts,
   BusinessProfile profile = _profile,
-  District? businessDistrict,
+  District? businessDistrict = _kanyakumari,
 }) async {
   // A tall phone, so a long form needs no scrolling to reach a field.
   tester.view.physicalSize = const Size(1080, 4000);
@@ -511,7 +519,7 @@ Future<_FakeMarketplaceRepository> _pump(
         marketplaceRepositoryProvider.overrideWithValue(repo),
         businessServicesProvider.overrideWith(_NoServices.new),
         businessProfileProvider.overrideWith(() => _Profile(profile)),
-        // Where the business is: none unless a test gives it, so a product asks its district.
+        // Where the business is: Kanyakumari unless a test says its address cannot be placed.
         marketplaceBusinessDistrictProvider.overrideWith(
           (ref) async => businessDistrict,
         ),
@@ -520,7 +528,7 @@ Future<_FakeMarketplaceRepository> _pump(
           (ref) async => const [LocationState(id: 's-tn', name: 'Tamil Nadu')],
         ),
         districtsForStatesProvider.overrideWith(
-          (ref, csv) => districts?.call() ?? Future.value(const [_kanyakumari]),
+          (ref, csv) => Future.value(const [_kanyakumari]),
         ),
       ],
       child: MaterialApp(home: Scaffold(body: child)),
@@ -813,8 +821,6 @@ void main() {
       await _type(tester, 'marketplace-title', 'Nendran banana');
       await _type(tester, 'marketplace-price', '45');
       await _fillWholesale(tester);
-      await _choose(tester, 'marketplace-state', 's-tn');
-      await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
       await _save(tester);
 
       expect(repo.created.single.categoryId, _b2b.id);
@@ -1015,7 +1021,6 @@ void main() {
       expect(find.text('Title is required.'), findsOneWidget);
       expect(find.text('KM driven is required.'), findsOneWidget);
       expect(find.text('Choose Fuel.'), findsOneWidget);
-      expect(find.text('Choose the state.'), findsOneWidget);
       expect(repo.created, isEmpty);
     });
 
@@ -1030,8 +1035,6 @@ void main() {
       await _type(tester, 'marketplace-field-model_year', '2019');
       await _type(tester, 'marketplace-field-km_driven', '48000');
       await _choose(tester, 'marketplace-field-fuel', 'Petrol');
-      await _choose(tester, 'marketplace-state', 's-tn');
-      await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
       await _save(tester);
 
       final input = repo.created.single;
@@ -1060,8 +1063,6 @@ void main() {
       await _type(tester, 'marketplace-title', 'Nendran banana');
       await _type(tester, 'marketplace-price', '45');
       await _fillWholesale(tester);
-      await _choose(tester, 'marketplace-state', 's-tn');
-      await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
       await _save(tester);
 
       expect(repo.created.single.attributes, isEmpty);
@@ -1080,8 +1081,6 @@ void main() {
         expect(find.text('Price per unit'), findsOneWidget);
         await _type(tester, 'marketplace-title', 'Nendran banana');
         await _type(tester, 'marketplace-price', '45');
-        await _choose(tester, 'marketplace-state', 's-tn');
-        await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
         await _save(tester);
         expect(find.text('e.g. kg'), findsOneWidget);
         expect(find.text('Required.'), findsOneWidget);
@@ -1160,8 +1159,6 @@ void main() {
       await _choose(tester, 'marketplace-sub-category', 's-sarees');
       await _type(tester, 'marketplace-title', 'Silk saree');
       await _type(tester, 'marketplace-price', '2400');
-      await _choose(tester, 'marketplace-state', 's-tn');
-      await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
       await _save(tester);
 
       expect(repo.created.single.subCategoryId, 's-sarees');
@@ -1226,8 +1223,6 @@ void main() {
       await _type(tester, 'marketplace-title', 'Nendran banana');
       await _type(tester, 'marketplace-price', '45');
       await _fillWholesale(tester);
-      await _choose(tester, 'marketplace-state', 's-tn');
-      await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
       await _save(tester);
 
       expect(find.text('KM driven must be a number.'), findsOneWidget);
@@ -1273,8 +1268,6 @@ void main() {
         await _type(tester, 'marketplace-title', 'Nendran banana');
         await _type(tester, 'marketplace-price', '45');
         await _fillWholesale(tester);
-        await _choose(tester, 'marketplace-state', 's-tn');
-        await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
 
         final save = find.byKey(const ValueKey('primary-button'));
         await tester.ensureVisible(save);
@@ -1312,8 +1305,6 @@ void main() {
       await _type(tester, 'marketplace-title', 'Nendran banana');
       await _type(tester, 'marketplace-price', '45');
       await _fillWholesale(tester);
-      await _choose(tester, 'marketplace-state', 's-tn');
-      await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
       await _save(tester);
 
       final reason = find.textContaining('Free plan allows 1 active post');
@@ -1329,65 +1320,137 @@ void main() {
     Future<void> fillSaree(WidgetTester tester) async {
       await _type(tester, 'marketplace-title', 'Cotton saree');
       await _type(tester, 'marketplace-price', '499');
-      await _choose(tester, 'marketplace-state', 's-tn');
-      await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
     }
 
-    testWidgets('colours and sizes each carry their own stock', (tester) async {
-      final repo = await _pump(tester, const BusinessMarketplaceTab());
-      await _openFormFor(
-        tester,
-        _products,
-        sub: 's-sarees',
-        condition: MarketplaceItemCondition.newItem,
-      );
-      expect(find.byKey(const ValueKey('marketplace-stock')), findsOneWidget);
+    Future<void> tapChip(WidgetTester tester, String key) async {
+      final chip = find.byKey(ValueKey(key));
+      await tester.ensureVisible(chip);
+      await tester.pumpAndSettle();
+      await tester.tap(chip);
+      await tester.pumpAndSettle();
+    }
 
-      for (var i = 0; i < 2; i++) {
-        final add = find.byKey(const ValueKey('marketplace-add-variant'));
-        await tester.ensureVisible(add);
-        await tester.tap(add);
-        await tester.pumpAndSettle();
-      }
+    Future<void> openNew(WidgetTester tester, String sub) => _openFormFor(
+      tester,
+      _products,
+      sub: sub,
+      condition: MarketplaceItemCondition.newItem,
+    );
+
+    testWidgets('a new product is priced and stocked in one place', (
+      tester,
+    ) async {
+      final repo = await _pump(tester, const BusinessMarketplaceTab());
+      await openNew(tester, 's-sarees');
+
+      expect(find.text('Price and stock'), findsOneWidget);
+      expect(find.text('Stock available'), findsNothing);
       expect(
-        find.byKey(const ValueKey('marketplace-stock')),
+        find.byKey(const ValueKey('marketplace-price-unit')),
         findsNothing,
-        reason: 'each colour / size has its own stock now',
+        reason: 'a product sells by the piece',
       );
-      await _type(tester, 'marketplace-variant-colour-0', 'Red');
-      await _type(tester, 'marketplace-variant-stock-0', '4');
-      await _type(tester, 'marketplace-variant-colour-1', 'Blue');
-      await _type(tester, 'marketplace-variant-stock-1', '0');
-      await _type(tester, 'marketplace-variant-price-1', '549');
-      await fillSaree(tester);
+      await _type(tester, 'marketplace-title', 'Cotton saree');
+      await _type(tester, 'marketplace-price', '499');
+      await _type(tester, 'marketplace-stock', '5');
       await _save(tester);
 
       final input = repo.created.single;
-      expect(input.quantity, isNull, reason: 'the server adds them up');
+      expect((input.price, input.quantity, input.priceUnit), (499, 5, null));
+      expect(input.variants, isEmpty);
+    });
+
+    testWidgets('a saree: tap its colours, each with its own price and stock', (
+      tester,
+    ) async {
+      final repo = await _pump(tester, const BusinessMarketplaceTab());
+      await openNew(tester, 's-sarees');
+      await _type(tester, 'marketplace-title', 'Silk saree');
+      await tapChip(tester, 'marketplace-colour-Red');
+      await tapChip(tester, 'marketplace-colour-Green');
+
+      expect(
+        find.byKey(const ValueKey('marketplace-price')),
+        findsNothing,
+        reason: 'the price is in each colour now',
+      );
+      expect(find.byKey(const ValueKey('marketplace-stock')), findsNothing);
+      await _type(tester, 'marketplace-variant-price-0', '499');
+      await _type(tester, 'marketplace-variant-stock-0', '30');
+      await _type(tester, 'marketplace-variant-price-1', '449');
+      await _type(tester, 'marketplace-variant-stock-1', '25');
+      await _save(tester);
+
+      final input = repo.created.single;
+      expect(
+        (input.price, input.quantity),
+        (null, null),
+        reason: 'the server takes them from the colours',
+      );
       expect(
         [for (final v in input.variants) (v.name, v.stock, v.price)],
-        [('Red', 4, null), ('Blue', 0, 549.0)],
+        [('Red', 30, 499.0), ('Green', 25, 449.0)],
       );
     });
 
-    testWidgets('a colour / size row needs a colour or a size', (tester) async {
+    testWidgets('a shirt: colours x sizes, filled at once, one left out', (
+      tester,
+    ) async {
       final repo = await _pump(tester, const BusinessMarketplaceTab());
-      await _openFormFor(
-        tester,
-        _products,
-        sub: 's-sarees',
-        condition: MarketplaceItemCondition.newItem,
+      await openNew(tester, 's-clothing');
+      await _type(tester, 'marketplace-title', 'Cotton shirt');
+      for (final chip in ['colour-Red', 'colour-Blue', 'size-M', 'size-L']) {
+        await tapChip(tester, 'marketplace-$chip');
+      }
+      expect(
+        find.byKey(const ValueKey('marketplace-variant-Blue-L')),
+        findsOneWidget,
+        reason: 'every colour in every size',
       );
-      final add = find.byKey(const ValueKey('marketplace-add-variant'));
-      await tester.ensureVisible(add);
-      await tester.tap(add);
-      await tester.pumpAndSettle();
-      await _type(tester, 'marketplace-variant-stock-0', '3');
-      await fillSaree(tester);
+
+      await _type(tester, 'marketplace-same-price', '399');
+      await _type(tester, 'marketplace-same-stock', '5');
+      await tapChip(tester, 'marketplace-apply-all');
+      await tapChip(tester, 'marketplace-variant-remove-3');
+      await _save(tester);
+
+      final input = repo.created.single;
+      expect(
+        [for (final v in input.variants) (v.name, v.stock, v.price)],
+        [('Red · M', 5, 399.0), ('Red · L', 5, 399.0), ('Blue · M', 5, 399.0)],
+      );
+    });
+
+    testWidgets('a colour of its own can be typed in', (tester) async {
+      final repo = await _pump(tester, const BusinessMarketplaceTab());
+      await openNew(tester, 's-sarees');
+      await _type(tester, 'marketplace-title', 'Silk saree');
+      await _type(tester, 'marketplace-colour-own', 'Rani pink');
+      await tapChip(tester, 'marketplace-colour-add');
+
+      expect(
+        find.byKey(const ValueKey('marketplace-colour-Rani pink')),
+        findsOneWidget,
+      );
+      await _type(tester, 'marketplace-variant-price-0', '899');
+      await _type(tester, 'marketplace-variant-stock-0', '2');
+      await _save(tester);
+
+      expect(repo.created.single.variants.single.colour, 'Rani pink');
+    });
+
+    testWidgets('every colour / size needs its price and stock', (
+      tester,
+    ) async {
+      final repo = await _pump(tester, const BusinessMarketplaceTab());
+      await openNew(tester, 's-sarees');
+      await _type(tester, 'marketplace-title', 'Silk saree');
+      await tapChip(tester, 'marketplace-colour-Red');
       await _save(tester);
 
       expect(repo.created, isEmpty);
-      expect(find.text('Colour or size.'), findsOneWidget);
+      expect(find.text('Enter a valid price.'), findsOneWidget);
+      expect(find.text('Required.'), findsOneWidget);
     });
 
     testWidgets('MRP below the price is refused; own details are sent', (
@@ -1433,30 +1496,22 @@ void main() {
             latitude: 8.3,
             longitude: 77.2,
           ),
-          businessDistrict: _kanyakumari,
         );
 
-    Future<void> fillTitleAndPrice(WidgetTester tester) async {
-      await _type(tester, 'marketplace-title', 'Cotton saree');
-      await _type(tester, 'marketplace-price', '499');
-    }
-
-    testWidgets('a product is where the business is registered — no address '
-        'asked', (tester) async {
+    testWidgets('a post is where the business is registered — no place asked', (
+      tester,
+    ) async {
       final repo = await pumpRegistered(tester);
       await _openFormFor(tester, _products, sub: 's-sarees');
 
-      expect(
-        find.text(
-          'From your business address: Marthandam, Kanyakumari, Tamil Nadu',
-        ),
-        findsOneWidget,
-      );
-      for (final gone in ['marketplace-state', 'marketplace-district-null']) {
-        expect(find.byKey(ValueKey(gone)), findsNothing);
-      }
+      expect(find.text('Where it is'), findsNothing);
+      expect(find.byKey(const ValueKey('marketplace-state')), findsNothing);
       expect(find.text('Town or area (optional)'), findsNothing);
-      await fillTitleAndPrice(tester);
+      expect(
+        find.byKey(const ValueKey('marketplace-no-business-address')),
+        findsNothing,
+      );
+      await fillSaree(tester);
       await _save(tester);
 
       final input = repo.created.single;
@@ -1467,10 +1522,31 @@ void main() {
       expect(input.deliveryStateId, isNull);
     });
 
+    testWidgets(
+      'an address that cannot be placed: the form says so and does not save',
+      (tester) async {
+        final repo = await _pump(
+          tester,
+          const BusinessMarketplaceTab(),
+          businessDistrict: null,
+        );
+        await _openFormFor(tester, _food);
+
+        expect(
+          find.byKey(const ValueKey('marketplace-no-business-address')),
+          findsOneWidget,
+        );
+        expect(find.byKey(const ValueKey('marketplace-state')), findsNothing);
+        await _save(tester);
+
+        expect(repo.created, isEmpty);
+      },
+    );
+
     testWidgets('it can ship to one whole state', (tester) async {
       final repo = await pumpRegistered(tester);
       await _openFormFor(tester, _products, sub: 's-sarees');
-      await fillTitleAndPrice(tester);
+      await fillSaree(tester);
       await _choose(
         tester,
         'marketplace-ships-to',
@@ -1483,7 +1559,7 @@ void main() {
           matching: find.text('Tamil Nadu'),
         ),
         findsOneWidget,
-        reason: 'starts in the business\'s own state',
+        reason: 'starts in the business own state',
       );
       expect(
         find.byKey(const ValueKey('marketplace-delivery-districts-s-tn')),
@@ -1502,7 +1578,7 @@ void main() {
     ) async {
       final repo = await pumpRegistered(tester);
       await _openFormFor(tester, _products, sub: 's-sarees');
-      await fillTitleAndPrice(tester);
+      await fillSaree(tester);
       await _choose(
         tester,
         'marketplace-ships-to',
@@ -1528,23 +1604,6 @@ void main() {
       expect(input.deliversEverywhere, isFalse);
       expect(input.deliveryStateId, 's-tn');
       expect(input.deliveryDistrictIds, ['d-kk']);
-    });
-
-    testWidgets('a business address with no district: the form asks it', (
-      tester,
-    ) async {
-      final repo = await _pump(tester, const BusinessMarketplaceTab());
-      await _openFormFor(tester, _products, sub: 's-sarees');
-
-      expect(
-        find.textContaining('does not say which district'),
-        findsOneWidget,
-      );
-      expect(find.text('Town or area (optional)'), findsNothing);
-      await fillSaree(tester);
-      await _save(tester);
-
-      expect(repo.created.single.districtId, 'd-kk');
     });
 
     testWidgets('Update stock asks which colour / size first', (tester) async {
@@ -1587,40 +1646,6 @@ void main() {
     });
   });
 
-  group('District', () {
-    testWidgets('stays locked and says so until the districts have loaded', (
-      tester,
-    ) async {
-      final loading = Completer<List<District>>();
-      await _pump(
-        tester,
-        const BusinessMarketplaceTab(),
-        districts: () => loading.future,
-      );
-      await _openFormFor(tester, _food);
-      await _choose(tester, 'marketplace-state', 's-tn');
-
-      final district = find.byKey(const ValueKey('marketplace-district-s-tn'));
-      expect(find.text('Loading districts…'), findsOneWidget);
-      await tester.tap(district);
-      await tester.pumpAndSettle();
-      expect(
-        find.byKey(const ValueKey('select-option-d-kk')),
-        findsNothing,
-        reason: 'no empty list opens while loading',
-      );
-
-      loading.complete(const [_kanyakumari]);
-      await tester.pumpAndSettle();
-      expect(find.text('Loading districts…'), findsNothing);
-      await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
-      expect(
-        find.descendant(of: district, matching: find.text('Kanyakumari')),
-        findsOneWidget,
-      );
-    });
-  });
-
   group('Products: stock for new, Sold for used', () {
     testWidgets('a new item asks its stock, and 0 is allowed', (tester) async {
       final repo = await _pump(tester, const BusinessMarketplaceTab());
@@ -1634,8 +1659,6 @@ void main() {
       expect(find.byKey(const ValueKey('marketplace-stock')), findsOneWidget);
       await _type(tester, 'marketplace-title', 'Silk saree');
       await _type(tester, 'marketplace-price', '2400');
-      await _choose(tester, 'marketplace-state', 's-tn');
-      await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
       await _save(tester);
       expect(repo.created, isEmpty, reason: 'stock is required');
       expect(find.text('Required.'), findsOneWidget);
@@ -1658,8 +1681,6 @@ void main() {
       expect(find.text('One piece — mark it sold when it goes'), findsNothing);
       await _type(tester, 'marketplace-title', 'Silk saree');
       await _type(tester, 'marketplace-price', '900');
-      await _choose(tester, 'marketplace-state', 's-tn');
-      await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
       await _save(tester);
 
       final input = repo.created.single;
@@ -1677,8 +1698,6 @@ void main() {
 
       await _type(tester, 'marketplace-title', 'Silk saree');
       await _type(tester, 'marketplace-price', '900');
-      await _choose(tester, 'marketplace-state', 's-tn');
-      await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
       await _save(tester);
 
       expect(repo.created, isEmpty);
@@ -2117,11 +2136,69 @@ void main() {
       expect(find.text('Products'), findsOneWidget);
       expect(
         find.text(
-          'Listing · Retail only · New / used, with stock · 2 sub-categories',
+          'Listing · Retail only · New / used, with stock · 3 sub-categories',
         ),
         findsOneWidget,
       );
       expect(find.text('Hidden'), findsOneWidget);
+    });
+
+    testWidgets('a kind of product is given its colours and sizes to tap', (
+      tester,
+    ) async {
+      final repo = await _pump(
+        tester,
+        const AdminMarketplaceCategoriesScreen(),
+      );
+      await tester.tap(find.text('Products'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('admin-marketplace-sub-sarees')),
+      );
+      await tester.pumpAndSettle();
+
+      final colours = find.byKey(
+        const ValueKey('admin-marketplace-sub-colours'),
+      );
+      expect(
+        find.descendant(of: colours, matching: find.text('Red, Green, Blue')),
+        findsOneWidget,
+        reason: 'starts from what it offers now',
+      );
+      await tester.enterText(colours, 'Red, Rani pink , , Mustard');
+      await tester.enterText(
+        find.byKey(const ValueKey('admin-marketplace-sub-sizes')),
+        '5.5 m, 6.3 m',
+      );
+      await tester.tap(find.byKey(const ValueKey('primary-button')));
+      await tester.pumpAndSettle();
+
+      final (categoryId, input) = repo.savedSubCategories.single;
+      expect(categoryId, 'cat-products');
+      expect(input.colourOptions, ['Red', 'Rani pink', 'Mustard']);
+      expect(input.sizeOptions, ['5.5 m', '6.3 m']);
+    });
+
+    testWidgets('colours named twice are refused', (tester) async {
+      final repo = await _pump(
+        tester,
+        const AdminMarketplaceCategoriesScreen(),
+      );
+      await tester.tap(find.text('Products'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('admin-marketplace-sub-sarees')),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('admin-marketplace-sub-colours')),
+        'Red, red',
+      );
+      await tester.tap(find.byKey(const ValueKey('primary-button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Each choice must be different.'), findsOneWidget);
+      expect(repo.savedSubCategories, isEmpty);
     });
 
     testWidgets('a new category is saved', (tester) async {

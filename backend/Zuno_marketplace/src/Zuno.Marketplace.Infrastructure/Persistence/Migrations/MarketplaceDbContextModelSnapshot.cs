@@ -1384,6 +1384,13 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("category_id");
 
+                    b.PrimitiveCollection<List<string>>("ColourOptions")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text[]")
+                        .HasColumnName("colour_options")
+                        .HasDefaultValueSql("'{}'");
+
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
@@ -1423,6 +1430,13 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
+                    b.PrimitiveCollection<List<string>>("SizeOptions")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text[]")
+                        .HasColumnName("size_options")
+                        .HasDefaultValueSql("'{}'");
+
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -1444,374 +1458,442 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         {
                             Id = new Guid("c7777777-0000-0000-0003-000000000001"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            ColourOptions = new List<string> { "Red", "Blue", "Green", "Black", "White", "Yellow", "Pink", "Maroon", "Orange", "Purple", "Grey", "Brown", "Gold", "Silver", "Multicolour" },
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)1,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Sarees",
+                            SizeOptions = new List<string>(),
                             Slug = "sarees"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0003-000000000002"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            ColourOptions = new List<string> { "Red", "Blue", "Green", "Black", "White", "Yellow", "Pink", "Maroon", "Orange", "Purple", "Grey", "Brown", "Gold", "Silver", "Multicolour" },
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)2,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Clothing",
+                            SizeOptions = new List<string> { "XS", "S", "M", "L", "XL", "XXL", "3XL", "Free size" },
                             Slug = "clothing"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0003-000000000003"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            ColourOptions = new List<string> { "Black", "Brown", "Tan", "White", "Blue", "Red", "Grey", "Multicolour" },
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)3,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Footwear",
+                            SizeOptions = new List<string> { "UK 3", "UK 4", "UK 5", "UK 6", "UK 7", "UK 8", "UK 9", "UK 10", "UK 11" },
                             Slug = "footwear"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0003-000000000004"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            ColourOptions = new List<string> { "Red", "Blue", "Green", "Black", "White", "Yellow", "Pink", "Maroon", "Orange", "Purple", "Grey", "Brown", "Gold", "Silver", "Multicolour" },
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)4,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Toys",
+                            SizeOptions = new List<string>(),
                             Slug = "toys"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0003-000000000005"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            ColourOptions = new List<string> { "Black", "White", "Blue", "Silver", "Gold", "Green" },
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)5,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Mobiles & electronics",
+                            SizeOptions = new List<string>(),
                             Slug = "mobiles-electronics"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0003-000000000006"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            ColourOptions = new List<string> { "Red", "Blue", "Green", "Black", "White", "Yellow", "Pink", "Maroon", "Orange", "Purple", "Grey", "Brown", "Gold", "Silver", "Multicolour" },
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)6,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Home & kitchen",
+                            SizeOptions = new List<string> { "Small", "Medium", "Large" },
                             Slug = "home-kitchen"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0003-000000000007"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            ColourOptions = new List<string> { "Brown", "Black", "White", "Grey", "Natural wood" },
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)7,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Furniture",
+                            SizeOptions = new List<string>(),
                             Slug = "furniture"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0003-000000000008"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)8,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Beauty",
+                            SizeOptions = new List<string>(),
                             Slug = "beauty"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0003-000000000009"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)9,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Books & stationery",
+                            SizeOptions = new List<string>(),
                             Slug = "books-stationery"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0003-000000000010"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)10,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Vehicles",
+                            SizeOptions = new List<string>(),
                             Slug = "vehicles"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0003-000000000011"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)11,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Property",
+                            SizeOptions = new List<string>(),
                             Slug = "property"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0003-000000000012"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            ColourOptions = new List<string> { "Red", "Blue", "Green", "Black", "White", "Yellow", "Pink", "Maroon", "Orange", "Purple", "Grey", "Brown", "Gold", "Silver", "Multicolour" },
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)12,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Other",
+                            SizeOptions = new List<string>(),
                             Slug = "other"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0004-000000000001"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)1,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Fruits",
+                            SizeOptions = new List<string>(),
                             Slug = "fruits"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0004-000000000002"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)2,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Vegetables",
+                            SizeOptions = new List<string>(),
                             Slug = "vegetables"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0004-000000000003"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)3,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Coconut",
+                            SizeOptions = new List<string>(),
                             Slug = "coconut"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0004-000000000004"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)4,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Chicken & meat",
+                            SizeOptions = new List<string>(),
                             Slug = "chicken-meat"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0004-000000000005"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)5,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Fish",
+                            SizeOptions = new List<string>(),
                             Slug = "fish"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0004-000000000006"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)6,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Grains & pulses",
+                            SizeOptions = new List<string>(),
                             Slug = "grains-pulses"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0004-000000000007"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)7,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Spices",
+                            SizeOptions = new List<string>(),
                             Slug = "spices"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0004-000000000008"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)8,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Dairy",
+                            SizeOptions = new List<string>(),
                             Slug = "dairy"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0004-000000000009"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)9,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Other",
+                            SizeOptions = new List<string>(),
                             Slug = "other"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0005-000000000001"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000005"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)1,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Biryani & meals",
+                            SizeOptions = new List<string>(),
                             Slug = "biryani-meals"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0005-000000000002"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000005"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)2,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Pizza & burgers",
+                            SizeOptions = new List<string>(),
                             Slug = "pizza-burgers"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0005-000000000003"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000005"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)3,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Sandwiches & snacks",
+                            SizeOptions = new List<string>(),
                             Slug = "sandwiches-snacks"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0005-000000000004"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000005"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)4,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Bakery & sweets",
+                            SizeOptions = new List<string>(),
                             Slug = "bakery-sweets"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0005-000000000005"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000005"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)5,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Tea & juice",
+                            SizeOptions = new List<string>(),
                             Slug = "tea-juice"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0005-000000000006"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000005"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)6,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Other",
+                            SizeOptions = new List<string>(),
                             Slug = "other"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0006-000000000001"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000006"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)1,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Sale & offers",
+                            SizeOptions = new List<string>(),
                             Slug = "sale-offers"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0006-000000000002"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000006"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)2,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Cricket tournament",
+                            SizeOptions = new List<string>(),
                             Slug = "cricket-tournament"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0006-000000000003"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000006"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)3,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Football tournament",
+                            SizeOptions = new List<string>(),
                             Slug = "football-tournament"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0006-000000000004"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000006"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)4,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Shop opening",
+                            SizeOptions = new List<string>(),
                             Slug = "shop-opening"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0006-000000000005"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000006"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)5,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "New brand opening",
+                            SizeOptions = new List<string>(),
                             Slug = "new-brand-opening"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0006-000000000006"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000006"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)6,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Events & celebrations",
+                            SizeOptions = new List<string>(),
                             Slug = "events-celebrations"
                         },
                         new
                         {
                             Id = new Guid("c7777777-0000-0000-0006-000000000007"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000006"),
+                            ColourOptions = new List<string>(),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)7,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Other",
+                            SizeOptions = new List<string>(),
                             Slug = "other"
                         });
                 });

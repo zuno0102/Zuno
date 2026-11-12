@@ -109,17 +109,9 @@ public class UpdateMarketplacePostCommand : MarketplacePostFields, IRequest<Mark
 public abstract class MarketplacePostFieldsValidator<T> : AbstractValidator<T>
     where T : MarketplacePostFields
 {
-    public const int TitleMax = 120;
-    public const int DescriptionMax = 2000;
-    public const int UnitMax = 20;
-    public const int AreaMax = 120;
-    public const int AttributeValueMax = 200;
     public const int MaxAttributes = 30;
     public const int MaxCustomDetails = 15;
-    public const int CustomNameMax = 40;
     public const int MaxVariants = 50;
-    public const int ColourMax = 40;
-    public const int SizeMax = 20;
     public const int MaxDeliveryDistricts = 100;
 
     protected MarketplacePostFieldsValidator(IOptions<MarketplaceSettings> settings)
@@ -127,10 +119,10 @@ public abstract class MarketplacePostFieldsValidator<T> : AbstractValidator<T>
         var limits = settings.Value;
         RuleFor(x => x.CategoryId).NotEmpty();
         RuleFor(x => x.DistrictId).NotEmpty();
-        RuleFor(x => x.Title).NotEmpty().MaximumLength(TitleMax);
-        RuleFor(x => x.Description).MaximumLength(DescriptionMax);
-        RuleFor(x => x.PriceUnit).MaximumLength(UnitMax);
-        RuleFor(x => x.Area).MaximumLength(AreaMax);
+        RuleFor(x => x.Title).NotEmpty().MaximumLength(MarketplaceTextLimits.Title);
+        RuleFor(x => x.Description).MaximumLength(MarketplaceTextLimits.Description);
+        RuleFor(x => x.PriceUnit).MaximumLength(MarketplaceTextLimits.PriceUnit);
+        RuleFor(x => x.Area).MaximumLength(MarketplaceTextLimits.Area);
         RuleFor(x => x.Price).GreaterThan(0).LessThanOrEqualTo(limits.MaxPrice).When(x => x.Price.HasValue);
         RuleFor(x => x.OriginalPrice).GreaterThan(0).LessThanOrEqualTo(limits.MaxPrice).When(x => x.OriginalPrice.HasValue);
         RuleFor(x => x.Quantity).InclusiveBetween(0, limits.MaxQuantity).When(x => x.Quantity.HasValue);
@@ -141,8 +133,8 @@ public abstract class MarketplacePostFieldsValidator<T> : AbstractValidator<T>
         RuleFor(x => x.Condition)
             .Must(c => string.IsNullOrEmpty(c) || Enum.TryParse<MarketplaceItemCondition>(c, ignoreCase: true, out var parsed) && Enum.IsDefined(parsed))
             .WithMessage("Condition must be New or Used.");
-        RuleFor(x => x.ContactPhone).Matches(@"^\+?[0-9]{10,15}$").When(x => !string.IsNullOrEmpty(x.ContactPhone))
-            .WithMessage("Contact phone must be 10 to 15 digits.");
+        RuleFor(x => x.ContactPhone).Matches(MarketplaceTextLimits.ContactPhonePattern).When(x => !string.IsNullOrEmpty(x.ContactPhone))
+            .WithMessage($"Contact phone must be {MarketplaceTextLimits.ContactPhoneMinDigits} to {MarketplaceTextLimits.ContactPhoneMaxDigits} digits.");
         RuleFor(x => x.Latitude).InclusiveBetween(-90, 90).When(x => x.Latitude.HasValue);
         RuleFor(x => x.Longitude).InclusiveBetween(-180, 180).When(x => x.Longitude.HasValue);
         RuleFor(x => x).Must(x => x.Latitude.HasValue == x.Longitude.HasValue)
@@ -151,8 +143,8 @@ public abstract class MarketplacePostFieldsValidator<T> : AbstractValidator<T>
             .OverridePropertyName("CustomDetails").WithMessage($"Add at most {MaxCustomDetails} details of your own.");
         RuleForEach(x => x.CustomDetails).ChildRules(detail =>
         {
-            detail.RuleFor(d => d.Name).NotEmpty().WithMessage("Name the detail, e.g. Leather type.").MaximumLength(CustomNameMax);
-            detail.RuleFor(d => d.Value).NotEmpty().WithMessage("Give the detail a value.").MaximumLength(AttributeValueMax);
+            detail.RuleFor(d => d.Name).NotEmpty().WithMessage("Name the detail, e.g. Leather type.").MaximumLength(MarketplaceTextLimits.CustomDetailName);
+            detail.RuleFor(d => d.Value).NotEmpty().WithMessage("Give the detail a value.").MaximumLength(MarketplaceTextLimits.AttributeValue);
         });
         RuleFor(x => x.Variants.Count).LessThanOrEqualTo(MaxVariants)
             .OverridePropertyName("Variants").WithMessage($"Add at most {MaxVariants} colours and sizes.");
@@ -160,16 +152,16 @@ public abstract class MarketplacePostFieldsValidator<T> : AbstractValidator<T>
         {
             variant.RuleFor(v => v).Must(v => !string.IsNullOrWhiteSpace(v.Colour) || !string.IsNullOrWhiteSpace(v.Size))
                 .OverridePropertyName("Colour").WithMessage("Give a colour, a size, or both.");
-            variant.RuleFor(v => v.Colour).MaximumLength(ColourMax);
-            variant.RuleFor(v => v.Size).MaximumLength(SizeMax);
+            variant.RuleFor(v => v.Colour).MaximumLength(MarketplaceTextLimits.Colour);
+            variant.RuleFor(v => v.Size).MaximumLength(MarketplaceTextLimits.Size);
             variant.RuleFor(v => v.Stock).InclusiveBetween(0, limits.MaxQuantity);
             variant.RuleFor(v => v.Price).GreaterThan(0).LessThanOrEqualTo(limits.MaxPrice).When(v => v.Price.HasValue);
         });
         RuleFor(x => x.DeliveryDistrictIds.Count).LessThanOrEqualTo(MaxDeliveryDistricts)
             .OverridePropertyName("DeliveryDistrictIds").WithMessage($"Choose at most {MaxDeliveryDistricts} districts.");
         RuleFor(x => x.Attributes.Count).LessThanOrEqualTo(MaxAttributes).OverridePropertyName("Attributes");
-        RuleForEach(x => x.Attributes).Must(a => (a.Value?.Length ?? 0) <= AttributeValueMax)
-            .WithMessage($"Each detail must be {AttributeValueMax} characters or fewer.");
+        RuleForEach(x => x.Attributes).Must(a => (a.Value?.Length ?? 0) <= MarketplaceTextLimits.AttributeValue)
+            .WithMessage($"Each detail must be {MarketplaceTextLimits.AttributeValue} characters or fewer.");
     }
 }
 
@@ -338,7 +330,9 @@ public class SaveMarketplacePostHandlers(
 
         if (wanted.Count != 0)
         {
+            // Its stock is theirs added up; its price is the lowest they sell at ("from ₹449").
             post.Quantity = wanted.Sum(v => v.Stock);
+            post.Price = MarketplacePostRules.VariantPrices(request).Min();
         }
     }
 
@@ -413,6 +407,14 @@ public static class MarketplacePostRules
             : null;
 
     /// <summary>New or Used as sent; null when missing or not one of them.</summary>
+    /// <summary>A new product sold in colours or sizes.</summary>
+    public static bool HasVariants(MarketplaceCategory category, MarketplacePostFields request) =>
+        category.TracksStock && request.Variants.Count != 0 && RequestedCondition(request) == MarketplaceItemCondition.New;
+
+    /// <summary>What each colour / size sells at — its own price, else the post's (older apps send one).</summary>
+    public static List<decimal> VariantPrices(MarketplacePostFields request) =>
+        [.. request.Variants.Select(v => v.Price ?? request.Price).OfType<decimal>()];
+
     public static MarketplaceItemCondition? RequestedCondition(MarketplacePostFields request) =>
         Enum.TryParse<MarketplaceItemCondition>(request.Condition, ignoreCase: true, out var condition) && Enum.IsDefined(condition)
             ? condition
@@ -469,7 +471,15 @@ public static class MarketplacePostRules
         switch (category.Kind)
         {
             case MarketplacePostKind.Listing:
-                if (request.Price is null)
+                // A new product with colours or sizes is priced by them; anything else by its own price.
+                if (HasVariants(category, request))
+                {
+                    if (VariantPrices(request).Count != request.Variants.Count)
+                    {
+                        Fail(nameof(request.Variants), "Give each colour / size its price.");
+                    }
+                }
+                else if (request.Price is null)
                 {
                     Fail(nameof(request.Price), "Enter a price.");
                 }
@@ -568,7 +578,9 @@ public static class MarketplacePostRules
             }
         }
 
-        if (category.TracksStock && request.OriginalPrice is { } mrp && request.Price is { } price && mrp < price)
+        // The MRP is above every price it is sold at: each colour / size's, or the one price.
+        var prices = HasVariants(category, request) ? VariantPrices(request) : [.. request.Price is { } one ? [one] : Array.Empty<decimal>()];
+        if (category.TracksStock && request.OriginalPrice is { } mrp && prices.Count != 0 && mrp < prices.Max())
         {
             fail(nameof(request.OriginalPrice), "The MRP cannot be less than the price.");
         }

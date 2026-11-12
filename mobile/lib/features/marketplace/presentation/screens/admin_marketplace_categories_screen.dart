@@ -111,7 +111,11 @@ class _CategoryCard extends StatelessWidget {
               trailing: const Icon(Icons.edit_outlined, size: 18),
               onTap: () => _showSheet(
                 context,
-                _SubCategorySheet(categoryId: category.id, existing: s),
+                _SubCategorySheet(
+                  categoryId: category.id,
+                  existing: s,
+                  offersColoursAndSizes: category.tracksStock,
+                ),
               ),
             ),
           if (wholeCategory.isNotEmpty) ...[
@@ -136,6 +140,7 @@ class _CategoryCard extends StatelessWidget {
                   _SubCategorySheet(
                     categoryId: category.id,
                     nextOrder: subs.length + 1,
+                    offersColoursAndSizes: category.tracksStock,
                   ),
                 ),
                 icon: const Icon(Icons.add),
@@ -367,7 +372,7 @@ class _CategorySheetState extends ConsumerState<_CategorySheet> {
       TextFormField(
         key: const ValueKey('admin-marketplace-category-name'),
         controller: _name,
-        maxLength: 100,
+        maxLength: _limits(ref).categoryName,
         decoration: const InputDecoration(
           labelText: 'Name',
           border: OutlineInputBorder(),
@@ -378,7 +383,7 @@ class _CategorySheetState extends ConsumerState<_CategorySheet> {
       const SizedBox(height: 14),
       TextFormField(
         controller: _shortName,
-        maxLength: 20,
+        maxLength: _limits(ref).categoryShortName,
         decoration: const InputDecoration(
           labelText: 'Short name for the square (optional)',
           hintText: 'e.g. B2B, Food, Ads',
@@ -388,7 +393,7 @@ class _CategorySheetState extends ConsumerState<_CategorySheet> {
       const SizedBox(height: 6),
       TextFormField(
         controller: _description,
-        maxLength: 200,
+        maxLength: _limits(ref).categoryDescription,
         decoration: const InputDecoration(
           labelText: 'What goes in it (optional)',
           hintText: 'e.g. Sarees, shirts, toys',
@@ -416,7 +421,7 @@ class _CategorySheetState extends ConsumerState<_CategorySheet> {
           Expanded(
             child: TextFormField(
               controller: _icon,
-              maxLength: 50,
+              maxLength: _limits(ref).iconName,
               decoration: const InputDecoration(
                 labelText: 'Icon name (optional)',
                 border: OutlineInputBorder(),
@@ -459,11 +464,15 @@ class _SubCategorySheet extends ConsumerStatefulWidget {
     required this.categoryId,
     this.existing,
     this.nextOrder = 1,
+    this.offersColoursAndSizes = false,
   });
 
   final String categoryId;
   final MarketplaceSubCategory? existing;
   final int nextOrder;
+
+  /// A category that keeps stock (Products): its kinds offer colours and sizes to tap.
+  final bool offersColoursAndSizes;
 
   @override
   ConsumerState<_SubCategorySheet> createState() => _SubCategorySheetState();
@@ -475,13 +484,20 @@ class _SubCategorySheetState extends ConsumerState<_SubCategorySheet> {
   late final _order = TextEditingController(
     text: '${widget.existing?.displayOrder ?? widget.nextOrder}',
   );
+  late final _colours = TextEditingController(
+    text: widget.existing?.colourOptions.join(', '),
+  );
+  late final _sizes = TextEditingController(
+    text: widget.existing?.sizeOptions.join(', '),
+  );
   late bool _active = widget.existing?.isActive ?? true;
   bool _saving = false;
 
   @override
   void dispose() {
-    _name.dispose();
-    _order.dispose();
+    for (final c in [_name, _order, _colours, _sizes]) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -492,6 +508,8 @@ class _SubCategorySheetState extends ConsumerState<_SubCategorySheet> {
       name: _name.text.trim(),
       displayOrder: int.tryParse(_order.text) ?? widget.nextOrder,
       isActive: _active,
+      colourOptions: _commaList(_colours.text),
+      sizeOptions: _commaList(_sizes.text),
     );
     final repository = ref.read(marketplaceRepositoryProvider);
     final existing = widget.existing;
@@ -515,7 +533,7 @@ class _SubCategorySheetState extends ConsumerState<_SubCategorySheet> {
       TextFormField(
         key: const ValueKey('admin-marketplace-sub-name'),
         controller: _name,
-        maxLength: 100,
+        maxLength: _limits(ref).categoryName,
         decoration: const InputDecoration(
           labelText: 'Name',
           hintText: 'e.g. Sarees, Fruits, Cricket tournament',
@@ -526,6 +544,22 @@ class _SubCategorySheetState extends ConsumerState<_SubCategorySheet> {
       ),
       const SizedBox(height: 14),
       _orderField(_order),
+      if (widget.offersColoursAndSizes) ...[
+        const SizedBox(height: 14),
+        _ChoicesField(
+          key: const ValueKey('admin-marketplace-sub-colours'),
+          controller: _colours,
+          label: 'Colours to tap, separated by commas',
+          hint: 'Red, Maroon, Rani pink',
+        ),
+        const SizedBox(height: 14),
+        _ChoicesField(
+          key: const ValueKey('admin-marketplace-sub-sizes'),
+          controller: _sizes,
+          label: 'Sizes to tap, separated by commas',
+          hint: 'S, M, L, XL',
+        ),
+      ],
       SwitchListTile(
         contentPadding: EdgeInsets.zero,
         title: const Text('Shown on the post form'),
@@ -593,10 +627,7 @@ class _FieldSheetState extends ConsumerState<_FieldSheet> {
   late bool _active = _old?.isActive ?? true;
   bool _saving = false;
 
-  List<String> get _options => [
-    for (final c in _choices.text.split(','))
-      if (c.trim().isNotEmpty) c.trim(),
-  ];
+  List<String> get _options => _commaList(_choices.text);
 
   @override
   void dispose() {
@@ -646,7 +677,7 @@ class _FieldSheetState extends ConsumerState<_FieldSheet> {
         TextFormField(
           key: const ValueKey('admin-marketplace-field-label'),
           controller: _label,
-          maxLength: 60,
+          maxLength: _limits(ref).fieldLabel,
           decoration: const InputDecoration(
             labelText: 'Label',
             hintText: 'e.g. KM driven',
@@ -682,21 +713,11 @@ class _FieldSheetState extends ConsumerState<_FieldSheet> {
         ),
         const SizedBox(height: 14),
         if (isList) ...[
-          TextFormField(
+          _ChoicesField(
             controller: _choices,
-            decoration: const InputDecoration(
-              labelText: 'Choices, separated by commas',
-              hintText: 'Petrol, Diesel, Electric',
-              border: OutlineInputBorder(),
-            ),
-            validator: (_) {
-              final options = _options;
-              if (options.isEmpty) return 'Give at least one choice.';
-              final distinct = {for (final o in options) o.toLowerCase()};
-              return distinct.length == options.length
-                  ? null
-                  : 'Each choice must be different.';
-            },
+            label: 'Choices, separated by commas',
+            hint: 'Petrol, Diesel, Electric',
+            required: true,
           ),
           const SizedBox(height: 14),
         ],
@@ -705,7 +726,7 @@ class _FieldSheetState extends ConsumerState<_FieldSheet> {
             Expanded(
               child: TextFormField(
                 controller: _unit,
-                maxLength: 20,
+                maxLength: _limits(ref).fieldUnit,
                 decoration: const InputDecoration(
                   labelText: 'Unit (optional)',
                   hintText: 'km, cents',
@@ -740,3 +761,49 @@ class _FieldSheetState extends ConsumerState<_FieldSheet> {
     );
   }
 }
+
+/// "Red, Maroon , , Pink" → ["Red", "Maroon", "Pink"].
+List<String> _commaList(String text) => [
+  for (final c in text.split(','))
+    if (c.trim().isNotEmpty) c.trim(),
+];
+
+/// A list typed with commas — a detail's choices, a kind of product's colours or sizes. Each must
+/// be different; [required] asks for at least one.
+class _ChoicesField extends StatelessWidget {
+  const _ChoicesField({
+    required this.controller,
+    required this.label,
+    required this.hint,
+    this.required = false,
+    super.key,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final bool required;
+
+  @override
+  Widget build(BuildContext context) => TextFormField(
+    controller: controller,
+    decoration: InputDecoration(
+      labelText: label,
+      hintText: hint,
+      border: const OutlineInputBorder(),
+    ),
+    validator: (_) {
+      final choices = _commaList(controller.text);
+      if (required && choices.isEmpty) return 'Give at least one choice.';
+      final distinct = {for (final c in choices) c.toLowerCase()};
+      return distinct.length == choices.length
+          ? null
+          : 'Each choice must be different.';
+    },
+  );
+}
+
+/// How long each name, label and choice may be, from the server's options.
+MarketplaceTextLimits _limits(WidgetRef ref) =>
+    ref.watch(marketplaceOptionsProvider).value?.textLimits ??
+    const MarketplaceTextLimits();

@@ -104,17 +104,23 @@ final class MarketplaceRepositoryProvider
 String _$marketplaceRepositoryHash() =>
     r'1d397ebe41931ef15b4af61f39cfb41fed90d134';
 
-/// Where the business is, as a district — where its products are said to be, so the form does not
-/// ask. From its registered pin; else its town and state matched by name; null when neither does,
-/// and the form then asks for the district.
+/// Where the business is, as a district — where its posts are said to be, so the post form never
+/// asks. Tried in turn, each only if the one before says nothing:
+/// 1. its registered map pin;
+/// 2. its registered address (street, town, PIN code, state) found on the map;
+/// 3. its town matched to a district's name in its state.
+/// Null when none does: the form then sends the business to its profile.
 
 @ProviderFor(marketplaceBusinessDistrict)
 final marketplaceBusinessDistrictProvider =
     MarketplaceBusinessDistrictProvider._();
 
-/// Where the business is, as a district — where its products are said to be, so the form does not
-/// ask. From its registered pin; else its town and state matched by name; null when neither does,
-/// and the form then asks for the district.
+/// Where the business is, as a district — where its posts are said to be, so the post form never
+/// asks. Tried in turn, each only if the one before says nothing:
+/// 1. its registered map pin;
+/// 2. its registered address (street, town, PIN code, state) found on the map;
+/// 3. its town matched to a district's name in its state.
+/// Null when none does: the form then sends the business to its profile.
 
 final class MarketplaceBusinessDistrictProvider
     extends
@@ -124,9 +130,12 @@ final class MarketplaceBusinessDistrictProvider
           FutureOr<District?>
         >
     with $FutureModifier<District?>, $FutureProvider<District?> {
-  /// Where the business is, as a district — where its products are said to be, so the form does not
-  /// ask. From its registered pin; else its town and state matched by name; null when neither does,
-  /// and the form then asks for the district.
+  /// Where the business is, as a district — where its posts are said to be, so the post form never
+  /// asks. Tried in turn, each only if the one before says nothing:
+  /// 1. its registered map pin;
+  /// 2. its registered address (street, town, PIN code, state) found on the map;
+  /// 3. its town matched to a district's name in its state.
+  /// Null when none does: the form then sends the business to its profile.
   MarketplaceBusinessDistrictProvider._()
     : super(
         from: null,
@@ -153,7 +162,7 @@ final class MarketplaceBusinessDistrictProvider
 }
 
 String _$marketplaceBusinessDistrictHash() =>
-    r'ab7b540c36c79574f47fe6e838d11f4bf4117dbb';
+    r'df2d55d404a64c1060a9cee6cd6f714cdd3801d9';
 
 /// The categories a business can post in, with their details. The server caches them too. Kept
 /// for the session — they change only when the super admin edits them, which reloads them — so

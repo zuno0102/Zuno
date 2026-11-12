@@ -4,15 +4,20 @@ import 'package:zuno/features/marketplace/domain/entities/marketplace_post.dart'
 /// The words a post's card is made of. Plain functions, so every kind reads the same wherever a
 /// post is shown — the business's list now, the customer's screens later.
 
-/// "₹45/kg", "₹4,20,000", "₹180 → ₹99/plate"; null for an advertisement without a price.
+/// "₹45/kg", "₹4,20,000", "₹180 → ₹99/plate", "₹449 – ₹499" for colours priced apart; null for an
+/// advertisement without a price.
 String? marketplacePriceLine(MarketplacePost post) {
   final price = post.price;
   if (price == null) return null;
   final unit = post.priceUnit == null ? '' : '/${post.priceUnit}';
+  final prices = [for (final v in post.variants) v.price ?? price];
+  final highest = prices.fold(price, (a, b) => b > a ? b : a);
+  final lowest = prices.fold(price, (a, b) => b < a ? b : a);
+  final now = highest > lowest
+      ? '${rupees(lowest)} – ${rupees(highest)}'
+      : rupees(price);
   final was = post.originalPrice;
-  return was == null
-      ? '${rupees(price)}$unit'
-      : '${rupees(was)} → ${rupees(price)}$unit';
+  return was == null ? '$now$unit' : '${rupees(was)} → $now$unit';
 }
 
 /// "20 portions", "Wholesale · min 100 kg · 2000 kg for sale" — what is on offer and how it sells.

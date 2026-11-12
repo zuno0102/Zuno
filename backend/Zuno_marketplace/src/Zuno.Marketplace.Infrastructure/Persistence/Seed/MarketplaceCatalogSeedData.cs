@@ -187,8 +187,27 @@ public static class MarketplaceCatalogSeedData
             Slug = Slug(name),
             DisplayOrder = (short)(i + 1),
             IsActive = true,
+            ColourOptions = categoryId == Products && ProductChoices.TryGetValue(name, out var choices) ? [.. choices.Colours] : [],
+            SizeOptions = categoryId == Products && ProductChoices.TryGetValue(name, out var sized) ? [.. sized.Sizes] : [],
             CreatedDate = SeedDate,
         });
+
+    private static readonly string[] CommonColours =
+        ["Red", "Blue", "Green", "Black", "White", "Yellow", "Pink", "Maroon", "Orange", "Purple", "Grey", "Brown", "Gold", "Silver", "Multicolour"];
+
+    /// <summary>The colours and sizes each kind of product offers to tap; the super admin edits them later.</summary>
+    private static readonly Dictionary<string, (string[] Colours, string[] Sizes)> ProductChoices = new()
+    {
+        ["Sarees"] = (CommonColours, []),
+        ["Clothing"] = (CommonColours, ["XS", "S", "M", "L", "XL", "XXL", "3XL", "Free size"]),
+        ["Footwear"] = (["Black", "Brown", "Tan", "White", "Blue", "Red", "Grey", "Multicolour"],
+            ["UK 3", "UK 4", "UK 5", "UK 6", "UK 7", "UK 8", "UK 9", "UK 10", "UK 11"]),
+        ["Toys"] = (CommonColours, []),
+        ["Mobiles & electronics"] = (["Black", "White", "Blue", "Silver", "Gold", "Green"], []),
+        ["Home & kitchen"] = (CommonColours, ["Small", "Medium", "Large"]),
+        ["Furniture"] = (["Brown", "Black", "White", "Grey", "Natural wood"], []),
+        ["Other"] = (CommonColours, []),
+    };
 
     private static string Slug(string name) =>
         string.Join('-', name.ToLowerInvariant().Split([' ', '&', '/'], StringSplitOptions.RemoveEmptyEntries));

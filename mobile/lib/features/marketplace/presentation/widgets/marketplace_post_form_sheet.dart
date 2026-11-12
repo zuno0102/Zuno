@@ -71,7 +71,6 @@ class _MarketplacePostFormSheetState
   late final _minOrder = TextEditingController(
     text: _old?.minOrderQuantity?.toString(),
   );
-  late final _area = TextEditingController(text: _old?.area);
   late final _phone = TextEditingController(text: _old?.contactPhone);
   late final _attributes = MarketplaceAttributeValues(
     _old?.attributes ?? const {},
@@ -79,8 +78,6 @@ class _MarketplacePostFormSheetState
 
   late String? _categoryId = _old?.categoryId ?? widget.categoryId;
   late String? _subCategoryId = _old?.subCategoryId;
-  late String? _stateId = _old?.stateId;
-  late String? _districtId = _old?.districtId;
   late String _tradeType = _old?.tradeType ?? MarketplaceTradeType.retail;
 
   /// New or Used, in a category that keeps stock (Products).
@@ -88,9 +85,13 @@ class _MarketplacePostFormSheetState
   late DateTime? _startsAt = _old?.startsAt;
   late DateTime? _endsAt = _old?.endsAt;
 
-  /// A new product's colours and sizes, and the business's own details.
-  late final _variants = MarketplaceVariantRows(_old?.variants ?? const [])
-    ..addListener(_rebuild);
+  /// A new product's price and stock — one of each, or one per colour / size — and the
+  /// business's own details.
+  late final _grid = MarketplaceVariantGrid(
+    saved: _old?.variants ?? const [],
+    price: _old?.price,
+    stock: _old?.quantity,
+  );
   late final _customDetails = MarketplaceCustomDetailRows(
     _old?.customDetails ?? const [],
   );
@@ -100,10 +101,6 @@ class _MarketplacePostFormSheetState
       _old?.shipsTo ?? MarketplaceShipsTo.allIndia;
   late String? _shipStateId = _old?.deliveryStateId;
   late Set<String> _deliveryDistrictIds = {...?_old?.deliveryDistrictIds};
-
-  void _rebuild() {
-    if (mounted) setState(() {});
-  }
 
   late final _media = ServiceMediaSelection(
     slotCount:
@@ -136,12 +133,11 @@ class _MarketplacePostFormSheetState
       _priceUnit,
       _quantity,
       _minOrder,
-      _area,
       _phone,
     ]) {
       c.dispose();
     }
-    _variants.dispose();
+    _grid.dispose();
     _customDetails.dispose();
     _attributes.dispose();
     _media.dispose();
@@ -177,6 +173,16 @@ class _MarketplacePostFormSheetState
       onChanged: (v) => setState(() => _condition = v),
     ),
     const SizedBox(height: 14),
+    if (_keepsStock(category)) ...[
+      MarketplaceVariantEditor(
+        grid: _grid,
+        colourOptions: _subCategory(category)?.colourOptions ?? const [],
+        sizeOptions: _subCategory(category)?.sizeOptions ?? const [],
+        maxQuantity: options?.maxQuantity ?? marketplaceDefaultMaxQuantity,
+        limits: _limits,
+      ),
+      const SizedBox(height: 14),
+    ],
     // MRP: what it usually sells for, shown struck through beside the price.
     TextFormField(
       key: const ValueKey('marketplace-mrp'),
@@ -193,48 +199,40 @@ class _MarketplacePostFormSheetState
         if (text.isEmpty) return null;
         final mrp = double.tryParse(text);
         if (mrp == null || mrp <= 0) return 'Enter a valid price.';
-        final price = double.tryParse(_price.text.trim());
+        // Above every price it sells at: each colour / size's, or the one price.
+        final price = _keepsStock(category)
+            ? _grid.highestPrice
+            : double.tryParse(_price.text.trim());
         return price != null && mrp < price
             ? 'Cannot be less than the price.'
             : null;
       },
     ),
     const SizedBox(height: 14),
-    if (_keepsStock(category)) ...[
-      // One stock count, until the product has colours or sizes: then each has its own.
-      if (_variants.isEmpty) ...[
-        _wholeNumber(
-          _quantity,
-          key: 'marketplace-stock',
-          label: 'Stock available',
-          required: true,
-          min: 0,
-        ),
-        const SizedBox(height: 14),
-      ],
-      MarketplaceVariantsSection(
-        rows: _variants,
-        maxQuantity: options?.maxQuantity ?? marketplaceDefaultMaxQuantity,
-      ),
-      const SizedBox(height: 14),
-    ],
   ];
+
+  /// How long each text may be, from the server's options.
+  MarketplaceTextLimits get _limits =>
+      ref.watch(marketplaceOptionsProvider).value?.textLimits ??
+      const MarketplaceTextLimits();
+
+  /// The sub-category picked — whose colours and sizes the form offers to tap.
+  MarketplaceSubCategory? _subCategory(MarketplaceCategory category) =>
+      category.subCategories.where((s) => s.id == _subCategoryId).firstOrNull;
 
   /// The business's district, when its registered address says it.
   District? get _businessDistrict =>
       ref.read(marketplaceBusinessDistrictProvider).value;
 
-  /// Where the post is. A product is where the business is registered — the form asks only when
-  /// that address does not say; anything else is where the form says.
-  String? _placeDistrictId(MarketplaceCategory? category) =>
-      (category?.tracksStock ?? false)
-      ? _businessDistrict?.id ?? _districtId
-      : _districtId;
+  /// Where the post is: where the business is registered. An old post the address cannot place
+  /// keeps where it was.
+  String? get _placeDistrictId => _businessDistrict?.id ?? _old?.districtId;
 
   MarketplacePostInput _input(MarketplaceCategory category) {
     final kind = category.kind;
     final wholesale = _sellsWholesale(category);
-    final fromBusiness = category.tracksStock && _businessDistrict != null;
+    final keepsStock = _keepsStock(category);
+    final fromBusiness = _businessDistrict != null;
     final profile = ref.read(businessProfileProvider).value;
     final shipsTo = category.tracksStock
         ? _shipsTo
@@ -244,10 +242,13 @@ class _MarketplacePostFormSheetState
       subCategoryId: category.subCategories.isEmpty ? null : _subCategoryId,
       title: _title.text.trim(),
       description: _clean(_description),
+      // A new product with colours or sizes is priced by them; the server takes the lowest.
       price: kind == MarketplacePostKind.advertisement
           ? null
+          : keepsStock
+          ? _grid.price
           : double.tryParse(_price.text.trim()),
-      priceUnit: kind == MarketplacePostKind.advertisement
+      priceUnit: kind == MarketplacePostKind.advertisement || keepsStock
           ? null
           : _clean(_priceUnit),
       tradeType: wholesale
@@ -256,20 +257,19 @@ class _MarketplacePostFormSheetState
       minOrderQuantity: wholesale ? int.tryParse(_minOrder.text.trim()) : null,
       condition: category.tracksStock ? _condition : null,
       // With colours and sizes the server adds their stock up; otherwise the one count.
-      quantity:
-          kind == MarketplacePostKind.foodOffer ||
-              wholesale ||
-              (_keepsStock(category) && _variants.isEmpty)
+      quantity: keepsStock
+          ? _grid.stock
+          : kind == MarketplacePostKind.foodOffer || wholesale
           ? int.tryParse(_quantity.text.trim())
           : null,
-      variants: _keepsStock(category) ? _variants.values : const [],
+      variants: keepsStock ? _grid.variants : const [],
       // A food offer's usual price, or a product's MRP.
       originalPrice:
           kind == MarketplacePostKind.foodOffer || category.tracksStock
           ? double.tryParse(_originalPrice.text.trim())
           : null,
       customDetails: _customDetails.values,
-      // A product's place is the business's: its pin, so "near you" works.
+      // A post's place is the business's: its pin, so "near you" works.
       latitude: fromBusiness ? profile?.latitude : _old?.latitude,
       longitude: fromBusiness ? profile?.longitude : _old?.longitude,
       deliversEverywhere: shipsTo == MarketplaceShipsTo.allIndia,
@@ -284,8 +284,8 @@ class _MarketplacePostFormSheetState
       contactPhone: kind == MarketplacePostKind.advertisement
           ? _clean(_phone)
           : null,
-      districtId: _placeDistrictId(category)!,
-      area: fromBusiness ? profile?.city : _clean(_area),
+      districtId: _placeDistrictId!,
+      area: fromBusiness ? profile?.city : _old?.area,
       attributes: _attributes.valuesFor(category.fieldsFor(_subCategoryId)),
     );
   }
@@ -295,8 +295,8 @@ class _MarketplacePostFormSheetState
     final valid = _formKey.currentState!.validate();
     final problem = category == null
         ? 'Choose a category.'
-        : _placeDistrictId(category) == null
-        ? 'Choose the district.'
+        : _placeDistrictId == null
+        ? _noAddress
         : null;
     if (!valid || problem != null || category == null) {
       setState(() => _errorMessage = problem);
@@ -468,7 +468,7 @@ class _MarketplacePostFormSheetState
               TextFormField(
                 key: const ValueKey('marketplace-title'),
                 controller: _title,
-                maxLength: 120,
+                maxLength: _limits.title,
                 decoration: const InputDecoration(
                   labelText: 'Title',
                   hintText: 'e.g. Swift VXi 2019, 10 cents land, Veg biryani',
@@ -482,7 +482,7 @@ class _MarketplacePostFormSheetState
               TextFormField(
                 controller: _description,
                 maxLines: 3,
-                maxLength: 2000,
+                maxLength: _limits.description,
                 decoration: const InputDecoration(
                   labelText: 'Description (optional)',
                   border: OutlineInputBorder(),
@@ -495,10 +495,14 @@ class _MarketplacePostFormSheetState
                 MarketplaceCategoryFieldsSection(
                   fields: category.fieldsFor(_subCategoryId),
                   values: _attributes,
+                  maxValueLength: _limits.attributeValue,
                   onChanged: () => setState(() {}),
                 ),
               if (category != null) ...[
-                MarketplaceCustomDetailsSection(rows: _customDetails),
+                MarketplaceCustomDetailsSection(
+                  rows: _customDetails,
+                  limits: _limits,
+                ),
                 const SizedBox(height: 14),
               ],
               ..._placeSection(category),
@@ -553,37 +557,40 @@ class _MarketplacePostFormSheetState
         ),
         const SizedBox(height: 14),
       ],
-      _priceRow(
-        priceLabel: wholesale ? 'Price per unit' : 'Price',
-        unitHint: 'kg, dozen, piece',
-        unitRequired: wholesale,
-      ),
-      if (wholesale) ...[
-        const SizedBox(height: 14),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: _wholeNumber(
-                _minOrder,
-                key: 'marketplace-min-order',
-                label: 'Smallest order',
-                required: true,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _wholeNumber(
-                _quantity,
-                key: 'marketplace-quantity',
-                label: 'Quantity for sale (optional)',
-                required: false,
-              ),
-            ),
-          ],
+      // A new product is priced in "Price and stock" above, per colour / size.
+      if (!_keepsStock(category)) ...[
+        _priceRow(
+          priceLabel: wholesale ? 'Price per unit' : 'Price',
+          unitHint: 'kg, dozen, piece',
+          unitRequired: wholesale,
         ),
+        if (wholesale) ...[
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _wholeNumber(
+                  _minOrder,
+                  key: 'marketplace-min-order',
+                  label: 'Smallest order',
+                  required: true,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _wholeNumber(
+                  _quantity,
+                  key: 'marketplace-quantity',
+                  label: 'Quantity for sale (optional)',
+                  required: false,
+                ),
+              ),
+            ],
+          ),
+        ],
+        const SizedBox(height: 14),
       ],
-      const SizedBox(height: 14),
     ];
   }
 
@@ -654,7 +661,7 @@ class _MarketplacePostFormSheetState
         controller: _phone,
         keyboardType: TextInputType.phone,
         inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9+]'))],
-        maxLength: 15,
+        maxLength: _limits.contactPhoneMaxDigits + 1,
         decoration: const InputDecoration(
           labelText: 'Contact phone (optional)',
           border: OutlineInputBorder(),
@@ -662,9 +669,9 @@ class _MarketplacePostFormSheetState
         ),
         validator: (v) {
           final text = (v ?? '').trim();
-          return text.isEmpty || RegExp(r'^\+?[0-9]{10,15}$').hasMatch(text)
+          return text.isEmpty || _limits.isContactPhone(text)
               ? null
-              : 'Enter 10 to 15 digits.';
+              : 'Enter ${_limits.contactPhoneMinDigits} to ${_limits.contactPhoneMaxDigits} digits.';
         },
       ),
       const SizedBox(height: 14),
@@ -676,7 +683,16 @@ class _MarketplacePostFormSheetState
   List<Widget> _window({required bool withTime, String? helper}) {
     final today = DateTime.now();
     final first = DateTime(today.year, today.month, today.day);
-    final last = first.add(const Duration(days: 400));
+    // As far ahead as a start may be, plus the longest run an advert may have.
+    final options = ref.watch(marketplaceOptionsProvider).value;
+    final last = first.add(
+      Duration(
+        days:
+            (options?.maxStartDaysAhead ??
+                MarketplaceTextLimits.fallbackStartDaysAhead) +
+            (options?.maxAdDays ?? 0),
+      ),
+    );
     return [
       DateTimeField(
         key: const ValueKey('marketplace-starts-at'),
@@ -764,123 +780,44 @@ class _MarketplacePostFormSheetState
     }),
   );
 
-  /// Where the post is. A product is where the business is registered, so the form only says
-  /// so; it asks only when that address does not name a district. Then, for a product, where it
-  /// ships.
+  /// Said when the business's registered address does not tell its district.
+  static const _noAddress =
+      'Add your business address in your profile. Your posts are shown where your business is.';
+
+  /// Where a post is comes from the business's registered address, so the form never asks. It
+  /// only says so when that address cannot place the business. A product then says where it ships.
   List<Widget> _placeSection(MarketplaceCategory? category) {
-    final states = ref.watch(locationStatesProvider).value ?? const [];
-    if (!(category?.tracksStock ?? false)) return _whereItIs(states);
-
+    final theme = Theme.of(context);
     final business = ref.watch(marketplaceBusinessDistrictProvider);
-    final home = business.value;
+    // Kept loaded: the post takes its town and pin from the profile when saved.
+    ref.watch(businessProfileProvider);
+    final unplaced =
+        !business.isLoading && business.value == null && _old == null;
     return [
-      if (home != null || business.isLoading)
-        _fromBusinessNote(home)
-      else
-        ..._whereItIs(
-          states,
-          note:
-              'Your business address does not say which district it is in. Choose it '
-              'here, or add your address in your profile.',
-          withArea: false,
-        ),
-      const SizedBox(height: 14),
-      ..._shipsToSection(states, home),
-    ];
-  }
-
-  /// "From your business address: Marthandam, Kanyakumari, Tamil Nadu".
-  Widget _fromBusinessNote(District? home) {
-    final theme = Theme.of(context);
-    final town = ref.watch(businessProfileProvider).value?.city;
-    final place = home == null
-        ? 'Loading your business address…'
-        : 'From your business address: ${[if (town != null && town.trim().isNotEmpty && town.trim().toLowerCase() != home.name.toLowerCase()) town.trim(), home.name, home.stateName].join(', ')}';
-    return Row(
-      key: const ValueKey('marketplace-from-business'),
-      children: [
-        Icon(
-          Icons.storefront_outlined,
-          size: 18,
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            place,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+      if (unplaced) ...[
+        Row(
+          key: const ValueKey('marketplace-no-business-address'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.info_outline, size: 18, color: theme.colorScheme.error),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                _noAddress,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.error,
+                ),
+              ),
             ),
-          ),
+          ],
         ),
-      ],
-    );
-  }
-
-  /// State, district and town, picked on the form.
-  List<Widget> _whereItIs(
-    List<LocationState> states, {
-    String? note,
-    bool withArea = true,
-  }) {
-    final theme = Theme.of(context);
-    final stateId = _stateId;
-    final districtsAsync = stateId == null
-        ? null
-        : ref.watch(districtsForStatesProvider(stateId));
-    final districts = districtsAsync?.value ?? const [];
-    return [
-      Text(
-        'Where it is',
-        style: theme.textTheme.titleSmall?.copyWith(
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      if (note != null) ...[
-        const SizedBox(height: 4),
-        Text(
-          note,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ],
-      const SizedBox(height: 10),
-      _stateField(
-        key: const ValueKey('marketplace-state'),
-        states: states,
-        value: _stateId,
-        requiredMessage: 'Choose the state.',
-        onPicked: (id) {
-          if (id != _stateId) _districtId = null;
-          _stateId = id;
-        },
-      ),
-      const SizedBox(height: 14),
-      SelectField<String>(
-        key: ValueKey('marketplace-district-$_stateId'),
-        label: 'District',
-        options: [for (final d in districts) SelectOption(d.id, d.name)],
-        initialValue: _districtId,
-        helperText: _districtHelp(stateId, districtsAsync),
-        validator: (v) => v == null ? 'Choose the district.' : null,
-        onChanged: districts.isEmpty
-            ? null
-            : (id) => setState(() => _districtId = id),
-      ),
-      if (withArea) ...[
         const SizedBox(height: 14),
-        TextFormField(
-          controller: _area,
-          maxLength: 120,
-          decoration: const InputDecoration(
-            labelText: 'Town or area (optional)',
-            hintText: 'e.g. Marthandam',
-            border: OutlineInputBorder(),
-            counterText: '',
-          ),
-        ),
       ],
+      if (category?.tracksStock ?? false)
+        ..._shipsToSection(
+          ref.watch(locationStatesProvider).value ?? const [],
+          business.value,
+        ),
     ];
   }
 
@@ -989,7 +926,7 @@ class _MarketplacePostFormSheetState
   Widget _unitField(String hint, {bool required = false}) => TextFormField(
     key: const ValueKey('marketplace-price-unit'),
     controller: _priceUnit,
-    maxLength: 20,
+    maxLength: _limits.priceUnit,
     decoration: InputDecoration(
       labelText: required ? 'Per' : 'Per (optional)',
       hintText: hint,

@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' show WidgetRef;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:zuno/core/error/app_exceptions.dart';
+import 'package:zuno/core/logging/app_log.dart';
 import 'package:zuno/core/network/dio_client.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_providers.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_profile_notifier.dart';
@@ -14,6 +16,7 @@ import 'package:zuno/features/marketplace/data/marketplace_remote_datasource.dar
 import 'package:zuno/features/marketplace/data/marketplace_repository_impl.dart';
 import 'package:zuno/features/marketplace/domain/entities/marketplace_post.dart';
 import 'package:zuno/features/marketplace/domain/marketplace_repository.dart';
+import 'package:zuno/features/worker/presentation/widgets/place_search_sheet.dart';
 
 part 'marketplace_providers.g.dart';
 
@@ -30,23 +33,29 @@ MarketplaceRepository marketplaceRepository(Ref ref) =>
       MarketplaceRemoteDataSource(ref.watch(marketplaceDioProvider)),
     );
 
-/// Where the business is, as a district — where its products are said to be, so the form does not
-/// ask. From its registered pin; else its town and state matched by name; null when neither does,
-/// and the form then asks for the district.
+/// Where the business is, as a district — where its posts are said to be, so the post form never
+/// asks. Tried in turn, each only if the one before says nothing:
+/// 1. its registered map pin;
+/// 2. its registered address (street, town, PIN code, state) found on the map;
+/// 3. its town matched to a district's name in its state.
+/// Null when none does: the form then sends the business to its profile.
 @riverpod
 Future<District?> marketplaceBusinessDistrict(Ref ref) async {
   final profile = await ref.watch(businessProfileProvider.future);
-  final latitude = profile.latitude;
-  final longitude = profile.longitude;
-  if (latitude != null && longitude != null) {
-    try {
-      final nearest = await ref
-          .read(customerLocationApiProvider)
-          .nearestDistrict(latitude, longitude);
-      if (nearest != null) return nearest;
-    } catch (_) {
-      // Offline or refused: the names below may still say where it is.
-    }
+  final pin = (profile.latitude, profile.longitude);
+  if (pin case (final double latitude, final double longitude)) {
+    final fromPin = await _nearestDistrict(ref, latitude, longitude);
+    if (fromPin != null) return fromPin;
+  }
+
+  final address = [
+    profile.city,
+    profile.postalCode,
+    profile.state,
+  ].where((p) => p != null && p.trim().isNotEmpty).join(', ');
+  if (address.isNotEmpty) {
+    final fromAddress = await _districtOfAddress(ref, address);
+    if (fromAddress != null) return fromAddress;
   }
 
   String key(String? name) => (name ?? '').trim().toLowerCase();
@@ -57,6 +66,36 @@ Future<District?> marketplaceBusinessDistrict(Ref ref) async {
   return districts
       .where((d) => key(d.stateName) == stateName && key(d.name) == town)
       .firstOrNull;
+}
+
+/// The district a point is in; null when it cannot be told — offline, or too far from every one.
+Future<District?> _nearestDistrict(
+  Ref ref,
+  double latitude,
+  double longitude,
+) async {
+  try {
+    return await ref
+        .read(customerLocationApiProvider)
+        .nearestDistrict(latitude, longitude);
+  } on AppException catch (error, stack) {
+    AppLog.handled('marketplace business district (pin)', error, stack);
+    return null;
+  }
+}
+
+/// The district a typed address is in, through the map search; null when the map does not know it.
+Future<District?> _districtOfAddress(Ref ref, String address) async {
+  try {
+    final places = await ref.read(placeSearchClientProvider).search(address);
+    final place = places.firstOrNull;
+    return place == null
+        ? null
+        : await _nearestDistrict(ref, place.latitude, place.longitude);
+  } on DioException catch (error, stack) {
+    AppLog.handled('marketplace business district (address)', error, stack);
+    return null;
+  }
 }
 
 /// The categories a business can post in, with their details. The server caches them too. Kept

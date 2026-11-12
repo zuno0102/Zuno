@@ -173,6 +173,20 @@ const register = async (first, role) => {
   const everywhere = await ship({ deliversEverywhere: true, deliveryStateId: tamilNadu });
   ok("All India keeps no state", everywhere.data?.deliversEverywhere === true && everywhere.data?.deliveryStateId == null, `${everywhere.status}`);
 
+  // ── Products: colours and sizes to tap, each with its own price and stock ───────────────────
+  const productSubs = all.find(c => c.slug === "products")?.subCategories ?? [];
+  const clothing = productSubs.find(s => s.slug === "clothing");
+  ok("Clothing offers its sizes and colours to tap", clothing?.sizeOptions?.includes("M") && clothing?.colourOptions?.includes("Red"));
+  ok("Sarees offer colours, not sizes", productSubs.find(s => s.slug === "sarees")?.colourOptions?.length > 0 && productSubs.find(s => s.slug === "sarees")?.sizeOptions?.length === 0);
+  const byColour = await M_("PUT", `/business/marketplace/${newSaree.data?.id}`, biz2, {
+    ...saree, price: null, condition: "New",
+    variants: [{ colour: "Red", stock: 30, price: 499 }, { colour: "Green", stock: 25, price: 449 }],
+  });
+  ok("Priced only by its colours, it sells from the lowest", byColour.data?.price === 449 && byColour.data?.quantity === 55, `${byColour.status} ${byColour.text.slice(0, 80)}`);
+  no("A colour without a price, and no price to fall back on, is refused", await M_("PUT", `/business/marketplace/${newSaree.data?.id}`, biz2, {
+    ...saree, price: null, condition: "New", variants: [{ colour: "Red", stock: 3 }],
+  }), "its price");
+
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail === 0 ? 0 : 1);
 })().catch(e => { console.error(e); process.exit(1); });

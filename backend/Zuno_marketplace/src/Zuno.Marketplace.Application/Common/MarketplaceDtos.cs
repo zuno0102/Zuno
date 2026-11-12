@@ -240,6 +240,12 @@ public class MarketplaceSubCategoryDto
     public short DisplayOrder { get; set; }
 
     public bool IsActive { get; set; }
+
+    /// <summary>Colours the post form offers to tap.</summary>
+    public List<string> ColourOptions { get; set; } = [];
+
+    /// <summary>Sizes the post form offers to tap.</summary>
+    public List<string> SizeOptions { get; set; } = [];
 }
 
 public class MarketplaceCategoryFieldDto
@@ -288,6 +294,12 @@ public class MarketplaceOptionsDto
     public decimal MaxPrice { get; set; }
 
     public int MaxQuantity { get; set; }
+
+    /// <summary>How far ahead a food offer or advert may start; the date pickers end there.</summary>
+    public int MaxStartDaysAhead { get; set; }
+
+    /// <summary>How long each text may be, so the form stops where the server would.</summary>
+    public MarketplaceTextLimitsDto TextLimits { get; set; } = new();
 }
 
 public class MarketplaceOptionDto

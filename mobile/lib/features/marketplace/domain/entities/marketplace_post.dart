@@ -112,6 +112,8 @@ class MarketplaceSubCategory {
     required this.displayOrder,
     required this.isActive,
     this.iconName,
+    this.colourOptions = const [],
+    this.sizeOptions = const [],
   });
 
   final String id;
@@ -120,6 +122,12 @@ class MarketplaceSubCategory {
   final String? iconName;
   final int displayOrder;
   final bool isActive;
+
+  /// Colours the post form offers to tap, from the server's table — "Red", "Maroon".
+  final List<String> colourOptions;
+
+  /// Sizes the post form offers to tap — "S", "M", "XL" for Clothing, "UK 7" for Footwear.
+  final List<String> sizeOptions;
 }
 
 /// A detail a category asks for, e.g. "KM driven" (a number in km) or "Fuel" (one of a list).
@@ -553,6 +561,8 @@ class MarketplaceOptions {
     required this.maxFoodOfferHours,
     required this.maxAdDays,
     this.maxQuantity = marketplaceDefaultMaxQuantity,
+    this.maxStartDaysAhead = MarketplaceTextLimits.fallbackStartDaysAhead,
+    this.textLimits = const MarketplaceTextLimits(),
   });
 
   final List<MarketplaceOption> kinds;
@@ -569,6 +579,12 @@ class MarketplaceOptions {
 
   /// The most a quantity or stock may be — `Marketplace:MaxQuantity` on the server.
   final int maxQuantity;
+
+  /// How far ahead a food offer or advert may start — `Marketplace:MaxStartDaysAhead`.
+  final int maxStartDaysAhead;
+
+  /// How long each text may be, as the server checks it.
+  final MarketplaceTextLimits textLimits;
 
   /// The table's name for [code], or [code] itself until the list has loaded.
   String kindName(String code) =>
@@ -634,16 +650,22 @@ class MarketplaceSubCategoryInput {
     required this.name,
     required this.displayOrder,
     required this.isActive,
+    this.colourOptions = const [],
+    this.sizeOptions = const [],
   });
 
   final String name;
   final int displayOrder;
   final bool isActive;
+  final List<String> colourOptions;
+  final List<String> sizeOptions;
 
   Map<String, dynamic> toJson() => {
     'name': name,
     'displayOrder': displayOrder,
     'isActive': isActive,
+    'colourOptions': colourOptions,
+    'sizeOptions': sizeOptions,
   };
 }
 
@@ -680,4 +702,53 @@ class MarketplaceFieldInput {
     'displayOrder': displayOrder,
     'isActive': isActive,
   };
+}
+
+/// How long each text on the Marketplace forms may be, as the server checks it — sent with the
+/// options (`MarketplaceTextLimits` on the server), so a box stops exactly where a save would be
+/// refused. The values here are only what the forms use before the options have loaded.
+class MarketplaceTextLimits {
+  const MarketplaceTextLimits({
+    this.title = 120,
+    this.description = 2000,
+    this.priceUnit = 20,
+    this.attributeValue = 200,
+    this.customDetailName = 40,
+    this.colour = 40,
+    this.size = 20,
+    this.contactPhoneMinDigits = 10,
+    this.contactPhoneMaxDigits = 15,
+    this.categoryName = 100,
+    this.categoryShortName = 20,
+    this.categoryDescription = 200,
+    this.iconName = 50,
+    this.fieldLabel = 60,
+    this.fieldUnit = 20,
+    this.fieldOption = 60,
+  });
+
+  /// How far ahead a start may be picked before the options have loaded.
+  static const fallbackStartDaysAhead = 30;
+
+  final int title;
+  final int description;
+  final int priceUnit;
+  final int attributeValue;
+  final int customDetailName;
+  final int colour;
+  final int size;
+  final int contactPhoneMinDigits;
+  final int contactPhoneMaxDigits;
+  final int categoryName;
+  final int categoryShortName;
+  final int categoryDescription;
+  final int iconName;
+  final int fieldLabel;
+  final int fieldUnit;
+  final int fieldOption;
+
+  /// A contact number: an optional +, then [contactPhoneMinDigits] to [contactPhoneMaxDigits] digits.
+  bool isContactPhone(String text) => RegExp(
+    '^\\+?[0-9]{$contactPhoneMinDigits,$contactPhoneMaxDigits}\$',
+  ).hasMatch(text);
 }

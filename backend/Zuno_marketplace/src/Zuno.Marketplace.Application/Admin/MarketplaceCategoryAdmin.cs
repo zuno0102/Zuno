@@ -56,6 +56,12 @@ public abstract class MarketplaceSubCategoryFields
     public short DisplayOrder { get; set; }
 
     public bool IsActive { get; set; } = true;
+
+    /// <summary>Colours the post form offers to tap, in order.</summary>
+    public List<string> ColourOptions { get; set; } = [];
+
+    /// <summary>Sizes the post form offers to tap, in order.</summary>
+    public List<string> SizeOptions { get; set; } = [];
 }
 
 public class CreateMarketplaceSubCategoryCommand : MarketplaceSubCategoryFields, IRequest<MarketplaceCategoryDto>;
@@ -103,10 +109,10 @@ public abstract class MarketplaceCategoryFieldsValidator<T> : AbstractValidator<
 {
     protected MarketplaceCategoryFieldsValidator()
     {
-        RuleFor(x => x.Name).NotEmpty().MaximumLength(100).Matches("[A-Za-z0-9]").WithMessage("Name must have a letter or digit.");
-        RuleFor(x => x.ShortName).MaximumLength(20);
-        RuleFor(x => x.Description).MaximumLength(200);
-        RuleFor(x => x.IconName).MaximumLength(50);
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(MarketplaceTextLimits.CategoryName).Matches("[A-Za-z0-9]").WithMessage("Name must have a letter or digit.");
+        RuleFor(x => x.ShortName).MaximumLength(MarketplaceTextLimits.CategoryShortName);
+        RuleFor(x => x.Description).MaximumLength(MarketplaceTextLimits.CategoryDescription);
+        RuleFor(x => x.IconName).MaximumLength(MarketplaceTextLimits.IconName);
         RuleFor(x => x.Kind)
             .Must(k => Enum.TryParse<MarketplacePostKind>(k, true, out var v) && Enum.IsDefined(v))
             .WithMessage("Kind must be Listing, FoodOffer or Advertisement.");
@@ -130,10 +136,22 @@ public abstract class MarketplaceSubCategoryFieldsValidator<T> : AbstractValidat
     protected MarketplaceSubCategoryFieldsValidator()
     {
         RuleFor(x => x.CategoryId).NotEmpty();
-        RuleFor(x => x.Name).NotEmpty().MaximumLength(100).Matches("[A-Za-z0-9]").WithMessage("Name must have a letter or digit.");
-        RuleFor(x => x.IconName).MaximumLength(50);
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(MarketplaceTextLimits.CategoryName).Matches("[A-Za-z0-9]").WithMessage("Name must have a letter or digit.");
+        RuleFor(x => x.IconName).MaximumLength(MarketplaceTextLimits.IconName);
         RuleFor(x => x.DisplayOrder).GreaterThanOrEqualTo((short)0);
+
+        // The same limits a post's own colour or size has, each offered once.
+        RuleFor(x => x.ColourOptions).Must(Fits).WithMessage($"Offer at most {MaxChoices} colours, each once.");
+        RuleForEach(x => x.ColourOptions).NotEmpty().MaximumLength(MarketplaceTextLimits.Colour);
+        RuleFor(x => x.SizeOptions).Must(Fits).WithMessage($"Offer at most {MaxChoices} sizes, each once.");
+        RuleForEach(x => x.SizeOptions).NotEmpty().MaximumLength(MarketplaceTextLimits.Size);
     }
+
+    public const int MaxChoices = 30;
+
+    private static bool Fits(List<string> choices) =>
+        choices.Count <= MaxChoices
+        && choices.Select(c => c.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Count() == choices.Count;
 }
 
 public class CreateMarketplaceSubCategoryCommandValidator : MarketplaceSubCategoryFieldsValidator<CreateMarketplaceSubCategoryCommand>;
@@ -151,14 +169,14 @@ public abstract class MarketplaceFieldFieldsValidator<T> : AbstractValidator<T>
     protected MarketplaceFieldFieldsValidator()
     {
         RuleFor(x => x.CategoryId).NotEmpty();
-        RuleFor(x => x.Label).NotEmpty().MaximumLength(60).Matches("[A-Za-z0-9]").WithMessage("Label must have a letter or digit.");
-        RuleFor(x => x.Unit).MaximumLength(20);
+        RuleFor(x => x.Label).NotEmpty().MaximumLength(MarketplaceTextLimits.FieldLabel).Matches("[A-Za-z0-9]").WithMessage("Label must have a letter or digit.");
+        RuleFor(x => x.Unit).MaximumLength(MarketplaceTextLimits.FieldUnit);
         RuleFor(x => x.DisplayOrder).GreaterThanOrEqualTo((short)0);
         RuleFor(x => x.FieldType)
             .Must(t => Enum.TryParse<MarketplaceFieldType>(t, true, out var v) && Enum.IsDefined(v))
             .WithMessage("Field type must be Text, Number or Select.");
         RuleFor(x => x.Options.Count).LessThanOrEqualTo(MaxOptions).OverridePropertyName(nameof(MarketplaceFieldFields.Options));
-        RuleForEach(x => x.Options).NotEmpty().MaximumLength(60);
+        RuleForEach(x => x.Options).NotEmpty().MaximumLength(MarketplaceTextLimits.FieldOption);
         RuleFor(x => x.Options)
             .Must(o => o.Count > 0 && o.Distinct(StringComparer.OrdinalIgnoreCase).Count() == o.Count)
             .When(x => string.Equals(x.FieldType, nameof(MarketplaceFieldType.Select), StringComparison.OrdinalIgnoreCase))
@@ -273,6 +291,8 @@ public partial class MarketplaceCategoryAdminHandlers(IMarketplaceDbContext dbCo
         sub.IconName = Clean(request.IconName);
         sub.DisplayOrder = request.DisplayOrder;
         sub.IsActive = request.IsActive;
+        sub.ColourOptions = [.. request.ColourOptions.Select(c => c.Trim())];
+        sub.SizeOptions = [.. request.SizeOptions.Select(s => s.Trim())];
     }
 
     private static void Apply(MarketplaceCategoryField field, MarketplaceFieldFields request)

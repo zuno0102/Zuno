@@ -33,6 +33,10 @@ public class MarketplaceSubCategoryConfiguration : IEntityTypeConfiguration<Mark
         builder.Property(s => s.Name).HasMaxLength(100).IsRequired();
         builder.Property(s => s.Slug).HasMaxLength(100).IsRequired();
         builder.Property(s => s.IconName).HasMaxLength(50);
+
+        // A sub-category the super admin adds offers no colours or sizes until given some.
+        builder.Property(s => s.ColourOptions).HasDefaultValueSql("'{}'").Metadata.SetValueComparer(ChoiceListComparer.Instance);
+        builder.Property(s => s.SizeOptions).HasDefaultValueSql("'{}'").Metadata.SetValueComparer(ChoiceListComparer.Instance);
         builder.HasIndex(s => new { s.CategoryId, s.Slug }).IsUnique().HasFilter("is_deleted = false");
         builder.HasOne(s => s.Category)
             .WithMany(c => c.SubCategories)
@@ -51,11 +55,7 @@ public class MarketplaceCategoryFieldConfiguration : IEntityTypeConfiguration<Ma
         builder.Property(f => f.Label).HasMaxLength(60).IsRequired();
         builder.Property(f => f.Unit).HasMaxLength(20);
 
-        // Compared by the choices, not the list object, so seeded rows read the same on every build.
-        builder.Property(f => f.Options).Metadata.SetValueComparer(new ValueComparer<List<string>>(
-            (a, b) => a == b || (a != null && b != null && a.SequenceEqual(b)),
-            list => list.Aggregate(0, (hash, item) => HashCode.Combine(hash, item.GetHashCode(StringComparison.Ordinal))),
-            list => list.ToList()));
+        builder.Property(f => f.Options).Metadata.SetValueComparer(ChoiceListComparer.Instance);
         // One key per place it is asked: the whole category (no sub-category) counts as one place.
         builder.HasIndex(f => new { f.CategoryId, f.SubCategoryId, f.Key })
             .IsUnique()
@@ -307,4 +307,16 @@ public class RefDistrictConfiguration : IEntityTypeConfiguration<RefDistrict>
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasData(LocationSeedData.Districts);
     }
+}
+
+/// <summary>
+/// Compares a list of choices by its items, not the list object, so seeded rows read the same on
+/// every build and a migration is made only when a choice really changes.
+/// </summary>
+internal static class ChoiceListComparer
+{
+    public static readonly ValueComparer<List<string>> Instance = new(
+        (a, b) => a == b || (a != null && b != null && a.SequenceEqual(b)),
+        list => list.Aggregate(0, (hash, item) => HashCode.Combine(hash, item.GetHashCode(StringComparison.Ordinal))),
+        list => list.ToList());
 }

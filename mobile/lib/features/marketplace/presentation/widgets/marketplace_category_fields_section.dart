@@ -63,12 +63,16 @@ class MarketplaceCategoryFieldsSection extends StatelessWidget {
     required this.fields,
     required this.values,
     required this.onChanged,
+    required this.maxValueLength,
     super.key,
   });
 
   final List<MarketplaceCategoryField> fields;
   final MarketplaceAttributeValues values;
   final VoidCallback onChanged;
+
+  /// The longest a typed detail may be, as the server checks it.
+  final int maxValueLength;
 
   @override
   Widget build(BuildContext context) {
@@ -106,7 +110,7 @@ class MarketplaceCategoryFieldsSection extends StatelessWidget {
     return TextFormField(
       key: ValueKey('marketplace-field-${field.key}'),
       controller: values.controller(field.key),
-      maxLength: 200,
+      maxLength: maxValueLength,
       keyboardType: isNumber
           ? const TextInputType.numberWithOptions(decimal: true)
           : TextInputType.text,

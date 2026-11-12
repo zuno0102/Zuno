@@ -316,6 +316,8 @@ class MarketplaceSubCategoryModel {
     required this.displayOrder,
     required this.isActive,
     this.iconName,
+    this.colourOptions = const [],
+    this.sizeOptions = const [],
   });
 
   factory MarketplaceSubCategoryModel.fromJson(Map<String, dynamic> json) =>
@@ -327,6 +329,8 @@ class MarketplaceSubCategoryModel {
   final String? iconName;
   final int displayOrder;
   final bool isActive;
+  final List<String> colourOptions;
+  final List<String> sizeOptions;
 
   MarketplaceSubCategory toEntity() => MarketplaceSubCategory(
     id: id,
@@ -335,6 +339,8 @@ class MarketplaceSubCategoryModel {
     iconName: iconName,
     displayOrder: displayOrder,
     isActive: isActive,
+    colourOptions: colourOptions,
+    sizeOptions: sizeOptions,
   );
 }
 
@@ -466,6 +472,8 @@ class MarketplaceOptionsModel {
     this.conditions = const [],
     required this.maxAdDays,
     this.maxQuantity = marketplaceDefaultMaxQuantity,
+    this.maxStartDaysAhead = MarketplaceTextLimits.fallbackStartDaysAhead,
+    this.textLimits = const MarketplaceTextLimits(),
   });
 
   factory MarketplaceOptionsModel.fromJson(Map<String, dynamic> json) =>
@@ -479,6 +487,9 @@ class MarketplaceOptionsModel {
   final int maxFoodOfferHours;
   final int maxAdDays;
   final int maxQuantity;
+  final int maxStartDaysAhead;
+  @JsonKey(fromJson: marketplaceTextLimitsFromJson)
+  final MarketplaceTextLimits textLimits;
 
   MarketplaceOptions toEntity() => MarketplaceOptions(
     kinds: [for (final k in kinds) k.toEntity()],
@@ -489,6 +500,8 @@ class MarketplaceOptionsModel {
     maxFoodOfferHours: maxFoodOfferHours,
     maxAdDays: maxAdDays,
     maxQuantity: maxQuantity,
+    maxStartDaysAhead: maxStartDaysAhead,
+    textLimits: textLimits,
   );
 }
 
@@ -509,4 +522,37 @@ class MarketplaceBusinessModel {
 
   MarketplaceBusiness toEntity() =>
       MarketplaceBusiness(name: name, isVerified: isVerified, isKnown: isKnown);
+}
+
+/// The text limits the server sends; any it leaves out keep the form's own.
+MarketplaceTextLimits marketplaceTextLimitsFromJson(Map<String, dynamic> json) {
+  const fallback = MarketplaceTextLimits();
+  int read(String key, int otherwise) => json[key] as int? ?? otherwise;
+  return MarketplaceTextLimits(
+    title: read('title', fallback.title),
+    description: read('description', fallback.description),
+    priceUnit: read('priceUnit', fallback.priceUnit),
+    attributeValue: read('attributeValue', fallback.attributeValue),
+    customDetailName: read('customDetailName', fallback.customDetailName),
+    colour: read('colour', fallback.colour),
+    size: read('size', fallback.size),
+    contactPhoneMinDigits: read(
+      'contactPhoneMinDigits',
+      fallback.contactPhoneMinDigits,
+    ),
+    contactPhoneMaxDigits: read(
+      'contactPhoneMaxDigits',
+      fallback.contactPhoneMaxDigits,
+    ),
+    categoryName: read('categoryName', fallback.categoryName),
+    categoryShortName: read('categoryShortName', fallback.categoryShortName),
+    categoryDescription: read(
+      'categoryDescription',
+      fallback.categoryDescription,
+    ),
+    iconName: read('iconName', fallback.iconName),
+    fieldLabel: read('fieldLabel', fallback.fieldLabel),
+    fieldUnit: read('fieldUnit', fallback.fieldUnit),
+    fieldOption: read('fieldOption', fallback.fieldOption),
+  );
 }
