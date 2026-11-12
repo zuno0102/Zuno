@@ -392,6 +392,7 @@ class MarketplaceSummaryModel {
     required this.expired,
     required this.closed,
     this.sold = 0,
+    this.inactive,
     required this.plan,
     this.categories = const [],
   });
@@ -404,12 +405,14 @@ class MarketplaceSummaryModel {
   final int expired;
   final int closed;
   final int sold;
+  final int? inactive;
   final MarketplacePlanModel plan;
   final List<MarketplaceCategoryCountModel> categories;
 
   MarketplaceSummary toEntity() => MarketplaceSummary(
     active: active,
     paused: paused,
+    inactive: inactive,
     expired: expired,
     closed: closed,
     sold: sold,

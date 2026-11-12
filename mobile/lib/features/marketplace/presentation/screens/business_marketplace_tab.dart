@@ -34,9 +34,15 @@ StatusPill marketplaceStatusPill(MarketplaceOptions? options, String status) {
 /// With [status] set it shows only the posts in that state: what a Marketplace tile on the home
 /// screen opens. That view lists and changes posts, but adds from the Marketplace tab.
 class BusinessMarketplaceTab extends ConsumerStatefulWidget {
-  const BusinessMarketplaceTab({this.status, super.key});
+  const BusinessMarketplaceTab({this.status, this.inactive = false, super.key});
 
   final String? status;
+
+  /// The Inactive tile's view: paused posts, and live products with a colour / size switched off.
+  final bool inactive;
+
+  /// A home tile's list: it shows and changes posts, but adds from the Marketplace tab.
+  bool get isFiltered => status != null || inactive;
 
   @override
   ConsumerState<BusinessMarketplaceTab> createState() =>
@@ -49,13 +55,16 @@ class _BusinessMarketplaceTabState
   Widget build(BuildContext context) {
     final status = widget.status;
     final postsAsync = ref.watch(
-      businessMarketplacePostsProvider(status: status),
+      businessMarketplacePostsProvider(
+        status: status,
+        inactive: widget.inactive,
+      ),
     );
     final summary = ref.watch(marketplaceSummaryProvider).value;
     final options = ref.watch(marketplaceOptionsProvider).value;
 
     return Scaffold(
-      floatingActionButton: status != null
+      floatingActionButton: widget.isFiltered
           ? null
           : FloatingActionButton.extended(
               key: const ValueKey('marketplace-add-post'),
@@ -79,7 +88,10 @@ class _BusinessMarketplaceTabState
                 const SizedBox(height: 12),
                 TextButton.icon(
                   onPressed: () => ref.invalidate(
-                    businessMarketplacePostsProvider(status: status),
+                    businessMarketplacePostsProvider(
+                      status: status,
+                      inactive: widget.inactive,
+                    ),
                   ),
                   icon: const Icon(Icons.refresh),
                   label: const Text('Try again'),
@@ -111,21 +123,24 @@ class _BusinessMarketplaceTabState
       onRefresh: () async {
         reloadMarketplace(ref);
         await ref.read(
-          businessMarketplacePostsProvider(status: widget.status).future,
+          businessMarketplacePostsProvider(
+            status: widget.status,
+            inactive: widget.inactive,
+          ).future,
         );
       },
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(bottom: 96),
         children: [
-          if (widget.status == null && summary != null)
+          if (!widget.isFiltered && summary != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: MarketplacePlanBanner(plan: summary.plan),
             ),
           // A square per main category starts a post already in it; the business then picks the
           // sub-category. Only where posts are added — not on a home tile's list.
-          if (widget.status == null && categories.isNotEmpty)
+          if (!widget.isFiltered && categories.isNotEmpty)
             CategorySquareRow<String>(
               squares: [
                 for (final c in categories)
@@ -143,7 +158,7 @@ class _BusinessMarketplaceTabState
             EmptyState(
               icon: Icons.storefront_outlined,
               title: 'Nothing posted yet',
-              message: widget.status != null
+              message: widget.isFiltered
                   ? 'No posts here right now.'
                   : 'Tap a category above or "Add post" to list $what.',
             )
@@ -379,6 +394,7 @@ class MarketplacePostListScreen extends StatelessWidget {
   const MarketplacePostListScreen({
     required this.title,
     this.status,
+    this.inactive = false,
     super.key,
   });
 
@@ -387,9 +403,12 @@ class MarketplacePostListScreen extends StatelessWidget {
   /// Null for every post.
   final String? status;
 
+  /// The Inactive tile's posts.
+  final bool inactive;
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(title)),
-    body: BusinessMarketplaceTab(status: status),
+    body: BusinessMarketplaceTab(status: status, inactive: inactive),
   );
 }

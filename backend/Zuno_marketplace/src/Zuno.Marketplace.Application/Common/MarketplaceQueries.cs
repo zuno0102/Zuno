@@ -31,6 +31,11 @@ internal static class MarketplaceQueries
     }
 
     /// <summary>The joins one post card needs. The context splits them into one query per list.</summary>
+    /// <summary>The Inactive tile's posts: paused, or live with a colour / size switched off.</summary>
+    public static readonly System.Linq.Expressions.Expression<Func<MarketplacePost, bool>> IsInactive = p =>
+        p.Status == MarketplacePostStatus.Paused
+        || (p.Status == MarketplacePostStatus.Active && p.Variants.Any(v => !v.IsActive));
+
     public static IQueryable<MarketplacePost> WithCard(this IQueryable<MarketplacePost> posts) =>
         posts
             .Include(p => p.Category)

@@ -340,7 +340,8 @@ final class BusinessMarketplacePostsProvider
   /// background, so a slow or failed refresh never holds up the business's own list.
   BusinessMarketplacePostsProvider._({
     required BusinessMarketplacePostsFamily super.from,
-    required ({String? categoryId, String? status}) super.argument,
+    required ({String? categoryId, String? status, bool inactive})
+    super.argument,
   }) : super(
          retry: null,
          name: r'businessMarketplacePostsProvider',
@@ -367,11 +368,13 @@ final class BusinessMarketplacePostsProvider
 
   @override
   FutureOr<List<MarketplacePost>> create(Ref ref) {
-    final argument = this.argument as ({String? categoryId, String? status});
+    final argument =
+        this.argument as ({String? categoryId, String? status, bool inactive});
     return businessMarketplacePosts(
       ref,
       categoryId: argument.categoryId,
       status: argument.status,
+      inactive: argument.inactive,
     );
   }
 
@@ -388,7 +391,7 @@ final class BusinessMarketplacePostsProvider
 }
 
 String _$businessMarketplacePostsHash() =>
-    r'3e1537caf7f322f2bb8591dd2f7e875d5f765b14';
+    r'5aff59b0873b95c0b2697ac64d76d24a092ff54b';
 
 /// The business's posts; [categoryId] (a main category) and [status] narrow the list (null for all).
 ///
@@ -399,7 +402,7 @@ final class BusinessMarketplacePostsFamily extends $Family
     with
         $FunctionalFamilyOverride<
           FutureOr<List<MarketplacePost>>,
-          ({String? categoryId, String? status})
+          ({String? categoryId, String? status, bool inactive})
         > {
   BusinessMarketplacePostsFamily._()
     : super(
@@ -415,11 +418,14 @@ final class BusinessMarketplacePostsFamily extends $Family
   /// Loading the full list also refreshes how customers see the business (name, verified) — in the
   /// background, so a slow or failed refresh never holds up the business's own list.
 
-  BusinessMarketplacePostsProvider call({String? categoryId, String? status}) =>
-      BusinessMarketplacePostsProvider._(
-        argument: (categoryId: categoryId, status: status),
-        from: this,
-      );
+  BusinessMarketplacePostsProvider call({
+    String? categoryId,
+    String? status,
+    bool inactive = false,
+  }) => BusinessMarketplacePostsProvider._(
+    argument: (categoryId: categoryId, status: status, inactive: inactive),
+    from: this,
+  );
 
   @override
   String toString() => r'businessMarketplacePostsProvider';

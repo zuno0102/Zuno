@@ -13,10 +13,12 @@ abstract interface class MarketplaceRepository {
 
   /// The business's posts, newest first; [categoryId] (a main category) and [status] narrow the list,
   /// and [keepsStock] keeps only the new products with a stock count — the Stock page.
+  /// [inactive] keeps the paused posts and the live products with a colour / size switched off.
   Future<List<MarketplacePost>> getMyPosts({
     String? categoryId,
     String? status,
     bool keepsStock = false,
+    bool inactive = false,
   });
 
   Future<MarketplacePost> create(MarketplacePostInput input);

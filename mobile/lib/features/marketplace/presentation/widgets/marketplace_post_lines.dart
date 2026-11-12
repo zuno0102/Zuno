@@ -52,6 +52,10 @@ String? marketplaceQuantityLine(
       post.variants.length == 1
           ? '1 colour / size'
           : '${post.variants.length} colours / sizes',
+    // "1 inactive": colours / sizes switched off, kept but not on sale.
+    if (post.variants.where((v) => !v.isActive).length case final off
+        when off > 0)
+      '$off inactive',
     if (condition == MarketplaceItemCondition.used) 'one piece',
     if (post.isFoodOffer && post.quantity != null) '${post.quantity} portions',
     if (post.isWholesale) 'Wholesale',

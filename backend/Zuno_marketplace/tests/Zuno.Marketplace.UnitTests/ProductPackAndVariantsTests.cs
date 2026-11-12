@@ -1,5 +1,6 @@
 using FluentAssertions;
 using FluentValidation;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Zuno.Marketplace.Application.Common;
 using Zuno.Marketplace.Application.Posts;
@@ -270,6 +271,35 @@ public class ProductPackAndVariantsTests
         var remove = () => test.ManageHandlers.Handle(new DeleteMarketplacePostCommand { Id = saved.Id }, default);
 
         await remove.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task TheInactiveTile_CountsPausedPosts_AndLiveProductsWithAColourSwitchedOff()
+    {
+        using var test = new TestMarketplace();
+        var free = await test.Db.Plans.SingleAsync(p => p.IsDefault);
+        free.MaxActivePosts = 5;
+        await test.Db.SaveChangesAsync();
+        var partly = await test.SaveHandlers.Handle(Saree(c => c.Variants =
+        [
+            new() { Colour = "Red", Price = 2_400m, Stock = 10 },
+            new() { Colour = "Green", Price = 2_400m, Stock = 3, IsActive = false },
+        ]), default);
+        var allOn = await test.SaveHandlers.Handle(Saree(c =>
+        {
+            c.Title = "Cotton saree";
+            c.Variants = [new() { Colour = "Blue", Price = 900m, Stock = 2 }];
+        }), default);
+        var paused = await test.SaveHandlers.Handle(Saree(c => c.Title = "Paused saree"), default);
+        await test.ManageHandlers.Handle(
+            new ChangeMarketplacePostStatusCommand { Id = paused.Id, Status = nameof(MarketplacePostStatus.Paused) }, default);
+
+        var summary = await test.QueryHandlers.Handle(new GetMyMarketplaceSummaryQuery(), default);
+        var page = await test.QueryHandlers.Handle(new GetMyMarketplacePostsQuery { Inactive = true }, default);
+
+        (summary.Paused, summary.Inactive).Should().Be((1, 2), "the paused post, and the saree with Green off");
+        page.Items.Select(p => p.Id).Should().BeEquivalentTo([partly.Id, paused.Id]);
+        page.Items.Should().NotContain(p => p.Id == allOn.Id);
     }
 
     [Fact]

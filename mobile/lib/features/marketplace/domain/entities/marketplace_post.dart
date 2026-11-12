@@ -464,11 +464,18 @@ class MarketplaceSummary {
     required this.closed,
     required this.plan,
     this.sold = 0,
+    this.inactive,
     this.categories = const [],
   });
 
   final int active;
   final int paused;
+
+  /// The Inactive tile: paused posts, and live products with a colour / size switched off. Null
+  /// from an older server, which counts the paused only.
+  final int? inactive;
+
+  int get inactiveCount => inactive ?? paused;
   final int expired;
   final int closed;
   final int sold;

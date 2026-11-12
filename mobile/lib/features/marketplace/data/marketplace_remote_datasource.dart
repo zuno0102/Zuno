@@ -44,6 +44,7 @@ class MarketplaceRemoteDataSource {
     String? categoryId,
     String? status,
     bool keepsStock = false,
+    bool inactive = false,
     int? pageSize,
   }) => _run(() async {
     final response = await _dio.get<Map<String, dynamic>>(
@@ -52,6 +53,7 @@ class MarketplaceRemoteDataSource {
         'categoryId': ?categoryId,
         'status': ?status,
         if (keepsStock) 'keepsStock': true,
+        if (inactive) 'inactive': true,
         'pageSize': ?pageSize,
       },
     );

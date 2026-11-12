@@ -40,6 +40,8 @@ public class LoadTests(MarketplaceApiFactory factory, ITestOutputHelper output) 
             ("Posts list, page 40", () => client.GetAsync("/api/v1/business/marketplace?page=40")),
             ("Orders › Products › Active", () => client.GetAsync($"/api/v1/business/marketplace?categoryId={products}&status=Active")),
             ("Home tiles (summary)", () => client.GetAsync("/api/v1/business/marketplace/summary")),
+            ("Stock page", () => client.GetAsync("/api/v1/business/marketplace?keepsStock=true")),
+            ("Inactive tile", () => client.GetAsync("/api/v1/business/marketplace?inactive=true")),
             ("Categories", () => client.GetAsync("/api/v1/marketplace-categories")),
             ("Options", () => client.GetAsync("/api/v1/marketplace-options")),
         };

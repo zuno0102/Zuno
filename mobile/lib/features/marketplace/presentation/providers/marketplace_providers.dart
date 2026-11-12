@@ -124,12 +124,17 @@ Future<List<MarketplacePost>> businessMarketplacePosts(
   Ref ref, {
   String? categoryId,
   String? status,
+  bool inactive = false,
 }) {
   final repository = ref.watch(marketplaceRepositoryProvider);
-  if (categoryId == null && status == null) {
+  if (categoryId == null && status == null && !inactive) {
     unawaited(repository.syncProfile().then<void>((_) {}, onError: (_) {}));
   }
-  return repository.getMyPosts(categoryId: categoryId, status: status);
+  return repository.getMyPosts(
+    categoryId: categoryId,
+    status: status,
+    inactive: inactive,
+  );
 }
 
 /// The Stock page: the new products that keep a stock count, each with its colours and sizes.

@@ -104,6 +104,9 @@ class _MarketplaceVariantsScreenState
                   'The same product in another colour or size — a saree in Red and Green, '
                   'a shirt in M, L and XL — each with its own price and stock.',
               addLabel: 'Add colour / size',
+              onChanged: (change) => AppMessenger.of(
+                context,
+              ).showSuccess('$change Tap Save colours and sizes to keep it.'),
             ),
             if (_variants.isEmpty) ...[
               const SizedBox(height: 8),

@@ -27,9 +27,10 @@ public class BusinessMarketplaceController(
         [FromQuery] Guid? categoryId = null,
         [FromQuery] string? status = null,
         [FromQuery] bool? keepsStock = null,
+        [FromQuery] bool? inactive = null,
         CancellationToken cancellationToken = default) =>
         Ok(await mediator.Send(
-            new GetMyMarketplacePostsQuery { Page = page, PageSize = pageSize, Kind = kind, CategoryId = categoryId, Status = status, KeepsStock = keepsStock },
+            new GetMyMarketplacePostsQuery { Page = page, PageSize = pageSize, Kind = kind, CategoryId = categoryId, Status = status, KeepsStock = keepsStock, Inactive = inactive },
             cancellationToken));
 
     /// <summary>The counts behind the Marketplace tiles, and the plan with how much of it is used.</summary>

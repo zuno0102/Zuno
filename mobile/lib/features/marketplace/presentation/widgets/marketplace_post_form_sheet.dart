@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -137,6 +139,21 @@ class _MarketplacePostFormSheetState
   String? _errorMessage;
   String? _successMessage;
 
+  /// A colour / size just changed in its sheet: said for a moment, as the form stays open.
+  String? _variantNotice;
+  Timer? _variantNoticeTimer;
+
+  void _noteVariant(String change) {
+    final notice =
+        '$change Tap ${_old == null ? 'Save post' : 'Save changes'} to keep it.';
+    setState(() => _variantNotice = notice);
+    // A later change starts its own three seconds.
+    _variantNoticeTimer?.cancel();
+    _variantNoticeTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _variantNotice = null);
+    });
+  }
+
   static String _plain(double? value) {
     if (value == null) return '';
     return value == value.roundToDouble()
@@ -164,6 +181,7 @@ class _MarketplacePostFormSheetState
     ]) {
       c.dispose();
     }
+    _variantNoticeTimer?.cancel();
     _variants.dispose();
     _customDetails.dispose();
     _attributes.dispose();
@@ -246,6 +264,7 @@ class _MarketplacePostFormSheetState
           defaultPrice: () => double.tryParse(_price.text.trim()),
           limits: _limits,
           maxQuantity: options?.maxQuantity ?? marketplaceDefaultMaxQuantity,
+          onChanged: _noteVariant,
         ),
         const SizedBox(height: 14),
       ],
@@ -463,6 +482,19 @@ class _MarketplacePostFormSheetState
     return Stack(
       children: [
         _form(context, theme, categoriesAsync, categories, category, options),
+        if (_successMessage == null && _variantNotice != null)
+          Positioned(
+            top: 12,
+            right: 20,
+            left: 20,
+            child: ServiceFormMessageBanner(
+              key: const ValueKey('marketplace-variant-saved'),
+              message: _variantNotice!,
+              color: theme.colorScheme.primary,
+              onColor: theme.colorScheme.onPrimary,
+              icon: Icons.check_circle,
+            ),
+          ),
         if (_successMessage case final message?)
           Positioned(
             top: 12,

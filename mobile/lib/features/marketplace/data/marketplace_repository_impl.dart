@@ -35,11 +35,13 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
     String? categoryId,
     String? status,
     bool keepsStock = false,
+    bool inactive = false,
   }) async => [
     for (final p in (await _remote.getMyPosts(
       categoryId: categoryId,
       status: status,
       keepsStock: keepsStock,
+      inactive: inactive,
       pageSize: listPageSize,
     )).items)
       p.toEntity(),

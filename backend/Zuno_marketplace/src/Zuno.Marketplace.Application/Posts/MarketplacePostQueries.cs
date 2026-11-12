@@ -27,6 +27,9 @@ public class GetMyMarketplacePostsQuery : IRequest<MarketplacePostPageDto>
 
     /// <summary>True for the Stock page: only new products that keep a stock count and are not closed or sold.</summary>
     public bool? KeepsStock { get; set; }
+
+    /// <summary>True for the Inactive tile: paused posts, and live products with a colour / size switched off.</summary>
+    public bool? Inactive { get; set; }
 }
 
 public class GetMyMarketplacePostsQueryValidator : AbstractValidator<GetMyMarketplacePostsQuery>
@@ -82,6 +85,11 @@ public class MarketplacePostQueryHandlers(
                 && p.Status != MarketplacePostStatus.Closed && p.Status != MarketplacePostStatus.Sold);
         }
 
+        if (request.Inactive == true)
+        {
+            mine = mine.Where(MarketplaceQueries.IsInactive);
+        }
+
         var totalCount = await mine.CountAsync(cancellationToken);
 
         // Served by the (owner_user_id, created_date) index; the joins run as one query per list.
@@ -128,11 +136,17 @@ public class MarketplacePostQueryHandlers(
             .ToListAsync(cancellationToken);
 
         var live = byCategory.Sum(c => c.Active);
+        // A live product with a colour / size switched off is partly inactive: it is on the tile too.
+        var withInactiveColour = await dbContext.Posts
+            .AsNoTracking()
+            .Where(p => p.OwnerUserId == ownerId && p.Status == MarketplacePostStatus.Active)
+            .CountAsync(p => p.Variants.Any(v => !v.IsActive), cancellationToken);
         var (plan, endsAt) = await dbContext.CurrentAsync(ownerId, now, cancellationToken);
         return new MarketplaceSummaryDto
         {
             Active = live,
             Paused = byCategory.Sum(c => c.Paused),
+            Inactive = byCategory.Sum(c => c.Paused) + withInactiveColour,
             Expired = byCategory.Sum(c => c.Expired),
             Closed = byCategory.Sum(c => c.Closed),
             Sold = byCategory.Sum(c => c.Sold),

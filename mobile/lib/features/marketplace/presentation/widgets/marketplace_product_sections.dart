@@ -212,6 +212,7 @@ class MarketplaceVariantsSection extends StatelessWidget {
     this.hint =
         'Sold in another colour or size too? Add each with its own price and stock.',
     this.addLabel = 'Add another colour / size',
+    this.onChanged,
     super.key,
   });
 
@@ -222,6 +223,10 @@ class MarketplaceVariantsSection extends StatelessWidget {
   final String title;
   final String hint;
   final String addLabel;
+
+  /// Told what changed — "Green · large saved." — so the page can say so; the change is kept
+  /// only once the page itself is saved.
+  final ValueChanged<String>? onChanged;
 
   /// The colour / size typed on the form itself, which an added one may not repeat.
   final List<MarketplaceVariant> Function() alsoTaken;
@@ -248,7 +253,12 @@ class MarketplaceVariantsSection extends StatelessWidget {
       limits: limits,
       maxQuantity: maxQuantity,
     );
-    if (saved != null) variants.put(saved, at: index);
+    if (saved == null) return;
+    variants.put(saved, at: index);
+    onChanged?.call(
+      '${saved.name} ${index == null ? 'added' : 'saved'}'
+      '${saved.isActive ? '' : ' as inactive'}.',
+    );
   }
 
   Future<void> _remove(BuildContext context, int index) async {
@@ -258,7 +268,10 @@ class MarketplaceVariantsSection extends StatelessWidget {
       message: '"${variants.items[index].name}" will no longer be sold.',
       confirmLabel: 'Remove',
     );
-    if (confirmed) variants.removeAt(index);
+    if (!confirmed) return;
+    final name = variants.items[index].name;
+    variants.removeAt(index);
+    onChanged?.call('$name removed.');
   }
 
   @override

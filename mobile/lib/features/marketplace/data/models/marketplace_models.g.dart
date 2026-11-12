@@ -221,6 +221,7 @@ MarketplaceSummaryModel _$MarketplaceSummaryModelFromJson(
   expired: (json['expired'] as num).toInt(),
   closed: (json['closed'] as num).toInt(),
   sold: (json['sold'] as num?)?.toInt() ?? 0,
+  inactive: (json['inactive'] as num?)?.toInt(),
   plan: MarketplacePlanModel.fromJson(json['plan'] as Map<String, dynamic>),
   categories:
       (json['categories'] as List<dynamic>?)

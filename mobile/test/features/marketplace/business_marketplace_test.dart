@@ -342,6 +342,14 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
     return MarketplaceSummary(
       active: plan.usedActivePosts,
       paused: posts.where((p) => p.status == 'Paused').length,
+      inactive: posts
+          .where(
+            (p) =>
+                p.status == 'Paused' ||
+                (p.status == MarketplacePostStatus.active &&
+                    p.variants.any((v) => !v.isActive)),
+          )
+          .length,
       expired: posts.where((p) => p.status == 'Expired').length,
       closed: 0,
       sold: posts.where((p) => p.status == MarketplacePostStatus.sold).length,
@@ -369,9 +377,16 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
     String? categoryId,
     String? status,
     bool keepsStock = false,
+    bool inactive = false,
   }) async {
     if (failList case final error?) throw error;
     return posts
+        .where(
+          (p) =>
+              !inactive ||
+              p.status == MarketplacePostStatus.paused ||
+              p.variants.any((v) => !v.isActive),
+        )
         .where((p) => !keepsStock || (p.keepsStock && p.canUpdateStock))
         .where((p) => categoryId == null || p.categoryId == categoryId)
         .where((p) => status == null || p.status == status)
@@ -1501,6 +1516,11 @@ void main() {
         reason: 'another one starts at the product price',
       );
       await fillVariant(tester, colour: 'Green', price: '449', stock: '25');
+      expect(
+        find.text('Green added. Tap Save post to keep it.'),
+        findsOneWidget,
+        reason: 'said inside the form, where it can be seen',
+      );
       expect(find.text('₹449 · 25 in stock · 25% off'), findsOneWidget);
       await tap(
         tester,
@@ -2624,10 +2644,60 @@ void main() {
           .widget<StatTile>(find.byKey(ValueKey('marketplace-tile-$key')))
           .value;
       expect(valueOf('active'), '1');
-      expect(valueOf('paused'), '1');
+      expect(valueOf('inactive'), '1');
       expect(valueOf('expired'), '0');
       expect(valueOf('plan'), '1 / 1');
       expect(find.text('Free plan'), findsOneWidget);
+    });
+
+    testWidgets('Inactive counts and lists a live product with a colour off', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        const MarketplaceDashboardTiles(),
+        repository: _FakeMarketplaceRepository(
+          posts: [
+            _post(
+              title: 'Silk saree',
+              condition: MarketplaceItemCondition.newItem,
+              quantity: 10,
+              canUpdateStock: true,
+              variants: const [
+                MarketplaceVariant(id: 'v-red', colour: 'Red', stock: 10),
+                MarketplaceVariant(
+                  id: 'v-green',
+                  colour: 'Green',
+                  stock: 3,
+                  isActive: false,
+                ),
+              ],
+            ),
+            _post(id: 'p-2', title: 'Held one', status: 'Paused'),
+            _post(id: 'p-3', title: 'All on'),
+          ],
+          plan: _plan(max: 3, used: 2),
+        ),
+      );
+
+      expect(
+        tester
+            .widget<StatTile>(
+              find.byKey(const ValueKey('marketplace-tile-inactive')),
+            )
+            .value,
+        '2',
+      );
+      await tester.tap(find.byKey(const ValueKey('marketplace-tile-inactive')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Silk saree'), findsOneWidget);
+      expect(find.text('Held one'), findsOneWidget);
+      expect(find.text('All on'), findsNothing);
+      expect(
+        find.textContaining('2 colours / sizes · 1 inactive'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('a tile opens its posts', (tester) async {
@@ -2642,7 +2712,7 @@ void main() {
         ),
       );
 
-      await tester.tap(find.byKey(const ValueKey('marketplace-tile-paused')));
+      await tester.tap(find.byKey(const ValueKey('marketplace-tile-inactive')));
       await tester.pumpAndSettle();
 
       expect(find.byType(MarketplacePostListScreen), findsOneWidget);

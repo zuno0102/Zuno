@@ -157,6 +157,9 @@ public class MarketplaceSummaryDto
 
     public int Paused { get; set; }
 
+    /// <summary>The Inactive tile: paused posts, and live products with a colour / size switched off.</summary>
+    public int Inactive { get; set; }
+
     public int Expired { get; set; }
 
     public int Closed { get; set; }

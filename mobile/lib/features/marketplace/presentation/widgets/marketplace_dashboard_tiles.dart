@@ -9,7 +9,7 @@ import 'package:zuno/features/marketplace/presentation/screens/marketplace_stock
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/stat_tile.dart';
 
-/// The Marketplace section of the business home screen: live, paused and expired posts, how much of
+/// The Marketplace section of the business home screen: live, inactive and expired posts, how much of
 /// the plan is used, and Stock. Each tile opens the posts behind its number; Stock opens the products'
 /// stock.
 ///
@@ -33,10 +33,15 @@ class MarketplaceDashboardTiles extends ConsumerWidget {
         s == null ? '–' : '${of(s)}';
     StatusTone some(int? n, StatusTone tone) =>
         (n ?? 0) > 0 ? tone : StatusTone.waiting;
-    void open(String title, {String? status}) => pushScreen(
-      context,
-      MarketplacePostListScreen(title: title, status: status),
-    );
+    void open(String title, {String? status, bool inactive = false}) =>
+        pushScreen(
+          context,
+          MarketplacePostListScreen(
+            title: title,
+            status: status,
+            inactive: inactive,
+          ),
+        );
 
     return StatTileGrid(
       tiles: [
@@ -48,13 +53,15 @@ class MarketplaceDashboardTiles extends ConsumerWidget {
           tone: some(s?.active, StatusTone.success),
           onTap: () => open('Live posts', status: MarketplacePostStatus.active),
         ),
+        // Paused posts, and live products with a colour / size switched off: everything the
+        // business has made inactive, whole or in part.
         StatTile(
-          key: const ValueKey('marketplace-tile-paused'),
-          label: 'Paused',
-          value: count((s) => s.paused),
+          key: const ValueKey('marketplace-tile-inactive'),
+          label: 'Inactive',
+          value: count((s) => s.inactiveCount),
           icon: Icons.pause_circle_outline,
-          tone: some(s?.paused, StatusTone.progress),
-          onTap: () => open('Paused', status: MarketplacePostStatus.paused),
+          tone: some(s?.inactiveCount, StatusTone.progress),
+          onTap: () => open('Inactive', inactive: true),
         ),
         StatTile(
           key: const ValueKey('marketplace-tile-expired'),
