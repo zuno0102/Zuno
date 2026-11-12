@@ -15,7 +15,6 @@ import 'package:zuno/features/marketplace/presentation/widgets/marketplace_categ
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_product_sections.dart';
 import 'package:zuno/shared/widgets/date_time_field.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
-import 'package:zuno/shared/widgets/location_pin_picker.dart';
 import 'package:zuno/shared/widgets/multi_select_sheet.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
 import 'package:zuno/shared/widgets/select_field.dart';
@@ -96,17 +95,11 @@ class _MarketplacePostFormSheetState
     _old?.customDetails ?? const [],
   );
 
-  /// Where the product is: a street line, and the pin from the map or the phone.
-  late final _addressLine = TextEditingController(text: _old?.addressLine);
-  late double? _latitude = _old?.latitude;
-  late double? _longitude = _old?.longitude;
-
-  /// A product ships anywhere, or only to the districts chosen.
-  late bool _deliversEverywhere = _old?.deliversEverywhere ?? true;
+  /// Where a product ships: all of India, a whole state, or some districts of that state.
+  late MarketplaceShipsTo _shipsTo =
+      _old?.shipsTo ?? MarketplaceShipsTo.allIndia;
+  late String? _shipStateId = _old?.deliveryStateId;
   late Set<String> _deliveryDistrictIds = {...?_old?.deliveryDistrictIds};
-
-  /// A new post starts from the business's registered address, once.
-  bool _prefilledAddress = false;
 
   void _rebuild() {
     if (mounted) setState(() {});
@@ -145,7 +138,6 @@ class _MarketplacePostFormSheetState
       _minOrder,
       _area,
       _phone,
-      _addressLine,
     ]) {
       c.dispose();
     }
@@ -228,9 +220,25 @@ class _MarketplacePostFormSheetState
     ],
   ];
 
+  /// The business's district, when its registered address says it.
+  District? get _businessDistrict =>
+      ref.read(marketplaceBusinessDistrictProvider).value;
+
+  /// Where the post is. A product is where the business is registered — the form asks only when
+  /// that address does not say; anything else is where the form says.
+  String? _placeDistrictId(MarketplaceCategory? category) =>
+      (category?.tracksStock ?? false)
+      ? _businessDistrict?.id ?? _districtId
+      : _districtId;
+
   MarketplacePostInput _input(MarketplaceCategory category) {
     final kind = category.kind;
     final wholesale = _sellsWholesale(category);
+    final fromBusiness = category.tracksStock && _businessDistrict != null;
+    final profile = ref.read(businessProfileProvider).value;
+    final shipsTo = category.tracksStock
+        ? _shipsTo
+        : MarketplaceShipsTo.allIndia;
     return MarketplacePostInput(
       categoryId: category.id,
       subCategoryId: category.subCategories.isEmpty ? null : _subCategoryId,
@@ -261,11 +269,14 @@ class _MarketplacePostFormSheetState
           ? double.tryParse(_originalPrice.text.trim())
           : null,
       customDetails: _customDetails.values,
-      addressLine: _clean(_addressLine),
-      latitude: _latitude,
-      longitude: _longitude,
-      deliversEverywhere: !category.tracksStock || _deliversEverywhere,
-      deliveryDistrictIds: category.tracksStock && !_deliversEverywhere
+      // A product's place is the business's: its pin, so "near you" works.
+      latitude: fromBusiness ? profile?.latitude : _old?.latitude,
+      longitude: fromBusiness ? profile?.longitude : _old?.longitude,
+      deliversEverywhere: shipsTo == MarketplaceShipsTo.allIndia,
+      deliveryStateId: shipsTo == MarketplaceShipsTo.allIndia
+          ? null
+          : _shipStateId,
+      deliveryDistrictIds: shipsTo == MarketplaceShipsTo.districts
           ? [..._deliveryDistrictIds]
           : const [],
       startsAt: kind == MarketplacePostKind.listing ? null : _startsAt,
@@ -273,8 +284,8 @@ class _MarketplacePostFormSheetState
       contactPhone: kind == MarketplacePostKind.advertisement
           ? _clean(_phone)
           : null,
-      districtId: _districtId!,
-      area: _clean(_area),
+      districtId: _placeDistrictId(category)!,
+      area: fromBusiness ? profile?.city : _clean(_area),
       attributes: _attributes.valuesFor(category.fieldsFor(_subCategoryId)),
     );
   }
@@ -284,7 +295,7 @@ class _MarketplacePostFormSheetState
     final valid = _formKey.currentState!.validate();
     final problem = category == null
         ? 'Choose a category.'
-        : _districtId == null
+        : _placeDistrictId(category) == null
         ? 'Choose the district.'
         : null;
     if (!valid || problem != null || category == null) {
@@ -704,66 +715,6 @@ class _MarketplacePostFormSheetState
     ];
   }
 
-  /// A new post starts where the business is registered: its street, town, state and pin. Once,
-  /// when both the profile and the states have loaded; anything typed since is never overwritten.
-  void _prefillFromBusiness(List<LocationState> states) {
-    if (_old != null || _prefilledAddress) return;
-    final profile = ref.watch(businessProfileProvider).value;
-    if (profile == null || states.isEmpty) return;
-    _prefilledAddress = true;
-    final street = [
-      profile.addressLine1,
-      profile.addressLine2,
-    ].where((p) => p != null && p.trim().isNotEmpty).join(', ');
-    if (_addressLine.text.isEmpty && street.isNotEmpty) {
-      _addressLine.text = street;
-    }
-    if (_area.text.isEmpty && (profile.city?.isNotEmpty ?? false)) {
-      _area.text = profile.city!;
-    }
-    _latitude ??= profile.latitude;
-    _longitude ??= profile.longitude;
-    _stateId ??= _stateNamed(states, profile.state);
-  }
-
-  static String? _stateNamed(List<LocationState> states, String? name) {
-    final wanted = name?.trim().toLowerCase();
-    if (wanted == null || wanted.isEmpty) return null;
-    return states.where((s) => s.name.toLowerCase() == wanted).firstOrNull?.id;
-  }
-
-  /// Pins the product on a map — from search, or the phone's position — and fills the street and
-  /// town from it where they are still empty.
-  Future<void> _pickLocation(
-    List<LocationState> states, {
-    required bool fromCurrentLocation,
-  }) async {
-    FocusScope.of(context).unfocus();
-    final picked = await showLocationPinPicker(
-      context,
-      title: 'Where is the product?',
-      // Starting without a point makes the picker go to the phone's position first.
-      initialLatitude: fromCurrentLocation ? null : _latitude,
-      initialLongitude: fromCurrentLocation ? null : _longitude,
-    );
-    if (picked == null || !mounted) return;
-    setState(() {
-      _latitude = picked.latitude;
-      _longitude = picked.longitude;
-      if (_addressLine.text.trim().isEmpty) {
-        _addressLine.text = picked.street ?? picked.summary;
-      }
-      if (_area.text.trim().isEmpty) {
-        _area.text = picked.locality ?? picked.city ?? '';
-      }
-      final pickedState = _stateNamed(states, picked.state);
-      if (pickedState != null && pickedState != _stateId) {
-        _stateId = pickedState;
-        _districtId = null;
-      }
-    });
-  }
-
   Future<void> _pickDeliveryDistricts(List<District> districts) async {
     final picked = await showMultiSelectSheet(
       context: context,
@@ -778,25 +729,106 @@ class _MarketplacePostFormSheetState
     }
   }
 
+  /// Why a district list cannot open yet: no state, still loading, or failed. The field stays
+  /// locked and says so, rather than opening an empty list.
+  static String? _districtHelp(
+    String? stateId,
+    AsyncValue<List<District>>? districtsAsync,
+  ) {
+    final empty = districtsAsync?.value?.isEmpty ?? true;
+    if (stateId == null) return 'Choose the state first.';
+    if (districtsAsync!.isLoading && empty) return 'Loading districts…';
+    if (districtsAsync.hasError && empty) {
+      return 'Could not load districts. Choose the state again.';
+    }
+    return null;
+  }
+
+  /// A state list where picking the same state again asks once more for a district list that
+  /// failed to load.
+  Widget _stateField({
+    required Key key,
+    required List<LocationState> states,
+    required String? value,
+    required String requiredMessage,
+    required ValueChanged<String> onPicked,
+  }) => SelectField<String>(
+    key: key,
+    label: 'State',
+    options: [for (final s in states) SelectOption(s.id, s.name)],
+    initialValue: value,
+    validator: (v) => v == null ? requiredMessage : null,
+    onChanged: (id) => setState(() {
+      if (id == value) ref.invalidate(districtsForStatesProvider(id));
+      onPicked(id);
+    }),
+  );
+
+  /// Where the post is. A product is where the business is registered, so the form only says
+  /// so; it asks only when that address does not name a district. Then, for a product, where it
+  /// ships.
   List<Widget> _placeSection(MarketplaceCategory? category) {
-    final theme = Theme.of(context);
     final states = ref.watch(locationStatesProvider).value ?? const [];
-    _prefillFromBusiness(states);
+    if (!(category?.tracksStock ?? false)) return _whereItIs(states);
+
+    final business = ref.watch(marketplaceBusinessDistrictProvider);
+    final home = business.value;
+    return [
+      if (home != null || business.isLoading)
+        _fromBusinessNote(home)
+      else
+        ..._whereItIs(
+          states,
+          note:
+              'Your business address does not say which district it is in. Choose it '
+              'here, or add your address in your profile.',
+          withArea: false,
+        ),
+      const SizedBox(height: 14),
+      ..._shipsToSection(states, home),
+    ];
+  }
+
+  /// "From your business address: Marthandam, Kanyakumari, Tamil Nadu".
+  Widget _fromBusinessNote(District? home) {
+    final theme = Theme.of(context);
+    final town = ref.watch(businessProfileProvider).value?.city;
+    final place = home == null
+        ? 'Loading your business address…'
+        : 'From your business address: ${[if (town != null && town.trim().isNotEmpty && town.trim().toLowerCase() != home.name.toLowerCase()) town.trim(), home.name, home.stateName].join(', ')}';
+    return Row(
+      key: const ValueKey('marketplace-from-business'),
+      children: [
+        Icon(
+          Icons.storefront_outlined,
+          size: 18,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            place,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// State, district and town, picked on the form.
+  List<Widget> _whereItIs(
+    List<LocationState> states, {
+    String? note,
+    bool withArea = true,
+  }) {
+    final theme = Theme.of(context);
     final stateId = _stateId;
     final districtsAsync = stateId == null
         ? null
         : ref.watch(districtsForStatesProvider(stateId));
     final districts = districtsAsync?.value ?? const [];
-    // The districts come from the server after a state is picked: until they are here the field
-    // stays locked and says so, rather than opening an empty list.
-    final districtHelp = stateId == null
-        ? 'Choose the state first.'
-        : districtsAsync!.isLoading && districts.isEmpty
-        ? 'Loading districts…'
-        : districtsAsync.hasError && districts.isEmpty
-        ? 'Could not load districts. Choose the state again.'
-        : null;
-    final hasPin = _latitude != null && _longitude != null;
     return [
       Text(
         'Where it is',
@@ -804,75 +836,25 @@ class _MarketplacePostFormSheetState
           fontWeight: FontWeight.w600,
         ),
       ),
-      const SizedBox(height: 4),
-      Text(
-        _old == null
-            ? 'Starts from your registered business address. Change it if the product is elsewhere.'
-            : 'Where the product is kept.',
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
+      if (note != null) ...[
+        const SizedBox(height: 4),
+        Text(
+          note,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
         ),
-      ),
+      ],
       const SizedBox(height: 10),
-      TextFormField(
-        key: const ValueKey('marketplace-address'),
-        controller: _addressLine,
-        maxLength: 200,
-        decoration: const InputDecoration(
-          labelText: 'Street address (optional)',
-          hintText: 'e.g. 12 Main Road, near the bus stand',
-          border: OutlineInputBorder(),
-          counterText: '',
-        ),
-      ),
-      const SizedBox(height: 8),
-      Wrap(
-        spacing: 8,
-        runSpacing: 4,
-        children: [
-          ActionChip(
-            key: const ValueKey('marketplace-search-location'),
-            avatar: const Icon(Icons.search, size: 18),
-            label: const Text('Search on map'),
-            onPressed: () => _pickLocation(states, fromCurrentLocation: false),
-          ),
-          ActionChip(
-            key: const ValueKey('marketplace-current-location'),
-            avatar: const Icon(Icons.my_location, size: 18),
-            label: const Text('Current location'),
-            onPressed: () => _pickLocation(states, fromCurrentLocation: true),
-          ),
-          if (hasPin)
-            InputChip(
-              key: const ValueKey('marketplace-pin-set'),
-              avatar: Icon(
-                Icons.check_circle,
-                size: 18,
-                color: theme.colorScheme.primary,
-              ),
-              label: const Text('Exact pin set'),
-              onPressed: () =>
-                  _pickLocation(states, fromCurrentLocation: false),
-              onDeleted: () => setState(() {
-                _latitude = null;
-                _longitude = null;
-              }),
-            ),
-        ],
-      ),
-      const SizedBox(height: 14),
-      SelectField<String>(
+      _stateField(
         key: const ValueKey('marketplace-state'),
-        label: 'State',
-        options: [for (final s in states) SelectOption(s.id, s.name)],
-        initialValue: _stateId,
-        validator: (v) => v == null ? 'Choose the state.' : null,
-        onChanged: (id) => setState(() {
+        states: states,
+        value: _stateId,
+        requiredMessage: 'Choose the state.',
+        onPicked: (id) {
           if (id != _stateId) _districtId = null;
-          // The same state again is how a failed district list is asked for once more.
-          if (id == _stateId) ref.invalidate(districtsForStatesProvider(id));
           _stateId = id;
-        }),
+        },
       ),
       const SizedBox(height: 14),
       SelectField<String>(
@@ -880,71 +862,110 @@ class _MarketplacePostFormSheetState
         label: 'District',
         options: [for (final d in districts) SelectOption(d.id, d.name)],
         initialValue: _districtId,
-        helperText: districtHelp,
+        helperText: _districtHelp(stateId, districtsAsync),
         validator: (v) => v == null ? 'Choose the district.' : null,
         onChanged: districts.isEmpty
             ? null
             : (id) => setState(() => _districtId = id),
       ),
-      const SizedBox(height: 14),
-      TextFormField(
-        controller: _area,
-        maxLength: 120,
-        decoration: const InputDecoration(
-          labelText: 'Town or area (optional)',
-          hintText: 'e.g. Marthandam',
-          border: OutlineInputBorder(),
-          counterText: '',
+      if (withArea) ...[
+        const SizedBox(height: 14),
+        TextFormField(
+          controller: _area,
+          maxLength: 120,
+          decoration: const InputDecoration(
+            labelText: 'Town or area (optional)',
+            hintText: 'e.g. Marthandam',
+            border: OutlineInputBorder(),
+            counterText: '',
+          ),
         ),
+      ],
+    ];
+  }
+
+  /// "Ships to": All India; a whole state; or a state and the districts in it.
+  List<Widget> _shipsToSection(List<LocationState> states, District? home) {
+    final stateId = _shipStateId;
+    final districtsAsync =
+        _shipsTo == MarketplaceShipsTo.districts && stateId != null
+        ? ref.watch(districtsForStatesProvider(stateId))
+        : null;
+    final districts = districtsAsync?.value ?? const <District>[];
+    return [
+      SelectField<MarketplaceShipsTo>(
+        key: const ValueKey('marketplace-ships-to'),
+        label: 'Ships to',
+        options: const [
+          SelectOption(
+            MarketplaceShipsTo.allIndia,
+            'All India',
+            detail: 'Anyone in India can order it',
+          ),
+          SelectOption(
+            MarketplaceShipsTo.state,
+            'State',
+            detail: 'The whole state, e.g. all of Tamil Nadu',
+          ),
+          SelectOption(
+            MarketplaceShipsTo.districts,
+            'State + districts',
+            detail: 'Only the districts you pick in one state',
+          ),
+        ],
+        initialValue: _shipsTo,
+        onChanged: (v) => setState(() {
+          _shipsTo = v;
+          // Most ship in their own state first.
+          _shipStateId ??= home?.stateId;
+        }),
       ),
-      if (category?.tracksStock ?? false) ...[
-        const SizedBox(height: 4),
-        SelectField<bool>(
-          key: const ValueKey('marketplace-ships-to'),
-          label: 'Ships to',
-          options: const [
-            SelectOption(true, 'All areas', detail: 'Anyone can order it'),
-            SelectOption(
-              false,
-              'Chosen districts only',
-              detail: 'Only customers in the districts you pick',
-            ),
-          ],
-          initialValue: _deliversEverywhere,
-          onChanged: (v) => setState(() => _deliversEverywhere = v),
+      if (_shipsTo != MarketplaceShipsTo.allIndia) ...[
+        const SizedBox(height: 14),
+        _stateField(
+          key: const ValueKey('marketplace-ships-state'),
+          states: states,
+          value: _shipStateId,
+          requiredMessage: 'Choose the state it ships in.',
+          onPicked: (id) {
+            if (id != _shipStateId) _deliveryDistrictIds = {};
+            _shipStateId = id;
+          },
         ),
-        if (!_deliversEverywhere) ...[
-          const SizedBox(height: 14),
-          FormField<Set<String>>(
-            key: ValueKey('marketplace-delivery-districts-$_stateId'),
-            validator: (_) => _deliveryDistrictIds.isEmpty
-                ? 'Choose at least one district.'
-                : null,
-            builder: (field) => InkWell(
-              onTap: districts.isEmpty
-                  ? null
-                  : () => _pickDeliveryDistricts([...districts]),
-              borderRadius: BorderRadius.circular(12),
-              child: InputDecorator(
-                isEmpty: _deliveryDistrictIds.isEmpty,
-                decoration: InputDecoration(
-                  labelText: 'Districts it ships to',
-                  helperText: districtHelp ?? 'From the state above.',
-                  errorText: field.errorText,
-                  suffixIcon: const Icon(Icons.keyboard_arrow_down_rounded),
-                ),
-                child: Text(
-                  [
-                    for (final d in districts)
-                      if (_deliveryDistrictIds.contains(d.id)) d.name,
-                  ].join(', '),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
+      ],
+      if (_shipsTo == MarketplaceShipsTo.districts) ...[
+        const SizedBox(height: 14),
+        FormField<Set<String>>(
+          key: ValueKey('marketplace-delivery-districts-$stateId'),
+          validator: (_) => _deliveryDistrictIds.isEmpty
+              ? 'Choose at least one district.'
+              : null,
+          builder: (field) => InkWell(
+            onTap: districts.isEmpty
+                ? null
+                : () => _pickDeliveryDistricts(districts),
+            borderRadius: BorderRadius.circular(12),
+            child: InputDecorator(
+              isEmpty: _deliveryDistrictIds.isEmpty,
+              decoration: InputDecoration(
+                labelText: 'Districts it ships to',
+                helperText:
+                    _districtHelp(stateId, districtsAsync) ??
+                    'In the state above.',
+                errorText: field.errorText,
+                suffixIcon: const Icon(Icons.keyboard_arrow_down_rounded),
+              ),
+              child: Text(
+                [
+                  for (final d in districts)
+                    if (_deliveryDistrictIds.contains(d.id)) d.name,
+                ].join(', '),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ),
-        ],
+        ),
       ],
     ];
   }

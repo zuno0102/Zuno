@@ -869,11 +869,6 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<string>("AddressLine")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("address_line");
-
                     b.Property<string>("Area")
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)")
@@ -908,6 +903,10 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("uuid[]")
                         .HasColumnName("delivery_district_ids");
+
+                    b.Property<Guid?>("DeliveryStateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("delivery_state_id");
 
                     b.Property<string>("Description")
                         .HasMaxLength(2000)
@@ -1004,6 +1003,9 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_marketplace_posts");
 
+                    b.HasIndex("DeliveryStateId")
+                        .HasDatabaseName("ix_marketplace_posts_delivery_state_id");
+
                     b.HasIndex("DistrictId")
                         .HasDatabaseName("ix_marketplace_posts_district_id");
 
@@ -1033,6 +1035,8 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_marketplace_posts_price", "price IS NULL OR price > 0");
 
                             t.HasCheckConstraint("ck_marketplace_posts_quantity", "quantity IS NULL OR quantity >= 1 OR (quantity = 0 AND condition = 1)");
+
+                            t.HasCheckConstraint("ck_marketplace_posts_ships_to", "delivers_everywhere OR delivery_state_id IS NOT NULL");
 
                             t.HasCheckConstraint("ck_marketplace_posts_status", "status IN (1, 2, 3, 5)");
 
@@ -6722,6 +6726,12 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_marketplace_posts_marketplace_categories_category_id");
+
+                    b.HasOne("Zuno.Marketplace.Domain.Entities.RefState", null)
+                        .WithMany()
+                        .HasForeignKey("DeliveryStateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_marketplace_posts_states_delivery_state_id");
 
                     b.HasOne("Zuno.Marketplace.Domain.Entities.RefDistrict", "District")
                         .WithMany()

@@ -5,6 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart' show WidgetRef;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:zuno/core/network/dio_client.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_providers.dart';
+import 'package:zuno/features/business_owner/presentation/providers/business_profile_notifier.dart';
+import 'package:zuno/features/catalog/domain/entities/district.dart';
+import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
+import 'package:zuno/features/customer/data/datasources/customer_location_api.dart';
 import 'package:zuno/features/marketplace/data/marketplace_api.dart';
 import 'package:zuno/features/marketplace/data/marketplace_remote_datasource.dart';
 import 'package:zuno/features/marketplace/data/marketplace_repository_impl.dart';
@@ -26,8 +30,39 @@ MarketplaceRepository marketplaceRepository(Ref ref) =>
       MarketplaceRemoteDataSource(ref.watch(marketplaceDioProvider)),
     );
 
-/// The categories a business can post in, with their details. The server caches them too.
+/// Where the business is, as a district — where its products are said to be, so the form does not
+/// ask. From its registered pin; else its town and state matched by name; null when neither does,
+/// and the form then asks for the district.
 @riverpod
+Future<District?> marketplaceBusinessDistrict(Ref ref) async {
+  final profile = await ref.watch(businessProfileProvider.future);
+  final latitude = profile.latitude;
+  final longitude = profile.longitude;
+  if (latitude != null && longitude != null) {
+    try {
+      final nearest = await ref
+          .read(customerLocationApiProvider)
+          .nearestDistrict(latitude, longitude);
+      if (nearest != null) return nearest;
+    } catch (_) {
+      // Offline or refused: the names below may still say where it is.
+    }
+  }
+
+  String key(String? name) => (name ?? '').trim().toLowerCase();
+  final stateName = key(profile.state);
+  final town = key(profile.city);
+  if (stateName.isEmpty || town.isEmpty) return null;
+  final districts = await ref.watch(allDistrictsProvider.future);
+  return districts
+      .where((d) => key(d.stateName) == stateName && key(d.name) == town)
+      .firstOrNull;
+}
+
+/// The categories a business can post in, with their details. The server caches them too. Kept
+/// for the session — they change only when the super admin edits them, which reloads them — so
+/// opening a Marketplace screen again costs no request.
+@Riverpod(keepAlive: true)
 Future<List<MarketplaceCategory>> marketplaceCategories(Ref ref) =>
     ref.watch(marketplaceRepositoryProvider).getCategories();
 

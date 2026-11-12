@@ -91,6 +91,9 @@ public class MarketplacePostConfiguration : IEntityTypeConfiguration<Marketplace
             t.HasCheckConstraint("ck_marketplace_posts_quantity", "quantity IS NULL OR quantity >= 1 OR (quantity = 0 AND condition = 1)");
             t.HasCheckConstraint("ck_marketplace_posts_window", "ends_at IS NULL OR starts_at IS NULL OR ends_at > starts_at");
             t.HasCheckConstraint("ck_marketplace_posts_location", "(latitude IS NULL) = (longitude IS NULL)");
+
+            // All of India, or a state (whole, or some of its districts).
+            t.HasCheckConstraint("ck_marketplace_posts_ships_to", "delivers_everywhere OR delivery_state_id IS NOT NULL");
         });
         builder.Property(p => p.Title).HasMaxLength(120).IsRequired();
         builder.Property(p => p.Description).HasMaxLength(2000);
@@ -113,7 +116,6 @@ public class MarketplacePostConfiguration : IEntityTypeConfiguration<Marketplace
             details.Property(a => a.Key).HasMaxLength(60);
             details.Property(a => a.Value).HasMaxLength(200);
         });
-        builder.Property(p => p.AddressLine).HasMaxLength(200);
 
         // Postgres's own row version (xmin — no column is added): two edits of one post at once
         // cannot both win silently.
@@ -130,6 +132,7 @@ public class MarketplacePostConfiguration : IEntityTypeConfiguration<Marketplace
         builder.HasOne(p => p.Category).WithMany().HasForeignKey(p => p.CategoryId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(p => p.SubCategory).WithMany().HasForeignKey(p => p.SubCategoryId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(p => p.District).WithMany().HasForeignKey(p => p.DistrictId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<RefState>().WithMany().HasForeignKey(p => p.DeliveryStateId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 

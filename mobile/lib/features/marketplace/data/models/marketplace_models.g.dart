@@ -73,7 +73,7 @@ MarketplacePostModel _$MarketplacePostModelFromJson(
           )
           .toList() ??
       const [],
-  addressLine: json['addressLine'] as String?,
+  deliveryStateId: json['deliveryStateId'] as String?,
   deliversEverywhere: json['deliversEverywhere'] as bool? ?? true,
   deliveryDistrictIds:
       (json['deliveryDistrictIds'] as List<dynamic>?)

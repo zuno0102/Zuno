@@ -63,12 +63,13 @@ public abstract class MarketplacePostFields
     /// <summary>A new product's colours and sizes, each with its stock. Empty for one stock count.</summary>
     public List<MarketplaceVariantInput> Variants { get; set; } = [];
 
-    /// <summary>The product's street address; the pin is the latitude and longitude.</summary>
-    public string? AddressLine { get; set; }
-
-    /// <summary>Products only: ships anywhere (the default), or only to <see cref="DeliveryDistrictIds"/>.</summary>
+    /// <summary>Products only: ships all over India (the default), or only in <see cref="DeliveryStateId"/>.</summary>
     public bool DeliversEverywhere { get; set; } = true;
 
+    /// <summary>The state it ships in, when not everywhere. Required then; an older app leaves it out.</summary>
+    public Guid? DeliveryStateId { get; set; }
+
+    /// <summary>Districts of that state it ships to; empty ships to the whole state.</summary>
     public List<Guid> DeliveryDistrictIds { get; set; } = [];
 }
 
@@ -119,7 +120,6 @@ public abstract class MarketplacePostFieldsValidator<T> : AbstractValidator<T>
     public const int MaxVariants = 50;
     public const int ColourMax = 40;
     public const int SizeMax = 20;
-    public const int AddressMax = 200;
     public const int MaxDeliveryDistricts = 100;
 
     protected MarketplacePostFieldsValidator(IOptions<MarketplaceSettings> settings)
@@ -147,7 +147,6 @@ public abstract class MarketplacePostFieldsValidator<T> : AbstractValidator<T>
         RuleFor(x => x.Longitude).InclusiveBetween(-180, 180).When(x => x.Longitude.HasValue);
         RuleFor(x => x).Must(x => x.Latitude.HasValue == x.Longitude.HasValue)
             .WithName("Location").WithMessage("Send both latitude and longitude, or neither.");
-        RuleFor(x => x.AddressLine).MaximumLength(AddressMax);
         RuleFor(x => x.CustomDetails.Count).LessThanOrEqualTo(MaxCustomDetails)
             .OverridePropertyName("CustomDetails").WithMessage($"Add at most {MaxCustomDetails} details of your own.");
         RuleForEach(x => x.CustomDetails).ChildRules(detail =>
@@ -265,15 +264,42 @@ public class SaveMarketplacePostHandlers(
 
         if (category.TracksStock && !request.DeliversEverywhere)
         {
-            var wanted = request.DeliveryDistrictIds.Distinct().ToList();
-            var known = await dbContext.Districts.CountAsync(d => wanted.Contains(d.Id), cancellationToken);
-            if (known != wanted.Count)
-            {
-                throw new ValidationException([new ValidationFailure(nameof(request.DeliveryDistrictIds), "Choose the districts it ships to from the list.")]);
-            }
+            await CheckShipsToAsync(request, cancellationToken);
         }
 
         return category;
+    }
+
+    /// <summary>
+    /// A state, and any of its districts. An older app sends only districts: their one state is
+    /// taken as the state.
+    /// </summary>
+    private async Task CheckShipsToAsync(MarketplacePostFields request, CancellationToken cancellationToken)
+    {
+        static ValidationException Refused(string property, string message) =>
+            new([new ValidationFailure(property, message)]);
+
+        var wanted = request.DeliveryDistrictIds.Distinct().ToList();
+        var districtStates = await dbContext.Districts
+            .Where(d => wanted.Contains(d.Id))
+            .Select(d => d.StateId)
+            .ToListAsync(cancellationToken);
+        if (districtStates.Count != wanted.Count)
+        {
+            throw Refused(nameof(request.DeliveryDistrictIds), "Choose the districts it ships to from the list.");
+        }
+
+        var states = districtStates.Distinct().ToList();
+        request.DeliveryStateId ??= states.Count == 1 ? states[0] : null;
+        var stateId = request.DeliveryStateId
+            ?? throw Refused(nameof(request.DeliveryStateId), "Choose the state it ships in, or ship all over India.");
+
+        var state = await dbContext.States.Where(s => s.Id == stateId).Select(s => s.Name).FirstOrDefaultAsync(cancellationToken)
+            ?? throw Refused(nameof(request.DeliveryStateId), "Choose the state it ships in from the list.");
+        if (states.Any(s => s != stateId))
+        {
+            throw Refused(nameof(request.DeliveryDistrictIds), $"Choose districts in {state}.");
+        }
     }
 
     /// <summary>
@@ -344,8 +370,8 @@ public class SaveMarketplacePostHandlers(
             .Where(d => !string.IsNullOrWhiteSpace(d.Name) && !string.IsNullOrWhiteSpace(d.Value))
             .Select(d => new MarketplacePostAttribute { Key = d.Name.Trim(), Value = d.Value.Trim() })
             .ToList();
-        post.AddressLine = Clean(request.AddressLine);
         post.DeliversEverywhere = !category.TracksStock || request.DeliversEverywhere;
+        post.DeliveryStateId = post.DeliversEverywhere ? null : request.DeliveryStateId;
         post.DeliveryDistrictIds = post.DeliversEverywhere ? [] : request.DeliveryDistrictIds.Distinct().ToList();
     }
 
@@ -547,9 +573,9 @@ public static class MarketplacePostRules
             fail(nameof(request.OriginalPrice), "The MRP cannot be less than the price.");
         }
 
-        if (category.TracksStock && !request.DeliversEverywhere && request.DeliveryDistrictIds.Count == 0)
+        if (category.TracksStock && !request.DeliversEverywhere && request.DeliveryStateId is null && request.DeliveryDistrictIds.Count == 0)
         {
-            fail(nameof(request.DeliveryDistrictIds), "Choose the districts it ships to, or ship everywhere.");
+            fail(nameof(request.DeliveryStateId), "Choose the state it ships in, or ship all over India.");
         }
     }
 

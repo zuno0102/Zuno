@@ -161,6 +161,18 @@ const register = async (first, role) => {
   const mine = (await M_("GET", "/business/marketplace?pageSize=500", biz)).data;
   ok("The list caps the page size and no longer shows the car", mine?.pageSize === 100 && !mine?.items?.some(p => p.id === carId));
 
+  // ── Products: where it ships — all of India, a whole state, or some of its districts ────────
+  const kerala = ((await S_("GET", "/states", biz)).data ?? []).find(s => s.name === "Kerala")?.id;
+  const ship = extra => M_("PUT", `/business/marketplace/${newSaree.data?.id}`, biz2, { ...saree, condition: "New", quantity: 3, ...extra });
+  no("Shipping to a state needs the state", await ship({ deliversEverywhere: false }), "state it ships in");
+  const wholeState = await ship({ deliversEverywhere: false, deliveryStateId: tamilNadu });
+  ok("Ships to all of Tamil Nadu", wholeState.data?.deliveryStateId === tamilNadu && wholeState.data?.deliveryDistrictIds?.length === 0, `${wholeState.status} ${wholeState.text.slice(0, 80)}`);
+  const someDistricts = await ship({ deliversEverywhere: false, deliveryStateId: tamilNadu, deliveryDistrictIds: [district] });
+  ok("Ships to Kanyakumari only", someDistricts.data?.deliveryDistrictIds?.[0] === district, `${someDistricts.status} ${someDistricts.text.slice(0, 80)}`);
+  no("A district from another state is refused", await ship({ deliversEverywhere: false, deliveryStateId: kerala, deliveryDistrictIds: [district] }), "districts in Kerala");
+  const everywhere = await ship({ deliversEverywhere: true, deliveryStateId: tamilNadu });
+  ok("All India keeps no state", everywhere.data?.deliversEverywhere === true && everywhere.data?.deliveryStateId == null, `${everywhere.status}`);
+
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail === 0 ? 0 : 1);
 })().catch(e => { console.error(e); process.exit(1); });

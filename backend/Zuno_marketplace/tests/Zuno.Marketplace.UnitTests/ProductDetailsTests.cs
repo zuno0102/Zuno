@@ -11,7 +11,7 @@ namespace Zuno.Marketplace.UnitTests;
 
 /// <summary>
 /// A product put up like on a shopping site: colours and sizes each with their stock, an MRP, the
-/// business's own details, an address with a pin, and where it ships.
+/// business's own details, and where it ships: all of India, a whole state, or some of its districts.
 /// </summary>
 public class ProductDetailsTests
 {
@@ -171,24 +171,71 @@ public class ProductDetailsTests
     }
 
     [Fact]
-    public async Task Create_ShippingToChosenDistricts_NeedsKnownOnes()
+    public async Task Create_ShippingInAState_NeedsTheState()
     {
         using var test = new TestMarketplace();
 
         var none = await FailedAsync(() => test.SaveHandlers.Handle(Shirt(c => c.DeliversEverywhere = false), default));
-        none.Should().Contain("Choose the districts it ships to, or ship everywhere.");
+        none.Should().Contain("Choose the state it ships in, or ship all over India.");
 
         var unknown = await FailedAsync(() => test.SaveHandlers.Handle(
-            Shirt(c => { c.DeliversEverywhere = false; c.DeliveryDistrictIds = [Guid.NewGuid()]; }), default));
+            Shirt(c => { c.DeliversEverywhere = false; c.DeliveryStateId = Guid.NewGuid(); }), default));
+        unknown.Should().Contain("Choose the state it ships in from the list.");
+
+        var wholeState = await test.SaveHandlers.Handle(
+            Shirt(c => { c.DeliversEverywhere = false; c.DeliveryStateId = TamilNadu; }), default);
+        wholeState.DeliversEverywhere.Should().BeFalse();
+        wholeState.DeliveryStateId.Should().Be(TamilNadu);
+        wholeState.DeliveryDistrictIds.Should().BeEmpty("no districts is the whole state");
+    }
+
+    [Fact]
+    public async Task Create_ShippingToDistricts_TakesThemFromTheState()
+    {
+        using var test = new TestMarketplace();
+
+        var unknown = await FailedAsync(() => test.SaveHandlers.Handle(
+            Shirt(c => { c.DeliversEverywhere = false; c.DeliveryStateId = TamilNadu; c.DeliveryDistrictIds = [Guid.NewGuid()]; }), default));
         unknown.Should().Contain("Choose the districts it ships to from the list.");
 
+        var elsewhere = await FailedAsync(() => test.SaveHandlers.Handle(
+            Shirt(c => { c.DeliversEverywhere = false; c.DeliveryStateId = Kerala; c.DeliveryDistrictIds = [TestMarketplace.Kanyakumari]; }), default));
+        elsewhere.Should().Contain("Choose districts in Kerala.");
+
         var dto = await test.SaveHandlers.Handle(
-            Shirt(c => { c.DeliversEverywhere = false; c.DeliveryDistrictIds = [TestMarketplace.Kanyakumari, TestMarketplace.Kanyakumari]; c.AddressLine = "12 Main Road"; c.Latitude = 8.3; c.Longitude = 77.2; }),
+            Shirt(c => { c.DeliversEverywhere = false; c.DeliveryStateId = TamilNadu; c.DeliveryDistrictIds = [TestMarketplace.Kanyakumari, TestMarketplace.Kanyakumari]; }),
             default);
-        dto.DeliversEverywhere.Should().BeFalse();
+        dto.DeliveryStateId.Should().Be(TamilNadu);
         dto.DeliveryDistrictIds.Should().Equal(TestMarketplace.Kanyakumari);
-        dto.AddressLine.Should().Be("12 Main Road");
     }
+
+    [Fact]
+    public async Task Create_FromAnOlderApp_WithDistrictsOnly_TakesTheirState()
+    {
+        using var test = new TestMarketplace();
+
+        var dto = await test.SaveHandlers.Handle(
+            Shirt(c => { c.DeliversEverywhere = false; c.DeliveryDistrictIds = [TestMarketplace.Kanyakumari]; }), default);
+
+        dto.DeliveryStateId.Should().Be(TamilNadu);
+        dto.DeliveryDistrictIds.Should().Equal(TestMarketplace.Kanyakumari);
+    }
+
+    [Fact]
+    public async Task Create_ShippingEverywhere_KeepsNoStateOrDistricts()
+    {
+        using var test = new TestMarketplace();
+
+        var dto = await test.SaveHandlers.Handle(
+            Shirt(c => { c.DeliveryStateId = TamilNadu; c.DeliveryDistrictIds = [TestMarketplace.Kanyakumari]; }), default);
+
+        dto.DeliversEverywhere.Should().BeTrue();
+        dto.DeliveryStateId.Should().BeNull();
+        dto.DeliveryDistrictIds.Should().BeEmpty();
+    }
+
+    private static readonly Guid TamilNadu = LocationSeedData.StateId("Tamil Nadu");
+    private static readonly Guid Kerala = LocationSeedData.StateId("Kerala");
 
     [Fact]
     public async Task Create_OutsideProducts_AlwaysShipsAnywhere_WithNoColours()

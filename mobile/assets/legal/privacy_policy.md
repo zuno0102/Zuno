@@ -25,8 +25,8 @@ We collect only what the app needs to do its job. We do not sell your data, we d
 - Your UPI ID, so customers can pay you by scanning your QR code.
 - The services, rent items, prices, photos, hire posts and full-time job posts you create.
 - Your Marketplace posts — listings, food offers and adverts — with their prices, photos,
-  district and area, the product's street address and map pin (which start from your registered
-  business address, or your phone's location if you tap "Current location"), where it ships, the
+  district and area (for a product, the district, town and map pin of your registered business
+  address), where a product ships (all of India, a state, or chosen districts), the
   details you fill in or add yourself (such as a vehicle's year, a plot's size or a leather type),
   its colours and sizes, whether a product is new or used, how many you have in stock, whether it
   has sold, and the contact number you give on an advert.

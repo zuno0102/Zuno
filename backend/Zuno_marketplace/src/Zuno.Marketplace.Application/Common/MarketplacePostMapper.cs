@@ -45,8 +45,8 @@ internal static class MarketplacePostMapper
                 .OrderBy(v => v.SortOrder)
                 .Select(v => new MarketplaceVariantDto { Id = v.Id, Colour = v.Colour, Size = v.Size, Name = v.Name, Price = v.Price, Stock = v.Stock })
                 .ToList(),
-            AddressLine = post.AddressLine,
             DeliversEverywhere = post.DeliversEverywhere,
+            DeliveryStateId = post.DeliveryStateId,
             DeliveryDistrictIds = post.DeliveryDistrictIds,
             Media = post.Media
                 .OrderBy(m => m.SortOrder)

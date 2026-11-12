@@ -23,6 +23,10 @@ abstract final class MarketplaceItemCondition {
   static const used = 'Used';
 }
 
+/// Where a product ships: all over India, a whole state (all of Tamil Nadu), or some districts of
+/// one state.
+enum MarketplaceShipsTo { allIndia, state, districts }
+
 /// Retail sells one at a time; wholesale sells in bulk to other businesses (B2B).
 abstract final class MarketplaceTradeType {
   static const retail = 'Retail';
@@ -197,8 +201,8 @@ class MarketplacePost {
     this.canUpdateStock = false,
     this.customDetails = const [],
     this.variants = const [],
-    this.addressLine,
     this.deliversEverywhere = true,
+    this.deliveryStateId,
     this.deliveryDistrictIds = const [],
   });
 
@@ -221,12 +225,18 @@ class MarketplacePost {
   /// A new product's colours and sizes with their stock; empty for one stock count.
   final List<MarketplaceVariant> variants;
 
-  /// The product's street address; the pin is [latitude] and [longitude].
-  final String? addressLine;
-
-  /// A product ships anywhere, or only to [deliveryDistrictIds].
+  /// A product ships all over India; else in [deliveryStateId] — the whole state, or only its
+  /// [deliveryDistrictIds].
   final bool deliversEverywhere;
+  final String? deliveryStateId;
   final List<String> deliveryDistrictIds;
+
+  /// The form's "Ships to" choice this post was saved with.
+  MarketplaceShipsTo get shipsTo => deliversEverywhere
+      ? MarketplaceShipsTo.allIndia
+      : deliveryDistrictIds.isEmpty
+      ? MarketplaceShipsTo.state
+      : MarketplaceShipsTo.districts;
   final String? categoryIconName;
   final String? subCategoryId;
   final String? subCategoryName;
@@ -324,10 +334,10 @@ class MarketplacePostInput {
   const MarketplacePostInput({
     this.customDetails = const [],
     this.variants = const [],
-    this.addressLine,
     this.latitude,
     this.longitude,
     this.deliversEverywhere = true,
+    this.deliveryStateId,
     this.deliveryDistrictIds = const [],
     required this.categoryId,
     this.subCategoryId,
@@ -369,10 +379,10 @@ class MarketplacePostInput {
   final Map<String, String> attributes;
   final List<MarketplaceCustomDetail> customDetails;
   final List<MarketplaceVariant> variants;
-  final String? addressLine;
   final double? latitude;
   final double? longitude;
   final bool deliversEverywhere;
+  final String? deliveryStateId;
   final List<String> deliveryDistrictIds;
 
   Map<String, dynamic> toJson() => {
@@ -395,10 +405,10 @@ class MarketplacePostInput {
     'attributes': attributes,
     'customDetails': [for (final d in customDetails) d.toJson()],
     'variants': [for (final v in variants) v.toJson()],
-    'addressLine': addressLine,
     'latitude': latitude,
     'longitude': longitude,
     'deliversEverywhere': deliversEverywhere,
+    'deliveryStateId': deliveryStateId,
     'deliveryDistrictIds': deliveryDistrictIds,
   };
 }

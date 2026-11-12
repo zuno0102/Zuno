@@ -82,13 +82,16 @@ public class MarketplacePost : BaseEntity
     /// </summary>
     public List<MarketplacePostAttribute> CustomDetails { get; set; } = [];
 
-    /// <summary>The product's street address; the pin is <see cref="Latitude"/> / <see cref="Longitude"/>.</summary>
-    public string? AddressLine { get; set; }
-
-    /// <summary>A product that ships: anywhere, or only to <see cref="DeliveryDistrictIds"/>.</summary>
+    /// <summary>
+    /// Where a product ships: all of India; else the whole of <see cref="DeliveryStateId"/>; else
+    /// only its <see cref="DeliveryDistrictIds"/>.
+    /// </summary>
     public bool DeliversEverywhere { get; set; } = true;
 
-    /// <summary>Where it ships when not everywhere.</summary>
+    /// <summary>The state it ships in when not everywhere.</summary>
+    public Guid? DeliveryStateId { get; set; }
+
+    /// <summary>Districts of <see cref="DeliveryStateId"/> it ships to; empty is the whole state.</summary>
     public List<Guid> DeliveryDistrictIds { get; set; } = [];
 
     /// <summary>

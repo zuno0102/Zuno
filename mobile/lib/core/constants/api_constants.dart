@@ -10,8 +10,25 @@ class ApiConstants {
 
   static const String apiVersion = 'v1';
 
-  static const Duration connectTimeout = Duration(seconds: 15);
-  static const Duration receiveTimeout = Duration(seconds: 15);
+  static const Duration connectTimeout = Duration(
+    seconds: int.fromEnvironment(
+      'API_CONNECT_TIMEOUT_SECONDS',
+      defaultValue: 15,
+    ),
+  );
+
+  /// How long to wait for a reply. Long enough for a server that slept while idle to wake and
+  /// answer (a free Render server takes 20–50 s), so the first request after a quiet spell does
+  /// not fail — `--dart-define=API_RECEIVE_TIMEOUT_SECONDS=...`.
+  static const Duration receiveTimeout = Duration(
+    seconds: int.fromEnvironment(
+      'API_RECEIVE_TIMEOUT_SECONDS',
+      defaultValue: 60,
+    ),
+  );
+
+  /// The path each server answers without a login, used to wake it.
+  static const String healthPath = '/health';
 
   static const String registerPath = '/api/$apiVersion/auth/register';
   static const String loginPath = '/api/$apiVersion/auth/login';
@@ -42,7 +59,8 @@ class ApiConstants {
   static const String nearestDistrictPath = '$districtsPath/nearest';
 
   /// The customer's own location, kept in their account.
-  static const String customerLocationPath = '/api/$apiVersion/customer/location';
+  static const String customerLocationPath =
+      '/api/$apiVersion/customer/location';
 
   /// The app owner's catalogue: the kinds of work the whole product offers.
   static const String adminCatalogCategoriesPath =

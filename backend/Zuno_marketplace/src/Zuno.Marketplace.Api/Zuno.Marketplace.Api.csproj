@@ -6,6 +6,13 @@
       signing key: a token from the shared login is valid here without copying secrets around.
     -->
     <UserSecretsId>4e5c30fb-10fa-4613-a907-38ad9e1b98d5</UserSecretsId>
+
+    <!--
+      A faster start: a server that slept while idle wakes on its first request, so every second of
+      start-up is a second the user waits. Marketplace formats nothing by culture (numbers are read
+      and written invariant), so it needs no culture data to load.
+    -->
+    <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
   <ItemGroup>

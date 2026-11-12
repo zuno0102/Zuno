@@ -34,6 +34,8 @@ public interface IMarketplaceDbContext
 
     public DbSet<MarketplacePostTransition> PostTransitions { get; }
 
+    public DbSet<RefState> States { get; }
+
     public DbSet<RefDistrict> Districts { get; }
 
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

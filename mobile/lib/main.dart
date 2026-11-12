@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zuno/core/constants/api_constants.dart';
+import 'package:zuno/core/network/server_warm_up.dart';
 import 'package:zuno/core/notifications/system_notifications.dart';
 import 'package:zuno/core/router/app_router.dart';
 import 'package:zuno/core/theme/app_colors.dart';
@@ -8,6 +12,8 @@ import 'package:zuno/core/theme/app_theme.dart';
 import 'package:zuno/core/ui_config/ui_config_provider.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_state.dart';
+import 'package:zuno/features/marketplace/data/marketplace_api.dart';
+import 'package:zuno/features/rental/data/rental_api.dart';
 
 Future<void> main() async {
   // Needed before any plugin is touched, which the notification channel below is.
@@ -27,6 +33,15 @@ Future<void> main() async {
   // the server over it. Reading local files only, so it cannot hang on a slow network; the server
   // copy is fetched in the background once the app is up.
   await loadStartupUiConfig(rootBundle);
+
+  // Wake the three servers now, in the background, so none is still asleep when its tab opens.
+  unawaited(
+    warmUpServers([
+      ApiConstants.baseUrl,
+      RentApi.baseUrl,
+      MarketplaceApi.baseUrl,
+    ]),
+  );
 
   runApp(const ProviderScope(child: ZunoApp()));
 }

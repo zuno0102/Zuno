@@ -136,7 +136,51 @@ public class MigrationUpgradeTests(MarketplaceApiFactory factory) : IClassFixtur
         posts[empty].Quantity.Should().Be(1, "rolling back turned an empty stock into 1");
     }
 
+    [Fact]
+    public async Task ShipsToState_TakesTheStateOfChosenDistricts_AndRollsBack()
+    {
+        var connectionString = await factory.NewDatabaseAsync();
+        await using var db = new MarketplaceDbContext(new DbContextOptionsBuilder<MarketplaceDbContext>()
+            .UseNpgsql(connectionString)
+            .UseSnakeCaseNamingConvention()
+            .Options);
+        var migrator = db.GetService<IMigrator>();
+        await migrator.MigrateAsync(VariantsAndDelivery);
+
+        var local = Guid.NewGuid();
+        var anywhere = Guid.NewGuid();
+        var kanyakumari = LocationSeedData.DistrictId("Tamil Nadu", "Kanyakumari");
+        await using (var connection = new NpgsqlConnection(connectionString))
+        {
+            await connection.OpenAsync();
+            await InsertAsync(connection, local, MarketplaceCatalogSeedData.Products, "Saree", minOrder: null);
+            await InsertAsync(connection, anywhere, MarketplaceCatalogSeedData.Products, "Shirt", minOrder: null);
+            await using var command = new NpgsqlCommand(
+                "UPDATE marketplace_posts SET delivers_everywhere = false, delivery_district_ids = ARRAY[@district]::uuid[], " +
+                "address_line = '12 Main Road' WHERE id = @local;",
+                connection);
+            command.Parameters.AddWithValue("district", kanyakumari);
+            command.Parameters.AddWithValue("local", local);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        await migrator.MigrateAsync();
+
+        var posts = await db.Posts.IgnoreQueryFilters().AsNoTracking().ToDictionaryAsync(p => p.Id);
+        posts[local].DeliversEverywhere.Should().BeFalse();
+        posts[local].DeliveryStateId.Should().Be(LocationSeedData.StateId("Tamil Nadu"));
+        posts[local].DeliveryDistrictIds.Should().Equal(kanyakumari);
+        posts[anywhere].DeliversEverywhere.Should().BeTrue();
+        posts[anywhere].DeliveryStateId.Should().BeNull();
+
+        await migrator.MigrateAsync(VariantsAndDelivery);
+        await migrator.MigrateAsync();
+        (await db.Posts.IgnoreQueryFilters().AsNoTracking().SingleAsync(p => p.Id == local))
+            .DeliveryStateId.Should().Be(LocationSeedData.StateId("Tamil Nadu"));
+    }
+
     private const string FourCategories = "20261112070639_MainCategoriesAndSubCategories";
+    private const string VariantsAndDelivery = "20261112100833_ProductVariantsDetailsAndDelivery";
 
     /// <summary>A post as the first release stored it — a retail listing.</summary>
     private static async Task InsertAsync(

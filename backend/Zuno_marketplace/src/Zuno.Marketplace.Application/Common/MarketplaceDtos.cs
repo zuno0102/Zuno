@@ -74,9 +74,10 @@ public class MarketplacePostDto
     /// <summary>A new product's colours and sizes with their stock.</summary>
     public List<MarketplaceVariantDto> Variants { get; set; } = [];
 
-    public string? AddressLine { get; set; }
-
     public bool DeliversEverywhere { get; set; } = true;
+
+    /// <summary>The state it ships in when not all over India; no districts means the whole state.</summary>
+    public Guid? DeliveryStateId { get; set; }
 
     public List<Guid> DeliveryDistrictIds { get; set; } = [];
 

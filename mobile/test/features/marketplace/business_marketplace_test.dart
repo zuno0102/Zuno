@@ -498,6 +498,7 @@ Future<_FakeMarketplaceRepository> _pump(
   _FakeMarketplaceRepository? repository,
   Future<List<District>> Function()? districts,
   BusinessProfile profile = _profile,
+  District? businessDistrict,
 }) async {
   // A tall phone, so a long form needs no scrolling to reach a field.
   tester.view.physicalSize = const Size(1080, 4000);
@@ -510,6 +511,10 @@ Future<_FakeMarketplaceRepository> _pump(
         marketplaceRepositoryProvider.overrideWithValue(repo),
         businessServicesProvider.overrideWith(_NoServices.new),
         businessProfileProvider.overrideWith(() => _Profile(profile)),
+        // Where the business is: none unless a test gives it, so a product asks its district.
+        marketplaceBusinessDistrictProvider.overrideWith(
+          (ref) async => businessDistrict,
+        ),
         currentAppOptionsProvider.overrideWithValue(AppOptions.defaults),
         locationStatesProvider.overrideWith(
           (ref) async => const [LocationState(id: 's-tn', name: 'Tamil Nadu')],
@@ -1413,44 +1418,96 @@ void main() {
       );
     });
 
-    testWidgets('a new post starts from the registered business address', (
-      tester,
-    ) async {
-      final repo = await _pump(
-        tester,
-        const BusinessMarketplaceTab(),
-        profile: const BusinessProfile(
-          id: 'b-1',
-          businessName: 'shajil shajil',
-          verificationStatus: 'Verified',
-          addressLine1: '12 Main Road',
-          city: 'Marthandam',
-          state: 'Tamil Nadu',
-          latitude: 8.3,
-          longitude: 77.2,
-        ),
-      );
-      await _openFormFor(tester, _products, sub: 's-sarees');
+    /// A business registered in Marthandam, Kanyakumari.
+    Future<_FakeMarketplaceRepository> pumpRegistered(WidgetTester tester) =>
+        _pump(
+          tester,
+          const BusinessMarketplaceTab(),
+          profile: const BusinessProfile(
+            id: 'b-1',
+            businessName: 'shajil shajil',
+            verificationStatus: 'Verified',
+            addressLine1: '12 Main Road',
+            city: 'Marthandam',
+            state: 'Tamil Nadu',
+            latitude: 8.3,
+            longitude: 77.2,
+          ),
+          businessDistrict: _kanyakumari,
+        );
 
-      expect(find.text('12 Main Road'), findsOneWidget);
-      expect(find.byKey(const ValueKey('marketplace-pin-set')), findsOneWidget);
+    Future<void> fillTitleAndPrice(WidgetTester tester) async {
       await _type(tester, 'marketplace-title', 'Cotton saree');
       await _type(tester, 'marketplace-price', '499');
-      await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
+    }
+
+    testWidgets('a product is where the business is registered — no address '
+        'asked', (tester) async {
+      final repo = await pumpRegistered(tester);
+      await _openFormFor(tester, _products, sub: 's-sarees');
+
+      expect(
+        find.text(
+          'From your business address: Marthandam, Kanyakumari, Tamil Nadu',
+        ),
+        findsOneWidget,
+      );
+      for (final gone in ['marketplace-state', 'marketplace-district-null']) {
+        expect(find.byKey(ValueKey(gone)), findsNothing);
+      }
+      expect(find.text('Town or area (optional)'), findsNothing);
+      await fillTitleAndPrice(tester);
       await _save(tester);
 
       final input = repo.created.single;
-      expect(input.addressLine, '12 Main Road');
+      expect(input.districtId, 'd-kk');
       expect(input.area, 'Marthandam');
       expect((input.latitude, input.longitude), (8.3, 77.2));
-      expect(input.deliversEverywhere, isTrue);
+      expect(input.deliversEverywhere, isTrue, reason: 'All India at first');
+      expect(input.deliveryStateId, isNull);
     });
 
-    testWidgets('it can ship to chosen districts only', (tester) async {
-      final repo = await _pump(tester, const BusinessMarketplaceTab());
+    testWidgets('it can ship to one whole state', (tester) async {
+      final repo = await pumpRegistered(tester);
       await _openFormFor(tester, _products, sub: 's-sarees');
-      await fillSaree(tester);
-      await _choose(tester, 'marketplace-ships-to', 'false');
+      await fillTitleAndPrice(tester);
+      await _choose(
+        tester,
+        'marketplace-ships-to',
+        '${MarketplaceShipsTo.state}',
+      );
+
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('marketplace-ships-state')),
+          matching: find.text('Tamil Nadu'),
+        ),
+        findsOneWidget,
+        reason: 'starts in the business\'s own state',
+      );
+      expect(
+        find.byKey(const ValueKey('marketplace-delivery-districts-s-tn')),
+        findsNothing,
+      );
+      await _save(tester);
+
+      final input = repo.created.single;
+      expect(input.deliversEverywhere, isFalse);
+      expect(input.deliveryStateId, 's-tn');
+      expect(input.deliveryDistrictIds, isEmpty);
+    });
+
+    testWidgets('State + districts needs at least one district', (
+      tester,
+    ) async {
+      final repo = await pumpRegistered(tester);
+      await _openFormFor(tester, _products, sub: 's-sarees');
+      await fillTitleAndPrice(tester);
+      await _choose(
+        tester,
+        'marketplace-ships-to',
+        '${MarketplaceShipsTo.districts}',
+      );
       await _save(tester);
       expect(repo.created, isEmpty);
       expect(find.text('Choose at least one district.'), findsOneWidget);
@@ -1469,7 +1526,25 @@ void main() {
 
       final input = repo.created.single;
       expect(input.deliversEverywhere, isFalse);
+      expect(input.deliveryStateId, 's-tn');
       expect(input.deliveryDistrictIds, ['d-kk']);
+    });
+
+    testWidgets('a business address with no district: the form asks it', (
+      tester,
+    ) async {
+      final repo = await _pump(tester, const BusinessMarketplaceTab());
+      await _openFormFor(tester, _products, sub: 's-sarees');
+
+      expect(
+        find.textContaining('does not say which district'),
+        findsOneWidget,
+      );
+      expect(find.text('Town or area (optional)'), findsNothing);
+      await fillSaree(tester);
+      await _save(tester);
+
+      expect(repo.created.single.districtId, 'd-kk');
     });
 
     testWidgets('Update stock asks which colour / size first', (tester) async {

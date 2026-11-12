@@ -104,12 +104,67 @@ final class MarketplaceRepositoryProvider
 String _$marketplaceRepositoryHash() =>
     r'1d397ebe41931ef15b4af61f39cfb41fed90d134';
 
-/// The categories a business can post in, with their details. The server caches them too.
+/// Where the business is, as a district — where its products are said to be, so the form does not
+/// ask. From its registered pin; else its town and state matched by name; null when neither does,
+/// and the form then asks for the district.
+
+@ProviderFor(marketplaceBusinessDistrict)
+final marketplaceBusinessDistrictProvider =
+    MarketplaceBusinessDistrictProvider._();
+
+/// Where the business is, as a district — where its products are said to be, so the form does not
+/// ask. From its registered pin; else its town and state matched by name; null when neither does,
+/// and the form then asks for the district.
+
+final class MarketplaceBusinessDistrictProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<District?>,
+          District?,
+          FutureOr<District?>
+        >
+    with $FutureModifier<District?>, $FutureProvider<District?> {
+  /// Where the business is, as a district — where its products are said to be, so the form does not
+  /// ask. From its registered pin; else its town and state matched by name; null when neither does,
+  /// and the form then asks for the district.
+  MarketplaceBusinessDistrictProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'marketplaceBusinessDistrictProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$marketplaceBusinessDistrictHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<District?> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<District?> create(Ref ref) {
+    return marketplaceBusinessDistrict(ref);
+  }
+}
+
+String _$marketplaceBusinessDistrictHash() =>
+    r'ab7b540c36c79574f47fe6e838d11f4bf4117dbb';
+
+/// The categories a business can post in, with their details. The server caches them too. Kept
+/// for the session — they change only when the super admin edits them, which reloads them — so
+/// opening a Marketplace screen again costs no request.
 
 @ProviderFor(marketplaceCategories)
 final marketplaceCategoriesProvider = MarketplaceCategoriesProvider._();
 
-/// The categories a business can post in, with their details. The server caches them too.
+/// The categories a business can post in, with their details. The server caches them too. Kept
+/// for the session — they change only when the super admin edits them, which reloads them — so
+/// opening a Marketplace screen again costs no request.
 
 final class MarketplaceCategoriesProvider
     extends
@@ -121,14 +176,16 @@ final class MarketplaceCategoriesProvider
     with
         $FutureModifier<List<MarketplaceCategory>>,
         $FutureProvider<List<MarketplaceCategory>> {
-  /// The categories a business can post in, with their details. The server caches them too.
+  /// The categories a business can post in, with their details. The server caches them too. Kept
+  /// for the session — they change only when the super admin edits them, which reloads them — so
+  /// opening a Marketplace screen again costs no request.
   MarketplaceCategoriesProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
         name: r'marketplaceCategoriesProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -149,7 +206,7 @@ final class MarketplaceCategoriesProvider
 }
 
 String _$marketplaceCategoriesHash() =>
-    r'c1aaeed762a149176580977d485a61af2f8e2eff';
+    r'723100ee63b84ecb0f4c3ddb57033c1e18eefcfd';
 
 /// The post kinds, statuses (with colours) and limits, from the server's tables.
 

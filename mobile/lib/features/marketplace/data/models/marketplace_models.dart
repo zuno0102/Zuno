@@ -70,7 +70,7 @@ class MarketplacePostModel {
     this.canUpdateStock = false,
     this.customDetails = const [],
     this.variants = const [],
-    this.addressLine,
+    this.deliveryStateId,
     this.deliversEverywhere = true,
     this.deliveryDistrictIds = const [],
     this.attributes = const {},
@@ -112,7 +112,7 @@ class MarketplacePostModel {
   final bool canUpdateStock;
   final List<MarketplaceCustomDetailModel> customDetails;
   final List<MarketplaceVariantModel> variants;
-  final String? addressLine;
+  final String? deliveryStateId;
   final bool deliversEverywhere;
   final List<String> deliveryDistrictIds;
   final Map<String, String> attributes;
@@ -151,7 +151,7 @@ class MarketplacePostModel {
     canUpdateStock: canUpdateStock,
     customDetails: [for (final d in customDetails) d.toEntity()],
     variants: [for (final v in variants) v.toEntity()],
-    addressLine: addressLine,
+    deliveryStateId: deliveryStateId,
     deliversEverywhere: deliversEverywhere,
     deliveryDistrictIds: deliveryDistrictIds,
     attributes: attributes,
