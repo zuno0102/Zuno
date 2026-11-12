@@ -11,8 +11,11 @@ abstract interface class MarketplaceRepository {
 
   Future<MarketplaceSummary> getSummary();
 
-  /// The business's posts, newest first; [kind] and [status] narrow the list.
-  Future<List<MarketplacePost>> getMyPosts({String? kind, String? status});
+  /// The business's posts, newest first; [categoryId] (a main category) and [status] narrow the list.
+  Future<List<MarketplacePost>> getMyPosts({
+    String? categoryId,
+    String? status,
+  });
 
   Future<MarketplacePost> create(MarketplacePostInput input);
 

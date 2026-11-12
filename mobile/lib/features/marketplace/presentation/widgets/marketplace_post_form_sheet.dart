@@ -17,23 +17,30 @@ import 'package:zuno/shared/widgets/select_field.dart';
 /// Photo slots per post until the server's own number has loaded — `Marketplace:ImageSlots`.
 const marketplaceDefaultImageSlots = 5;
 
-/// Shows the add/edit sheet for a post. Pass [existing] to edit, omit it to add one.
+/// Shows the add/edit sheet for a post. Pass [existing] to edit, omit it to add one; [categoryId]
+/// starts a new post in that main category.
 Future<void> showMarketplacePostFormSheet(
   BuildContext context, {
   MarketplacePost? existing,
+  String? categoryId,
 }) => showModalBottomSheet<void>(
   context: context,
   isScrollControlled: true,
-  builder: (context) => MarketplacePostFormSheet(existing: existing),
+  builder: (context) =>
+      MarketplacePostFormSheet(existing: existing, categoryId: categoryId),
 );
 
 /// The post form: photos, category, then what that category's kind asks — a price for a listing,
 /// usual and offer price, portions and hours for a food offer, a run of dates for an advertisement —
 /// then the category's own details and where it is.
 class MarketplacePostFormSheet extends ConsumerStatefulWidget {
-  const MarketplacePostFormSheet({this.existing, super.key});
+  const MarketplacePostFormSheet({this.existing, this.categoryId, super.key});
 
   final MarketplacePost? existing;
+
+  /// The main category a new post starts in — the square the business tapped. They can still
+  /// change it; ignored when editing.
+  final String? categoryId;
 
   @override
   ConsumerState<MarketplacePostFormSheet> createState() =>
@@ -65,7 +72,7 @@ class _MarketplacePostFormSheetState
     _old?.attributes ?? const {},
   );
 
-  late String? _categoryId = _old?.categoryId;
+  late String? _categoryId = _old?.categoryId ?? widget.categoryId;
   late String? _subCategoryId = _old?.subCategoryId;
   late String? _stateId = _old?.stateId;
   late String? _districtId = _old?.districtId;

@@ -128,6 +128,13 @@ public class MarketplaceEndpointsTests(MarketplaceApiFactory factory) : IClassFi
         summary.GetProperty("active").GetInt32().Should().Be(1);
         summary.GetProperty("paused").GetInt32().Should().Be(1);
         summary.GetProperty("plan").GetProperty("canAddActivePost").GetBoolean().Should().BeFalse();
+
+        // Per main category, for the Orders › Marketplace chips: the car paused, the biryani live.
+        var byCategory = summary.GetProperty("categories").EnumerateArray()
+            .ToDictionary(c => c.GetProperty("categoryId").GetGuid());
+        byCategory.Should().HaveCount(2);
+        byCategory[MarketplaceCatalogSeedData.Products].GetProperty("paused").GetInt32().Should().Be(1);
+        byCategory[MarketplaceCatalogSeedData.NearbyFood].GetProperty("active").GetInt32().Should().Be(1);
     }
 
     [Fact]

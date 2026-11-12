@@ -25,8 +25,9 @@ StatusPill marketplaceStatusPill(MarketplaceOptions? options, String status) {
   );
 }
 
-/// What the business puts up on the Marketplace, in its main categories, with
-/// its plan's room at the top and a square per category to filter by.
+/// What the business puts up on the Marketplace: its plan's room at the top, a square per main
+/// category that starts a new post in it, then every post. Orders › Marketplace is where they are
+/// counted and filtered.
 ///
 /// With [status] set it shows only the posts in that state: what a Marketplace tile on the home
 /// screen opens. That view lists and changes posts, but adds from the Marketplace tab.
@@ -42,9 +43,6 @@ class BusinessMarketplaceTab extends ConsumerStatefulWidget {
 
 class _BusinessMarketplaceTabState
     extends ConsumerState<BusinessMarketplaceTab> {
-  /// The main category chosen on the squares; null for all.
-  String? _categoryId;
-
   @override
   Widget build(BuildContext context) {
     final status = widget.status;
@@ -98,13 +96,9 @@ class _BusinessMarketplaceTabState
     MarketplaceSummary? summary,
     MarketplaceOptions? options,
   ) {
-    final shown = _categoryId == null
-        ? posts
-        : posts.where((p) => p.categoryId == _categoryId).toList();
     final categories =
         ref.watch(marketplaceCategoriesProvider).value ??
         const <MarketplaceCategory>[];
-    final chosen = categories.where((c) => c.id == _categoryId).firstOrNull;
     // "products, b2b wholesale, nearby food or advertisements" — from the category table.
     final names = [for (final c in categories) c.name.toLowerCase()];
     final what = names.length < 2
@@ -127,7 +121,9 @@ class _BusinessMarketplaceTabState
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: MarketplacePlanBanner(plan: summary.plan),
             ),
-          if (categories.isNotEmpty)
+          // A square per main category starts a post already in it; the business then picks the
+          // sub-category. Only where posts are added — not on a home tile's list.
+          if (widget.status == null && categories.isNotEmpty)
             CategorySquareRow<String>(
               squares: [
                 for (final c in categories)
@@ -135,26 +131,22 @@ class _BusinessMarketplaceTabState
                     value: c.id,
                     label: c.shortName,
                     icon: UiIcons.byName(c.iconName),
-                    count: posts.where((p) => p.categoryId == c.id).length,
+                    count: null,
                   ),
               ],
-              selected: _categoryId,
-              onChanged: (id) => setState(() => _categoryId = id),
+              selected: null,
+              onChanged: (id) => _addPost(summary, categoryId: id),
             ),
-          if (shown.isEmpty)
+          if (posts.isEmpty)
             EmptyState(
               icon: Icons.storefront_outlined,
-              title: posts.isEmpty
-                  ? 'Nothing posted yet'
-                  : 'Nothing in ${chosen?.name ?? 'this category'} yet',
+              title: 'Nothing posted yet',
               message: widget.status != null
                   ? 'No posts here right now.'
-                  : posts.isEmpty
-                  ? 'Tap "Add post" to list $what.'
-                  : 'Choose another category above, or tap "Add post".',
+                  : 'Tap a category above or "Add post" to list $what.',
             )
           else
-            for (final post in shown)
+            for (final post in posts)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                 child: MarketplacePostCard(post: post),
@@ -164,14 +156,15 @@ class _BusinessMarketplaceTabState
     );
   }
 
-  /// Opens the form — unless the plan has no room, when it says why instead.
-  void _addPost(MarketplaceSummary? summary) {
+  /// Opens the form, in [categoryId] when a square was tapped — unless the plan has no room, when
+  /// it says why instead.
+  void _addPost(MarketplaceSummary? summary, {String? categoryId}) {
     final plan = summary?.plan;
     if (plan != null && !plan.canAddActivePost) {
       AppMessenger.of(context).showInfo(marketplacePlanFullMessage(plan));
       return;
     }
-    showMarketplacePostFormSheet(context);
+    showMarketplacePostFormSheet(context, categoryId: categoryId);
   }
 }
 

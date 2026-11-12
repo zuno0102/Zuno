@@ -80,7 +80,8 @@ Sign in as a business (e.g. shajil shajil, Marthandam).
 | B14 | Products with Wholesale (API) | Refused — "Products does not take wholesale posts." (the form does not offer it) |
 | B15 | ⋮ → **Close (sold / done)** | Asks first; then Closed, no Edit, cannot be put up again |
 | B16 | ⋮ → **Remove** | Asks first; post leaves the list; Home tiles update |
-| B17 | The 4 category squares (Products · B2B · Food · Ads) | Each shows its count; tap one to filter ("Showing: Products · Clear"); tap it again or Clear for all. More categories wrap to a second row of the same size |
+| B17 | The 4 category squares (Products · B2B · Food · Ads) | No counts. Tap **Food** → Add post opens with Category = Nearby food already picked; choose the sub-category next. With the plan full, a square shows the plan message instead. More categories wrap to a second row of the same size; a Home tile's list has no squares |
+| B17a | **Orders → Marketplace** | Two chip rows: categories on top (All · Products · B2B · Food · Ads, each with its count), statuses below (All · Active · Paused · Expired · Closed). Tap **Food** → only food posts, and the status counts become food's; then **Paused** → paused food posts, and the category counts become paused ones. Nothing there says e.g. "No paused posts in Nearby food" |
 | B18 | Tap a Home tile (Paused) | Opens just those posts, without "Add post" |
 | B19 | Another business edits/removes this post (API) | 403 |
 | B20 | Marketplace server stopped | Home shows an error only in the Marketplace section; the tab shows "Try again" |
@@ -101,7 +102,7 @@ on a reservation; enquiries open Call or Chat.
 
 ## Checks behind this playbook
 
-- `dotnet test backend/Zuno_marketplace/Zuno.Marketplace.sln` — 141 unit + 16 integration tests (one migrates first-release posts into the 4 categories)
+- `dotnet test backend/Zuno_marketplace/Zuno.Marketplace.sln` — 142 unit + 16 integration tests (one migrates first-release posts into the 4 categories)
   (integration needs Docker or `ZUNO_TEST_POSTGRES`).
 - `node backend/Zuno_marketplace/tests/e2e/e2e-marketplace-business.js` — 41 checks over HTTP.
 - `flutter test test/features/marketplace` — list, plan banner, form per kind, tiles, admin.

@@ -318,6 +318,7 @@ class MarketplaceSummary {
     required this.expired,
     required this.closed,
     required this.plan,
+    this.categories = const [],
   });
 
   final int active;
@@ -325,6 +326,68 @@ class MarketplaceSummary {
   final int expired;
   final int closed;
   final MarketplacePlan plan;
+
+  /// The same counts per main category posted in; a category with no posts is not listed.
+  final List<MarketplaceCategoryCount> categories;
+
+  /// Posts in [categoryId] (null: every category) with [status] (null: every status) — the
+  /// numbers on the Orders › Marketplace chips, so the two rows of chips combine.
+  int count({String? categoryId, String? status}) {
+    if (categoryId == null) {
+      return MarketplaceCategoryCount.pick(
+        status,
+        active: active,
+        paused: paused,
+        expired: expired,
+        closed: closed,
+      );
+    }
+    return categories
+            .where((c) => c.categoryId == categoryId)
+            .firstOrNull
+            ?.of(status) ??
+        0;
+  }
+}
+
+/// One main category's posts by the status they show.
+class MarketplaceCategoryCount {
+  const MarketplaceCategoryCount({
+    required this.categoryId,
+    required this.active,
+    required this.paused,
+    required this.expired,
+    required this.closed,
+  });
+
+  final String categoryId;
+  final int active;
+  final int paused;
+  final int expired;
+  final int closed;
+
+  int of(String? status) => pick(
+    status,
+    active: active,
+    paused: paused,
+    expired: expired,
+    closed: closed,
+  );
+
+  /// The count for [status], or all four added up when it is null.
+  static int pick(
+    String? status, {
+    required int active,
+    required int paused,
+    required int expired,
+    required int closed,
+  }) => switch (status) {
+    MarketplacePostStatus.active => active,
+    MarketplacePostStatus.paused => paused,
+    MarketplacePostStatus.expired => expired,
+    MarketplacePostStatus.closed => closed,
+    _ => active + paused + expired + closed,
+  };
 }
 
 /// A name from one of the server's reference tables, with its colour where it has one.

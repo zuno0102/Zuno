@@ -308,6 +308,7 @@ class MarketplaceSummaryModel {
     required this.expired,
     required this.closed,
     required this.plan,
+    this.categories = const [],
   });
 
   factory MarketplaceSummaryModel.fromJson(Map<String, dynamic> json) =>
@@ -318,6 +319,7 @@ class MarketplaceSummaryModel {
   final int expired;
   final int closed;
   final MarketplacePlanModel plan;
+  final List<MarketplaceCategoryCountModel> categories;
 
   MarketplaceSummary toEntity() => MarketplaceSummary(
     active: active,
@@ -325,6 +327,35 @@ class MarketplaceSummaryModel {
     expired: expired,
     closed: closed,
     plan: plan.toEntity(),
+    categories: [for (final c in categories) c.toEntity()],
+  );
+}
+
+@JsonSerializable(createToJson: false)
+class MarketplaceCategoryCountModel {
+  const MarketplaceCategoryCountModel({
+    required this.categoryId,
+    required this.active,
+    required this.paused,
+    required this.expired,
+    required this.closed,
+  });
+
+  factory MarketplaceCategoryCountModel.fromJson(Map<String, dynamic> json) =>
+      _$MarketplaceCategoryCountModelFromJson(json);
+
+  final String categoryId;
+  final int active;
+  final int paused;
+  final int expired;
+  final int closed;
+
+  MarketplaceCategoryCount toEntity() => MarketplaceCategoryCount(
+    categoryId: categoryId,
+    active: active,
+    paused: paused,
+    expired: expired,
+    closed: closed,
   );
 }
 

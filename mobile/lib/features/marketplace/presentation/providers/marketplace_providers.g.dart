@@ -245,7 +245,7 @@ final class MarketplaceSummaryProvider
 String _$marketplaceSummaryHash() =>
     r'bd2fc1382479d012fb1cf883588d1065c3047100';
 
-/// The business's posts; [kind] and [status] narrow the list (null for all).
+/// The business's posts; [categoryId] (a main category) and [status] narrow the list (null for all).
 ///
 /// Loading the full list also refreshes how customers see the business (name, verified) — in the
 /// background, so a slow or failed refresh never holds up the business's own list.
@@ -253,7 +253,7 @@ String _$marketplaceSummaryHash() =>
 @ProviderFor(businessMarketplacePosts)
 final businessMarketplacePostsProvider = BusinessMarketplacePostsFamily._();
 
-/// The business's posts; [kind] and [status] narrow the list (null for all).
+/// The business's posts; [categoryId] (a main category) and [status] narrow the list (null for all).
 ///
 /// Loading the full list also refreshes how customers see the business (name, verified) — in the
 /// background, so a slow or failed refresh never holds up the business's own list.
@@ -268,13 +268,13 @@ final class BusinessMarketplacePostsProvider
     with
         $FutureModifier<List<MarketplacePost>>,
         $FutureProvider<List<MarketplacePost>> {
-  /// The business's posts; [kind] and [status] narrow the list (null for all).
+  /// The business's posts; [categoryId] (a main category) and [status] narrow the list (null for all).
   ///
   /// Loading the full list also refreshes how customers see the business (name, verified) — in the
   /// background, so a slow or failed refresh never holds up the business's own list.
   BusinessMarketplacePostsProvider._({
     required BusinessMarketplacePostsFamily super.from,
-    required ({String? kind, String? status}) super.argument,
+    required ({String? categoryId, String? status}) super.argument,
   }) : super(
          retry: null,
          name: r'businessMarketplacePostsProvider',
@@ -301,10 +301,10 @@ final class BusinessMarketplacePostsProvider
 
   @override
   FutureOr<List<MarketplacePost>> create(Ref ref) {
-    final argument = this.argument as ({String? kind, String? status});
+    final argument = this.argument as ({String? categoryId, String? status});
     return businessMarketplacePosts(
       ref,
-      kind: argument.kind,
+      categoryId: argument.categoryId,
       status: argument.status,
     );
   }
@@ -322,9 +322,9 @@ final class BusinessMarketplacePostsProvider
 }
 
 String _$businessMarketplacePostsHash() =>
-    r'784e5edbac7ef3f007f15d281dec8afb287af668';
+    r'3e1537caf7f322f2bb8591dd2f7e875d5f765b14';
 
-/// The business's posts; [kind] and [status] narrow the list (null for all).
+/// The business's posts; [categoryId] (a main category) and [status] narrow the list (null for all).
 ///
 /// Loading the full list also refreshes how customers see the business (name, verified) — in the
 /// background, so a slow or failed refresh never holds up the business's own list.
@@ -333,7 +333,7 @@ final class BusinessMarketplacePostsFamily extends $Family
     with
         $FunctionalFamilyOverride<
           FutureOr<List<MarketplacePost>>,
-          ({String? kind, String? status})
+          ({String? categoryId, String? status})
         > {
   BusinessMarketplacePostsFamily._()
     : super(
@@ -344,14 +344,14 @@ final class BusinessMarketplacePostsFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// The business's posts; [kind] and [status] narrow the list (null for all).
+  /// The business's posts; [categoryId] (a main category) and [status] narrow the list (null for all).
   ///
   /// Loading the full list also refreshes how customers see the business (name, verified) — in the
   /// background, so a slow or failed refresh never holds up the business's own list.
 
-  BusinessMarketplacePostsProvider call({String? kind, String? status}) =>
+  BusinessMarketplacePostsProvider call({String? categoryId, String? status}) =>
       BusinessMarketplacePostsProvider._(
-        argument: (kind: kind, status: status),
+        argument: (categoryId: categoryId, status: status),
         from: this,
       );
 

@@ -166,6 +166,25 @@ MarketplaceSummaryModel _$MarketplaceSummaryModelFromJson(
   expired: (json['expired'] as num).toInt(),
   closed: (json['closed'] as num).toInt(),
   plan: MarketplacePlanModel.fromJson(json['plan'] as Map<String, dynamic>),
+  categories:
+      (json['categories'] as List<dynamic>?)
+          ?.map(
+            (e) => MarketplaceCategoryCountModel.fromJson(
+              e as Map<String, dynamic>,
+            ),
+          )
+          .toList() ??
+      const [],
+);
+
+MarketplaceCategoryCountModel _$MarketplaceCategoryCountModelFromJson(
+  Map<String, dynamic> json,
+) => MarketplaceCategoryCountModel(
+  categoryId: json['categoryId'] as String,
+  active: (json['active'] as num).toInt(),
+  paused: (json['paused'] as num).toInt(),
+  expired: (json['expired'] as num).toInt(),
+  closed: (json['closed'] as num).toInt(),
 );
 
 MarketplaceOptionModel _$MarketplaceOptionModelFromJson(

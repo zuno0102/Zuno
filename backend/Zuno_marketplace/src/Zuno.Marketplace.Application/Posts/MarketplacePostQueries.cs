@@ -100,34 +100,39 @@ public class MarketplacePostQueryHandlers(
         var ownerId = currentUser.OwnerId();
         var now = clock.GetUtcNow();
 
-        // One aggregate over the owner's rows, not a list counted in the app.
-        var totals = await dbContext.Posts
+        // One aggregate over the owner's rows, a row per main category — not a list counted in the
+        // app. Orders › Marketplace combines the category and status counts from these rows; the
+        // totals are their sum (a handful of rows, added up here).
+        var byCategory = await dbContext.Posts
             .AsNoTracking()
             .Where(p => p.OwnerUserId == ownerId)
-            .GroupBy(_ => 1)
-            .Select(g => new
+            .GroupBy(p => p.CategoryId)
+            .Select(g => new MarketplaceCategoryCountDto
             {
-                Live = g.Count(p => p.Status == MarketplacePostStatus.Active && (p.EndsAt == null || p.EndsAt > now)),
+                CategoryId = g.Key,
+                Active = g.Count(p => p.Status == MarketplacePostStatus.Active && (p.EndsAt == null || p.EndsAt > now)),
                 Expired = g.Count(p => p.Status == MarketplacePostStatus.Active && p.EndsAt != null && p.EndsAt <= now),
                 Paused = g.Count(p => p.Status == MarketplacePostStatus.Paused),
                 Closed = g.Count(p => p.Status == MarketplacePostStatus.Closed),
             })
-            .FirstOrDefaultAsync(cancellationToken);
+            .ToListAsync(cancellationToken);
 
+        var live = byCategory.Sum(c => c.Active);
         var (plan, endsAt) = await dbContext.CurrentAsync(ownerId, now, cancellationToken);
         return new MarketplaceSummaryDto
         {
-            Active = totals?.Live ?? 0,
-            Paused = totals?.Paused ?? 0,
-            Expired = totals?.Expired ?? 0,
-            Closed = totals?.Closed ?? 0,
+            Active = live,
+            Paused = byCategory.Sum(c => c.Paused),
+            Expired = byCategory.Sum(c => c.Expired),
+            Closed = byCategory.Sum(c => c.Closed),
+            Categories = byCategory,
             Plan = new MarketplacePlanDto
             {
                 Code = plan.Code,
                 Name = plan.Name,
                 Price = plan.Price,
                 MaxActivePosts = plan.MaxActivePosts,
-                UsedActivePosts = totals?.Live ?? 0,
+                UsedActivePosts = live,
                 EndsAt = endsAt,
             },
         };

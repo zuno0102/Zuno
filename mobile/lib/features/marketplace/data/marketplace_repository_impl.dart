@@ -32,11 +32,11 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
 
   @override
   Future<List<MarketplacePost>> getMyPosts({
-    String? kind,
+    String? categoryId,
     String? status,
   }) async => [
     for (final p in (await _remote.getMyPosts(
-      kind: kind,
+      categoryId: categoryId,
       status: status,
       pageSize: listPageSize,
     )).items)

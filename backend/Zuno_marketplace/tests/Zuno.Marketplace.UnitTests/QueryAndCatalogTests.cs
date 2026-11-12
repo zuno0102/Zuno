@@ -45,6 +45,26 @@ public class QueryAndCatalogTests
     }
 
     [Fact]
+    public async Task Summary_CountsEachMainCategoryByStatus_AndTheTotalsAreTheirSum()
+    {
+        using var test = new TestMarketplace();
+        test.Seed();
+        test.Seed(p => p.Status = MarketplacePostStatus.Paused);
+        test.Seed(p => { p.CategoryId = MarketplaceCatalogSeedData.NearbyFood; p.SubCategoryId = null; p.Status = MarketplacePostStatus.Paused; });
+        test.Seed(p => { p.CategoryId = MarketplaceCatalogSeedData.NearbyFood; p.SubCategoryId = null; p.EndsAt = test.Now.AddMinutes(-1); });
+        test.Seed(p => { p.CategoryId = MarketplaceCatalogSeedData.NearbyFood; p.SubCategoryId = null; p.OwnerUserId = TestMarketplace.OwnerB; });
+
+        var summary = await test.QueryHandlers.Handle(new GetMyMarketplaceSummaryQuery(), default);
+
+        summary.Categories.Should().BeEquivalentTo(new[]
+        {
+            new { CategoryId = MarketplaceCatalogSeedData.Products, Active = 1, Paused = 1, Expired = 0, Closed = 0 },
+            new { CategoryId = MarketplaceCatalogSeedData.NearbyFood, Active = 0, Paused = 1, Expired = 1, Closed = 0 },
+        });
+        summary.Should().BeEquivalentTo(new { Active = 1, Paused = 2, Expired = 1, Closed = 0 }, o => o.ExcludingMissingMembers());
+    }
+
+    [Fact]
     public async Task List_Empty_IsAnEmptyPage()
     {
         using var test = new TestMarketplace();

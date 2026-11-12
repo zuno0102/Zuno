@@ -306,17 +306,31 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
       expired: posts.where((p) => p.status == 'Expired').length,
       closed: 0,
       plan: plan,
+      categories: [
+        for (final id in {for (final p in posts) p.categoryId})
+          MarketplaceCategoryCount(
+            categoryId: id,
+            active: _countOf(id, MarketplacePostStatus.active),
+            paused: _countOf(id, MarketplacePostStatus.paused),
+            expired: _countOf(id, MarketplacePostStatus.expired),
+            closed: _countOf(id, MarketplacePostStatus.closed),
+          ),
+      ],
     );
   }
 
+  int _countOf(String categoryId, String status) => posts
+      .where((p) => p.categoryId == categoryId && p.status == status)
+      .length;
+
   @override
   Future<List<MarketplacePost>> getMyPosts({
-    String? kind,
+    String? categoryId,
     String? status,
   }) async {
     if (failList case final error?) throw error;
     return posts
-        .where((p) => kind == null || p.kind == kind)
+        .where((p) => categoryId == null || p.categoryId == categoryId)
         .where((p) => status == null || p.status == status)
         .toList();
   }
@@ -679,76 +693,103 @@ void main() {
     });
 
     testWidgets(
-      'a square per main category, with counts, filters and clears the list',
+      'a square per main category, without counts, starts a post in it',
       (tester) async {
+        final handle = tester.ensureSemantics();
         await _pump(
           tester,
           const BusinessMarketplaceTab(),
           repository: _FakeMarketplaceRepository(
-            posts: [
-              _post(),
-              _post(
-                id: 'p-2',
-                title: 'Veg biryani',
-                kind: MarketplacePostKind.foodOffer,
-                categoryId: _food.id,
-                categoryName: _food.name,
-                subCategoryId: 's-biryani',
-                subCategoryName: 'Biryani & meals',
-                status: 'Paused',
-              ),
-            ],
+            posts: [_post()],
+            plan: _plan(max: 2, used: 1),
           ),
         );
 
-        for (final (id, label) in [
-          (_products.id, 'Products, 1'),
-          (_b2b.id, 'B2B, 0'),
-          (_food.id, 'Food, 1'),
-          (_ads.id, 'Ads, 0'),
-        ]) {
-          expect(
-            find.bySemanticsLabel(label),
-            findsOneWidget,
-            reason: 'square $id',
-          );
+        // Names only: counting and filtering live on Orders › Marketplace.
+        for (final c in [_products, _b2b, _food, _ads]) {
+          expect(find.bySemanticsLabel(c.shortName), findsOneWidget);
         }
-        expect(
-          find.byKey(const ValueKey('category-square-clear')),
-          findsNothing,
-        );
+        expect(find.bySemanticsLabel('Products, 1'), findsNothing);
 
         await tester.tap(find.byKey(ValueKey('category-square-${_food.id}')));
         await tester.pumpAndSettle();
 
-        expect(find.text('Veg biryani'), findsOneWidget);
-        expect(find.text('Swift VXi 2019'), findsNothing);
-        expect(find.text('Showing: Food'), findsOneWidget);
-
-        await tester.tap(find.byKey(const ValueKey('category-square-clear')));
-        await tester.pumpAndSettle();
-
-        expect(find.text('Veg biryani'), findsOneWidget);
-        expect(find.text('Swift VXi 2019'), findsOneWidget);
+        expect(find.byType(MarketplacePostFormSheet), findsOneWidget);
+        final category = find.byKey(const ValueKey('marketplace-category'));
+        expect(
+          find.descendant(of: category, matching: find.text(_food.name)),
+          findsOneWidget,
+          reason: 'the tapped category is already picked',
+        );
+        // Next comes its sub-category.
+        expect(
+          find.byKey(const ValueKey('marketplace-sub-category')),
+          findsOneWidget,
+        );
+        handle.dispose();
       },
     );
 
-    testWidgets('tapping the chosen square again shows everything', (
+    testWidgets('a square saves straight into its category', (tester) async {
+      final repo = await _pump(tester, const BusinessMarketplaceTab());
+
+      await tester.tap(find.byKey(ValueKey('category-square-${_b2b.id}')));
+      await tester.pumpAndSettle();
+      await _choose(
+        tester,
+        'marketplace-sub-category',
+        _b2b.subCategories.first.id,
+      );
+      await _type(tester, 'marketplace-title', 'Nendran banana');
+      await _type(tester, 'marketplace-price', '45');
+      await _fillWholesale(tester);
+      await _choose(tester, 'marketplace-state', 's-tn');
+      await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
+      await _save(tester);
+
+      expect(repo.created.single.categoryId, _b2b.id);
+      expect(repo.created.single.tradeType, MarketplaceTradeType.wholesale);
+    });
+
+    testWidgets('a full plan: a square explains instead of opening the form', (
       tester,
     ) async {
       await _pump(
         tester,
         const BusinessMarketplaceTab(),
-        repository: _FakeMarketplaceRepository(posts: [_post()]),
+        repository: _FakeMarketplaceRepository(
+          posts: [_post()],
+          plan: _plan(used: 1),
+        ),
       );
-      final square = find.byKey(ValueKey('category-square-${_b2b.id}'));
 
-      await tester.tap(square);
+      await tester.tap(find.byKey(ValueKey('category-square-${_food.id}')));
       await tester.pumpAndSettle();
-      expect(find.text('Nothing in B2B Wholesale yet'), findsOneWidget);
 
-      await tester.tap(square);
-      await tester.pumpAndSettle();
+      expect(find.byType(MarketplacePostFormSheet), findsNothing);
+      expect(
+        find.text(
+          'Your Free plan allows 1 active post. Pause or close one to put up another.',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a home tile list has no squares — it does not add', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        const BusinessMarketplaceTab(status: MarketplacePostStatus.paused),
+        repository: _FakeMarketplaceRepository(
+          posts: [_post(status: MarketplacePostStatus.paused)],
+        ),
+      );
+
+      expect(
+        find.byKey(ValueKey('category-square-${_products.id}')),
+        findsNothing,
+      );
       expect(find.text('Swift VXi 2019'), findsOneWidget);
     });
 
@@ -1233,7 +1274,7 @@ void main() {
         ),
       );
 
-      expect(find.text('All 2'), findsOneWidget);
+      expect(find.text('All 2'), findsNWidgets(2), reason: 'both rows');
       expect(find.text('Active 1'), findsOneWidget);
       expect(find.text('On hold 1'), findsOneWidget);
       expect(find.text('Live one'), findsOneWidget);
@@ -1245,6 +1286,100 @@ void main() {
       expect(find.text('Held one'), findsOneWidget);
       expect(find.text('Live one'), findsNothing);
     });
+
+    testWidgets(
+      'a row of main categories with counts sits above the statuses, and both combine',
+      (tester) async {
+        await _pump(
+          tester,
+          const BusinessMarketplaceOrdersTab(),
+          repository: _FakeMarketplaceRepository(
+            posts: [
+              _post(title: 'Swift VXi 2019'),
+              _post(
+                id: 'p-2',
+                title: 'Veg biryani',
+                kind: MarketplacePostKind.foodOffer,
+                categoryId: _food.id,
+                categoryName: _food.name,
+                subCategoryId: 's-biryani',
+                subCategoryName: 'Biryani & meals',
+                status: MarketplacePostStatus.paused,
+                actions: const [],
+              ),
+              _post(
+                id: 'p-3',
+                title: 'Chicken biryani',
+                kind: MarketplacePostKind.foodOffer,
+                categoryId: _food.id,
+                categoryName: _food.name,
+                subCategoryId: 's-biryani',
+                subCategoryName: 'Biryani & meals',
+                status: MarketplacePostStatus.closed,
+                actions: const [],
+              ),
+            ],
+            plan: _plan(used: 1),
+          ),
+        );
+
+        Finder chip(String key) => find.byKey(ValueKey(key));
+        String labelOf(String key) => tester
+            .widget<Text>(
+              find.descendant(of: chip(key), matching: find.byType(Text)),
+            )
+            .data!;
+
+        // Short names from the category table, above the status row.
+        expect(
+          labelOf('marketplace-orders-category-${_products.id}'),
+          'Products 1',
+        );
+        expect(labelOf('marketplace-orders-category-${_b2b.id}'), 'B2B 0');
+        expect(labelOf('marketplace-orders-category-${_food.id}'), 'Food 2');
+        expect(labelOf('marketplace-orders-category-${_ads.id}'), 'Ads 0');
+        expect(
+          tester.getTopLeft(chip('marketplace-orders-category-all')).dy,
+          lessThan(tester.getTopLeft(chip('marketplace-orders-all')).dy),
+        );
+
+        // Food: the list and the status counts narrow to food.
+        await tester.ensureVisible(
+          chip('marketplace-orders-category-${_food.id}'),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(chip('marketplace-orders-category-${_food.id}'));
+        await tester.pumpAndSettle();
+        expect(find.text('Swift VXi 2019'), findsNothing);
+        expect(find.text('Veg biryani'), findsOneWidget);
+        expect(find.text('Chicken biryani'), findsOneWidget);
+        expect(labelOf('marketplace-orders-all'), 'All 2');
+        expect(labelOf('marketplace-orders-Active'), 'Active 0');
+        expect(labelOf('marketplace-orders-Paused'), 'On hold 1');
+
+        // Food + On hold: one post, and the category counts follow the status.
+        await tester.ensureVisible(chip('marketplace-orders-Paused'));
+        await tester.pumpAndSettle();
+        await tester.tap(chip('marketplace-orders-Paused'));
+        await tester.pumpAndSettle();
+        expect(find.text('Veg biryani'), findsOneWidget);
+        expect(find.text('Chicken biryani'), findsNothing);
+        expect(labelOf('marketplace-orders-category-${_food.id}'), 'Food 1');
+        expect(
+          labelOf('marketplace-orders-category-${_products.id}'),
+          'Products 0',
+        );
+
+        // Products + On hold: nothing, and it says which.
+        await tester.ensureVisible(
+          chip('marketplace-orders-category-${_products.id}'),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(chip('marketplace-orders-category-${_products.id}'));
+        await tester.pumpAndSettle();
+        expect(find.text('No on hold posts in Products'), findsOneWidget);
+      },
+    );
 
     testWidgets('an empty status says where posts come from', (tester) async {
       await _pump(tester, const BusinessMarketplaceOrdersTab());

@@ -41,21 +41,21 @@ Future<MarketplaceOptions> marketplaceOptions(Ref ref) =>
 Future<MarketplaceSummary> marketplaceSummary(Ref ref) =>
     ref.watch(marketplaceRepositoryProvider).getSummary();
 
-/// The business's posts; [kind] and [status] narrow the list (null for all).
+/// The business's posts; [categoryId] (a main category) and [status] narrow the list (null for all).
 ///
 /// Loading the full list also refreshes how customers see the business (name, verified) — in the
 /// background, so a slow or failed refresh never holds up the business's own list.
 @riverpod
 Future<List<MarketplacePost>> businessMarketplacePosts(
   Ref ref, {
-  String? kind,
+  String? categoryId,
   String? status,
 }) {
   final repository = ref.watch(marketplaceRepositoryProvider);
-  if (kind == null && status == null) {
+  if (categoryId == null && status == null) {
     unawaited(repository.syncProfile().then<void>((_) {}, onError: (_) {}));
   }
-  return repository.getMyPosts(kind: kind, status: status);
+  return repository.getMyPosts(categoryId: categoryId, status: status);
 }
 
 /// The super admin's categories: every one, switched off or not.

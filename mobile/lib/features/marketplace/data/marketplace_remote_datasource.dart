@@ -41,14 +41,14 @@ class MarketplaceRemoteDataSource {
   });
 
   Future<MarketplacePostPageModel> getMyPosts({
-    String? kind,
+    String? categoryId,
     String? status,
     int? pageSize,
   }) => _run(() async {
     final response = await _dio.get<Map<String, dynamic>>(
       MarketplaceApi.myPostsPath,
       queryParameters: {
-        'kind': ?kind,
+        'categoryId': ?categoryId,
         'status': ?status,
         'pageSize': ?pageSize,
       },

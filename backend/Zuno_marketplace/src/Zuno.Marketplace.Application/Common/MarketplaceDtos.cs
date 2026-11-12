@@ -106,7 +106,24 @@ public class MarketplaceSummaryDto
 
     public int Closed { get; set; }
 
+    /// <summary>The same counts per main category the business has posted in.</summary>
+    public List<MarketplaceCategoryCountDto> Categories { get; set; } = [];
+
     public MarketplacePlanDto Plan { get; set; } = new();
+}
+
+/// <summary>A main category's posts by shown status, for the Orders › Marketplace chips.</summary>
+public class MarketplaceCategoryCountDto
+{
+    public Guid CategoryId { get; set; }
+
+    public int Active { get; set; }
+
+    public int Paused { get; set; }
+
+    public int Expired { get; set; }
+
+    public int Closed { get; set; }
 }
 
 /// <summary>The business's plan and how much of it is used.</summary>
