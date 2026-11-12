@@ -9,7 +9,9 @@ import 'package:zuno/features/rental/presentation/screens/rental_order_chat_scre
 import 'package:zuno/features/rental/presentation/screens/rental_order_detail_screen.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_order_actions.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_payment_card.dart';
+import 'package:zuno/shared/widgets/call_icon_button.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
+import 'package:zuno/shared/widgets/status_with_actions.dart';
 
 /// One rent order: customer and status, what and how many for when, the place the pieces went,
 /// and a way to message the customer. Tapping it opens the order.
@@ -50,60 +52,79 @@ class RentalOrderCard extends ConsumerWidget {
           RentalOrderDetailScreen(order: order, audience: audience),
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 10, 4, 12),
+          padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Laid out like the service side's order card (BusinessOrderCard), in the same text
+              // sizes: what, who and when on the left; the status, with message and call under it,
+              // on the right.
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Text(
-                      counterpart,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          showItem && order.itemName.isNotEmpty
+                              ? '${order.quantityWithAddOns} × ${order.itemName}'
+                              : '${order.quantityWithAddOns} pcs',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(counterpart, style: theme.textTheme.bodyMedium),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${formatDayMonth(order.startDate)} – '
+                          '${formatDayMonth(order.endDate)}',
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  StatusWithActions(
+                    status: StatusPill(
+                      label: order.statusName,
+                      tone: rentalStatusTone(order.statusTone),
+                      compact: true,
+                    ),
+                    actions: [
+                      IconButton(
+                        tooltip: 'Message $counterpart',
+                        iconSize: 22,
+                        onPressed: () => pushScreen(
+                          context,
+                          RentalOrderChatScreen(
+                            order: order,
+                            audience: audience,
+                          ),
+                        ),
+                        icon: Badge(
+                          isLabelVisible: order.unreadMessages > 0,
+                          label: Text('${order.unreadMessages}'),
+                          child: const Icon(Icons.chat_bubble_outline_rounded),
+                        ),
                       ),
-                    ),
-                  ),
-                  StatusPill(
-                    label: order.statusName,
-                    tone: rentalStatusTone(order.statusTone),
-                    compact: true,
-                  ),
-                  IconButton(
-                    tooltip: 'Message $counterpart',
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () => pushScreen(
-                      context,
-                      RentalOrderChatScreen(order: order, audience: audience),
-                    ),
-                    icon: Badge(
-                      isLabelVisible: order.unreadMessages > 0,
-                      label: Text('${order.unreadMessages}'),
-                      child: const Icon(Icons.chat_bubble_outline_rounded),
-                    ),
+                      if (audience == RentalAudience.business &&
+                          (order.customerPhone?.isNotEmpty ?? false))
+                        CallIconButton(
+                          phoneNumber: order.customerPhone!,
+                          tooltip: 'Call customer',
+                          iconSize: 22,
+                        ),
+                    ],
                   ),
                 ],
               ),
               Padding(
-                padding: const EdgeInsets.only(right: 10),
+                padding: const EdgeInsets.only(top: 2),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      [
-                        if (showItem && order.itemName.isNotEmpty)
-                          '${order.quantityWithAddOns} × ${order.itemName}'
-                        else
-                          '${order.quantityWithAddOns} pcs',
-                        '${formatDayMonth(order.startDate)} – '
-                            '${formatDayMonth(order.endDate)}',
-                      ].join(' · '),
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
                     if (order.addOns.isNotEmpty || order.isAddOn) ...[
                       const SizedBox(height: 2),
                       Text(

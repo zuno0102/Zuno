@@ -9,6 +9,7 @@ import 'package:zuno/features/hiring_post/domain/entities/hiring_post.dart';
 import 'package:zuno/features/hiring_post/presentation/providers/business_hiring_posts_notifier.dart';
 import 'package:zuno/features/notifications/presentation/providers/notification_providers.dart';
 import 'package:zuno/features/work_chat/presentation/providers/work_chat_providers.dart';
+import 'package:zuno/shared/widgets/counted_tab_label.dart';
 import 'package:zuno/shared/widgets/empty_state.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/features/business_owner/presentation/screens/business_messages_tab.dart';
@@ -31,23 +32,13 @@ class BusinessOrdersTab extends StatelessWidget {
       length: 3,
       child: Column(
         children: [
-          Material(
-            color: Theme.of(context).colorScheme.surface,
-            child: const TabBar(
-              // Fixed thirds, not a scrolling bar. A scrolling bar sized itself to the labels and
-              // pushed Messages off the right edge of a phone, where it had to be swiped into
-              // view — which is the same "there is nowhere to message from" this tab exists to
-              // answer. Three equal thirds keep it on screen.
-              //
-              // Tight side padding and room for two lines, so a long name with its count after it
-              // wraps ("Status / management 2") rather than being cut off.
-              labelPadding: EdgeInsets.symmetric(horizontal: 4),
-              tabs: [
-                Tab(height: 56, child: _NewOrdersTabLabel()),
-                Tab(height: 56, child: _WorkStepsTabLabel()),
-                Tab(height: 56, child: _MessagesTabLabel()),
-              ],
-            ),
+          // Shared with the Rent side, so both read as one screen.
+          const ListTabBar(
+            labels: [
+              _NewOrdersTabLabel(),
+              _WorkStepsTabLabel(),
+              _MessagesTabLabel(),
+            ],
           ),
           const Expanded(
             child: TabBarView(
@@ -138,7 +129,7 @@ class _NewOrdersTabLabel extends ConsumerWidget {
         ref.watch(businessBookingsProvider).value ?? const <Booking>[];
     final unread =
         ref.watch(unreadNotificationTargetsProvider).value ?? const <String>{};
-    return _CountedTabLabel(
+    return CountedTabLabel(
       label: 'Bookings',
       count: newOrdersAwaitingBusiness(orders, unread),
     );
@@ -162,7 +153,7 @@ class _WorkStepsTabLabel extends ConsumerWidget {
         (posts) => workStepsReady(const [], posts.value ?? const []),
       ),
     );
-    return _CountedTabLabel(
+    return CountedTabLabel(
       label: 'Status management',
       count: orderSteps + eventSteps,
     );
@@ -179,115 +170,11 @@ class _MessagesTabLabel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Customers and workers together: everything waiting to be read in this tab.
-    return _CountedTabLabel(
+    return CountedTabLabel(
       label: 'Messages',
       count:
           ref.watch(unreadChatCountProvider) +
           ref.watch(unreadWorkChatCountProvider),
-    );
-  }
-}
-
-/// A tab's name with its count written after it — "Messages 1" — never on top of it.
-///
-/// It was a corner badge, and on a phone the badge sat over the last letters of the name. The
-/// count now follows the name as a small pill in the same line of text, so a long name wraps
-/// with its count rather than either one being hidden.
-class _CountedTabLabel extends StatelessWidget {
-  const _CountedTabLabel({required this.label, required this.count});
-
-  final String label;
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    if (count <= 0) {
-      return Text(
-        label,
-        textAlign: TextAlign.center,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      );
-    }
-
-    // The last word and the pill travel as one piece. Left as separate pieces, a name that filled
-    // the tab let the pill drop onto a line of its own; held together, the name wraps before its
-    // last word and the count stays after it: "From / customers 1".
-    final cut = label.lastIndexOf(' ');
-    final head = cut < 0 ? '' : label.substring(0, cut + 1);
-    final lastWord = cut < 0 ? label : label.substring(cut + 1);
-
-    return Semantics(
-      // Read as one thing by a screen reader: "Messages, 1 new".
-      label: '$label, $count new',
-      excludeSemantics: true,
-      child: Text.rich(
-        TextSpan(
-          text: head,
-          children: [
-            WidgetSpan(
-              alignment: PlaceholderAlignment.middle,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Inherits the tab's own text style, so it reads as part of the name. Allowed to
-                  // shorten only on a screen too narrow for the word itself — the count is the
-                  // part that must stay readable.
-                  Flexible(
-                    child: Text(
-                      lastWord,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  _CountPill(key: ValueKey('tabCount:$label'), count: count),
-                ],
-              ),
-            ),
-          ],
-        ),
-        textAlign: TextAlign.center,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      ),
-    );
-  }
-}
-
-/// The small red number after a tab's name.
-class _CountPill extends StatelessWidget {
-  const _CountPill({super.key, required this.count});
-
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    // The app's badge colours (the role's own colour, set in AppTheme), so this pill matches every
-    // other count in the app rather than borrowing the red kept for errors.
-    final background =
-        theme.badgeTheme.backgroundColor ?? theme.colorScheme.primary;
-    final foreground =
-        theme.badgeTheme.textColor ?? theme.colorScheme.onPrimary;
-    return Container(
-      constraints: const BoxConstraints(minWidth: 18),
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(9),
-      ),
-      child: Text(
-        // Capped, so the pill stays a pill. Past this is "a lot", and the list is where the real
-        // number lives.
-        count > 99 ? '99+' : '$count',
-        textAlign: TextAlign.center,
-        // The theme's small label style, the same one Material's own badges use.
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: foreground,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
     );
   }
 }

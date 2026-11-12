@@ -34,6 +34,10 @@ import 'package:zuno/features/rental/presentation/widgets/rental_order_actions.d
 import 'package:zuno/features/rental/presentation/widgets/rental_item_form_sheet.dart';
 import 'package:zuno/shared/domain/upi_id.dart';
 import 'package:zuno/shared/widgets/stat_tile.dart';
+import 'package:zuno/shared/widgets/counted_tab_label.dart';
+import 'package:zuno/shared/widgets/empty_state.dart';
+import 'package:zuno/shared/widgets/filter_chip_bar.dart';
+import 'package:zuno/shared/widgets/status_with_actions.dart';
 
 const _tools = RentalCategory(
   id: 'cat-tools',
@@ -888,6 +892,13 @@ Future<_FakeRentalRepository> _pump(
   await tester.pumpAndSettle();
   return repository;
 }
+
+/// A tab under Orders › Rent, by its name. A count, when there is one, sits after the name in the
+/// same label (the Service side's CountedTabLabel), so the name is matched by its first word.
+Finder _tab(String name) => find.descendant(
+  of: find.byType(Tab),
+  matching: find.textContaining(name.split(' ').first, findRichText: true),
+);
 
 void main() {
   group('Service | Rent tabs', () {
@@ -2194,20 +2205,57 @@ void main() {
       await pumpOrders(tester);
 
       expect(find.widgetWithText(Tab, 'Bookings'), findsOneWidget);
-      expect(find.text('Status management'), findsOneWidget);
-      expect(find.text('Messages'), findsOneWidget);
+      expect(_tab('Status management'), findsOneWidget);
+      expect(_tab('Messages'), findsOneWidget);
       expect(find.text('Rahul'), findsOneWidget);
       expect(find.text('Anu'), findsOneWidget);
       expect(find.text('Meera'), findsOneWidget);
     });
 
+    // The report: Rent's orders looked different from Service's — tab height, text sizes. They
+    // now share the same bar, label, chips and card layout.
+    testWidgets('looks like the Service side: same bar, tabs and card text', (
+      tester,
+    ) async {
+      await pumpOrders(tester);
+      final theme = Theme.of(tester.element(find.byType(ListTabBar)));
+
+      expect(find.byType(ListTabBar), findsOneWidget);
+      expect(
+        tester.getSize(find.byType(Tab).first).height,
+        ListTabBar.tabHeight,
+      );
+      expect(find.byType(CountChip), findsWidgets);
+
+      // What, who, when — in the Service card's sizes; the status on the right with message.
+      final item = tester.widget<Text>(find.text('300 × Plastic chair'));
+      expect(item.style?.fontSize, theme.textTheme.titleMedium?.fontSize);
+      final who = tester.widget<Text>(find.text('Rahul'));
+      expect(who.style?.fontSize, theme.textTheme.bodyMedium?.fontSize);
+      expect(find.byType(StatusWithActions), findsNWidgets(3));
+      expect(find.byTooltip('Message Rahul'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('an empty list says so like the Service side', (tester) async {
+      await pumpOrders(tester);
+      final cancelled = find.byKey(const ValueKey('rent-filter-Cancelled'));
+      await tester.ensureVisible(cancelled);
+      await tester.pumpAndSettle();
+      await tester.tap(cancelled);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(EmptyState), findsOneWidget);
+      expect(find.text('No orders in this status'), findsOneWidget);
+    });
+
     testWidgets('a status chip narrows the bookings', (tester) async {
       await pumpOrders(tester);
 
-      expect(find.text('All · 3'), findsOneWidget);
-      await tester.ensureVisible(find.text('On rent · 1'));
+      expect(find.text('All 3'), findsOneWidget);
+      await tester.ensureVisible(find.text('On rent 1'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('On rent · 1'));
+      await tester.tap(find.text('On rent 1'));
       await tester.pumpAndSettle();
 
       expect(find.text('Anu'), findsOneWidget);
@@ -2218,7 +2266,7 @@ void main() {
       tester,
     ) async {
       await pumpOrders(tester);
-      await tester.tap(find.text('Status management'));
+      await tester.tap(_tab('Status management'));
       await tester.pumpAndSettle();
 
       expect(find.text('Send out'), findsOneWidget);
@@ -2232,7 +2280,7 @@ void main() {
 
     testWidgets('Send out moves the order on and says so', (tester) async {
       final repository = await pumpOrders(tester);
-      await tester.tap(find.text('Status management'));
+      await tester.tap(_tab('Status management'));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Send out'));
@@ -2297,7 +2345,7 @@ void main() {
       tester,
     ) async {
       final repository = await pumpOrders(tester);
-      await tester.tap(find.text('Messages'));
+      await tester.tap(_tab('Messages'));
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Can you deliver by 9 am?'), findsOneWidget);
@@ -2350,7 +2398,7 @@ void main() {
       await tester.tap(find.text('Rent'));
       await frames(tester);
       expect(tester.takeException(), isNull);
-      await tester.tap(find.text('Status management'));
+      await tester.tap(_tab('Status management'));
       await frames(tester);
       expect(tester.takeException(), isNull);
     });
@@ -3698,11 +3746,11 @@ void main() {
         await tester.pumpAndSettle();
         final filter = find.byKey(const ValueKey('rent-filter-RefundDue'));
         expect(
-          find.descendant(of: filter, matching: find.text('Refund due · 1')),
+          find.descendant(of: filter, matching: find.text('Refund due 1')),
           findsOneWidget,
         );
         expect(
-          find.text('All · 1'),
+          find.text('All 1'),
           findsOneWidget,
           reason: 'Refund due is not added into All',
         );
@@ -3713,7 +3761,7 @@ void main() {
           findsOneWidget,
         );
 
-        await tester.tap(find.text('Status management'));
+        await tester.tap(_tab('Status management'));
         await tester.pumpAndSettle();
         final giveBack = find.byKey(const ValueKey('give-back-o1'));
         expect(giveBack, findsOneWidget);
@@ -3734,7 +3782,7 @@ void main() {
           cancelledByCustomer(),
         ], size: const Size(400, 1400));
 
-        await tester.tap(find.text('Status management'));
+        await tester.tap(_tab('Status management'));
         await tester.pumpAndSettle();
         expect(
           find.text('Choose how to refund ${rupees(1960)}'),
@@ -3753,7 +3801,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byKey(const ValueKey('give-back-o1')), findsNothing);
-        await tester.tap(find.text('Bookings'));
+        await tester.tap(_tab('Bookings'));
         await tester.pumpAndSettle();
         expect(
           find.text(
@@ -3761,7 +3809,7 @@ void main() {
           ),
           findsOneWidget,
         );
-        expect(find.text('Refund due · 1'), findsOneWidget);
+        expect(find.text('Refund due 1'), findsOneWidget);
       },
     );
 

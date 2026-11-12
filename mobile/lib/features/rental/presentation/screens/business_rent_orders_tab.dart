@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/router/push_screen.dart';
-import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/rental/domain/entities/rental_customer.dart';
 import 'package:zuno/features/rental/domain/entities/rental_stock.dart';
@@ -10,7 +9,10 @@ import 'package:zuno/features/rental/presentation/providers/rental_providers.dar
 import 'package:zuno/features/rental/presentation/screens/rental_order_chat_screen.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_order_card.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_order_form_sheet.dart';
+import 'package:zuno/shared/widgets/counted_tab_label.dart';
+import 'package:zuno/shared/widgets/empty_state.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
+import 'package:zuno/shared/widgets/filter_chip_bar.dart';
 
 /// Orders › Rent: the rent side of the business's orders, laid out like the service side —
 /// **Bookings** (every rent order, by status), **Status management** (what needs a step next), and
@@ -45,41 +47,49 @@ class RentOrdersTabs extends ConsumerWidget {
 
     final tabs = <(Widget, Widget)>[
       if (_isBusiness) ...[
-        (const Tab(text: 'Bookings'), const _BookingsTab()),
         (
-          Tab(child: _CountedLabel('Status management', toAct)),
+          const CountedTabLabel(label: 'Bookings', count: 0),
+          const _BookingsTab(),
+        ),
+        (
+          CountedTabLabel(label: 'Status management', count: toAct),
           const _OrderList(
             status: null,
             audience: RentalAudience.business,
             onlyActionable: true,
             showActions: true,
-            emptyText:
-                'Nothing to do right now. Booked orders to send out, rented '
-                'items to bring back and money to give back show here.',
+            emptyIcon: Icons.task_alt_outlined,
+            emptyTitle: 'Nothing to do right now',
+            emptyMessage:
+                'Booked orders to send out, rented items to bring back and money to '
+                'give back show here.',
           ),
         ),
       ] else
         (
-          const Tab(text: 'Rentals'),
+          const CountedTabLabel(label: 'Rentals', count: 0),
           const _OrderList(
             status: null,
             audience: RentalAudience.customer,
-            emptyText:
-                'No rentals yet. Find chairs, tents, tools and more on the Rent '
-                'home and book them for your dates.',
+            emptyIcon: Icons.chair_outlined,
+            emptyTitle: 'No rentals yet',
+            emptyMessage:
+                'Find chairs, tents, tools and more on the Rent home and book them '
+                'for your dates.',
           ),
         ),
       (
-        Tab(child: _CountedLabel('Messages', unread)),
+        CountedTabLabel(label: 'Messages', count: unread),
         _MessagesTab(audience: audience),
       ),
     ];
 
+    // The same bar, heights and text as the Service side's orders (ListTabBar).
     return DefaultTabController(
       length: tabs.length,
       child: Column(
         children: [
-          TabBar(tabs: [for (final t in tabs) t.$1]),
+          ListTabBar(labels: [for (final t in tabs) t.$1]),
           Expanded(child: TabBarView(children: [for (final t in tabs) t.$2])),
         ],
       ),
@@ -124,52 +134,55 @@ class _BookingsTabState extends ConsumerState<_BookingsTab>
       ),
       body: Column(
         children: [
-          // Sized by the chips themselves: a fixed height clipped their tap area.
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 2),
-            child: Row(
-              children: [
-                ChoiceChip(
-                  label: Text('All · $total'),
-                  selected: _status == null,
-                  onSelected: (_) => setState(() => _status = null),
-                ),
-                for (final c in counts)
-                  // Money owed back shows only while there is some, or while it is the chosen filter.
-                  if (!c.isRefundDue || c.count > 0 || _status == c.status) ...[
-                    const SizedBox(width: 8),
-                    ChoiceChip(
-                      key: ValueKey('rent-filter-${c.status}'),
-                      avatar: c.isRefundDue
-                          ? Icon(
-                              Icons.undo_rounded,
-                              size: 18,
-                              color: AppColors.status(
-                                rentalStatusTone(c.tone),
-                                Theme.of(context).brightness,
-                              ),
-                            )
-                          : null,
-                      label: Text('${c.name} · ${c.count}'),
-                      selected: _status == c.status,
-                      onSelected: (_) => setState(() => _status = c.status),
-                    ),
-                  ],
-              ],
-            ),
+          // The Service side's chip row (FilterChipBar): "All 8 · Booked 3 · …".
+          FilterChipBar(
+            chips: [
+              CountChip(
+                label: 'All',
+                count: total,
+                selected: _status == null,
+                onSelected: () => setState(() => _status = null),
+              ),
+              for (final c in counts)
+                // Money owed back shows only while there is some, or while it is the chosen filter.
+                if (!c.isRefundDue || c.count > 0 || _status == c.status)
+                  CountChip(
+                    key: ValueKey('rent-filter-${c.status}'),
+                    label: c.name,
+                    count: c.count,
+                    selected: _status == c.status,
+                    onSelected: () => setState(() => _status = c.status),
+                  ),
+            ],
           ),
           Expanded(
-            child: _OrderList(
-              status: _status,
-              audience: RentalAudience.business,
-              emptyText: _status == null
-                  ? 'No rent orders yet. Tap "Offline order" for a customer who phoned or came in, '
-                        'or wait for customers to book from the app.'
-                  : _status == RentalOrderStatusCount.refundDue
-                  ? 'Nothing to give back. Cancelled orders that still owe the customer money show here.'
-                  : 'No orders in this status.',
-            ),
+            child: _status == null
+                ? const _OrderList(
+                    status: null,
+                    audience: RentalAudience.business,
+                    emptyIcon: Icons.assignment_outlined,
+                    emptyTitle: 'No rent orders yet',
+                    emptyMessage:
+                        'Tap "Offline order" for a customer who phoned or came in, or wait '
+                        'for customers to book from the app.',
+                  )
+                : _status == RentalOrderStatusCount.refundDue
+                ? _OrderList(
+                    status: _status,
+                    audience: RentalAudience.business,
+                    emptyIcon: Icons.undo_rounded,
+                    emptyTitle: 'Nothing to give back',
+                    emptyMessage:
+                        'Cancelled orders that still owe the customer money show here.',
+                  )
+                : _OrderList(
+                    status: _status,
+                    audience: RentalAudience.business,
+                    emptyIcon: Icons.filter_list_off_outlined,
+                    emptyTitle: 'No orders in this status',
+                    emptyMessage:
+                        'Orders will appear here when they reach this status.',
+                  ),
           ),
         ],
       ),
@@ -181,14 +194,20 @@ class _OrderList extends ConsumerWidget {
   const _OrderList({
     required this.status,
     required this.audience,
-    required this.emptyText,
+    required this.emptyIcon,
+    required this.emptyTitle,
+    required this.emptyMessage,
     this.onlyActionable = false,
     this.showActions = false,
   });
 
   final String? status;
   final RentalAudience audience;
-  final String emptyText;
+
+  /// What an empty list says, in the Service side's EmptyState.
+  final IconData emptyIcon;
+  final String emptyTitle;
+  final String emptyMessage;
   final bool onlyActionable;
   final bool showActions;
 
@@ -226,14 +245,21 @@ class _OrderList extends ConsumerWidget {
             await ref.read(rentalOrdersProvider(status, audience).future);
           },
           child: orders.isEmpty
+              // Scrollable even when empty, so pull-to-refresh still works here.
               ? ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(32),
-                  children: [Text(emptyText, textAlign: TextAlign.center)],
+                  children: [
+                    EmptyState(
+                      icon: emptyIcon,
+                      title: emptyTitle,
+                      message: emptyMessage,
+                    ),
+                  ],
                 )
               : ListView.separated(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 96),
+                  // The Service side's spacing; room at the foot for "Offline order".
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
                   itemCount: orders.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, index) => RentalOrderCard(
@@ -275,15 +301,14 @@ class _MessagesTab extends ConsumerWidget {
         child: threads.isEmpty
             ? ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(32),
                 children: [
-                  Text(
-                    isBusiness
-                        ? 'No messages yet. When a customer writes about a rent order, '
-                              'the conversation shows here.'
-                        : 'No messages yet. Open a rental and message the business '
-                              'about it.',
-                    textAlign: TextAlign.center,
+                  EmptyState(
+                    icon: Icons.chat_bubble_outline_rounded,
+                    title: 'No messages yet',
+                    message: isBusiness
+                        ? 'When a customer writes about a rent order, the conversation '
+                              'shows here.'
+                        : 'Open a rental and message the business about it.',
                   ),
                 ],
               )
@@ -379,46 +404,6 @@ class _MessagesTab extends ConsumerWidget {
                 },
               ),
       ),
-    );
-  }
-}
-
-/// A tab's name with a small count beside it, hidden at zero.
-class _CountedLabel extends StatelessWidget {
-  const _CountedLabel(this.label, this.count);
-
-  final String label;
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
-        if (count > 0) ...[
-          const SizedBox(width: 6),
-          Container(
-            constraints: const BoxConstraints(minWidth: 18),
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-            decoration: BoxDecoration(
-              color:
-                  theme.badgeTheme.backgroundColor ?? theme.colorScheme.primary,
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: Text(
-              count > 99 ? '99+' : '$count',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color:
-                    theme.badgeTheme.textColor ?? theme.colorScheme.onPrimary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ],
     );
   }
 }
