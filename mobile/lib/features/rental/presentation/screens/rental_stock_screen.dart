@@ -8,6 +8,7 @@ import 'package:zuno/features/rental/presentation/widgets/rental_collect_sheet.d
 import 'package:zuno/features/rental/presentation/screens/rental_stock_item_screen.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_item_form_sheet.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
+import 'package:zuno/shared/widgets/stock_figure_row.dart';
 
 /// Stock: a tile per thing this business rents out, each with how many are in, out with
 /// customers, and in total. Opened from the single Stock tile on the home screen.
@@ -183,54 +184,6 @@ class RentalStockTile extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// "In stock ........ 700" — a label and its count on one line, the count coloured by [tone].
-class StockFigureRow extends StatelessWidget {
-  const StockFigureRow({
-    required this.label,
-    required this.value,
-    this.tone,
-    super.key,
-  });
-
-  final String label;
-  final int value;
-
-  /// Null for a plain figure, like the total.
-  final StatusTone? tone;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colour = tone == null
-        ? theme.colorScheme.onSurface
-        : AppColors.status(tone!, theme.brightness);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1.5),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          Text(
-            '$value',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: colour,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-        ],
       ),
     );
   }

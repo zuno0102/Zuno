@@ -1,17 +1,16 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/features/rental/domain/entities/rental_item.dart';
 import 'package:zuno/features/rental/presentation/providers/rental_providers.dart';
 import 'package:zuno/features/rental/presentation/screens/business_rentals_tab.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_item_form_sheet.dart';
-import 'package:zuno/features/rental/presentation/widgets/rental_order_form_sheet.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/confirm_dialog.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
+import 'package:zuno/shared/widgets/stock_count_stepper.dart';
 
 /// The most of one item a business can list — the Rent server's `Rent:MaxQuantityOwned`.
 const rentalMaxQuantity = 100000;
@@ -177,58 +176,13 @@ class _RentalStockManagePanelState extends ConsumerState<RentalStockManagePanel>
             style: theme.textTheme.titleSmall,
           ),
           const SizedBox(height: 10),
-          Row(
-            children: [
-              IconButton.filledTonal(
-                tooltip: 'One less',
-                style: RentalQuantityRow.stepStyle(context),
-                iconSize: 28,
-                onPressed: _quantity > _minimum ? () => _step(-1) : null,
-                icon: const Icon(Icons.remove),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  key: const ValueKey('stock-quantity'),
-                  controller: _quantityController,
-                  textAlign: TextAlign.center,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                  decoration: InputDecoration(
-                    border: const OutlineInputBorder(),
-                    errorText: _inputError,
-                    errorMaxLines: 2,
-                  ),
-                  onChanged: _typed,
-                ),
-              ),
-              const SizedBox(width: 12),
-              IconButton.filledTonal(
-                tooltip: 'One more',
-                style: RentalQuantityRow.stepStyle(context),
-                iconSize: 28,
-                onPressed: _quantity < rentalMaxQuantity
-                    ? () => _step(1)
-                    : null,
-                icon: const Icon(Icons.add),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          // The jumps a stock count really makes: a broken few, a new delivery.
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 8,
-            children: [
-              for (final delta in const [-10, 10, 50])
-                ActionChip(
-                  label: Text(delta > 0 ? '+$delta' : '$delta'),
-                  onPressed: () => _step(delta),
-                ),
-            ],
+          StockCountStepper(
+            controller: _quantityController,
+            onStep: _step,
+            onTyped: _typed,
+            canLess: _quantity > _minimum,
+            canMore: _quantity < rentalMaxQuantity,
+            errorText: _inputError,
           ),
           const SizedBox(height: 16),
           SwitchListTile(

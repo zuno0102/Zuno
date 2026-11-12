@@ -49,7 +49,7 @@ internal static class MarketplacePlans
         {
             throw new DomainException(
                 $"Your {plan.Name} plan allows {plan.MaxActivePosts} active post{(plan.MaxActivePosts == 1 ? string.Empty : "s")}. " +
-                "Pause or close one to put up another.");
+                "Pause, close or remove one to put up another.");
         }
     }
 }

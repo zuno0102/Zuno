@@ -58,6 +58,7 @@ class MarketplacePostModel {
     this.priceUnit,
     this.minOrderQuantity,
     this.quantity,
+    this.packQuantity,
     this.originalPrice,
     this.startsAt,
     this.endsAt,
@@ -96,6 +97,7 @@ class MarketplacePostModel {
   final String tradeType;
   final int? minOrderQuantity;
   final int? quantity;
+  final int? packQuantity;
   final double? originalPrice;
   final DateTime? startsAt;
   final DateTime? endsAt;
@@ -135,6 +137,7 @@ class MarketplacePostModel {
     tradeType: tradeType,
     minOrderQuantity: minOrderQuantity,
     quantity: quantity,
+    packQuantity: packQuantity,
     originalPrice: originalPrice,
     startsAt: startsAt?.toLocal(),
     endsAt: endsAt?.toLocal(),

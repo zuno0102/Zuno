@@ -18,6 +18,7 @@ import 'package:zuno/features/rental/presentation/widgets/rental_availability_li
 import 'package:zuno/features/rental/presentation/widgets/rental_collect_sheet.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
+import 'package:zuno/shared/widgets/stock_count_stepper.dart';
 
 /// Shows the Offline order sheet: booking pieces for a customer who phoned or came in.
 Future<void> showRentalOrderFormSheet(BuildContext context) =>
@@ -426,15 +427,9 @@ class RentalQuantityRow extends StatelessWidget {
   final ValueChanged<int> onStep;
   final VoidCallback onChanged;
 
-  /// The − and + buttons' look. At the lowest count the − is switched off but still drawn: the
-  /// default disabled colours left an empty grey circle on phones, with no − to be seen.
-  static ButtonStyle stepStyle(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return IconButton.styleFrom(
-      disabledBackgroundColor: scheme.surfaceContainerHighest,
-      disabledForegroundColor: scheme.onSurfaceVariant.withValues(alpha: 0.6),
-    );
-  }
+  /// The − and + buttons' look: the Stock pages' own.
+  static ButtonStyle stepStyle(BuildContext context) =>
+      StockCountStepper.stepStyle(context);
 
   @override
   Widget build(BuildContext context) {

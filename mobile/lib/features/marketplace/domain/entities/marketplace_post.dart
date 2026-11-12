@@ -189,6 +189,7 @@ class MarketplacePost {
     this.priceUnit,
     this.minOrderQuantity,
     this.quantity,
+    this.packQuantity,
     this.originalPrice,
     this.startsAt,
     this.endsAt,
@@ -248,7 +249,12 @@ class MarketplacePost {
   final String? priceUnit;
   final String tradeType;
   final int? minOrderQuantity;
+
+  /// The stock, for a new product; how many are for sale elsewhere.
   final int? quantity;
+
+  /// A product only: how many come in one item sold — 1, or 3 for a pack of 3.
+  final int? packQuantity;
   final double? originalPrice;
   final DateTime? startsAt;
   final DateTime? endsAt;
@@ -351,6 +357,7 @@ class MarketplacePostInput {
     this.priceUnit,
     this.minOrderQuantity,
     this.quantity,
+    this.packQuantity,
     this.originalPrice,
     this.startsAt,
     this.endsAt,
@@ -370,6 +377,9 @@ class MarketplacePostInput {
   final String tradeType;
   final int? minOrderQuantity;
   final int? quantity;
+
+  /// A product only: how many in one item sold.
+  final int? packQuantity;
   final double? originalPrice;
   final DateTime? startsAt;
   final DateTime? endsAt;
@@ -396,6 +406,7 @@ class MarketplacePostInput {
     'tradeType': tradeType,
     'minOrderQuantity': minOrderQuantity,
     'quantity': quantity,
+    'packQuantity': packQuantity,
     'originalPrice': originalPrice,
     'startsAt': startsAt?.toUtc().toIso8601String(),
     'endsAt': endsAt?.toUtc().toIso8601String(),

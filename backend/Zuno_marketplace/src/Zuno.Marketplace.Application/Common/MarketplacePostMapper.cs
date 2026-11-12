@@ -25,6 +25,7 @@ internal static class MarketplacePostMapper
             TradeType = post.TradeType.ToString(),
             MinOrderQuantity = post.MinOrderQuantity,
             Quantity = post.Quantity,
+            PackQuantity = post.PackQuantity,
             Condition = post.Condition?.ToString(),
             IsOutOfStock = post.IsOutOfStock,
             CanUpdateStock = post.KeepsStock && !post.IsFinal,

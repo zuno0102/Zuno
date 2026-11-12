@@ -100,6 +100,8 @@ public class SecurityAttackTests(MarketplaceApiFactory factory) : IClassFixture<
             ["edit"] = () => attacker.PutAsJsonAsync($"{Posts}/{id}", Saree(b => b["title"] = "Hacked")),
             ["pause"] = () => attacker.PatchAsJsonAsync($"{Posts}/{id}/status", new { status = "Paused" }),
             ["stock"] = () => attacker.PatchAsJsonAsync($"{Posts}/{id}/stock", new { quantity = 0 }),
+            ["variants"] = () => attacker.PutAsJsonAsync($"{Posts}/{id}/variants",
+                new { variants = new[] { new { colour = "Hacked", price = 1, stock = 0 } } }),
             ["remove"] = () => attacker.DeleteAsync($"{Posts}/{id}"),
             ["replace photo"] = () => attacker.PostAsync($"{Posts}/{id}/images/0", File(Png, "image/png")),
             ["remove photo"] = () => attacker.DeleteAsync($"{Posts}/{id}/images/0"),
@@ -185,6 +187,7 @@ public class SecurityAttackTests(MarketplaceApiFactory factory) : IClassFixture<
                 Encoding.UTF8, "application/json"),
             ["huge price"] = JsonContent.Create(Saree(b => b["price"] = 1e27m)),
             ["negative stock"] = JsonContent.Create(Saree(b => b["quantity"] = -3)),
+            ["pack of zero"] = JsonContent.Create(Saree(b => b["packQuantity"] = 0)),
             ["title of 100,000 characters"] = JsonContent.Create(Saree(b => b["title"] = new string('A', 100_000))),
             ["500 colours"] = JsonContent.Create(Saree(b => b["variants"] = Enumerable.Range(0, 500)
                 .Select(i => new { colour = $"C{i}", stock = 1 }).ToArray())),

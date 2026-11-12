@@ -43,6 +43,7 @@ class MarketplaceRemoteDataSource {
   Future<MarketplacePostPageModel> getMyPosts({
     String? categoryId,
     String? status,
+    bool keepsStock = false,
     int? pageSize,
   }) => _run(() async {
     final response = await _dio.get<Map<String, dynamic>>(
@@ -50,6 +51,7 @@ class MarketplaceRemoteDataSource {
       queryParameters: {
         'categoryId': ?categoryId,
         'status': ?status,
+        if (keepsStock) 'keepsStock': true,
         'pageSize': ?pageSize,
       },
     );
@@ -76,6 +78,16 @@ class MarketplaceRemoteDataSource {
     () => _dio.patch(
       MarketplaceApi.postStockPath(id),
       data: {'quantity': quantity, 'variantId': ?variantId},
+    ),
+  );
+
+  Future<MarketplacePostModel> replaceVariants(
+    String id,
+    List<Map<String, dynamic>> variants,
+  ) => _post(
+    () => _dio.put(
+      MarketplaceApi.postVariantsPath(id),
+      data: {'variants': variants},
     ),
   );
 

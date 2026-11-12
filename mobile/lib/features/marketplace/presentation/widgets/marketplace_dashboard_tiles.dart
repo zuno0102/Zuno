@@ -5,11 +5,13 @@ import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/features/marketplace/domain/entities/marketplace_post.dart';
 import 'package:zuno/features/marketplace/presentation/providers/marketplace_providers.dart';
 import 'package:zuno/features/marketplace/presentation/screens/business_marketplace_tab.dart';
+import 'package:zuno/features/marketplace/presentation/screens/marketplace_stock_screen.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/stat_tile.dart';
 
-/// The Marketplace section of the business home screen: live, paused and expired posts, and how
-/// much of the plan is used. Each tile opens the posts behind its number.
+/// The Marketplace section of the business home screen: live, paused and expired posts, how much of
+/// the plan is used, and Stock. Each tile opens the posts behind its number; Stock opens the products'
+/// stock.
 ///
 /// Counted by the Marketplace server, like the Rent tiles beside it.
 class MarketplaceDashboardTiles extends ConsumerWidget {
@@ -74,6 +76,16 @@ class MarketplaceDashboardTiles extends ConsumerWidget {
               ? StatusTone.success
               : StatusTone.progress,
           onTap: () => open('Marketplace posts'),
+        ),
+        // One tile for all stock, and no number on it, as on Rent: the Stock page it opens has a
+        // tile per product with its figures.
+        StatTile(
+          key: const ValueKey('marketplace-tile-stock'),
+          label: 'Stock',
+          value: '',
+          icon: Icons.inventory_outlined,
+          tone: StatusTone.progress,
+          onTap: () => pushScreen(context, const MarketplaceStockScreen()),
         ),
       ],
     );

@@ -1,6 +1,6 @@
 // Marketplace, the business side, over HTTP as the app does it: the super admin adds a category,
 // a business posts under the free plan's one-post limit, pauses, posts a food offer and an advert,
-// edits, adds a photo, closes and removes — with the refusals beside each step (bad input, the wrong
+// edits, adds a photo, closes and removes, sets a product's pack, stock and colours / sizes — with the refusals beside each step (bad input, the wrong
 // role, another business's post, the plan limit).
 //
 // It REGISTERS NEW ACCOUNTS and writes posts, so point it at scratch servers, never at data you
@@ -188,6 +188,37 @@ const register = async (first, role) => {
   no("A colour without a price, and no price to fall back on, is refused", await M_("PUT", `/business/marketplace/${newSaree.data?.id}`, biz2, {
     ...saree, price: null, condition: "New", variants: [{ colour: "Red", stock: 3 }],
   }), "its price");
+
+  // ── Products: Quantity is a pack; the Stock page; Manage variants ────────────────────────────
+  const sareeId = newSaree.data?.id;
+  const colours = (byColour.data?.variants ?? []).map(v => ({ id: v.id, colour: v.colour, size: v.size, price: v.price, stock: v.stock }));
+  const pack = await M_("PUT", `/business/marketplace/${sareeId}`, biz2, { ...saree, price: null, condition: "New", variants: colours, packQuantity: 3 });
+  ok("Quantity is a pack of 3, apart from the stock", pack.data?.packQuantity === 3 && pack.data?.quantity === 55, `${pack.status} ${pack.text.slice(0, 80)}`);
+  no("A pack of 0 is refused", await M_("PUT", `/business/marketplace/${sareeId}`, biz2, { ...saree, condition: "New", quantity: 3, packQuantity: 0 }), "pack");
+  const stockPage = (await M_("GET", "/business/marketplace?keepsStock=true", biz2)).data?.items ?? [];
+  ok("The Stock page lists the new saree, not the sold used car",
+    stockPage.some(p => p.id === sareeId) && !stockPage.some(p => p.id === usedCar.data?.id) && stockPage.every(p => p.condition === "New"));
+  const red = pack.data?.variants?.find(v => v.colour === "Red");
+  const managed = await M_("PUT", `/business/marketplace/${sareeId}/variants`, biz2, {
+    variants: [{ id: red?.id, colour: "Red", stock: 10, price: 499 }, { colour: "Blue", size: "Free size", stock: 4, price: 479 }],
+  });
+  ok("Manage variants: Red kept, Blue added, stock added up, from the lowest price",
+    managed.data?.variants?.length === 2 && managed.data?.variants?.[0]?.id === red?.id && managed.data?.quantity === 14 && managed.data?.price === 479
+      && managed.data?.packQuantity === 3 && managed.data?.title === "Silk saree",
+    `${managed.status} ${managed.text.slice(0, 80)}`);
+  no("Manage variants needs at least one", await M_("PUT", `/business/marketplace/${sareeId}/variants`, biz2, { variants: [] }), "at least one");
+  no("Manage variants refuses a colour twice", await M_("PUT", `/business/marketplace/${sareeId}/variants`, biz2, {
+    variants: [{ colour: "Red", stock: 1, price: 499 }, { colour: "red", stock: 1, price: 499 }],
+  }), "twice");
+  no("Another business cannot manage its variants", await M_("PUT", `/business/marketplace/${sareeId}/variants`, biz, {
+    variants: [{ colour: "Hacked", stock: 0, price: 1 }],
+  }));
+  no("A used item has no variants to manage", await M_("PUT", `/business/marketplace/${usedCar.data?.id}/variants`, biz2, {
+    variants: [{ colour: "Red", stock: 1, price: 100 }],
+  }), "new product");
+  const blue = managed.data?.variants?.find(v => v.colour === "Blue");
+  const sold2 = await M_("PATCH", `/business/marketplace/${sareeId}/stock`, biz2, { quantity: 1, variantId: blue?.id });
+  ok("Selling 3 blue in the shop: Stock saves 1 left, total 11", sold2.data?.quantity === 11, `${sold2.status} ${sold2.text.slice(0, 80)}`);
 
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail === 0 ? 0 : 1);

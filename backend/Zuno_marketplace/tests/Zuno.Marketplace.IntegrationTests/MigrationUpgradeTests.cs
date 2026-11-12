@@ -234,6 +234,44 @@ public class MigrationUpgradeTests(MarketplaceApiFactory factory) : IClassFixtur
         await migrator.MigrateAsync();
     }
 
+    [Fact]
+    public async Task PackQuantity_MakesEveryProductAlreadyPostedOnePiece_AndRollsBack()
+    {
+        var connectionString = await factory.NewDatabaseAsync();
+        await using var db = new MarketplaceDbContext(new DbContextOptionsBuilder<MarketplaceDbContext>()
+            .UseNpgsql(connectionString)
+            .UseSnakeCaseNamingConvention()
+            .Options);
+        var migrator = db.GetService<IMigrator>();
+        await migrator.MigrateAsync(BasicFieldsOnly);
+
+        var saree = Guid.NewGuid();
+        var bananas = Guid.NewGuid();
+        await using (var connection = new NpgsqlConnection(connectionString))
+        {
+            await connection.OpenAsync();
+            await InsertAsync(connection, saree, MarketplaceCatalogSeedData.Products, "Silk saree", minOrder: null);
+            await InsertAsync(connection, bananas, MarketplaceCatalogSeedData.Products, "Bananas", minOrder: null);
+            await using var command = new NpgsqlCommand(
+                "UPDATE marketplace_posts SET condition = 1, quantity = 40, sub_category_id = @sarees WHERE id = @saree;",
+                connection);
+            command.Parameters.AddWithValue("sarees", MarketplaceCatalogSeedData.SubId(3, 1));
+            command.Parameters.AddWithValue("saree", saree);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        await migrator.MigrateAsync();
+
+        var posts = await db.Posts.IgnoreQueryFilters().AsNoTracking().ToDictionaryAsync(p => p.Id);
+        posts[saree].PackQuantity.Should().Be(1, "a product already posted is one piece");
+        posts[saree].Quantity.Should().Be(40, "its stock is left as it was");
+        posts[bananas].PackQuantity.Should().BeNull("a post without a condition is not a product");
+
+        await migrator.MigrateAsync(BasicFieldsOnly);
+        await migrator.MigrateAsync();
+    }
+
+    private const string BasicFieldsOnly = "20261112152852_ProductsBasicFieldsOnly";
     private const string ColourAndSizeChoices = "20261112140726_SubCategoryColourAndSizeChoices";
     private const string FourCategories = "20261112070639_MainCategoriesAndSubCategories";
     private const string VariantsAndDelivery = "20261112100833_ProductVariantsDetailsAndDelivery";

@@ -132,15 +132,22 @@ Future<List<MarketplacePost>> businessMarketplacePosts(
   return repository.getMyPosts(categoryId: categoryId, status: status);
 }
 
+/// The Stock page: the new products that keep a stock count, each with its colours and sizes.
+@riverpod
+Future<List<MarketplacePost>> marketplaceStock(Ref ref) =>
+    ref.watch(marketplaceRepositoryProvider).getMyPosts(keepsStock: true);
+
 /// The super admin's categories: every one, switched off or not.
 @riverpod
 Future<List<MarketplaceCategory>> adminMarketplaceCategories(Ref ref) =>
     ref.watch(marketplaceRepositoryProvider).getAllCategories();
 
-/// After any change to a post: reloads the Marketplace tab, the home tiles and the plan banner.
+/// After any change to a post: reloads the Marketplace tab, the Stock page, the home tiles and the
+/// plan banner.
 void reloadMarketplace(WidgetRef ref) {
   ref
     ..invalidate(businessMarketplacePostsProvider)
+    ..invalidate(marketplaceStockProvider)
     ..invalidate(marketplaceSummaryProvider);
 }
 

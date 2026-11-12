@@ -56,6 +56,9 @@ internal sealed class TestMarketplace : IDisposable
 
     public UpdateMarketplacePostStockHandler StockHandler => new(User, Db, Reference, Clock);
 
+    public ReplaceMarketplacePostVariantsHandler VariantsHandler =>
+        new(User, Db, new UpdateMarketplacePostCommandValidator(Settings), SaveHandlers);
+
     public MarketplacePostQueryHandlers QueryHandlers => new(User, Db, Reference, Clock, Settings);
 
     public MarketplaceCatalogHandlers CatalogHandlers => new(Db, Reference, Settings);

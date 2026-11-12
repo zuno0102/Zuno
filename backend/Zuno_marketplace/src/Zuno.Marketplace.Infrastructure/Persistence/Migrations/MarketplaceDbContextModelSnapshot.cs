@@ -958,6 +958,10 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("owner_user_id");
 
+                    b.Property<int?>("PackQuantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("pack_quantity");
+
                     b.Property<decimal?>("Price")
                         .HasPrecision(14, 2)
                         .HasColumnType("numeric(14,2)")
@@ -1031,6 +1035,8 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_marketplace_posts_kind", "kind IN (1, 2, 3)");
 
                             t.HasCheckConstraint("ck_marketplace_posts_location", "(latitude IS NULL) = (longitude IS NULL)");
+
+                            t.HasCheckConstraint("ck_marketplace_posts_pack_quantity", "pack_quantity IS NULL OR pack_quantity >= 1");
 
                             t.HasCheckConstraint("ck_marketplace_posts_price", "price IS NULL OR price > 0");
 

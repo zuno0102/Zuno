@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zuno/core/router/push_screen.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/ui_config/ui_icons.dart';
 import 'package:zuno/features/marketplace/data/marketplace_api.dart';
 import 'package:zuno/features/marketplace/domain/entities/marketplace_post.dart';
 import 'package:zuno/features/marketplace/presentation/providers/marketplace_providers.dart';
+import 'package:zuno/features/marketplace/presentation/screens/marketplace_variants_screen.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_post_form_sheet.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_post_lines.dart';
-import 'package:zuno/features/marketplace/presentation/widgets/marketplace_stock_dialog.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/confirm_dialog.dart';
 import 'package:zuno/shared/widgets/empty_state.dart';
@@ -15,7 +16,6 @@ import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/category_square_row.dart';
 import 'package:zuno/shared/widgets/media_list_card.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
-import 'package:zuno/shared/widgets/select_field.dart';
 
 /// The status pill for [status], named and coloured from the server's status table.
 StatusPill marketplaceStatusPill(MarketplaceOptions? options, String status) {
@@ -170,10 +170,21 @@ class _BusinessMarketplaceTabState
   }
 }
 
-/// "Your Free plan allows 1 active post. Pause or close one to put up another."
+/// The status moves a post's menu offers. A product is edited, its colours and sizes managed, or
+/// removed — not paused or closed: one that runs out of stock hides itself. A paused one can still
+/// be put back up, and a used one marked sold.
+List<MarketplacePostAction> marketplaceMenuActions(MarketplacePost post) => [
+  for (final action in post.actions)
+    if (post.condition == null ||
+        (action.toStatus != MarketplacePostStatus.paused &&
+            action.toStatus != MarketplacePostStatus.closed))
+      action,
+];
+
+/// "Your Free plan allows 1 active post. Pause, close or remove one to put up another."
 String marketplacePlanFullMessage(MarketplacePlan plan) =>
     'Your ${plan.name} plan allows ${plan.maxActivePosts} active '
-    'post${plan.maxActivePosts == 1 ? '' : 's'}. Pause or close one to put up another.';
+    'post${plan.maxActivePosts == 1 ? '' : 's'}. Pause, close or remove one to put up another.';
 
 /// The plan and how much of it is used, over the post list.
 class MarketplacePlanBanner extends StatelessWidget {
@@ -203,7 +214,7 @@ class MarketplacePlanBanner extends StatelessWidget {
         ),
         subtitle: Text(
           full
-              ? 'Pause or close a post to put up a new one. More plans are coming soon.'
+              ? 'Pause, close or remove a post to put up a new one. More plans are coming soon.'
               : 'Paused, closed and expired posts do not count.',
         ),
       ),
@@ -268,8 +279,9 @@ class MarketplacePostCard extends ConsumerWidget {
         if (post.status != MarketplacePostStatus.closed &&
             post.status != MarketplacePostStatus.sold)
           ('edit', 'Edit'),
-        if (post.canUpdateStock) ('stock', 'Update stock'),
-        for (final action in post.actions)
+        // A new product's colours and sizes; its stock is counted on the Stock page.
+        if (post.canUpdateStock) ('variants', 'Manage variants'),
+        for (final action in marketplaceMenuActions(post))
           ('status:${action.toStatus}', action.name),
         ('delete', 'Remove'),
       ],
@@ -282,7 +294,9 @@ class MarketplacePostCard extends ConsumerWidget {
       return showMarketplacePostFormSheet(context, existing: post);
     }
     if (value == 'delete') return _remove(context, ref);
-    if (value == 'stock') return _updateStock(context, ref);
+    if (value == 'variants') {
+      return pushScreen(context, MarketplaceVariantsScreen(post: post));
+    }
     final action = post.actions.firstWhere(
       (a) => 'status:${a.toStatus}' == value,
     );
@@ -315,49 +329,6 @@ class MarketplacePostCard extends ConsumerWidget {
       reloadMarketplace(ref);
       messenger.showSuccess(
         '${post.title}: ${action.name.toLowerCase()} done.',
-      );
-    } catch (e) {
-      messenger.showFailure(e.toString());
-    }
-  }
-
-  /// "Update stock": the count alone, without the whole form.
-  /// With colours and sizes it first asks which one, each listed with its stock.
-  Future<void> _updateStock(BuildContext context, WidgetRef ref) async {
-    final options = ref.read(marketplaceOptionsProvider).value;
-    MarketplaceVariant? variant;
-    if (post.variants.isNotEmpty) {
-      final pick = await showSelectSheet<String>(
-        context,
-        title: 'Update stock of',
-        options: [
-          for (final v in post.variants)
-            SelectOption(v.id!, v.name, detail: '${v.stock} in stock'),
-        ],
-      );
-      if (pick == null || !context.mounted) return;
-      variant = post.variants.firstWhere((v) => v.id == pick.value);
-    }
-
-    final name = variant == null
-        ? post.title
-        : '${post.title} · ${variant.name}';
-    final count = await showMarketplaceStockDialog(
-      context,
-      title: name,
-      current: variant?.stock ?? post.quantity ?? 0,
-      max: options?.maxQuantity ?? marketplaceDefaultMaxQuantity,
-    );
-    if (count == null || !context.mounted) return;
-
-    final messenger = AppMessenger.of(context);
-    try {
-      await ref
-          .read(marketplaceRepositoryProvider)
-          .updateStock(post.id, count, variantId: variant?.id);
-      reloadMarketplace(ref);
-      messenger.showSuccess(
-        count == 0 ? '$name: out of stock.' : '$name: $count in stock.',
       );
     } catch (e) {
       messenger.showFailure(e.toString());

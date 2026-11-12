@@ -19,11 +19,14 @@ import 'package:zuno/features/marketplace/presentation/providers/marketplace_pro
 import 'package:zuno/features/marketplace/presentation/screens/admin_marketplace_categories_screen.dart';
 import 'package:zuno/features/marketplace/presentation/screens/business_marketplace_tab.dart';
 import 'package:zuno/features/marketplace/presentation/screens/business_marketplace_orders_tab.dart';
+import 'package:zuno/features/marketplace/presentation/screens/marketplace_stock_screen.dart';
+import 'package:zuno/features/marketplace/presentation/screens/marketplace_variants_screen.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_dashboard_tiles.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_post_form_sheet.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_post_lines.dart';
 import 'package:zuno/features/rental/presentation/screens/business_catalog_tab.dart';
 import 'package:zuno/shared/widgets/stat_tile.dart';
+import 'package:zuno/shared/widgets/stock_figure_row.dart';
 
 const _products = MarketplaceCategory(
   id: 'cat-products',
@@ -250,6 +253,7 @@ MarketplacePost _post({
   String? condition,
   bool isOutOfStock = false,
   bool canUpdateStock = false,
+  int? packQuantity,
   List<MarketplaceVariant> variants = const [],
   List<MarketplacePostAction> actions = const [
     MarketplacePostAction(
@@ -268,6 +272,7 @@ MarketplacePost _post({
   condition: condition,
   isOutOfStock: isOutOfStock,
   canUpdateStock: canUpdateStock,
+  packQuantity: packQuantity,
   variants: variants,
   categoryId: categoryId,
   categoryName: categoryName,
@@ -314,6 +319,7 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
   final statusChanges = <(String, String)>[];
   final stockChanges = <(String, int)>[];
   final stockVariantIds = <String?>[];
+  final replacedVariants = <(String, List<MarketplaceVariant>)>[];
   final deleted = <String>[];
   final uploads = <(String, int)>[];
   final savedCategories = <MarketplaceCategoryInput>[];
@@ -362,9 +368,11 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
   Future<List<MarketplacePost>> getMyPosts({
     String? categoryId,
     String? status,
+    bool keepsStock = false,
   }) async {
     if (failList case final error?) throw error;
     return posts
+        .where((p) => !keepsStock || (p.keepsStock && p.canUpdateStock))
         .where((p) => categoryId == null || p.categoryId == categoryId)
         .where((p) => status == null || p.status == status)
         .toList();
@@ -398,6 +406,15 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
     stockChanges.add((id, quantity));
     stockVariantIds.add(variantId);
     return _post(id: id, quantity: quantity);
+  }
+
+  @override
+  Future<MarketplacePost> replaceVariants(
+    String id,
+    List<MarketplaceVariant> variants,
+  ) async {
+    replacedVariants.add((id, variants));
+    return _post(id: id);
   }
 
   @override
@@ -591,6 +608,22 @@ void main() {
   final now = DateTime(2026, 11, 11, 12);
 
   group('card lines', () {
+    test('a product in a pack says so; a single piece goes unsaid', () {
+      MarketplacePost saree({int? pack}) => _post(
+        condition: MarketplaceItemCondition.newItem,
+        quantity: 12,
+        packQuantity: pack,
+        canUpdateStock: true,
+      );
+
+      expect(
+        marketplaceQuantityLine(saree(pack: 3)),
+        'New · Pack of 3 · 12 in stock',
+      );
+      expect(marketplaceQuantityLine(saree(pack: 1)), 'New · 12 in stock');
+      expect(marketplaceQuantityLine(saree()), 'New · 12 in stock');
+    });
+
     test('a listing shows its price, and a unit when it has one', () {
       expect(marketplacePriceLine(_post()), rupees(420000));
       expect(
@@ -764,7 +797,10 @@ void main() {
       );
 
       expect(find.text('Free plan · 1 of 1 active post used'), findsOneWidget);
-      expect(find.textContaining('Pause or close a post'), findsOneWidget);
+      expect(
+        find.textContaining('Pause, close or remove a post'),
+        findsOneWidget,
+      );
     });
 
     testWidgets(
@@ -842,7 +878,7 @@ void main() {
       expect(find.byType(MarketplacePostFormSheet), findsNothing);
       expect(
         find.text(
-          'Your Free plan allows 1 active post. Pause or close one to put up another.',
+          'Your Free plan allows 1 active post. Pause, close or remove one to put up another.',
         ),
         findsOneWidget,
       );
@@ -900,7 +936,7 @@ void main() {
       expect(find.byType(MarketplacePostFormSheet), findsNothing);
       expect(
         find.text(
-          'Your Free plan allows 1 active post. Pause or close one to put up another.',
+          'Your Free plan allows 1 active post. Pause, close or remove one to put up another.',
         ),
         findsOneWidget,
       );
@@ -1299,7 +1335,7 @@ void main() {
     testWidgets('a refused save scrolls up to the reason', (tester) async {
       final repo = _FakeMarketplaceRepository()
         ..failCreate = const UnknownAppException(
-          'Your Free plan allows 1 active post. Pause or close one to put up another.',
+          'Your Free plan allows 1 active post. Pause, close or remove one to put up another.',
         );
       await _pump(tester, const BusinessMarketplaceTab(), repository: repo);
       await _openFormFor(tester, _b2b);
@@ -1397,21 +1433,27 @@ void main() {
         findsOneWidget,
         reason: 'the offer is worked out from the MRP',
       );
-      await _type(tester, 'marketplace-stock', '500');
-      await tester.pump();
       expect(
         find.descendant(
-          of: find.byKey(const ValueKey('marketplace-quantity-total')),
-          matching: find.text('500'),
+          of: find.byKey(const ValueKey('marketplace-pack-quantity')),
+          matching: find.text('1'),
         ),
         findsOneWidget,
+        reason: 'one piece unless the business says a pack',
       );
+      await _type(tester, 'marketplace-pack-quantity', '3');
+      await _type(tester, 'marketplace-stock', '500');
       await _save(tester);
 
       final input = repo.created.single;
       expect(
-        (input.price, input.originalPrice, input.quantity, input.priceUnit),
-        (200, 350, 500, null),
+        (input.price, input.originalPrice, input.priceUnit),
+        (200, 350, null),
+      );
+      expect(
+        (input.packQuantity, input.quantity),
+        (3, 500),
+        reason: 'Quantity is a pack of 3; the stock is its own figure',
       );
       expect(
         input.variants,
@@ -1460,15 +1502,6 @@ void main() {
       );
       await fillVariant(tester, colour: 'Green', price: '449', stock: '25');
       expect(find.text('₹449 · 25 in stock · 25% off'), findsOneWidget);
-      expect(
-        find.descendant(
-          of: find.byKey(const ValueKey('marketplace-quantity-total')),
-          matching: find.text('55'),
-        ),
-        findsOneWidget,
-        reason: 'the quantity is every colour and size added up',
-      );
-
       await tap(
         tester,
         find.byKey(const ValueKey('marketplace-variant-menu-0')),
@@ -1698,10 +1731,12 @@ void main() {
       expect(input.deliveryDistrictIds, ['d-kk']);
     });
 
-    testWidgets('Update stock asks which colour / size first', (tester) async {
+    testWidgets('the Stock page counts each colour / size, like Rent', (
+      tester,
+    ) async {
       final repo = await _pump(
         tester,
-        const BusinessMarketplaceTab(),
+        const MarketplaceStockScreen(),
         repository: _FakeMarketplaceRepository(
           posts: [
             _post(
@@ -1714,27 +1749,83 @@ void main() {
                 MarketplaceVariant(id: 'v-blue', colour: 'Blue', stock: 0),
               ],
             ),
+            _post(
+              id: 'p-2',
+              title: 'Old bike',
+              condition: MarketplaceItemCondition.used,
+            ),
           ],
         ),
       );
-      expect(find.text('New · 4 in stock · 2 colours / sizes'), findsOneWidget);
+      expect(find.text('Cotton shirt'), findsOneWidget);
+      expect(
+        find.text('Old bike'),
+        findsNothing,
+        reason: 'a used item keeps no stock',
+      );
+      String figure(String label) => tester
+          .widget<StockFigureRow>(
+            find.widgetWithText(StockFigureRow, label).first,
+          )
+          .value
+          .toString();
+      expect(
+        (figure('In stock'), figure('Colours / sizes'), figure('Run out')),
+        ('4', '2', '1'),
+      );
 
-      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.tap(find.byKey(const ValueKey('marketplace-stock-p-1')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Update stock'));
+      await tester.tap(
+        find.byKey(const ValueKey('marketplace-stock-variant-1')),
+      );
       await tester.pumpAndSettle();
-      expect(find.text('0 in stock'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('select-option-v-blue')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('marketplace-stock-more')));
-      await tester.tap(find.byKey(const ValueKey('marketplace-stock-more')));
+      expect(find.text('Stock of Blue'), findsOneWidget);
+      await tester.tap(find.text('+10'));
+      await tester.pump();
+      await tester.tap(find.byTooltip('One more'));
       await tester.pump();
       await tester.tap(find.byKey(const ValueKey('marketplace-stock-save')));
       await tester.pumpAndSettle();
 
-      expect(repo.stockChanges, [('p-1', 2)]);
+      expect(repo.stockChanges, [('p-1', 11)]);
       expect(repo.stockVariantIds, ['v-blue']);
-      expect(find.text('Cotton shirt · Blue: 2 in stock.'), findsOneWidget);
+      expect(find.text('Cotton shirt · Blue: 11 in stock.'), findsOneWidget);
+
+      await tester.tap(find.text('Orders'));
+      await tester.pumpAndSettle();
+      expect(find.text('No orders yet'), findsOneWidget);
+    });
+
+    testWidgets('a product with one stock count sells some and buys more', (
+      tester,
+    ) async {
+      final repo = await _pump(
+        tester,
+        const MarketplaceStockScreen(),
+        repository: _FakeMarketplaceRepository(
+          posts: [
+            _post(
+              title: 'Silk saree',
+              condition: MarketplaceItemCondition.newItem,
+              quantity: 12,
+              canUpdateStock: true,
+            ),
+          ],
+        ),
+      );
+
+      await tester.tap(find.byKey(const ValueKey('marketplace-stock-p-1')));
+      await tester.pumpAndSettle();
+      expect(find.text('Stock you have'), findsOneWidget);
+      await tester.tap(find.byTooltip('One less'));
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('marketplace-stock-save')));
+      await tester.pumpAndSettle();
+
+      expect(repo.stockChanges, [('p-1', 11)]);
+      expect(repo.stockVariantIds, [null]);
+      expect(find.text('Silk saree: 11 in stock.'), findsOneWidget);
     });
   });
 
@@ -1843,9 +1934,8 @@ void main() {
       expect(find.text('Used · one piece'), findsOneWidget);
     });
 
-    testWidgets('Update stock sets the count without the whole form', (
-      tester,
-    ) async {
+    testWidgets('a product menu is Edit, Manage variants and Remove — no '
+        'Update stock, Pause or Close', (tester) async {
       final repo = await _pump(
         tester,
         const BusinessMarketplaceTab(),
@@ -1854,8 +1944,18 @@ void main() {
             _post(
               title: 'Silk saree',
               condition: MarketplaceItemCondition.newItem,
+              price: 2400,
+              originalPrice: 3000,
               quantity: 12,
               canUpdateStock: true,
+              variants: const [
+                MarketplaceVariant(
+                  id: 'v-red',
+                  colour: 'Red',
+                  price: 2400,
+                  stock: 12,
+                ),
+              ],
             ),
           ],
         ),
@@ -1863,21 +1963,54 @@ void main() {
 
       await tester.tap(find.byType(PopupMenuButton<String>));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Update stock'));
+      for (final shown in ['Edit', 'Manage variants', 'Remove']) {
+        expect(find.text(shown), findsOneWidget, reason: shown);
+      }
+      for (final gone in ['Update stock', 'Pause', 'Close (sold / done)']) {
+        expect(find.text(gone), findsNothing, reason: gone);
+      }
+
+      await tester.tap(find.text('Manage variants'));
+      await tester.pumpAndSettle();
+      expect(find.byType(MarketplaceVariantsScreen), findsOneWidget);
+      expect(find.text('Colours and sizes'), findsOneWidget);
+      expect(find.text('Red'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('marketplace-add-variant')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('marketplace-variant-colour')),
+        'Green',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('marketplace-variant-price')),
+        '2200',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('marketplace-variant-stock')),
+        '5',
+      );
+      await tester.tap(find.byKey(const ValueKey('marketplace-variant-save')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('marketplace-variants-save')));
       await tester.pumpAndSettle();
 
-      expect(find.byType(MarketplacePostFormSheet), findsNothing);
-      await tester.tap(find.byKey(const ValueKey('marketplace-stock-less')));
-      await tester.pump();
-      expect(find.text('11'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('marketplace-stock-save')));
-      await tester.pumpAndSettle();
-
-      expect(repo.stockChanges, [('p-1', 11)]);
-      expect(find.text('Silk saree: 11 in stock.'), findsOneWidget);
+      final (id, variants) = repo.replacedVariants.single;
+      expect(id, 'p-1');
+      expect(
+        [for (final v in variants) (v.id, v.name, v.price, v.stock)],
+        [('v-red', 'Red', 2400.0, 12), (null, 'Green', 2200.0, 5)],
+      );
+      expect(find.byType(MarketplaceVariantsScreen), findsNothing);
+      expect(
+        find.text('Silk saree: colours and sizes saved — 17 in stock.'),
+        findsOneWidget,
+      );
     });
 
-    testWidgets('a used item has no Update stock', (tester) async {
+    testWidgets('a used item has no stock or variants on its menu', (
+      tester,
+    ) async {
       await _pump(
         tester,
         const BusinessMarketplaceTab(),
@@ -1890,6 +2023,33 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Update stock'), findsNothing);
+      expect(find.text('Manage variants'), findsNothing);
+      expect(find.text('Pause'), findsNothing);
+    });
+
+    testWidgets('a post outside Products can still be paused and closed', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        const BusinessMarketplaceTab(),
+        repository: _FakeMarketplaceRepository(
+          posts: [
+            _post(
+              title: 'Biryani for two',
+              kind: MarketplacePostKind.foodOffer,
+              categoryId: 'cat-food',
+              categoryName: 'Nearby food',
+            ),
+          ],
+        ),
+      );
+
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Pause'), findsOneWidget);
+      expect(find.text('Close (sold / done)'), findsOneWidget);
     });
 
     testWidgets('Mark as sold asks first, then moves the post to Sold', (
@@ -2147,6 +2307,31 @@ void main() {
   });
 
   group('Marketplace tiles on the business home screen', () {
+    testWidgets('the Stock tile opens the stock of every product', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        const MarketplaceDashboardTiles(),
+        repository: _FakeMarketplaceRepository(
+          posts: [
+            _post(
+              title: 'Silk saree',
+              condition: MarketplaceItemCondition.newItem,
+              quantity: 3,
+              canUpdateStock: true,
+            ),
+          ],
+        ),
+      );
+
+      await tester.tap(find.byKey(const ValueKey('marketplace-tile-stock')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MarketplaceStockScreen), findsOneWidget);
+      expect(find.text('Silk saree'), findsOneWidget);
+    });
+
     testWidgets('show live, paused, expired and the plan', (tester) async {
       await _pump(
         tester,

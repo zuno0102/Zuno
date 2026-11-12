@@ -43,6 +43,7 @@ MarketplacePostModel _$MarketplacePostModelFromJson(
   priceUnit: json['priceUnit'] as String?,
   minOrderQuantity: (json['minOrderQuantity'] as num?)?.toInt(),
   quantity: (json['quantity'] as num?)?.toInt(),
+  packQuantity: (json['packQuantity'] as num?)?.toInt(),
   originalPrice: (json['originalPrice'] as num?)?.toDouble(),
   startsAt: json['startsAt'] == null
       ? null

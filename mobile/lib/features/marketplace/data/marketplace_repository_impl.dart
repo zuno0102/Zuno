@@ -34,10 +34,12 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
   Future<List<MarketplacePost>> getMyPosts({
     String? categoryId,
     String? status,
+    bool keepsStock = false,
   }) async => [
     for (final p in (await _remote.getMyPosts(
       categoryId: categoryId,
       status: status,
+      keepsStock: keepsStock,
       pageSize: listPageSize,
     )).items)
       p.toEntity(),
@@ -65,6 +67,14 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
     quantity,
     variantId: variantId,
   )).toEntity();
+
+  @override
+  Future<MarketplacePost> replaceVariants(
+    String id,
+    List<MarketplaceVariant> variants,
+  ) async => (await _remote.replaceVariants(id, [
+    for (final v in variants) v.toJson(),
+  ])).toEntity();
 
   @override
   Future<void> delete(String id) => _remote.delete(id);

@@ -35,6 +35,9 @@ public abstract class MarketplacePostFields
     /// <summary>How many are for sale; for a new item in a category that keeps stock, the stock (0 = out of stock).</summary>
     public int? Quantity { get; set; }
 
+    /// <summary>Products only: how many in one item sold (a pack of 3 is 3). Left out, it is 1.</summary>
+    public int? PackQuantity { get; set; }
+
     /// <summary><c>New</c> or <c>Used</c>: required in a category that keeps stock (Products), ignored elsewhere.</summary>
     public string? Condition { get; set; }
 
@@ -126,6 +129,7 @@ public abstract class MarketplacePostFieldsValidator<T> : AbstractValidator<T>
         RuleFor(x => x.Price).GreaterThan(0).LessThanOrEqualTo(limits.MaxPrice).When(x => x.Price.HasValue);
         RuleFor(x => x.OriginalPrice).GreaterThan(0).LessThanOrEqualTo(limits.MaxPrice).When(x => x.OriginalPrice.HasValue);
         RuleFor(x => x.Quantity).InclusiveBetween(0, limits.MaxQuantity).When(x => x.Quantity.HasValue);
+        RuleFor(x => x.PackQuantity).InclusiveBetween(1, limits.MaxQuantity).When(x => x.PackQuantity.HasValue);
         RuleFor(x => x.MinOrderQuantity).InclusiveBetween(1, limits.MaxQuantity).When(x => x.MinOrderQuantity.HasValue);
         RuleFor(x => x.TradeType)
             .Must(t => string.IsNullOrEmpty(t) || Enum.TryParse<MarketplaceTradeType>(t, ignoreCase: true, out var parsed) && Enum.IsDefined(parsed))
@@ -351,6 +355,7 @@ public class SaveMarketplacePostHandlers(
         post.MinOrderQuantity = post.TradeType == MarketplaceTradeType.Wholesale ? request.MinOrderQuantity : null;
         post.Condition = MarketplacePostRules.ConditionOf(category, request);
         post.Quantity = post.Condition == MarketplaceItemCondition.Used ? null : request.Quantity;
+        post.PackQuantity = category.TracksStock ? request.PackQuantity ?? 1 : null;
         // A food offer's usual price, or a product's MRP.
         post.OriginalPrice = kind == MarketplacePostKind.FoodOffer || category.TracksStock ? request.OriginalPrice : null;
         post.StartsAt = kind == MarketplacePostKind.Listing ? null : request.StartsAt;

@@ -26,9 +26,10 @@ public class BusinessMarketplaceController(
         [FromQuery] string? kind = null,
         [FromQuery] Guid? categoryId = null,
         [FromQuery] string? status = null,
+        [FromQuery] bool? keepsStock = null,
         CancellationToken cancellationToken = default) =>
         Ok(await mediator.Send(
-            new GetMyMarketplacePostsQuery { Page = page, PageSize = pageSize, Kind = kind, CategoryId = categoryId, Status = status },
+            new GetMyMarketplacePostsQuery { Page = page, PageSize = pageSize, Kind = kind, CategoryId = categoryId, Status = status, KeepsStock = keepsStock },
             cancellationToken));
 
     /// <summary>The counts behind the Marketplace tiles, and the plan with how much of it is used.</summary>
@@ -60,6 +61,15 @@ public class BusinessMarketplaceController(
     [HttpPatch("{id:guid}/stock")]
     public async Task<IActionResult> UpdateStock(
         Guid id, [FromBody] UpdateMarketplacePostStockCommand command, CancellationToken cancellationToken)
+    {
+        command.Id = id;
+        return Ok(await mediator.Send(command, cancellationToken));
+    }
+
+    /// <summary>Replaces a new product's colours and sizes, each with its price and stock — "Manage variants".</summary>
+    [HttpPut("{id:guid}/variants")]
+    public async Task<IActionResult> ReplaceVariants(
+        Guid id, [FromBody] ReplaceMarketplacePostVariantsCommand command, CancellationToken cancellationToken)
     {
         command.Id = id;
         return Ok(await mediator.Send(command, cancellationToken));

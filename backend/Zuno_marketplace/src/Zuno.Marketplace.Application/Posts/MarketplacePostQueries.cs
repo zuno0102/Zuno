@@ -24,6 +24,9 @@ public class GetMyMarketplacePostsQuery : IRequest<MarketplacePostPageDto>
 
     /// <summary>A shown status (<c>Active</c>, <c>Paused</c>, <c>Closed</c>, <c>Expired</c>); null for all.</summary>
     public string? Status { get; set; }
+
+    /// <summary>True for the Stock page: only new products that keep a stock count and are not closed or sold.</summary>
+    public bool? KeepsStock { get; set; }
 }
 
 public class GetMyMarketplacePostsQueryValidator : AbstractValidator<GetMyMarketplacePostsQuery>
@@ -71,6 +74,12 @@ public class MarketplacePostQueryHandlers(
         if (Enum.TryParse<MarketplacePostStatus>(request.Status, true, out var status))
         {
             mine = mine.WithShownStatus(status, now);
+        }
+
+        if (request.KeepsStock == true)
+        {
+            mine = mine.Where(p => p.Condition == MarketplaceItemCondition.New
+                && p.Status != MarketplacePostStatus.Closed && p.Status != MarketplacePostStatus.Sold);
         }
 
         var totalCount = await mine.CountAsync(cancellationToken);

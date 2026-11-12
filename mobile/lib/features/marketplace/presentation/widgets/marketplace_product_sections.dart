@@ -204,10 +204,20 @@ class MarketplaceVariantsSection extends StatelessWidget {
     required this.defaultPrice,
     required this.limits,
     required this.maxQuantity,
+    this.title = 'More colours and sizes',
+    this.hint =
+        'Sold in another colour or size too? Add each with its own price and stock.',
+    this.addLabel = 'Add another colour / size',
     super.key,
   });
 
   final MarketplaceVariantList variants;
+
+  /// The heading, its line, and the add button's words: the form's "More colours and sizes", or
+  /// "Colours and sizes" on Manage variants, where every one is listed.
+  final String title;
+  final String hint;
+  final String addLabel;
 
   /// The colour / size typed on the form itself, which an added one may not repeat.
   final List<MarketplaceVariant> Function() alsoTaken;
@@ -256,13 +266,13 @@ class MarketplaceVariantsSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'More colours and sizes',
+            title,
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w600,
             ),
           ),
           Text(
-            'Sold in another colour or size too? Add each with its own price and stock.',
+            hint,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -303,7 +313,7 @@ class MarketplaceVariantsSection extends StatelessWidget {
               key: const ValueKey('marketplace-add-variant'),
               onPressed: () => _edit(context),
               icon: const Icon(Icons.add),
-              label: const Text('Add another colour / size'),
+              label: Text(addLabel),
             ),
           ),
         ],

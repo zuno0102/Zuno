@@ -25,6 +25,8 @@ class MarketplaceApi {
 
   static String postStockPath(String id) => '$myPostsPath/$id/stock';
 
+  static String postVariantsPath(String id) => '$myPostsPath/$id/variants';
+
   static String postImagePath(String id, int slot) =>
       '$myPostsPath/$id/images/$slot';
 

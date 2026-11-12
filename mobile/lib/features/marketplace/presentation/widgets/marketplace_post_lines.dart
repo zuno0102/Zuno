@@ -45,6 +45,8 @@ String? marketplaceQuantityLine(
     if (condition != null)
       options?.conditions.where((c) => c.code == condition).firstOrNull?.name ??
           condition,
+    // "Pack of 3": how many come in one; a single piece goes unsaid.
+    if ((post.packQuantity ?? 1) > 1) 'Pack of ${post.packQuantity}',
     if (post.keepsStock && !post.isOutOfStock) '${post.quantity} in stock',
     if (post.variants.isNotEmpty)
       post.variants.length == 1

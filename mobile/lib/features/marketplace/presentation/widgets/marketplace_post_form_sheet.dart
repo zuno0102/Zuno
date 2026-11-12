@@ -74,7 +74,12 @@ class _MarketplacePostFormSheetState
   late final _priceUnit = TextEditingController(text: _old?.priceUnit);
   late final _quantity = TextEditingController(
     text: (_firstSaved?.stock ?? _old?.quantity)?.toString(),
-  )..addListener(_rebuild);
+  );
+
+  /// A product's Quantity: how many come in one item sold — 1, or 3 for a pack of 3. Not its stock.
+  late final _packQuantity = TextEditingController(
+    text: '${_old?.packQuantity ?? 1}',
+  );
   late final _minOrder = TextEditingController(
     text: _old?.minOrderQuantity?.toString(),
   );
@@ -146,6 +151,7 @@ class _MarketplacePostFormSheetState
       _originalPrice,
       _priceUnit,
       _quantity,
+      _packQuantity,
       _minOrder,
       _colour,
       _size,
@@ -202,20 +208,15 @@ class _MarketplacePostFormSheetState
                 .fold<double?>(null, (a, b) => a == null || b > a ? b : a),
       ),
       const SizedBox(height: 14),
+      _wholeNumber(
+        _packQuantity,
+        key: 'marketplace-pack-quantity',
+        label: 'Quantity',
+        helperText: 'How many in one item sold — 1, or 3 for a pack of 3.',
+        required: true,
+      ),
+      const SizedBox(height: 14),
       if (keepsStock) ...[
-        // The total: this colour / size's stock and every other one's, added up.
-        InputDecorator(
-          key: const ValueKey('marketplace-quantity-total'),
-          decoration: const InputDecoration(
-            labelText: 'Quantity',
-            helperText: 'Every colour and size in stock, added up.',
-            border: OutlineInputBorder(),
-          ),
-          child: Text(
-            '${(int.tryParse(_quantity.text.trim()) ?? 0) + _variants.totalStock}',
-          ),
-        ),
-        const SizedBox(height: 14),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -335,6 +336,9 @@ class _MarketplacePostFormSheetState
           ? null
           : keepsStock || kind == MarketplacePostKind.foodOffer || wholesale
           ? int.tryParse(_quantity.text.trim())
+          : null,
+      packQuantity: category.tracksStock
+          ? int.tryParse(_packQuantity.text.trim())
           : null,
       variants: variants,
       // A food offer's usual price, or a product's MRP.
@@ -1069,6 +1073,7 @@ class _MarketplacePostFormSheetState
     required String label,
     required bool required,
     int min = 1,
+    String? helperText,
   }) => TextFormField(
     key: ValueKey(key),
     controller: controller,
@@ -1076,6 +1081,7 @@ class _MarketplacePostFormSheetState
     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
     decoration: InputDecoration(
       labelText: label,
+      helperText: helperText,
       border: const OutlineInputBorder(),
     ),
     validator: (v) {

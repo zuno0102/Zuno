@@ -11,10 +11,12 @@ abstract interface class MarketplaceRepository {
 
   Future<MarketplaceSummary> getSummary();
 
-  /// The business's posts, newest first; [categoryId] (a main category) and [status] narrow the list.
+  /// The business's posts, newest first; [categoryId] (a main category) and [status] narrow the list,
+  /// and [keepsStock] keeps only the new products with a stock count — the Stock page.
   Future<List<MarketplacePost>> getMyPosts({
     String? categoryId,
     String? status,
+    bool keepsStock = false,
   });
 
   Future<MarketplacePost> create(MarketplacePostInput input);
@@ -30,6 +32,12 @@ abstract interface class MarketplaceRepository {
     int quantity, {
     String? variantId,
   });
+
+  /// Sets a new product's colours and sizes, each with its price and stock — "Manage variants".
+  Future<MarketplacePost> replaceVariants(
+    String id,
+    List<MarketplaceVariant> variants,
+  );
 
   Future<void> delete(String id);
 

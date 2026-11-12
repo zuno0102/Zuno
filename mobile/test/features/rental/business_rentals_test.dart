@@ -38,6 +38,7 @@ import 'package:zuno/shared/widgets/counted_tab_label.dart';
 import 'package:zuno/shared/widgets/empty_state.dart';
 import 'package:zuno/shared/widgets/filter_chip_bar.dart';
 import 'package:zuno/shared/widgets/status_with_actions.dart';
+import 'package:zuno/shared/widgets/stock_figure_row.dart';
 
 const _tools = RentalCategory(
   id: 'cat-tools',

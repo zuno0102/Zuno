@@ -34,6 +34,9 @@ public class MarketplacePostDto
 
     public int? Quantity { get; set; }
 
+    /// <summary>A product only: how many in one item sold, e.g. 3 for a pack of 3.</summary>
+    public int? PackQuantity { get; set; }
+
     /// <summary><c>New</c> or <c>Used</c> in a category that keeps stock; null elsewhere.</summary>
     public string? Condition { get; set; }
 

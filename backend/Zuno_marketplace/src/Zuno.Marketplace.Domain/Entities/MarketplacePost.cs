@@ -46,6 +46,12 @@ public class MarketplacePost : BaseEntity
     /// </summary>
     public int? Quantity { get; set; }
 
+    /// <summary>
+    /// A product only: how many come in one item sold — 1 for a single saree, 3 for a pack of 3.
+    /// Not the stock: that is <see cref="Quantity"/>. Null on posts outside a category that keeps stock.
+    /// </summary>
+    public int? PackQuantity { get; set; }
+
     /// <summary>New or Used, in a category that keeps stock; null elsewhere.</summary>
     public MarketplaceItemCondition? Condition { get; set; }
 

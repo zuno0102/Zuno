@@ -5,9 +5,9 @@ import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/features/rental/domain/entities/rental_stock.dart';
 import 'package:zuno/features/rental/presentation/providers/rental_providers.dart';
 import 'package:zuno/features/rental/presentation/screens/rental_stock_manage_screen.dart';
-import 'package:zuno/features/rental/presentation/screens/rental_stock_screen.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_order_card.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
+import 'package:zuno/shared/widgets/stock_figure_row.dart';
 
 /// One item from the Stock page, in two tabs: **Stock** — in, out and total, with the quick
 /// quantity change — and **Orders** — where its pieces went.

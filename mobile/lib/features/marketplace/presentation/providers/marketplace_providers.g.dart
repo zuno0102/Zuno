@@ -425,6 +425,52 @@ final class BusinessMarketplacePostsFamily extends $Family
   String toString() => r'businessMarketplacePostsProvider';
 }
 
+/// The Stock page: the new products that keep a stock count, each with its colours and sizes.
+
+@ProviderFor(marketplaceStock)
+final marketplaceStockProvider = MarketplaceStockProvider._();
+
+/// The Stock page: the new products that keep a stock count, each with its colours and sizes.
+
+final class MarketplaceStockProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<MarketplacePost>>,
+          List<MarketplacePost>,
+          FutureOr<List<MarketplacePost>>
+        >
+    with
+        $FutureModifier<List<MarketplacePost>>,
+        $FutureProvider<List<MarketplacePost>> {
+  /// The Stock page: the new products that keep a stock count, each with its colours and sizes.
+  MarketplaceStockProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'marketplaceStockProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$marketplaceStockHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<MarketplacePost>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<MarketplacePost>> create(Ref ref) {
+    return marketplaceStock(ref);
+  }
+}
+
+String _$marketplaceStockHash() => r'cbb1dd7f746c16badbc2a64871768c02622fcb11';
+
 /// The super admin's categories: every one, switched off or not.
 
 @ProviderFor(adminMarketplaceCategories)
