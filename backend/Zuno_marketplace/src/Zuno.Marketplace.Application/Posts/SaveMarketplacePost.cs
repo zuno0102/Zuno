@@ -97,6 +97,12 @@ public class MarketplaceVariantInput
     public decimal? Price { get; set; }
 
     public int Stock { get; set; }
+
+    /// <summary>Off keeps the colour / size but stops selling it; left out (an older app), it is on.</summary>
+    public bool IsActive { get; set; } = true;
+
+    /// <summary>Details of this colour / size alone — "Border: Zari"; each named once.</summary>
+    public List<MarketplaceCustomDetailInput> CustomDetails { get; set; } = [];
 }
 
 /// <summary>Puts up a new post. It goes live at once, so it needs a free slot on the business's plan.</summary>
@@ -160,6 +166,16 @@ public abstract class MarketplacePostFieldsValidator<T> : AbstractValidator<T>
             variant.RuleFor(v => v.Size).MaximumLength(MarketplaceTextLimits.Size);
             variant.RuleFor(v => v.Stock).InclusiveBetween(0, limits.MaxQuantity);
             variant.RuleFor(v => v.Price).GreaterThan(0).LessThanOrEqualTo(limits.MaxPrice).When(v => v.Price.HasValue);
+            variant.RuleFor(v => v.CustomDetails.Count).LessThanOrEqualTo(MaxCustomDetails)
+                .OverridePropertyName("CustomDetails").WithMessage($"Add at most {MaxCustomDetails} details to a colour / size.");
+            variant.RuleForEach(v => v.CustomDetails).ChildRules(detail =>
+            {
+                detail.RuleFor(d => d.Name).NotEmpty().WithMessage("Name the detail, e.g. Border.").MaximumLength(MarketplaceTextLimits.CustomDetailName);
+                detail.RuleFor(d => d.Value).NotEmpty().WithMessage("Give the detail a value.").MaximumLength(MarketplaceTextLimits.AttributeValue);
+            });
+            variant.RuleFor(v => v.CustomDetails)
+                .Must(details => details.Select(d => d.Name.Trim().ToUpperInvariant()).Distinct().Count() == details.Count)
+                .WithMessage("Name each detail of a colour / size once.");
         });
         RuleFor(x => x.DeliveryDistrictIds.Count).LessThanOrEqualTo(MaxDeliveryDistricts)
             .OverridePropertyName("DeliveryDistrictIds").WithMessage($"Choose at most {MaxDeliveryDistricts} districts.");
@@ -330,14 +346,22 @@ public class SaveMarketplacePostHandlers(
             variant.Size = Clean(input.Size);
             variant.Price = input.Price;
             variant.Stock = input.Stock;
+            variant.IsActive = input.IsActive;
+            variant.CustomDetails = input.CustomDetails
+                .Where(d => !string.IsNullOrWhiteSpace(d.Name) && !string.IsNullOrWhiteSpace(d.Value))
+                .Select(d => new MarketplacePostAttribute { Key = d.Name.Trim(), Value = d.Value.Trim() })
+                .ToList();
             variant.SortOrder = order++;
         }
 
         if (wanted.Count != 0)
         {
-            // Its stock is theirs added up; its price is the lowest they sell at ("from ₹449").
-            post.Quantity = wanted.Sum(v => v.Stock);
-            post.Price = MarketplacePostRules.VariantPrices(request).Min();
+            // Its stock is the ones on sale added up; its price the lowest they sell at ("from ₹449").
+            // With every one switched off it is out of stock, priced as before.
+            var onSale = wanted.Where(v => v.IsActive).ToList();
+            post.Quantity = onSale.Sum(v => v.Stock);
+            post.Price = (onSale.Count != 0 ? onSale : wanted)
+                .Select(v => v.Price ?? request.Price).OfType<decimal>().Min();
         }
     }
 

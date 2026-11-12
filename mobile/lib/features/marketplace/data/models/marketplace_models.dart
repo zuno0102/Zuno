@@ -185,6 +185,8 @@ class MarketplaceVariantModel {
     this.colour,
     this.size,
     this.price,
+    this.isActive = true,
+    this.customDetails = const [],
   });
 
   factory MarketplaceVariantModel.fromJson(Map<String, dynamic> json) =>
@@ -196,12 +198,22 @@ class MarketplaceVariantModel {
   final double? price;
   final int stock;
 
+  /// Missing from an older server: on sale.
+  @JsonKey(defaultValue: true)
+  final bool isActive;
+
+  /// Missing from an older server: none.
+  @JsonKey(defaultValue: <MarketplaceCustomDetailModel>[])
+  final List<MarketplaceCustomDetailModel> customDetails;
+
   MarketplaceVariant toEntity() => MarketplaceVariant(
     id: id,
     colour: colour,
     size: size,
     price: price,
     stock: stock,
+    isActive: isActive,
+    customDetails: [for (final d in customDetails) d.toEntity()],
   );
 }
 

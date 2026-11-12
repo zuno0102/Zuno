@@ -110,6 +110,11 @@ class _MarketplacePostFormSheetState
     _old?.customDetails ?? const [],
   );
 
+  /// A product on sale (Active) or hidden from customers (Paused), as a service is Active or
+  /// Inactive. Off also frees its place on the plan.
+  late bool _isActive =
+      _old == null || _old.status != MarketplacePostStatus.paused;
+
   /// Where a product ships: all of India, a whole state, or some districts of that state.
   late MarketplaceShipsTo _shipsTo =
       _old?.shipsTo ?? MarketplaceShipsTo.allIndia;
@@ -283,6 +288,8 @@ class _MarketplacePostFormSheetState
           size: _clean(_size),
           price: double.tryParse(_price.text.trim()),
           stock: int.tryParse(_quantity.text.trim()) ?? 0,
+          isActive: _firstSaved?.isActive ?? true,
+          customDetails: _firstSaved?.customDetails ?? const [],
         );
 
   /// How long each text may be, from the server's options.
@@ -394,6 +401,18 @@ class _MarketplacePostFormSheetState
       final id = old == null
           ? (await repository.create(input)).id
           : (await repository.update(old.id, input)).id;
+
+      // Switched on or off: the post's status follows (a product is paused, not deleted).
+      final wasActive =
+          old == null || old.status != MarketplacePostStatus.paused;
+      if (category.tracksStock && _isActive != wasActive) {
+        await repository.changeStatus(
+          id,
+          _isActive
+              ? MarketplacePostStatus.active
+              : MarketplacePostStatus.paused,
+        );
+      }
 
       for (var slot = 0; slot < _media.slotCount; slot++) {
         final bytes = _media.pickedImage(slot);
@@ -592,6 +611,18 @@ class _MarketplacePostFormSheetState
                 const SizedBox(height: 14),
               ],
               ..._placeSection(category),
+              // As on a service: off hides the whole product, its colours and sizes too.
+              if (category?.tracksStock ?? false)
+                SwitchListTile(
+                  key: const ValueKey('marketplace-active'),
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Active'),
+                  subtitle: const Text(
+                    'Inactive products are hidden from customers.',
+                  ),
+                  value: _isActive,
+                  onChanged: (value) => setState(() => _isActive = value),
+                ),
               const SizedBox(height: 20),
               PrimaryButton(
                 label: _old == null ? 'Save post' : 'Save changes',

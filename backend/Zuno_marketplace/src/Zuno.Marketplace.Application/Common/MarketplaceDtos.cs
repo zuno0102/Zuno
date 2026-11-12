@@ -114,6 +114,12 @@ public class MarketplaceVariantDto
     public decimal? Price { get; set; }
 
     public int Stock { get; set; }
+
+    /// <summary>False when the business has switched it off: not sold, its stock not counted.</summary>
+    public bool IsActive { get; set; }
+
+    /// <summary>Its own details, in the business's order — "Border: Zari".</summary>
+    public List<MarketplaceCustomDetailDto> CustomDetails { get; set; } = [];
 }
 
 public class MarketplacePostMediaDto

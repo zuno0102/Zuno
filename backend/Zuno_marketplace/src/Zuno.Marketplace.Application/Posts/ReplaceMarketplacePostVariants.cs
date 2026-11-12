@@ -84,6 +84,8 @@ public class ReplaceMarketplacePostVariantsHandler(
             Size = v.Size,
             Price = v.Price,
             Stock = v.Stock,
+            IsActive = v.IsActive,
+            CustomDetails = [.. v.CustomDetails.Select(d => new MarketplaceCustomDetailInput { Name = d.Key, Value = d.Value })],
         })],
         DeliversEverywhere = post.DeliversEverywhere,
         DeliveryStateId = post.DeliveryStateId,

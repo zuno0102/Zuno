@@ -181,6 +181,14 @@ List<MarketplacePostAction> marketplaceMenuActions(MarketplacePost post) => [
       action,
 ];
 
+/// The colours and sizes added under a product's main one (the first) that are still on sale —
+/// while there are any, the product is not removed.
+List<MarketplaceVariant> marketplaceActiveChildVariants(MarketplacePost post) =>
+    [
+      for (final v in post.variants.skip(1))
+        if (v.isActive) v,
+    ];
+
 /// "Your Free plan allows 1 active post. Pause, close or remove one to put up another."
 String marketplacePlanFullMessage(MarketplacePlan plan) =>
     'Your ${plan.name} plan allows ${plan.maxActivePosts} active '
@@ -336,6 +344,16 @@ class MarketplacePostCard extends ConsumerWidget {
   }
 
   Future<void> _remove(BuildContext context, WidgetRef ref) async {
+    // The main colour / size goes last: the others on sale are removed or switched off first.
+    final children = marketplaceActiveChildVariants(post);
+    if (children.isNotEmpty) {
+      AppMessenger.of(context).showInfo(
+        'Remove or switch off its other colours and sizes first: '
+        '${children.map((v) => v.name).join(', ')}.',
+      );
+      return;
+    }
+
     final confirmed = await showConfirmDialog(
       context,
       title: 'Remove post?',

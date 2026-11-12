@@ -271,6 +271,44 @@ public class MigrationUpgradeTests(MarketplaceApiFactory factory) : IClassFixtur
         await migrator.MigrateAsync();
     }
 
+    [Fact]
+    public async Task VariantActive_KeepsEveryColourAlreadySavedOnSale()
+    {
+        var connectionString = await factory.NewDatabaseAsync();
+        await using var db = new MarketplaceDbContext(new DbContextOptionsBuilder<MarketplaceDbContext>()
+            .UseNpgsql(connectionString)
+            .UseSnakeCaseNamingConvention()
+            .Options);
+        var migrator = db.GetService<IMigrator>();
+        await migrator.MigrateAsync(PackQuantity);
+
+        var saree = Guid.NewGuid();
+        await using (var connection = new NpgsqlConnection(connectionString))
+        {
+            await connection.OpenAsync();
+            await InsertAsync(connection, saree, MarketplaceCatalogSeedData.Products, "Silk saree", minOrder: null);
+            await using var command = new NpgsqlCommand(
+                "UPDATE marketplace_posts SET condition = 1, quantity = 7, sub_category_id = @sarees WHERE id = @saree; " +
+                "INSERT INTO marketplace_post_variants (id, post_id, colour, stock, sort_order, created_date, is_deleted) " +
+                "VALUES (gen_random_uuid(), @saree, 'Red', 7, 0, now(), false);",
+                connection);
+            command.Parameters.AddWithValue("sarees", MarketplaceCatalogSeedData.SubId(3, 1));
+            command.Parameters.AddWithValue("saree", saree);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        await migrator.MigrateAsync();
+
+        var red = await db.PostVariants.AsNoTracking().SingleAsync(v => v.PostId == saree);
+        red.IsActive.Should().BeTrue();
+        red.CustomDetails.Should().BeEmpty("a colour saved before has no details of its own");
+
+        await migrator.MigrateAsync(PackQuantity);
+        await migrator.MigrateAsync();
+    }
+
+    private const string PackQuantity = "20261112175516_ProductPackQuantity";
+
     private const string BasicFieldsOnly = "20261112152852_ProductsBasicFieldsOnly";
     private const string ColourAndSizeChoices = "20261112140726_SubCategoryColourAndSizeChoices";
     private const string FourCategories = "20261112070639_MainCategoriesAndSubCategories";

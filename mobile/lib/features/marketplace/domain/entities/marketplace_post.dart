@@ -312,6 +312,8 @@ class MarketplaceVariant {
     this.colour,
     this.size,
     this.price,
+    this.isActive = true,
+    this.customDetails = const [],
   });
 
   /// Null for one not saved yet.
@@ -323,6 +325,12 @@ class MarketplaceVariant {
   final double? price;
   final int stock;
 
+  /// Off: kept, but not sold and its stock not counted — "Inactive".
+  final bool isActive;
+
+  /// Details only this colour / size has — "Border: Zari".
+  final List<MarketplaceCustomDetail> customDetails;
+
   /// "Red · M".
   String get name => [?colour, ?size].join(' · ');
 
@@ -332,6 +340,8 @@ class MarketplaceVariant {
     'size': size,
     'price': price,
     'stock': stock,
+    'isActive': isActive,
+    'customDetails': [for (final d in customDetails) d.toJson()],
   };
 }
 

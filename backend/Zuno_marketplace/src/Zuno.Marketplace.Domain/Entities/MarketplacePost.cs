@@ -106,6 +106,16 @@ public class MarketplacePost : BaseEntity
     /// </summary>
     public ICollection<MarketplacePostVariant> Variants { get; set; } = new List<MarketplacePostVariant>();
 
+    /// <summary>The stock of the colours and sizes still on sale, added up.</summary>
+    public int ActiveVariantStock => Variants.Where(v => v.IsActive).Sum(v => v.Stock);
+
+    /// <summary>
+    /// The colours and sizes added under the main one (the first, typed on the form itself) that are
+    /// still on sale. While there are any, the product is not removed: they go first.
+    /// </summary>
+    public IEnumerable<MarketplacePostVariant> ActiveChildVariants() =>
+        Variants.OrderBy(v => v.SortOrder).Skip(1).Where(v => v.IsActive);
+
     public ICollection<MarketplacePostMedia> Media { get; set; } = new List<MarketplacePostMedia>();
 
     /// <summary>True when the post's time has passed — it then neither shows to customers nor uses a plan slot.</summary>
@@ -158,6 +168,12 @@ public class MarketplacePostVariant : BaseEntity
 
     /// <summary>How many are left; 0 is out of stock.</summary>
     public int Stock { get; set; }
+
+    /// <summary>Switched off by the business: kept, but not sold and not counted in the stock.</summary>
+    public bool IsActive { get; set; } = true;
+
+    /// <summary>Details of this colour / size alone the business names itself — "Border: Zari". JSON in the row.</summary>
+    public List<MarketplacePostAttribute> CustomDetails { get; set; } = [];
 
     public short SortOrder { get; set; }
 

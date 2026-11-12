@@ -144,6 +144,12 @@ public class MarketplacePostVariantConfiguration : IEntityTypeConfiguration<Mark
             t.HasCheckConstraint("ck_marketplace_post_variants_named", "colour IS NOT NULL OR size IS NOT NULL");
         });
         builder.Property(v => v.Colour).HasMaxLength(40);
+        builder.OwnsMany(v => v.CustomDetails, details =>
+        {
+            details.ToJson("custom_details");
+            details.Property(a => a.Key).HasMaxLength(60);
+            details.Property(a => a.Value).HasMaxLength(200);
+        });
         builder.Property(v => v.Size).HasMaxLength(20);
         builder.Property(v => v.Price).HasPrecision(14, 2);
         builder.Ignore(v => v.Name);

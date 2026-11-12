@@ -166,6 +166,8 @@ class MarketplaceVariantList extends ChangeNotifier {
             size: v.size,
             price: v.price ?? price,
             stock: v.stock,
+            isActive: v.isActive,
+            customDetails: v.customDetails,
           ),
       ];
 
@@ -174,8 +176,10 @@ class MarketplaceVariantList extends ChangeNotifier {
   List<MarketplaceVariant> get items => List.unmodifiable(_items);
   bool get isEmpty => _items.isEmpty;
 
-  /// All the variants' stock added up — the product's quantity.
-  int get totalStock => _items.fold(0, (sum, v) => sum + v.stock);
+  /// The stock of the variants on sale, added up — the product's stock. An inactive one's is
+  /// not counted.
+  int get totalStock =>
+      _items.where((v) => v.isActive).fold(0, (sum, v) => sum + v.stock);
 
   /// The dearest variant, which an MRP may not be under.
   double? get highestPrice => _items
@@ -286,14 +290,23 @@ class MarketplaceVariantsSection extends StatelessWidget {
                   v.name,
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
+                // The figures, then its own details on a line of their own:
+                // "Border: Zari · Blouse: With blouse".
                 subtitle: Text(
                   [
-                    if (v.price case final price?) rupees(price),
-                    '${v.stock} in stock',
-                    if (marketplaceOfferPercent(v.price, mrp()) case final p?)
-                      '$p% off',
-                  ].join(' · '),
+                    [
+                      if (!v.isActive) 'Inactive',
+                      if (v.price case final price?) rupees(price),
+                      '${v.stock} in stock',
+                      if (marketplaceOfferPercent(v.price, mrp()) case final p?)
+                        '$p% off',
+                    ].join(' · '),
+                    if (v.customDetails.isNotEmpty)
+                      [for (final d in v.customDetails) '${d.name}: ${d.value}']
+                          .join(' · '),
+                  ].join('\n'),
                 ),
+                isThreeLine: v.customDetails.isNotEmpty,
                 trailing: PopupMenuButton<String>(
                   key: ValueKey('marketplace-variant-menu-$i'),
                   onSelected: (action) => action == 'edit'
@@ -371,11 +384,20 @@ class _VariantSheetState extends State<_VariantSheet> {
     text: widget.existing?.stock.toString(),
   );
 
+  /// On sale; off keeps it but hides it from customers.
+  late bool _isActive = widget.existing?.isActive ?? true;
+
+  /// Details only this colour / size has — "Border: Zari".
+  late final _details = MarketplaceCustomDetailRows(
+    widget.existing?.customDetails ?? const [],
+  );
+
   @override
   void dispose() {
     for (final c in [_colour, _size, _price, _stock]) {
       c.dispose();
     }
+    _details.dispose();
     super.dispose();
   }
 
@@ -404,6 +426,8 @@ class _VariantSheetState extends State<_VariantSheet> {
         size: _clean(_size),
         price: double.tryParse(_price.text.trim()),
         stock: int.parse(_stock.text.trim()),
+        isActive: _isActive,
+        customDetails: _details.values,
       ),
     );
   }
@@ -417,97 +441,121 @@ class _VariantSheetState extends State<_VariantSheet> {
       border: const OutlineInputBorder(),
       counterText: '',
     );
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              widget.existing == null ? 'Add variant' : 'Edit variant',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
+    // Scrolls once its own details make it taller than the screen.
+    return SingleChildScrollView(
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        ),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                widget.existing == null ? 'Add variant' : 'Edit variant',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    key: const ValueKey('marketplace-variant-colour'),
-                    controller: _colour,
-                    maxLength: widget.limits.colour,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: box('Colour', hint: 'e.g. Maroon'),
-                    validator: _checkName,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextFormField(
-                    key: const ValueKey('marketplace-variant-size'),
-                    controller: _size,
-                    maxLength: widget.limits.size,
-                    decoration: box('Size', hint: 'e.g. M, 6.3 m'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    key: const ValueKey('marketplace-variant-price'),
-                    controller: _price,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
+              const SizedBox(height: 16),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      key: const ValueKey('marketplace-variant-colour'),
+                      controller: _colour,
+                      maxLength: widget.limits.colour,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: box('Colour', hint: 'e.g. Maroon'),
+                      validator: _checkName,
                     ),
-                    inputFormatters: _money,
-                    decoration: box('Price').copyWith(prefixText: '₹ '),
-                    validator: (v) {
-                      final n = double.tryParse((v ?? '').trim());
-                      return n == null || n <= 0
-                          ? 'Enter a valid price.'
-                          : null;
-                    },
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextFormField(
-                    key: const ValueKey('marketplace-variant-stock'),
-                    controller: _stock,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: _wholeNumber,
-                    decoration: box('Stock'),
-                    validator: (v) {
-                      final n = int.tryParse((v ?? '').trim());
-                      if (n == null) return 'Required.';
-                      return n > widget.maxQuantity
-                          ? 'At most ${widget.maxQuantity}.'
-                          : null;
-                    },
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      key: const ValueKey('marketplace-variant-size'),
+                      controller: _size,
+                      maxLength: widget.limits.size,
+                      decoration: box('Size', hint: 'e.g. M, 6.3 m'),
+                    ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      key: const ValueKey('marketplace-variant-price'),
+                      controller: _price,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      inputFormatters: _money,
+                      decoration: box('Price').copyWith(prefixText: '₹ '),
+                      validator: (v) {
+                        final n = double.tryParse((v ?? '').trim());
+                        return n == null || n <= 0
+                            ? 'Enter a valid price.'
+                            : null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      key: const ValueKey('marketplace-variant-stock'),
+                      controller: _stock,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: _wholeNumber,
+                      decoration: box('Stock'),
+                      validator: (v) {
+                        final n = int.tryParse((v ?? '').trim());
+                        if (n == null) return 'Required.';
+                        return n > widget.maxQuantity
+                            ? 'At most ${widget.maxQuantity}.'
+                            : null;
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              MarketplaceCustomDetailsSection(
+                rows: _details,
+                limits: widget.limits,
+                hint:
+                    'Anything only this colour / size has, e.g. Border: Zari.',
+                keyPrefix: 'marketplace-variant-detail',
+                addKey: 'marketplace-variant-add-detail',
+              ),
+              const SizedBox(height: 8),
+              // As on a service: off keeps it, but customers cannot buy it.
+              SwitchListTile(
+                key: const ValueKey('marketplace-variant-active'),
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Active'),
+                subtitle: const Text(
+                  'Inactive colours and sizes are hidden from customers.',
                 ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            PrimaryButton(
-              key: const ValueKey('marketplace-variant-save'),
-              label: widget.existing == null ? 'Add variant' : 'Save variant',
-              onPressed: _save,
-            ),
-          ],
+                value: _isActive,
+                onChanged: (value) => setState(() => _isActive = value),
+              ),
+              const SizedBox(height: 12),
+              PrimaryButton(
+                key: const ValueKey('marketplace-variant-save'),
+                label: widget.existing == null ? 'Add variant' : 'Save variant',
+                onPressed: _save,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -572,6 +620,10 @@ class MarketplaceCustomDetailsSection extends StatelessWidget {
   const MarketplaceCustomDetailsSection({
     required this.rows,
     required this.limits,
+    this.hint =
+        'Anything the list above does not ask, e.g. Leather type: Genuine.',
+    this.keyPrefix = 'marketplace-detail',
+    this.addKey = 'marketplace-add-detail',
     super.key,
   });
 
@@ -579,6 +631,12 @@ class MarketplaceCustomDetailsSection extends StatelessWidget {
 
   /// How long a detail's name and value may be.
   final MarketplaceTextLimits limits;
+
+  /// The line under "More details", and the keys of its boxes and add button: the form's own, or a
+  /// colour / size's in its sheet.
+  final String hint;
+  final String keyPrefix;
+  final String addKey;
 
   @override
   Widget build(BuildContext context) {
@@ -595,7 +653,7 @@ class MarketplaceCustomDetailsSection extends StatelessWidget {
             ),
           ),
           Text(
-            'Anything the list above does not ask, e.g. Leather type: Genuine.',
+            hint,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -609,7 +667,7 @@ class MarketplaceCustomDetailsSection extends StatelessWidget {
                 children: [
                   Expanded(
                     child: TextFormField(
-                      key: ValueKey('marketplace-detail-name-$i'),
+                      key: ValueKey('$keyPrefix-name-$i'),
                       controller: row.name,
                       maxLength: limits.customDetailName,
                       decoration: const InputDecoration(
@@ -629,7 +687,7 @@ class MarketplaceCustomDetailsSection extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: TextFormField(
-                      key: ValueKey('marketplace-detail-value-$i'),
+                      key: ValueKey('$keyPrefix-value-$i'),
                       controller: row.value,
                       maxLength: limits.attributeValue,
                       decoration: const InputDecoration(
@@ -647,7 +705,7 @@ class MarketplaceCustomDetailsSection extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    key: ValueKey('marketplace-detail-remove-$i'),
+                    key: ValueKey('$keyPrefix-remove-$i'),
                     tooltip: 'Remove',
                     icon: const Icon(Icons.close),
                     onPressed: () => rows._remove(row),
@@ -657,7 +715,7 @@ class MarketplaceCustomDetailsSection extends StatelessWidget {
             ),
           const SizedBox(height: 6),
           TextButton.icon(
-            key: const ValueKey('marketplace-add-detail'),
+            key: ValueKey(addKey),
             onPressed: rows.add,
             icon: const Icon(Icons.add),
             label: const Text('Add a detail'),

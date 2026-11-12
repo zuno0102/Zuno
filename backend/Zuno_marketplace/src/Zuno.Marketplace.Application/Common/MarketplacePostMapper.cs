@@ -44,7 +44,9 @@ internal static class MarketplacePostMapper
             CustomDetails = post.CustomDetails.Select(d => new MarketplaceCustomDetailDto { Name = d.Key, Value = d.Value }).ToList(),
             Variants = post.Variants
                 .OrderBy(v => v.SortOrder)
-                .Select(v => new MarketplaceVariantDto { Id = v.Id, Colour = v.Colour, Size = v.Size, Name = v.Name, Price = v.Price, Stock = v.Stock })
+                .Select(v => new MarketplaceVariantDto { Id = v.Id, Colour = v.Colour, Size = v.Size, Name = v.Name, Price = v.Price, Stock = v.Stock, IsActive = v.IsActive,
+                    CustomDetails = v.CustomDetails.Select(d => new MarketplaceCustomDetailDto { Name = d.Key, Value = d.Value }).ToList(),
+                })
                 .ToList(),
             DeliversEverywhere = post.DeliversEverywhere,
             DeliveryStateId = post.DeliveryStateId,

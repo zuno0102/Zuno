@@ -110,4 +110,14 @@ void main() {
       expect(marketplacePriceLine(_shirt(mrp: 599)), '₹599 → ₹449 · 25% off');
     });
   });
+
+  test('an inactive colour / size is kept but its stock is not counted', () {
+    final list = MarketplaceVariantList(const [
+      MarketplaceVariant(colour: 'Red', stock: 12),
+      MarketplaceVariant(colour: 'Blue', stock: 5, isActive: false),
+    ]);
+
+    expect(list.items.length, 2);
+    expect(list.totalStock, 12);
+  });
 }

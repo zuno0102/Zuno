@@ -119,6 +119,16 @@ MarketplaceVariantModel _$MarketplaceVariantModelFromJson(
   colour: json['colour'] as String?,
   size: json['size'] as String?,
   price: (json['price'] as num?)?.toDouble(),
+  isActive: json['isActive'] as bool? ?? true,
+  customDetails:
+      (json['customDetails'] as List<dynamic>?)
+          ?.map(
+            (e) => MarketplaceCustomDetailModel.fromJson(
+              e as Map<String, dynamic>,
+            ),
+          )
+          .toList() ??
+      [],
 );
 
 MarketplacePostPageModel _$MarketplacePostPageModelFromJson(

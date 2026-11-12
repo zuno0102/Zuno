@@ -2008,6 +2008,281 @@ void main() {
       );
     });
 
+    testWidgets('a colour / size can be switched Inactive, like a service', (
+      tester,
+    ) async {
+      final post = _post(
+        title: 'Silk saree',
+        condition: MarketplaceItemCondition.newItem,
+        price: 2400,
+        quantity: 17,
+        canUpdateStock: true,
+        variants: const [
+          MarketplaceVariant(
+            id: 'v-red',
+            colour: 'Red',
+            price: 2400,
+            stock: 12,
+          ),
+          MarketplaceVariant(
+            id: 'v-blue',
+            colour: 'Blue',
+            price: 2400,
+            stock: 5,
+          ),
+        ],
+      );
+      final repo = await _pump(
+        tester,
+        MarketplaceVariantsScreen(post: post),
+        repository: _FakeMarketplaceRepository(posts: [post]),
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey('marketplace-variant-menu-1')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Edit'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<SwitchListTile>(
+              find.byKey(const ValueKey('marketplace-variant-active')),
+            )
+            .value,
+        isTrue,
+        reason: 'on sale until switched off',
+      );
+      expect(
+        find.text('Inactive colours and sizes are hidden from customers.'),
+        findsOneWidget,
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('marketplace-variant-active')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('marketplace-variant-save')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Inactive · ${rupees(2400)} · 5 in stock'),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const ValueKey('marketplace-variants-save')));
+      await tester.pumpAndSettle();
+
+      final (_, variants) = repo.replacedVariants.single;
+      expect(
+        [for (final v in variants) (v.name, v.isActive)],
+        [('Red', true), ('Blue', false)],
+      );
+    });
+
+    testWidgets(
+      'a colour / size has More details of its own, like the product',
+      (tester) async {
+        final post = _post(
+          title: 'Silk saree',
+          condition: MarketplaceItemCondition.newItem,
+          price: 2400,
+          quantity: 12,
+          canUpdateStock: true,
+          variants: const [
+            MarketplaceVariant(
+              id: 'v-red',
+              colour: 'Red',
+              price: 2400,
+              stock: 12,
+            ),
+          ],
+        );
+        final repo = await _pump(
+          tester,
+          MarketplaceVariantsScreen(post: post),
+          repository: _FakeMarketplaceRepository(posts: [post]),
+        );
+
+        await tester.tap(
+          find.byKey(const ValueKey('marketplace-variant-menu-0')),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Edit'));
+        await tester.pumpAndSettle();
+        expect(
+          find.text('Anything only this colour / size has, e.g. Border: Zari.'),
+          findsOneWidget,
+        );
+        await tester.tap(
+          find.byKey(const ValueKey('marketplace-variant-add-detail')),
+        );
+        await tester.pumpAndSettle();
+        await tester.enterText(
+          find.byKey(const ValueKey('marketplace-variant-detail-name-0')),
+          'Border',
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('marketplace-variant-detail-value-0')),
+          'Zari',
+        );
+        await tester.tap(
+          find.byKey(const ValueKey('marketplace-variant-save')),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('${rupees(2400)} · 12 in stock\nBorder: Zari'),
+          findsOneWidget,
+        );
+        await tester.tap(
+          find.byKey(const ValueKey('marketplace-variants-save')),
+        );
+        await tester.pumpAndSettle();
+
+        final (_, variants) = repo.replacedVariants.single;
+        expect(
+          [for (final d in variants.single.customDetails) (d.name, d.value)],
+          [('Border', 'Zari')],
+        );
+      },
+    );
+
+    testWidgets('the Stock page fills the chosen colour / size, with no tick', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        const MarketplaceStockScreen(),
+        repository: _FakeMarketplaceRepository(
+          posts: [
+            _post(
+              title: 'Cotton shirt',
+              condition: MarketplaceItemCondition.newItem,
+              quantity: 4,
+              canUpdateStock: true,
+              variants: const [
+                MarketplaceVariant(id: 'v-red', colour: 'Red', stock: 4),
+              ],
+            ),
+          ],
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('marketplace-stock-p-1')));
+      await tester.pumpAndSettle();
+
+      final chip = tester.widget<ChoiceChip>(
+        find.byKey(const ValueKey('marketplace-stock-variant-0')),
+      );
+      expect((chip.selected, chip.showCheckmark), (true, false));
+    });
+
+    testWidgets(
+      'the product form has an Active switch: off pauses the product',
+      (tester) async {
+        final repo = await _pump(
+          tester,
+          const BusinessMarketplaceTab(),
+          repository: _FakeMarketplaceRepository(
+            posts: [_post(condition: MarketplaceItemCondition.used)],
+          ),
+        );
+
+        await tester.tap(find.byType(PopupMenuButton<String>));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Edit'));
+        await tester.pumpAndSettle();
+        final active = find.byKey(const ValueKey('marketplace-active'));
+        await tester.ensureVisible(active);
+        expect(tester.widget<SwitchListTile>(active).value, isTrue);
+        expect(
+          find.text('Inactive products are hidden from customers.'),
+          findsOneWidget,
+        );
+        await tester.tap(active);
+        await tester.pumpAndSettle();
+        await _save(tester);
+
+        expect(repo.updated.single.$1, 'p-1');
+        expect(repo.statusChanges, [('p-1', MarketplacePostStatus.paused)]);
+      },
+    );
+
+    testWidgets('an untouched Active switch changes no status', (tester) async {
+      final repo = await _pump(
+        tester,
+        const BusinessMarketplaceTab(),
+        repository: _FakeMarketplaceRepository(
+          posts: [_post(condition: MarketplaceItemCondition.used)],
+        ),
+      );
+
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Edit'));
+      await tester.pumpAndSettle();
+      await _save(tester);
+
+      expect(repo.updated, hasLength(1));
+      expect(repo.statusChanges, isEmpty);
+    });
+
+    testWidgets('a product with other colours on sale is not removed until '
+        'they go first', (tester) async {
+      MarketplacePost saree({bool othersOn = true}) => _post(
+        title: 'Silk saree',
+        condition: MarketplaceItemCondition.newItem,
+        quantity: 17,
+        canUpdateStock: true,
+        variants: [
+          const MarketplaceVariant(id: 'v-red', colour: 'Red', stock: 10),
+          MarketplaceVariant(
+            id: 'v-green',
+            colour: 'Green',
+            stock: 3,
+            isActive: othersOn,
+          ),
+          const MarketplaceVariant(
+            id: 'v-blue',
+            colour: 'Blue',
+            stock: 4,
+            isActive: false,
+          ),
+        ],
+      );
+      final repo = await _pump(
+        tester,
+        const BusinessMarketplaceTab(),
+        repository: _FakeMarketplaceRepository(posts: [saree()]),
+      );
+
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remove'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text(
+          'Remove or switch off its other colours and sizes first: Green.',
+        ),
+        findsOneWidget,
+        reason: 'Blue is off already; Red is the main one',
+      );
+      expect(find.text('Remove post?'), findsNothing);
+      expect(repo.deleted, isEmpty);
+
+      repo.posts = [saree(othersOn: false)];
+      ProviderScope.containerOf(
+        tester.element(find.byType(BusinessMarketplaceTab)),
+      ).invalidate(businessMarketplacePostsProvider);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remove'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Remove'));
+      await tester.pumpAndSettle();
+
+      expect(repo.deleted, ['p-1']);
+    });
+
     testWidgets('a used item has no stock or variants on its menu', (
       tester,
     ) async {

@@ -181,6 +181,135 @@ public class ProductPackAndVariantsTests
     }
 
     [Fact]
+    public async Task ASwitchedOffColour_IsKept_ButNotCountedOrPricedFrom()
+    {
+        using var test = new TestMarketplace();
+        var saved = await test.SaveHandlers.Handle(Saree(), default);
+
+        var dto = await test.VariantsHandler.Handle(Replace(saved.Id,
+        [
+            new() { Colour = "Red", Price = 2_400m, Stock = 10 },
+            new() { Colour = "Blue", Price = 2_000m, Stock = 4, IsActive = false },
+        ]), default);
+
+        dto.Variants.Select(v => (v.Colour, v.IsActive)).Should().Equal(("Red", true), ("Blue", false));
+        dto.Quantity.Should().Be(10, "a switched-off colour's stock is not on sale");
+        dto.Price.Should().Be(2_400m, "it sells from the lowest colour still on sale");
+    }
+
+    [Fact]
+    public async Task AColour_KeepsDetailsOfItsOwn_TrimmedAndEmptiesDropped()
+    {
+        using var test = new TestMarketplace();
+        var saved = await test.SaveHandlers.Handle(Saree(), default);
+
+        var dto = await test.VariantsHandler.Handle(Replace(saved.Id,
+        [
+            new()
+            {
+                Colour = "Red", Price = 2_400m, Stock = 10,
+                CustomDetails = [new() { Name = " Border ", Value = " Zari " }, new() { Name = "Blouse", Value = "With blouse" }],
+            },
+            new() { Colour = "Blue", Price = 2_400m, Stock = 4 },
+        ]), default);
+
+        dto.Variants[0].CustomDetails.Select(d => (d.Name, d.Value)).Should().Equal(("Border", "Zari"), ("Blouse", "With blouse"));
+        dto.Variants[1].CustomDetails.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AColoursDetails_AreCheckedLikeThePosts()
+    {
+        var validator = new CreateMarketplacePostCommandValidator(Options.Create(new MarketplaceSettings()));
+        List<string> Errors(List<MarketplaceCustomDetailInput> details) => validator.Validate(Saree(c => c.Variants =
+            [new() { Colour = "Red", Price = 100m, Stock = 1, CustomDetails = details }])).Errors.Select(e => e.ErrorMessage).ToList();
+
+        Errors([new() { Name = "Border", Value = "Zari" }, new() { Name = " border", Value = "Plain" }])
+            .Should().Contain("Name each detail of a colour / size once.");
+        Errors([new() { Name = "", Value = "Zari" }]).Should().Contain("Name the detail, e.g. Border.");
+        Errors([new() { Name = "Border", Value = "" }]).Should().Contain("Give the detail a value.");
+        Errors([new() { Name = new string('B', 500), Value = "x" }]).Should().NotBeEmpty();
+        Errors([.. Enumerable.Range(0, 16).Select(i => new MarketplaceCustomDetailInput { Name = $"D{i}", Value = "x" })])
+            .Should().Contain(e => e.StartsWith("Add at most"));
+        Errors([new() { Name = "Border", Value = "Zari" }]).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Remove_AProductWithOtherColoursOnSale_IsRefused_UntilTheyGoFirst()
+    {
+        using var test = new TestMarketplace();
+        var saved = await test.SaveHandlers.Handle(Saree(c => c.Variants =
+        [
+            new() { Colour = "Red", Price = 2_400m, Stock = 10 },
+            new() { Colour = "Green", Price = 2_400m, Stock = 3 },
+            new() { Colour = "Blue", Price = 2_400m, Stock = 4 },
+        ]), default);
+        var red = saved.Variants.Single(v => v.Colour == "Red");
+        var green = saved.Variants.Single(v => v.Colour == "Green");
+
+        var remove = () => test.ManageHandlers.Handle(new DeleteMarketplacePostCommand { Id = saved.Id }, default);
+
+        await remove.Should().ThrowAsync<DomainException>()
+            .WithMessage("Remove or switch off its other colours and sizes first: Green, Blue.");
+
+        // Blue removed, Green switched off: only the main one (Red) is left on sale.
+        await test.VariantsHandler.Handle(Replace(saved.Id,
+        [
+            new() { Id = red.Id, Colour = "Red", Price = 2_400m, Stock = 10 },
+            new() { Id = green.Id, Colour = "Green", Price = 2_400m, Stock = 3, IsActive = false },
+        ]), default);
+        await remove.Should().NotThrowAsync("the main colour does not hold it back");
+    }
+
+    [Fact]
+    public async Task Remove_AProductWithOneStockCount_IsAllowed()
+    {
+        using var test = new TestMarketplace();
+        var saved = await test.SaveHandlers.Handle(Saree(), default);
+
+        var remove = () => test.ManageHandlers.Handle(new DeleteMarketplacePostCommand { Id = saved.Id }, default);
+
+        await remove.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task EveryColourSwitchedOff_IsOutOfStock()
+    {
+        using var test = new TestMarketplace();
+        var saved = await test.SaveHandlers.Handle(Saree(), default);
+
+        var dto = await test.VariantsHandler.Handle(Replace(saved.Id,
+            [new() { Colour = "Red", Price = 2_400m, Stock = 10, IsActive = false }]), default);
+
+        (dto.Quantity, dto.IsOutOfStock, dto.Price).Should().Be((0, true, 2_400m));
+    }
+
+    [Fact]
+    public async Task UpdatingStock_CountsOnlyTheColoursOnSale()
+    {
+        using var test = new TestMarketplace();
+        var saved = await test.SaveHandlers.Handle(Saree(c => c.Variants =
+        [
+            new() { Colour = "Red", Price = 2_400m, Stock = 10 },
+            new() { Colour = "Blue", Price = 2_400m, Stock = 4, IsActive = false },
+        ]), default);
+        var red = saved.Variants.Single(v => v.Colour == "Red");
+
+        var dto = await test.StockHandler.Handle(
+            new UpdateMarketplacePostStockCommand { Id = saved.Id, VariantId = red.Id, Quantity = 7 }, default);
+
+        dto.Quantity.Should().Be(7);
+    }
+
+    [Fact]
+    public void AColourSentByAnOlderApp_IsOnSale()
+    {
+        var input = System.Text.Json.JsonSerializer.Deserialize<MarketplaceVariantInput>("""{"colour":"Red","stock":1}""");
+
+        input!.IsActive.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task StockList_HasOnlyNewProductsStillUp()
     {
         using var test = new TestMarketplace();

@@ -63,7 +63,7 @@ public class UpdateMarketplacePostStockHandler(
             var variant = post.Variants.FirstOrDefault(v => v.Id == request.VariantId)
                 ?? throw new DomainException("Choose which colour or size to update.");
             variant.Stock = request.Quantity;
-            post.Quantity = post.Variants.Sum(v => v.Stock);
+            post.Quantity = post.ActiveVariantStock;
         }
         await dbContext.SaveChangesAsync(cancellationToken);
         return post.ToDto(clock.GetUtcNow(), await reference.TransitionsAsync(cancellationToken));

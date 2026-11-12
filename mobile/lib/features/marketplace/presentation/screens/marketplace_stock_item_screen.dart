@@ -253,7 +253,15 @@ class _StockTabState extends ConsumerState<_StockTab>
                 for (final (i, v) in post.variants.indexed)
                   ChoiceChip(
                     key: ValueKey('marketplace-stock-variant-$i'),
-                    label: Text('${v.name} · ${v.stock}'),
+                    // The chosen one is filled in; no tick.
+                    showCheckmark: false,
+                    label: Text(
+                      [
+                        v.name,
+                        '${v.stock}',
+                        if (!v.isActive) 'inactive',
+                      ].join(' · '),
+                    ),
                     selected: v.id == _variantId,
                     onSelected: (_) => _choose(v.id!),
                   ),

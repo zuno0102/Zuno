@@ -136,6 +136,14 @@ public class ManageMarketplacePostHandlers(
     {
         var post = await dbContext.OwnedPostAsync(request.Id, currentUser.OwnerId(), cancellationToken);
 
+        // A product's other colours and sizes go first: the main one is removed last.
+        var children = post.ActiveChildVariants().Select(v => v.Name).ToList();
+        if (children.Count != 0)
+        {
+            throw new DomainException(
+                $"Remove or switch off its other colours and sizes first: {string.Join(", ", children)}.");
+        }
+
         // Soft: the row stays, marked deleted, so a later enquiry or reservation can still name it.
         dbContext.Posts.Remove(post);
         await dbContext.SaveChangesAsync(cancellationToken);

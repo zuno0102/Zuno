@@ -1325,6 +1325,10 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_date");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
@@ -6845,6 +6849,39 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_marketplace_post_variants_marketplace_posts_post_id");
+
+                    b.OwnsMany("Zuno.Marketplace.Domain.Entities.MarketplacePostAttribute", "CustomDetails", b1 =>
+                        {
+                            b1.Property<Guid>("MarketplacePostVariantId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("integer");
+
+                            b1.Property<string>("Key")
+                                .IsRequired()
+                                .HasMaxLength(60)
+                                .HasColumnType("character varying(60)");
+
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)");
+
+                            b1.HasKey("MarketplacePostVariantId", "__synthesizedOrdinal")
+                                .HasName("pk_marketplace_post_variants");
+
+                            b1.ToTable("marketplace_post_variants");
+
+                            b1.ToJson("custom_details");
+
+                            b1.WithOwner()
+                                .HasForeignKey("MarketplacePostVariantId")
+                                .HasConstraintName("fk_marketplace_post_variants_marketplace_post_variants_marketp");
+                        });
+
+                    b.Navigation("CustomDetails");
 
                     b.Navigation("Post");
                 });

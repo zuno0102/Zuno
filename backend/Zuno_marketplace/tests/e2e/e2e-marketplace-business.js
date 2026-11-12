@@ -219,6 +219,30 @@ const register = async (first, role) => {
   const blue = managed.data?.variants?.find(v => v.colour === "Blue");
   const sold2 = await M_("PATCH", `/business/marketplace/${sareeId}/stock`, biz2, { quantity: 1, variantId: blue?.id });
   ok("Selling 3 blue in the shop: Stock saves 1 left, total 11", sold2.data?.quantity === 11, `${sold2.status} ${sold2.text.slice(0, 80)}`);
+  const switchedOff = await M_("PUT", `/business/marketplace/${sareeId}/variants`, biz2, {
+    variants: [{ id: red?.id, colour: "Red", stock: 10, price: 499 }, { id: blue?.id, colour: "Blue", size: "Free size", stock: 1, price: 479, isActive: false }],
+  });
+  ok("Blue switched Inactive: kept, its stock not counted, priced from Red",
+    switchedOff.data?.variants?.find(v => v.colour === "Blue")?.isActive === false && switchedOff.data?.quantity === 10 && switchedOff.data?.price === 499,
+    `${switchedOff.status} ${switchedOff.text.slice(0, 80)}`);
+  const withDetails = await M_("PUT", `/business/marketplace/${sareeId}/variants`, biz2, {
+    variants: [{ id: red?.id, colour: "Red", stock: 10, price: 499, customDetails: [{ name: "Border", value: "Zari" }] }],
+  });
+  ok("A colour keeps details of its own (Border: Zari)",
+    withDetails.data?.variants?.[0]?.customDetails?.[0]?.name === "Border" && withDetails.data?.variants?.[0]?.customDetails?.[0]?.value === "Zari",
+    `${withDetails.status} ${withDetails.text.slice(0, 80)}`);
+  no("A colour's detail named twice is refused", await M_("PUT", `/business/marketplace/${sareeId}/variants`, biz2, {
+    variants: [{ id: red?.id, colour: "Red", stock: 10, price: 499, customDetails: [{ name: "Border", value: "Zari" }, { name: "border", value: "Plain" }] }],
+  }), "once");
+  const twoOn = await M_("PUT", `/business/marketplace/${sareeId}/variants`, biz2, {
+    variants: [{ id: red?.id, colour: "Red", stock: 10, price: 499 }, { colour: "Green", stock: 2, price: 499 }],
+  });
+  no("The saree is not removed while Green is still on sale", await M_("DELETE", `/business/marketplace/${sareeId}`, biz2), "first: Green");
+  const green = twoOn.data?.variants?.find(v => v.colour === "Green");
+  yes("Green switched off", await M_("PUT", `/business/marketplace/${sareeId}/variants`, biz2, {
+    variants: [{ id: red?.id, colour: "Red", stock: 10, price: 499 }, { id: green?.id, colour: "Green", stock: 2, price: 499, isActive: false }],
+  }));
+  yes("...and with only the main colour on sale it is removed", await M_("DELETE", `/business/marketplace/${sareeId}`, biz2));
 
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail === 0 ? 0 : 1);

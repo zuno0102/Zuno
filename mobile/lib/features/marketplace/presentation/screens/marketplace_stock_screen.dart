@@ -88,11 +88,11 @@ class MarketplaceStockScreen extends ConsumerWidget {
   }
 }
 
-/// How many of each line a product has run out of: its colours and sizes at 0, or the product
-/// itself when it has one stock count.
+/// How many of each line a product has run out of: its colours and sizes on sale at 0, or the
+/// product itself when it has one stock count. An inactive one is not on sale, so not run out.
 int marketplaceLinesOut(MarketplacePost post) => post.variants.isEmpty
     ? ((post.quantity ?? 0) <= 0 ? 1 : 0)
-    : post.variants.where((v) => v.stock <= 0).length;
+    : post.variants.where((v) => v.isActive && v.stock <= 0).length;
 
 /// One product's stock: its name, then in stock, colours / sizes and run out. Opens its Stock and
 /// Orders.
