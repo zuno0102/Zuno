@@ -3,14 +3,17 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Zuno.Marketplace.Infrastructure.Persistence.Seed;
 
 namespace Zuno.Marketplace.IntegrationTests;
 
 public class MarketplaceEndpointsTests(MarketplaceApiFactory factory) : IClassFixture<MarketplaceApiFactory>
 {
     private const string Posts = "/api/v1/business/marketplace";
-    private const string Vehicles = "d4444444-0000-0000-0000-000000000001";
-    private const string FoodOffers = "d4444444-0000-0000-0000-000000000005";
+    private static readonly Guid Products = MarketplaceCatalogSeedData.Products;
+    private static readonly Guid Vehicles = MarketplaceCatalogSeedData.Vehicles;
+    private static readonly Guid NearbyFood = MarketplaceCatalogSeedData.NearbyFood;
+    private static readonly Guid BiryaniMeals = MarketplaceCatalogSeedData.SubId(5, 1);
 
     private static readonly byte[] Png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, .. new byte[64]];
 
@@ -19,7 +22,8 @@ public class MarketplaceEndpointsTests(MarketplaceApiFactory factory) : IClassFi
 
     private static object Car(decimal price = 420000) => new
     {
-        categoryId = Vehicles,
+        categoryId = Products,
+        subCategoryId = Vehicles,
         title = "Swift VXi 2019",
         price,
         districtId = Kanyakumari,
@@ -28,7 +32,8 @@ public class MarketplaceEndpointsTests(MarketplaceApiFactory factory) : IClassFi
 
     private static object Biryani() => new
     {
-        categoryId = FoodOffers,
+        categoryId = NearbyFood,
+        subCategoryId = BiryaniMeals,
         title = "Veg biryani",
         price = 99,
         originalPrice = 180,
@@ -97,7 +102,7 @@ public class MarketplaceEndpointsTests(MarketplaceApiFactory factory) : IClassFi
         var options = await Data(await client.GetAsync("/api/v1/marketplace-options"));
 
         categories.EnumerateArray().Select(c => c.GetProperty("slug").GetString())
-            .Should().Contain(["vehicles", "property", "products", "farm-wholesale", "food-offers", "events-sales"]);
+            .Should().StartWith(["products", "b2b-wholesale", "nearby-food", "advertisements"]);
         options.GetProperty("imageSlots").GetInt32().Should().Be(5);
         options.GetProperty("statuses").EnumerateArray().Select(s => s.GetProperty("code").GetString())
             .Should().Equal("Active", "Paused", "Expired", "Closed");
@@ -142,7 +147,8 @@ public class MarketplaceEndpointsTests(MarketplaceApiFactory factory) : IClassFi
         var client = factory.ClientFor(Guid.NewGuid());
         var car = new
         {
-            categoryId = Vehicles,
+            categoryId = Products,
+            subCategoryId = Vehicles,
             title = "Swift",
             price = 1,
             districtId = Kanyakumari,
@@ -187,7 +193,8 @@ public class MarketplaceEndpointsTests(MarketplaceApiFactory factory) : IClassFi
         var id = (await Data(await client.PostAsJsonAsync(Posts, Car()))).GetProperty("id").GetString();
         var changed = new
         {
-            categoryId = Vehicles,
+            categoryId = Products,
+            subCategoryId = Vehicles,
             title = "Swift VXi 2019",
             price = 400000,
             districtId = Kanyakumari,

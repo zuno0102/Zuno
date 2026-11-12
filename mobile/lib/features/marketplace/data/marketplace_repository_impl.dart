@@ -85,6 +85,24 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
   ) async => (await _remote.saveCategory(input.toJson(), id: id)).toEntity();
 
   @override
+  Future<MarketplaceCategory> createSubCategory(
+    String categoryId,
+    MarketplaceSubCategoryInput input,
+  ) async =>
+      (await _remote.saveSubCategory(categoryId, input.toJson())).toEntity();
+
+  @override
+  Future<MarketplaceCategory> updateSubCategory(
+    String categoryId,
+    String subId,
+    MarketplaceSubCategoryInput input,
+  ) async => (await _remote.saveSubCategory(
+    categoryId,
+    input.toJson(),
+    subId: subId,
+  )).toEntity();
+
+  @override
   Future<MarketplaceCategory> createField(
     String categoryId,
     MarketplaceFieldInput input,

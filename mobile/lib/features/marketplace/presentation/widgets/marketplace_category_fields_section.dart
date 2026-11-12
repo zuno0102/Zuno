@@ -33,6 +33,14 @@ class MarketplaceAttributeValues {
         f.key: v,
   };
 
+  /// Forgets the values of [keys] — the details only an old sub-category asked for.
+  void clearKeys(Iterable<String> keys) {
+    for (final key in keys) {
+      _values.remove(key);
+      _controllers[key]?.clear();
+    }
+  }
+
   /// Starts again for another category: nothing typed for one fits the other.
   void clear() {
     _values.clear();

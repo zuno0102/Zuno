@@ -19,6 +19,9 @@ public class GetMyMarketplacePostsQuery : IRequest<MarketplacePostPageDto>
     /// <summary><c>Listing</c>, <c>FoodOffer</c> or <c>Advertisement</c>; null for all.</summary>
     public string? Kind { get; set; }
 
+    /// <summary>One main category, e.g. Products; null for all.</summary>
+    public Guid? CategoryId { get; set; }
+
     /// <summary>A shown status (<c>Active</c>, <c>Paused</c>, <c>Closed</c>, <c>Expired</c>); null for all.</summary>
     public string? Status { get; set; }
 }
@@ -55,6 +58,11 @@ public class MarketplacePostQueryHandlers(
         var (page, pageSize) = MarketplaceQueries.Paging(request.Page, request.PageSize, settings.Value);
 
         var mine = dbContext.Posts.AsNoTracking().Where(p => p.OwnerUserId == ownerId);
+        if (request.CategoryId is { } categoryId)
+        {
+            mine = mine.Where(p => p.CategoryId == categoryId);
+        }
+
         if (Enum.TryParse<MarketplacePostKind>(request.Kind, true, out var kind))
         {
             mine = mine.Where(p => p.Kind == kind);

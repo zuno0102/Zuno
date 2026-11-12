@@ -14,6 +14,8 @@ internal static class MarketplacePostMapper
             CategoryId = post.CategoryId,
             CategoryName = post.Category.Name,
             CategoryIconName = post.Category.IconName,
+            SubCategoryId = post.SubCategoryId,
+            SubCategoryName = post.SubCategory?.Name,
             Kind = post.Kind.ToString(),
             Status = post.ShownStatus(now).ToString(),
             Title = post.Title,

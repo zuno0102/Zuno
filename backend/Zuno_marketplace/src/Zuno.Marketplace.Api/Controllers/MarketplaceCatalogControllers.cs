@@ -45,6 +45,23 @@ public class AdminMarketplaceCategoriesController(ISender mediator) : Controller
         return Ok(await mediator.Send(command, cancellationToken));
     }
 
+    [HttpPost("{categoryId:guid}/sub-categories")]
+    public async Task<IActionResult> CreateSubCategory(
+        Guid categoryId, [FromBody] CreateMarketplaceSubCategoryCommand command, CancellationToken cancellationToken)
+    {
+        command.CategoryId = categoryId;
+        return StatusCode(StatusCodes.Status201Created, await mediator.Send(command, cancellationToken));
+    }
+
+    [HttpPut("{categoryId:guid}/sub-categories/{id:guid}")]
+    public async Task<IActionResult> UpdateSubCategory(
+        Guid categoryId, Guid id, [FromBody] UpdateMarketplaceSubCategoryCommand command, CancellationToken cancellationToken)
+    {
+        command.CategoryId = categoryId;
+        command.Id = id;
+        return Ok(await mediator.Send(command, cancellationToken));
+    }
+
     [HttpPost("{categoryId:guid}/fields")]
     public async Task<IActionResult> CreateField(
         Guid categoryId, [FromBody] CreateMarketplaceFieldCommand command, CancellationToken cancellationToken)

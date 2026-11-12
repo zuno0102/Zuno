@@ -12,7 +12,8 @@ part of 'customer_location_sync.dart';
 ///
 /// 1. A location on this device that belongs to another customer is forgotten (theirs and their
 ///    search filter).
-/// 2. A device with no location of its own takes the one kept in the customer's account.
+/// 2. The location kept in the customer's account wins over the device's; an account without one
+///    takes the device's.
 /// 3. Unless the customer picked their district by hand, the phone's position is read — asking for
 ///    the permission the first time for this customer — and becomes their location.
 /// 4. From then on, every change to their location is saved to their account.
@@ -26,7 +27,8 @@ final customerLocationSyncProvider = CustomerLocationSyncProvider._();
 ///
 /// 1. A location on this device that belongs to another customer is forgotten (theirs and their
 ///    search filter).
-/// 2. A device with no location of its own takes the one kept in the customer's account.
+/// 2. The location kept in the customer's account wins over the device's; an account without one
+///    takes the device's.
 /// 3. Unless the customer picked their district by hand, the phone's position is read — asking for
 ///    the permission the first time for this customer — and becomes their location.
 /// 4. From then on, every change to their location is saved to their account.
@@ -47,7 +49,8 @@ final class CustomerLocationSyncProvider
   ///
   /// 1. A location on this device that belongs to another customer is forgotten (theirs and their
   ///    search filter).
-  /// 2. A device with no location of its own takes the one kept in the customer's account.
+  /// 2. The location kept in the customer's account wins over the device's; an account without one
+  ///    takes the device's.
   /// 3. Unless the customer picked their district by hand, the phone's position is read — asking for
   ///    the permission the first time for this customer — and becomes their location.
   /// 4. From then on, every change to their location is saved to their account.
@@ -80,4 +83,4 @@ final class CustomerLocationSyncProvider
 }
 
 String _$customerLocationSyncHash() =>
-    r'44e738167c1c13e1781e86e8e39c93f3b79e058c';
+    r'd2b8b87189caad2bec5a3219b554b24089a25725';

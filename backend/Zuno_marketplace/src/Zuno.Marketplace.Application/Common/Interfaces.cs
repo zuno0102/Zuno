@@ -8,6 +8,8 @@ public interface IMarketplaceDbContext
 {
     public DbSet<MarketplaceCategory> Categories { get; }
 
+    public DbSet<MarketplaceSubCategory> SubCategories { get; }
+
     public DbSet<MarketplaceCategoryField> CategoryFields { get; }
 
     public DbSet<MarketplacePost> Posts { get; }
@@ -19,6 +21,8 @@ public interface IMarketplaceDbContext
     public DbSet<MarketplacePlan> Plans { get; }
 
     public DbSet<MarketplaceBusinessPlan> BusinessPlans { get; }
+
+    public DbSet<MarketplaceTradeModeOption> TradeModes { get; }
 
     public DbSet<MarketplacePostKindOption> PostKinds { get; }
 

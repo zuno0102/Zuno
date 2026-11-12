@@ -16,6 +16,9 @@ public abstract class MarketplacePostFields
 {
     public Guid CategoryId { get; set; }
 
+    /// <summary>Required while the category has sub-categories, e.g. Sarees under Products.</summary>
+    public Guid? SubCategoryId { get; set; }
+
     public string Title { get; set; } = string.Empty;
 
     public string? Description { get; set; }
@@ -192,12 +195,13 @@ public class SaveMarketplacePostHandlers(
     {
         var kind = category.Kind;
         post.CategoryId = category.Id;
+        post.SubCategoryId = MarketplacePostRules.SubCategoryOf(category, request);
         post.Kind = kind;
         post.Title = request.Title.Trim();
         post.Description = Clean(request.Description);
         post.Price = request.Price;
         post.PriceUnit = Clean(request.PriceUnit);
-        post.TradeType = MarketplacePostRules.TradeTypeOf(request);
+        post.TradeType = MarketplacePostRules.TradeTypeOf(category, request);
         post.MinOrderQuantity = post.TradeType == MarketplaceTradeType.Wholesale ? request.MinOrderQuantity : null;
         post.Quantity = request.Quantity;
         post.OriginalPrice = kind == MarketplacePostKind.FoodOffer ? request.OriginalPrice : null;
@@ -227,10 +231,37 @@ public class SaveMarketplacePostHandlers(
 /// </summary>
 public static class MarketplacePostRules
 {
-    public static MarketplaceTradeType TradeTypeOf(MarketplacePostFields request) =>
+    /// <summary>What the business asked for: Retail unless it sent Wholesale.</summary>
+    public static MarketplaceTradeType RequestedTradeType(MarketplacePostFields request) =>
         Enum.TryParse<MarketplaceTradeType>(request.TradeType, ignoreCase: true, out var type) && Enum.IsDefined(type)
             ? type
             : MarketplaceTradeType.Retail;
+
+    /// <summary>How the post sells: a wholesale-only category (B2B) always sells wholesale.</summary>
+    public static MarketplaceTradeType TradeTypeOf(MarketplaceCategory category, MarketplacePostFields request) =>
+        category.TradeMode switch
+        {
+            MarketplaceTradeMode.WholesaleOnly => MarketplaceTradeType.Wholesale,
+            MarketplaceTradeMode.RetailOnly => MarketplaceTradeType.Retail,
+            _ => RequestedTradeType(request),
+        };
+
+    /// <summary>The chosen sub-category when it is one of the category's, else null.</summary>
+    public static Guid? SubCategoryOf(MarketplaceCategory category, MarketplacePostFields request) =>
+        category.SubCategories.Any(s => s.Id == request.SubCategoryId && s.IsActive && !s.IsDeleted)
+            ? request.SubCategoryId
+            : null;
+
+    /// <summary>The details a post in this category and sub-category is asked, in form order.</summary>
+    public static IEnumerable<MarketplaceCategoryField> FieldsFor(MarketplaceCategory category, MarketplacePostFields request)
+    {
+        var subCategoryId = SubCategoryOf(category, request);
+        return category.Fields
+            .Where(f => f.AppliesTo(subCategoryId))
+            .OrderBy(f => f.SubCategoryId is null ? 0 : 1)
+            .ThenBy(f => f.DisplayOrder)
+            .DistinctBy(f => f.Key, StringComparer.Ordinal);
+    }
 
     public static List<ValidationFailure> Check(
         MarketplaceCategory category, MarketplacePostFields request, DateTimeOffset now, MarketplaceSettings settings)
@@ -238,6 +269,7 @@ public static class MarketplacePostRules
         var failures = new List<ValidationFailure>();
         void Fail(string property, string message) => failures.Add(new ValidationFailure(property, message));
 
+        CheckSubCategory(category, request, Fail);
         CheckTrade(category, request, Fail);
         switch (category.Kind)
         {
@@ -262,9 +294,7 @@ public static class MarketplacePostRules
 
     /// <summary>The category's active fields' values, trimmed, numbers in a plain invariant form, empties dropped.</summary>
     public static List<MarketplacePostAttribute> Attributes(MarketplaceCategory category, MarketplacePostFields request) =>
-        category.Fields
-            .Where(f => f.IsActive && !f.IsDeleted)
-            .OrderBy(f => f.DisplayOrder)
+        FieldsFor(category, request)
             .Select(f => (Field: f, Value: request.Attributes.GetValueOrDefault(f.Key)?.Trim()))
             .Where(x => !string.IsNullOrEmpty(x.Value))
             .Select(x => new MarketplacePostAttribute
@@ -276,18 +306,44 @@ public static class MarketplacePostRules
             })
             .ToList();
 
+    private static void CheckSubCategory(MarketplaceCategory category, MarketplacePostFields request, Action<string, string> fail)
+    {
+        var hasAny = category.SubCategories.Any(s => s.IsActive && !s.IsDeleted);
+        if (request.SubCategoryId is null)
+        {
+            if (hasAny)
+            {
+                fail(nameof(request.SubCategoryId), $"Choose what kind of {category.Name.ToLowerInvariant()} it is.");
+            }
+
+            return;
+        }
+
+        if (SubCategoryOf(category, request) is null)
+        {
+            fail(nameof(request.SubCategoryId), $"Choose a sub-category of {category.Name} from the list.");
+        }
+    }
+
     private static void CheckTrade(MarketplaceCategory category, MarketplacePostFields request, Action<string, string> fail)
     {
-        if (TradeTypeOf(request) != MarketplaceTradeType.Wholesale)
+        if (category.TradeMode == MarketplaceTradeMode.RetailOnly && RequestedTradeType(request) == MarketplaceTradeType.Wholesale)
+        {
+            fail(nameof(request.TradeType), $"{category.Name} does not take wholesale posts.");
+            return;
+        }
+
+        if (TradeTypeOf(category, request) != MarketplaceTradeType.Wholesale)
         {
             return;
         }
 
-        if (!category.AllowsWholesale)
+        if (string.IsNullOrWhiteSpace(request.PriceUnit))
         {
-            fail(nameof(request.TradeType), $"{category.Name} does not take wholesale posts.");
+            fail(nameof(request.PriceUnit), "Enter what the price is per, e.g. kg.");
         }
-        else if (request.MinOrderQuantity is null)
+
+        if (request.MinOrderQuantity is null)
         {
             fail(nameof(request.MinOrderQuantity), "Enter the smallest order for wholesale.");
         }
@@ -352,7 +408,7 @@ public static class MarketplacePostRules
 
     private static void CheckAttributes(MarketplaceCategory category, MarketplacePostFields request, Action<string, string> fail)
     {
-        var fields = category.Fields.Where(f => f.IsActive && !f.IsDeleted).ToDictionary(f => f.Key, StringComparer.Ordinal);
+        var fields = FieldsFor(category, request).ToDictionary(f => f.Key, StringComparer.Ordinal);
         foreach (var key in request.Attributes.Keys.Where(k => !fields.ContainsKey(k)))
         {
             fail($"Attributes.{key}", $"{category.Name} has no detail called '{key}'.");

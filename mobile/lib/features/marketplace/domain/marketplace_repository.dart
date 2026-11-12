@@ -39,6 +39,17 @@ abstract interface class MarketplaceRepository {
     MarketplaceCategoryInput input,
   );
 
+  Future<MarketplaceCategory> createSubCategory(
+    String categoryId,
+    MarketplaceSubCategoryInput input,
+  );
+
+  Future<MarketplaceCategory> updateSubCategory(
+    String categoryId,
+    String subId,
+    MarketplaceSubCategoryInput input,
+  );
+
   Future<MarketplaceCategory> createField(
     String categoryId,
     MarketplaceFieldInput input,

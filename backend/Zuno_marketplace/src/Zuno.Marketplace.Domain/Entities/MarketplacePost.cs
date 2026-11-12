@@ -15,6 +15,11 @@ public class MarketplacePost : BaseEntity
 
     public MarketplaceCategory Category { get; set; } = null!;
 
+    /// <summary>The sub-category, e.g. Sarees. Required while the category has any; null on older posts.</summary>
+    public Guid? SubCategoryId { get; set; }
+
+    public MarketplaceSubCategory? SubCategory { get; set; }
+
     /// <summary>Copied from the category when saved, so a later change of the category never changes the rules a post was checked by.</summary>
     public MarketplacePostKind Kind { get; set; }
 

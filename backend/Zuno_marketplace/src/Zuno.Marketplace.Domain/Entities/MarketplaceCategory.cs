@@ -4,12 +4,19 @@ using Zuno.Marketplace.Domain.Enums;
 namespace Zuno.Marketplace.Domain.Entities;
 
 /// <summary>
-/// A kind of thing posted, e.g. "Vehicles" or "Food offers". Added and changed by the super admin:
-/// rows, not code. The kind decides the rules a post in it follows.
+/// A main kind of thing posted, e.g. "Products" or "Nearby food", holding sub-categories ("Sarees",
+/// "Biryani &amp; meals"). Added and changed by the super admin: rows, not code. The kind decides the
+/// rules a post in it follows, the trade mode whether it sells retail, wholesale or either.
 /// </summary>
 public class MarketplaceCategory : BaseEntity
 {
     public string Name { get; set; } = string.Empty;
+
+    /// <summary>The few letters the category squares have room for, e.g. "B2B". Null shows the name.</summary>
+    public string? ShortName { get; set; }
+
+    /// <summary>What goes in it, shown in the post form's picker, e.g. "Sarees, shirts, toys".</summary>
+    public string? Description { get; set; }
 
     public string Slug { get; set; } = string.Empty;
 
@@ -18,26 +25,52 @@ public class MarketplaceCategory : BaseEntity
 
     public MarketplacePostKind Kind { get; set; } = MarketplacePostKind.Listing;
 
-    /// <summary>Whether posts here may sell in bulk to businesses (B2B), e.g. farm produce.</summary>
-    public bool AllowsWholesale { get; set; }
+    /// <summary>Whether posts here sell one at a time, in bulk to businesses (B2B), or either.</summary>
+    public MarketplaceTradeMode TradeMode { get; set; } = MarketplaceTradeMode.RetailOnly;
 
     public short DisplayOrder { get; set; }
 
     /// <summary>Off hides the category from the post form and its posts from customers.</summary>
     public bool IsActive { get; set; } = true;
 
+    public ICollection<MarketplaceSubCategory> SubCategories { get; set; } = new List<MarketplaceSubCategory>();
+
     public ICollection<MarketplaceCategoryField> Fields { get; set; } = new List<MarketplaceCategoryField>();
 }
 
+/// <summary>A narrower kind within a main category, e.g. "Sarees" under Products or "Fruits" under B2B.</summary>
+public class MarketplaceSubCategory : BaseEntity
+{
+    public Guid CategoryId { get; set; }
+
+    public MarketplaceCategory Category { get; set; } = null!;
+
+    public string Name { get; set; } = string.Empty;
+
+    public string Slug { get; set; } = string.Empty;
+
+    public string? IconName { get; set; }
+
+    public short DisplayOrder { get; set; }
+
+    /// <summary>Off hides it from the post form and its posts from customers.</summary>
+    public bool IsActive { get; set; } = true;
+}
+
 /// <summary>
-/// A detail a post in the category asks for, e.g. "KM driven" for Vehicles or "Area (cents)" for
-/// Property. The form is drawn from these rows, so a new detail needs no release.
+/// A detail a post asks for, e.g. "KM driven" for Products › Vehicles or "Food type" for all of Nearby
+/// food. The form is drawn from these rows, so a new detail needs no release.
 /// </summary>
 public class MarketplaceCategoryField : BaseEntity
 {
     public Guid CategoryId { get; set; }
 
     public MarketplaceCategory Category { get; set; } = null!;
+
+    /// <summary>The one sub-category this detail is asked for; null asks it everywhere in the category.</summary>
+    public Guid? SubCategoryId { get; set; }
+
+    public MarketplaceSubCategory? SubCategory { get; set; }
 
     /// <summary>Stable name the value is saved under, e.g. <c>km_driven</c>. Never shown.</summary>
     public string Key { get; set; } = string.Empty;
@@ -57,4 +90,8 @@ public class MarketplaceCategoryField : BaseEntity
     public short DisplayOrder { get; set; }
 
     public bool IsActive { get; set; } = true;
+
+    /// <summary>Whether a post filed under <paramref name="subCategoryId"/> is asked this detail.</summary>
+    public bool AppliesTo(Guid? subCategoryId) =>
+        IsActive && !IsDeleted && (SubCategoryId is null || SubCategoryId == subCategoryId);
 }

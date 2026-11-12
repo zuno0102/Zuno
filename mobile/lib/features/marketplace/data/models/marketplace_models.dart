@@ -51,6 +51,8 @@ class MarketplacePostModel {
     required this.stateId,
     required this.stateName,
     this.categoryIconName,
+    this.subCategoryId,
+    this.subCategoryName,
     this.description,
     this.price,
     this.priceUnit,
@@ -75,6 +77,8 @@ class MarketplacePostModel {
   final String categoryId;
   final String categoryName;
   final String? categoryIconName;
+  final String? subCategoryId;
+  final String? subCategoryName;
   final String kind;
   final String status;
   final String title;
@@ -104,6 +108,8 @@ class MarketplacePostModel {
     categoryId: categoryId,
     categoryName: categoryName,
     categoryIconName: categoryIconName,
+    subCategoryId: subCategoryId,
+    subCategoryName: subCategoryName,
     kind: kind,
     status: status,
     title: title,
@@ -151,6 +157,7 @@ class MarketplaceCategoryFieldModel {
     required this.displayOrder,
     required this.isActive,
     this.options = const [],
+    this.subCategoryId,
     this.unit,
   });
 
@@ -158,6 +165,7 @@ class MarketplaceCategoryFieldModel {
       _$MarketplaceCategoryFieldModelFromJson(json);
 
   final String id;
+  final String? subCategoryId;
   final String key;
   final String label;
   final String fieldType;
@@ -169,6 +177,7 @@ class MarketplaceCategoryFieldModel {
 
   MarketplaceCategoryField toEntity() => MarketplaceCategoryField(
     id: id,
+    subCategoryId: subCategoryId,
     key: key,
     label: label,
     fieldType: fieldType,
@@ -187,10 +196,13 @@ class MarketplaceCategoryModel {
     required this.name,
     required this.slug,
     required this.kind,
-    required this.allowsWholesale,
+    required this.tradeMode,
     required this.displayOrder,
     required this.isActive,
+    this.shortName,
+    this.description,
     this.iconName,
+    this.subCategories = const [],
     this.fields = const [],
   });
 
@@ -199,24 +211,61 @@ class MarketplaceCategoryModel {
 
   final String id;
   final String name;
+  final String? shortName;
+  final String? description;
   final String slug;
   final String? iconName;
   final String kind;
-  final bool allowsWholesale;
+  final String tradeMode;
   final int displayOrder;
   final bool isActive;
+  final List<MarketplaceSubCategoryModel> subCategories;
   final List<MarketplaceCategoryFieldModel> fields;
 
   MarketplaceCategory toEntity() => MarketplaceCategory(
     id: id,
     name: name,
+    shortName: shortName?.isNotEmpty ?? false ? shortName! : name,
+    description: description,
     slug: slug,
     iconName: iconName,
     kind: kind,
-    allowsWholesale: allowsWholesale,
+    tradeMode: tradeMode,
     displayOrder: displayOrder,
     isActive: isActive,
+    subCategories: [for (final s in subCategories) s.toEntity()],
     fields: [for (final f in fields) f.toEntity()],
+  );
+}
+
+@JsonSerializable(createToJson: false)
+class MarketplaceSubCategoryModel {
+  const MarketplaceSubCategoryModel({
+    required this.id,
+    required this.name,
+    required this.slug,
+    required this.displayOrder,
+    required this.isActive,
+    this.iconName,
+  });
+
+  factory MarketplaceSubCategoryModel.fromJson(Map<String, dynamic> json) =>
+      _$MarketplaceSubCategoryModelFromJson(json);
+
+  final String id;
+  final String name;
+  final String slug;
+  final String? iconName;
+  final int displayOrder;
+  final bool isActive;
+
+  MarketplaceSubCategory toEntity() => MarketplaceSubCategory(
+    id: id,
+    name: name,
+    slug: slug,
+    iconName: iconName,
+    displayOrder: displayOrder,
+    isActive: isActive,
   );
 }
 
@@ -285,6 +334,7 @@ class MarketplaceOptionModel {
     required this.code,
     required this.name,
     this.tone,
+    this.detail,
   });
 
   factory MarketplaceOptionModel.fromJson(Map<String, dynamic> json) =>
@@ -293,9 +343,10 @@ class MarketplaceOptionModel {
   final String code;
   final String name;
   final String? tone;
+  final String? detail;
 
   MarketplaceOption toEntity() =>
-      MarketplaceOption(code: code, name: name, tone: tone);
+      MarketplaceOption(code: code, name: name, tone: tone, detail: detail);
 }
 
 @JsonSerializable(createToJson: false)
@@ -305,6 +356,7 @@ class MarketplaceOptionsModel {
     required this.statuses,
     required this.imageSlots,
     required this.maxFoodOfferHours,
+    this.tradeModes = const [],
     required this.maxAdDays,
   });
 
@@ -313,6 +365,7 @@ class MarketplaceOptionsModel {
 
   final List<MarketplaceOptionModel> kinds;
   final List<MarketplaceOptionModel> statuses;
+  final List<MarketplaceOptionModel> tradeModes;
   final int imageSlots;
   final int maxFoodOfferHours;
   final int maxAdDays;
@@ -320,6 +373,7 @@ class MarketplaceOptionsModel {
   MarketplaceOptions toEntity() => MarketplaceOptions(
     kinds: [for (final k in kinds) k.toEntity()],
     statuses: [for (final s in statuses) s.toEntity()],
+    tradeModes: [for (final t in tradeModes) t.toEntity()],
     imageSlots: imageSlots,
     maxFoodOfferHours: maxFoodOfferHours,
     maxAdDays: maxAdDays,

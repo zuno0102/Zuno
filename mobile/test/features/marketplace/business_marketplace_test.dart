@@ -23,17 +23,47 @@ import 'package:zuno/features/marketplace/presentation/widgets/marketplace_post_
 import 'package:zuno/features/rental/presentation/screens/business_catalog_tab.dart';
 import 'package:zuno/shared/widgets/stat_tile.dart';
 
-const _vehicles = MarketplaceCategory(
-  id: 'cat-vehicles',
-  name: 'Vehicles',
-  slug: 'vehicles',
+const _products = MarketplaceCategory(
+  id: 'cat-products',
+  name: 'Products',
+  shortName: 'Products',
+  description: 'Sarees, shirts, toys',
+  slug: 'products',
+  iconName: 'shopping_bag_outlined',
   kind: MarketplacePostKind.listing,
-  allowsWholesale: false,
+  tradeMode: MarketplaceTradeMode.retailOnly,
   displayOrder: 1,
   isActive: true,
+  subCategories: [
+    MarketplaceSubCategory(
+      id: 's-sarees',
+      name: 'Sarees',
+      slug: 'sarees',
+      displayOrder: 1,
+      isActive: true,
+    ),
+    MarketplaceSubCategory(
+      id: 's-vehicles',
+      name: 'Vehicles',
+      slug: 'vehicles',
+      displayOrder: 2,
+      isActive: true,
+    ),
+  ],
   fields: [
     MarketplaceCategoryField(
+      id: 'f-condition',
+      key: 'condition',
+      label: 'Condition',
+      fieldType: MarketplaceFieldType.select,
+      options: ['New', 'Used'],
+      isRequired: false,
+      displayOrder: 1,
+      isActive: true,
+    ),
+    MarketplaceCategoryField(
       id: 'f-km',
+      subCategoryId: 's-vehicles',
       key: 'km_driven',
       label: 'KM driven',
       fieldType: MarketplaceFieldType.number,
@@ -45,6 +75,7 @@ const _vehicles = MarketplaceCategory(
     ),
     MarketplaceCategoryField(
       id: 'f-fuel',
+      subCategoryId: 's-vehicles',
       key: 'fuel',
       label: 'Fuel',
       fieldType: MarketplaceFieldType.select,
@@ -55,6 +86,7 @@ const _vehicles = MarketplaceCategory(
     ),
     MarketplaceCategoryField(
       id: 'f-year',
+      subCategoryId: 's-vehicles',
       key: 'model_year',
       label: 'Model year',
       fieldType: MarketplaceFieldType.number,
@@ -66,36 +98,70 @@ const _vehicles = MarketplaceCategory(
   ],
 );
 
-const _farm = MarketplaceCategory(
-  id: 'cat-farm',
-  name: 'Farm & Wholesale',
-  slug: 'farm-wholesale',
+const _b2b = MarketplaceCategory(
+  id: 'cat-b2b',
+  name: 'B2B Wholesale',
+  shortName: 'B2B',
+  description: 'Banana, coconut, chicken in bulk',
+  slug: 'b2b-wholesale',
+  iconName: 'agriculture_outlined',
   kind: MarketplacePostKind.listing,
-  allowsWholesale: true,
-  displayOrder: 4,
+  tradeMode: MarketplaceTradeMode.wholesaleOnly,
+  displayOrder: 2,
   isActive: true,
+  subCategories: [
+    MarketplaceSubCategory(
+      id: 's-fruits',
+      name: 'Fruits',
+      slug: 'fruits',
+      displayOrder: 1,
+      isActive: true,
+    ),
+  ],
   fields: [],
 );
 
 const _food = MarketplaceCategory(
   id: 'cat-food',
-  name: 'Food offers',
-  slug: 'food-offers',
+  name: 'Nearby food',
+  shortName: 'Food',
+  slug: 'nearby-food',
+  iconName: 'restaurant_outlined',
   kind: MarketplacePostKind.foodOffer,
-  allowsWholesale: false,
-  displayOrder: 5,
+  tradeMode: MarketplaceTradeMode.retailOnly,
+  displayOrder: 3,
   isActive: true,
+  subCategories: [
+    MarketplaceSubCategory(
+      id: 's-biryani',
+      name: 'Biryani & meals',
+      slug: 'biryani-meals',
+      displayOrder: 1,
+      isActive: true,
+    ),
+  ],
   fields: [],
 );
 
 const _ads = MarketplaceCategory(
   id: 'cat-ads',
-  name: 'Events & Sales',
-  slug: 'events-sales',
+  name: 'Advertisements',
+  shortName: 'Ads',
+  slug: 'advertisements',
+  iconName: 'campaign_outlined',
   kind: MarketplacePostKind.advertisement,
-  allowsWholesale: false,
-  displayOrder: 6,
+  tradeMode: MarketplaceTradeMode.retailOnly,
+  displayOrder: 4,
   isActive: true,
+  subCategories: [
+    MarketplaceSubCategory(
+      id: 's-cricket',
+      name: 'Cricket tournament',
+      slug: 'cricket-tournament',
+      displayOrder: 1,
+      isActive: true,
+    ),
+  ],
   fields: [],
 );
 
@@ -110,6 +176,11 @@ const _options = MarketplaceOptions(
     MarketplaceOption(code: 'Paused', name: 'On hold', tone: 'waiting'),
     MarketplaceOption(code: 'Expired', name: 'Expired', tone: 'danger'),
     MarketplaceOption(code: 'Closed', name: 'Closed', tone: 'progress'),
+  ],
+  tradeModes: [
+    MarketplaceOption(code: 'RetailOnly', name: 'Retail only'),
+    MarketplaceOption(code: 'WholesaleOnly', name: 'Wholesale only (B2B)'),
+    MarketplaceOption(code: 'Either', name: 'Either'),
   ],
   imageSlots: 3,
   maxFoodOfferHours: 24,
@@ -136,8 +207,10 @@ MarketplacePost _post({
   String title = 'Swift VXi 2019',
   String kind = MarketplacePostKind.listing,
   String status = MarketplacePostStatus.active,
-  String categoryId = 'cat-vehicles',
-  String categoryName = 'Vehicles',
+  String categoryId = 'cat-products',
+  String categoryName = 'Products',
+  String? subCategoryId = 's-vehicles',
+  String? subCategoryName = 'Vehicles',
   double? price = 420000,
   double? originalPrice,
   String? priceUnit,
@@ -167,6 +240,8 @@ MarketplacePost _post({
   id: id,
   categoryId: categoryId,
   categoryName: categoryName,
+  subCategoryId: subCategoryId,
+  subCategoryName: subCategoryName,
   kind: kind,
   status: status,
   title: title,
@@ -193,7 +268,7 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
   _FakeMarketplaceRepository({
     this.posts = const [],
     MarketplacePlan? plan,
-    this.categories = const [_vehicles, _farm, _food, _ads],
+    this.categories = const [_products, _b2b, _food, _ads],
   }) : plan = plan ?? _plan(used: posts.length > 1 ? 1 : posts.length);
 
   List<MarketplacePost> posts;
@@ -209,6 +284,7 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
   final deleted = <String>[];
   final uploads = <(String, int)>[];
   final savedCategories = <MarketplaceCategoryInput>[];
+  final savedSubCategories = <(String, MarketplaceSubCategoryInput)>[];
   int syncs = 0;
 
   @override
@@ -296,7 +372,7 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
     MarketplaceCategoryInput input,
   ) async {
     savedCategories.add(input);
-    return _vehicles;
+    return _products;
   }
 
   @override
@@ -305,21 +381,40 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
     MarketplaceCategoryInput input,
   ) async {
     savedCategories.add(input);
-    return _vehicles;
+    return _products;
+  }
+
+  @override
+  Future<MarketplaceCategory> createSubCategory(
+    String categoryId,
+    MarketplaceSubCategoryInput input,
+  ) async {
+    savedSubCategories.add((categoryId, input));
+    return _products;
+  }
+
+  @override
+  Future<MarketplaceCategory> updateSubCategory(
+    String categoryId,
+    String subId,
+    MarketplaceSubCategoryInput input,
+  ) async {
+    savedSubCategories.add((categoryId, input));
+    return _products;
   }
 
   @override
   Future<MarketplaceCategory> createField(
     String categoryId,
     MarketplaceFieldInput input,
-  ) async => _vehicles;
+  ) async => _products;
 
   @override
   Future<MarketplaceCategory> updateField(
     String categoryId,
     String fieldId,
     MarketplaceFieldInput input,
-  ) async => _vehicles;
+  ) async => _products;
 }
 
 class _NoServices extends BusinessServicesNotifier {
@@ -357,14 +452,30 @@ Future<_FakeMarketplaceRepository> _pump(
   return repo;
 }
 
-/// Opens the add sheet from the Marketplace tab and picks [category].
+/// Opens the add sheet from the Marketplace tab and picks [category], then [sub] — its first
+/// sub-category unless said otherwise, none when [pickSub] is false.
 Future<void> _openFormFor(
   WidgetTester tester,
-  MarketplaceCategory category,
-) async {
+  MarketplaceCategory category, {
+  String? sub,
+  bool pickSub = true,
+}) async {
   await tester.tap(find.byKey(const ValueKey('marketplace-add-post')));
   await tester.pumpAndSettle();
   await _choose(tester, 'marketplace-category', category.id);
+  if (pickSub && category.subCategories.isNotEmpty) {
+    await _choose(
+      tester,
+      'marketplace-sub-category',
+      sub ?? category.subCategories.first.id,
+    );
+  }
+}
+
+/// Fills what a B2B post needs beyond a title and price: what the price is per, and a smallest order.
+Future<void> _fillWholesale(WidgetTester tester) async {
+  await _type(tester, 'marketplace-price-unit', 'kg');
+  await _type(tester, 'marketplace-min-order', '100');
 }
 
 Future<void> _choose(WidgetTester tester, String field, String value) async {
@@ -454,11 +565,11 @@ void main() {
 
     test('details follow the category order, with units', () {
       expect(
-        marketplaceDetailsLine(_post(), const [_vehicles]),
+        marketplaceDetailsLine(_post(), const [_products]),
         '2019 · 48000 km · Petrol',
       );
       expect(
-        marketplaceDetailsLine(_post(attributes: const {}), const [_vehicles]),
+        marketplaceDetailsLine(_post(attributes: const {}), const [_products]),
         isNull,
       );
     });
@@ -506,7 +617,10 @@ void main() {
         repository: _FakeMarketplaceRepository(posts: [_post()]),
       );
 
-      expect(find.text('Vehicles · Marthandam, Kanyakumari'), findsOneWidget);
+      expect(
+        find.text('Products › Vehicles · Marthandam, Kanyakumari'),
+        findsOneWidget,
+      );
       expect(find.text(rupees(420000)), findsOneWidget);
       expect(find.text('Active'), findsOneWidget);
       expect(find.text('2019 · 48000 km · Petrol'), findsOneWidget);
@@ -529,8 +643,11 @@ void main() {
 
       expect(find.text('Nothing posted yet'), findsOneWidget);
       expect(
-        find.textContaining('food offer or an advertisement'),
+        find.textContaining(
+          'products, b2b wholesale, nearby food or advertisements',
+        ),
         findsOneWidget,
+        reason: 'named from the category table',
       );
     });
 
@@ -561,34 +678,94 @@ void main() {
       expect(find.textContaining('Pause or close a post'), findsOneWidget);
     });
 
-    testWidgets('kind chips count and filter the posts', (tester) async {
+    testWidgets(
+      'a square per main category, with counts, filters and clears the list',
+      (tester) async {
+        await _pump(
+          tester,
+          const BusinessMarketplaceTab(),
+          repository: _FakeMarketplaceRepository(
+            posts: [
+              _post(),
+              _post(
+                id: 'p-2',
+                title: 'Veg biryani',
+                kind: MarketplacePostKind.foodOffer,
+                categoryId: _food.id,
+                categoryName: _food.name,
+                subCategoryId: 's-biryani',
+                subCategoryName: 'Biryani & meals',
+                status: 'Paused',
+              ),
+            ],
+          ),
+        );
+
+        for (final (id, label) in [
+          (_products.id, 'Products, 1'),
+          (_b2b.id, 'B2B, 0'),
+          (_food.id, 'Food, 1'),
+          (_ads.id, 'Ads, 0'),
+        ]) {
+          expect(
+            find.bySemanticsLabel(label),
+            findsOneWidget,
+            reason: 'square $id',
+          );
+        }
+        expect(
+          find.byKey(const ValueKey('category-square-clear')),
+          findsNothing,
+        );
+
+        await tester.tap(find.byKey(ValueKey('category-square-${_food.id}')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Veg biryani'), findsOneWidget);
+        expect(find.text('Swift VXi 2019'), findsNothing);
+        expect(find.text('Showing: Food'), findsOneWidget);
+
+        await tester.tap(find.byKey(const ValueKey('category-square-clear')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Veg biryani'), findsOneWidget);
+        expect(find.text('Swift VXi 2019'), findsOneWidget);
+      },
+    );
+
+    testWidgets('tapping the chosen square again shows everything', (
+      tester,
+    ) async {
       await _pump(
         tester,
         const BusinessMarketplaceTab(),
-        repository: _FakeMarketplaceRepository(
-          posts: [
-            _post(),
-            _post(
-              id: 'p-2',
-              title: 'Veg biryani',
-              kind: MarketplacePostKind.foodOffer,
-              status: 'Paused',
-            ),
-          ],
-        ),
+        repository: _FakeMarketplaceRepository(posts: [_post()]),
       );
+      final square = find.byKey(ValueKey('category-square-${_b2b.id}'));
 
-      expect(find.text('All 2'), findsOneWidget);
-      expect(find.text('Food offer 1'), findsOneWidget);
-      expect(find.text('Advertisement 0'), findsOneWidget);
+      await tester.tap(square);
+      await tester.pumpAndSettle();
+      expect(find.text('Nothing in B2B Wholesale yet'), findsOneWidget);
 
-      await tester.tap(
-        find.byKey(const ValueKey('marketplace-kind-FoodOffer')),
-      );
+      await tester.tap(square);
+      await tester.pumpAndSettle();
+      expect(find.text('Swift VXi 2019'), findsOneWidget);
+    });
+
+    testWidgets('the four squares fit a 360 dp phone', (tester) async {
+      await _pump(tester, const BusinessMarketplaceTab());
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
       await tester.pumpAndSettle();
 
-      expect(find.text('Veg biryani'), findsOneWidget);
-      expect(find.text('Swift VXi 2019'), findsNothing);
+      for (final c in [_products, _b2b, _food, _ads]) {
+        final rect = tester.getRect(
+          find.byKey(ValueKey('category-square-${c.id}')),
+        );
+        expect(rect.right, lessThanOrEqualTo(360 - 16));
+        expect(rect.height, lessThan(90));
+      }
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('a full plan explains instead of opening the form', (
@@ -696,7 +873,7 @@ void main() {
       tester,
     ) async {
       await _pump(tester, const BusinessMarketplaceTab());
-      await _openFormFor(tester, _vehicles);
+      await _openFormFor(tester, _products, sub: 's-vehicles');
 
       final year = tester.getTopLeft(
         find.byKey(const ValueKey('marketplace-field-model_year')),
@@ -720,7 +897,7 @@ void main() {
       tester,
     ) async {
       final repo = await _pump(tester, const BusinessMarketplaceTab());
-      await _openFormFor(tester, _vehicles);
+      await _openFormFor(tester, _products, sub: 's-vehicles');
 
       await _save(tester);
 
@@ -735,7 +912,7 @@ void main() {
       tester,
     ) async {
       final repo = await _pump(tester, const BusinessMarketplaceTab());
-      await _openFormFor(tester, _vehicles);
+      await _openFormFor(tester, _products, sub: 's-vehicles');
 
       await _type(tester, 'marketplace-title', 'Swift VXi 2019');
       await _type(tester, 'marketplace-price', '420000');
@@ -747,7 +924,8 @@ void main() {
       await _save(tester);
 
       final input = repo.created.single;
-      expect(input.categoryId, 'cat-vehicles');
+      expect(input.categoryId, 'cat-products');
+      expect(input.subCategoryId, 's-vehicles');
       expect(input.price, 420000);
       expect(input.districtId, 'd-kk');
       expect(input.tradeType, MarketplaceTradeType.retail);
@@ -763,12 +941,14 @@ void main() {
       tester,
     ) async {
       final repo = await _pump(tester, const BusinessMarketplaceTab());
-      await _openFormFor(tester, _vehicles);
+      await _openFormFor(tester, _products, sub: 's-vehicles');
       await _type(tester, 'marketplace-field-km_driven', '48000');
 
-      await _choose(tester, 'marketplace-category', _farm.id);
+      await _choose(tester, 'marketplace-category', _b2b.id);
+      await _choose(tester, 'marketplace-sub-category', 's-fruits');
       await _type(tester, 'marketplace-title', 'Nendran banana');
       await _type(tester, 'marketplace-price', '45');
+      await _fillWholesale(tester);
       await _choose(tester, 'marketplace-state', 's-tn');
       await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
       await _save(tester);
@@ -777,34 +957,105 @@ void main() {
     });
 
     testWidgets(
-      'wholesale only where the category allows it, and asks the smallest order',
+      'B2B is always wholesale: no "Sell as", and the unit and smallest order are asked',
       (tester) async {
         final repo = await _pump(tester, const BusinessMarketplaceTab());
-        await _openFormFor(tester, _farm);
+        await _openFormFor(tester, _b2b);
 
-        await _choose(
-          tester,
-          'marketplace-trade-type',
-          MarketplaceTradeType.wholesale,
+        expect(
+          find.byKey(const ValueKey('marketplace-trade-type')),
+          findsNothing,
         );
+        expect(find.text('Price per unit'), findsOneWidget);
         await _type(tester, 'marketplace-title', 'Nendran banana');
         await _type(tester, 'marketplace-price', '45');
-        await _type(tester, 'marketplace-price-unit', 'kg');
         await _choose(tester, 'marketplace-state', 's-tn');
         await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
         await _save(tester);
+        expect(find.text('e.g. kg'), findsOneWidget);
         expect(find.text('Required.'), findsOneWidget);
         expect(repo.created, isEmpty);
 
-        await _type(tester, 'marketplace-min-order', '100');
+        await _fillWholesale(tester);
         await _save(tester);
 
         final input = repo.created.single;
+        expect(input.categoryId, _b2b.id);
+        expect(input.subCategoryId, 's-fruits');
         expect(input.tradeType, MarketplaceTradeType.wholesale);
         expect(input.minOrderQuantity, 100);
         expect(input.priceUnit, 'kg');
       },
     );
+
+    testWidgets('a retail-only category never offers wholesale', (
+      tester,
+    ) async {
+      await _pump(tester, const BusinessMarketplaceTab());
+      await _openFormFor(tester, _products);
+
+      expect(
+        find.byKey(const ValueKey('marketplace-trade-type')),
+        findsNothing,
+      );
+      expect(find.byKey(const ValueKey('marketplace-min-order')), findsNothing);
+      expect(find.text('Per (optional)'), findsOneWidget);
+    });
+
+    testWidgets(
+      'the sub-category is asked, and the category says what goes in it',
+      (tester) async {
+        final repo = await _pump(tester, const BusinessMarketplaceTab());
+        await tester.tap(find.byKey(const ValueKey('marketplace-add-post')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('marketplace-category')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Sarees, shirts, toys'), findsOneWidget);
+        await tester.tap(find.byKey(ValueKey('select-option-${_products.id}')));
+        await tester.pumpAndSettle();
+        await _save(tester);
+
+        expect(find.text('Choose what kind it is.'), findsOneWidget);
+        expect(repo.created, isEmpty);
+      },
+    );
+
+    testWidgets("a sarees post is not asked a vehicle's details", (
+      tester,
+    ) async {
+      await _pump(tester, const BusinessMarketplaceTab());
+      await _openFormFor(tester, _products, sub: 's-sarees');
+
+      expect(
+        find.byKey(const ValueKey('marketplace-field-km_driven')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey('marketplace-field-condition')),
+        findsOneWidget,
+        reason: 'asked in every Products sub-category',
+      );
+    });
+
+    testWidgets("changing the sub-category drops only the old one's details", (
+      tester,
+    ) async {
+      final repo = await _pump(tester, const BusinessMarketplaceTab());
+      await _openFormFor(tester, _products, sub: 's-vehicles');
+      await _choose(tester, 'marketplace-field-condition', 'Used');
+      await _type(tester, 'marketplace-field-km_driven', '48000');
+
+      await _choose(tester, 'marketplace-sub-category', 's-sarees');
+      await _type(tester, 'marketplace-title', 'Silk saree');
+      await _type(tester, 'marketplace-price', '2400');
+      await _choose(tester, 'marketplace-state', 's-tn');
+      await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
+      await _save(tester);
+
+      expect(repo.created.single.subCategoryId, 's-sarees');
+      expect(repo.created.single.attributes, {'condition': 'Used'});
+    });
 
     testWidgets('a food offer asks usual and offer price, portions and hours', (
       tester,
@@ -859,10 +1110,11 @@ void main() {
           },
         );
       await _pump(tester, const BusinessMarketplaceTab(), repository: repo);
-      await _openFormFor(tester, _farm);
+      await _openFormFor(tester, _b2b);
 
       await _type(tester, 'marketplace-title', 'Nendran banana');
       await _type(tester, 'marketplace-price', '45');
+      await _fillWholesale(tester);
       await _choose(tester, 'marketplace-state', 's-tn');
       await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
       await _save(tester);
@@ -904,9 +1156,10 @@ void main() {
       '"Post added." shows over the form after saving from the bottom',
       (tester) async {
         await _pump(tester, const BusinessMarketplaceTab());
-        await _openFormFor(tester, _farm);
+        await _openFormFor(tester, _b2b);
         await _type(tester, 'marketplace-title', 'Nendran banana');
         await _type(tester, 'marketplace-price', '45');
+        await _fillWholesale(tester);
         await _choose(tester, 'marketplace-state', 's-tn');
         await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
 
@@ -942,9 +1195,10 @@ void main() {
           'Your Free plan allows 1 active post. Pause or close one to put up another.',
         );
       await _pump(tester, const BusinessMarketplaceTab(), repository: repo);
-      await _openFormFor(tester, _farm);
+      await _openFormFor(tester, _b2b);
       await _type(tester, 'marketplace-title', 'Nendran banana');
       await _type(tester, 'marketplace-price', '45');
+      await _fillWholesale(tester);
       await _choose(tester, 'marketplace-state', 's-tn');
       await _choose(tester, 'marketplace-district-s-tn', 'd-kk');
       await _save(tester);
@@ -1078,23 +1332,28 @@ void main() {
         const AdminMarketplaceCategoriesScreen(),
         repository: _FakeMarketplaceRepository(
           categories: const [
-            _vehicles,
+            _products,
             MarketplaceCategory(
               id: 'cat-old',
               name: 'Old stuff',
               slug: 'old-stuff',
               kind: MarketplacePostKind.listing,
-              allowsWholesale: false,
+              shortName: 'Old stuff',
+              tradeMode: MarketplaceTradeMode.retailOnly,
               displayOrder: 9,
               isActive: false,
+              subCategories: [],
               fields: [],
             ),
           ],
         ),
       );
 
-      expect(find.text('Vehicles'), findsOneWidget);
-      expect(find.text('Listing · 3 details'), findsOneWidget);
+      expect(find.text('Products'), findsOneWidget);
+      expect(
+        find.text('Listing · Retail only · 2 sub-categories'),
+        findsOneWidget,
+      );
       expect(find.text('Hidden'), findsOneWidget);
     });
 

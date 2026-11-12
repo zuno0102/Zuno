@@ -144,8 +144,37 @@ public class MarketplaceApiFactory : WebApplicationFactory<Program>, IAsyncLifet
         await db.Database.MigrateAsync();
     }
 
+    private readonly List<string> _extraDatabases = [];
+
+    /// <summary>
+    /// Another empty database on the same server, for a test that migrates step by step (the upgrade
+    /// of live data). Dropped when the run ends.
+    /// </summary>
+    public async Task<string> NewDatabaseAsync()
+    {
+        var name = $"zuno_marketplace_upgrade_{Guid.NewGuid():N}";
+        await using (var admin = new NpgsqlConnection(_connectionString))
+        {
+            await admin.OpenAsync();
+            await using var create = new NpgsqlCommand($"create database \"{name}\"", admin);
+            await create.ExecuteNonQueryAsync();
+        }
+
+        _extraDatabases.Add(name);
+        return new NpgsqlConnectionStringBuilder(_connectionString) { Database = name }.ConnectionString;
+    }
+
     async Task IAsyncLifetime.DisposeAsync()
     {
+        NpgsqlConnection.ClearAllPools();
+        foreach (var name in _extraDatabases)
+        {
+            await using var server = new NpgsqlConnection(_connectionString);
+            await server.OpenAsync();
+            await using var dropExtra = new NpgsqlCommand($"drop database if exists \"{name}\" with (force)", server);
+            await dropExtra.ExecuteNonQueryAsync();
+        }
+
         await base.DisposeAsync();
 
         if (Directory.Exists(UploadsDirectory))

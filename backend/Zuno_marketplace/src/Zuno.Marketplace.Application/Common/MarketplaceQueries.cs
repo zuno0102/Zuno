@@ -34,6 +34,7 @@ internal static class MarketplaceQueries
     public static IQueryable<MarketplacePost> WithCard(this IQueryable<MarketplacePost> posts) =>
         posts
             .Include(p => p.Category)
+            .Include(p => p.SubCategory)
             .Include(p => p.Media)
             .Include(p => p.District).ThenInclude(d => d.State);
 
@@ -61,6 +62,7 @@ internal static class MarketplaceQueries
         posts.Live(now)
             .Where(p => p.StartsAt == null || p.StartsAt <= now)
             .Where(p => p.Category.IsActive)
+            .Where(p => p.SubCategory == null || p.SubCategory.IsActive)
             .Where(p => businesses.Any(b => b.OwnerUserId == p.OwnerUserId && b.IsVerified));
 
     /// <summary>Clamps a page request to the configured limits.</summary>

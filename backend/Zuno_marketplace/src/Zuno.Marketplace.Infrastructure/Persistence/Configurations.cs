@@ -10,12 +10,35 @@ public class MarketplaceCategoryConfiguration : IEntityTypeConfiguration<Marketp
 {
     public void Configure(EntityTypeBuilder<MarketplaceCategory> builder)
     {
-        builder.ToTable("marketplace_categories", t => t.HasCheckConstraint("ck_marketplace_categories_kind", "kind IN (1, 2, 3)"));
+        builder.ToTable("marketplace_categories", t =>
+        {
+            t.HasCheckConstraint("ck_marketplace_categories_kind", "kind IN (1, 2, 3)");
+            t.HasCheckConstraint("ck_marketplace_categories_trade_mode", "trade_mode IN (1, 2, 3)");
+        });
         builder.Property(c => c.Name).HasMaxLength(100).IsRequired();
+        builder.Property(c => c.ShortName).HasMaxLength(20);
+        builder.Property(c => c.Description).HasMaxLength(200);
         builder.Property(c => c.Slug).HasMaxLength(100).IsRequired();
         builder.Property(c => c.IconName).HasMaxLength(50);
         builder.HasIndex(c => c.Slug).IsUnique().HasFilter("is_deleted = false");
         builder.HasData(MarketplaceCatalogSeedData.Categories);
+    }
+}
+
+public class MarketplaceSubCategoryConfiguration : IEntityTypeConfiguration<MarketplaceSubCategory>
+{
+    public void Configure(EntityTypeBuilder<MarketplaceSubCategory> builder)
+    {
+        builder.ToTable("marketplace_sub_categories");
+        builder.Property(s => s.Name).HasMaxLength(100).IsRequired();
+        builder.Property(s => s.Slug).HasMaxLength(100).IsRequired();
+        builder.Property(s => s.IconName).HasMaxLength(50);
+        builder.HasIndex(s => new { s.CategoryId, s.Slug }).IsUnique().HasFilter("is_deleted = false");
+        builder.HasOne(s => s.Category)
+            .WithMany(c => c.SubCategories)
+            .HasForeignKey(s => s.CategoryId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasData(MarketplaceCatalogSeedData.SubCategories);
     }
 }
 
@@ -33,10 +56,18 @@ public class MarketplaceCategoryFieldConfiguration : IEntityTypeConfiguration<Ma
             (a, b) => a == b || (a != null && b != null && a.SequenceEqual(b)),
             list => list.Aggregate(0, (hash, item) => HashCode.Combine(hash, item.GetHashCode(StringComparison.Ordinal))),
             list => list.ToList()));
-        builder.HasIndex(f => new { f.CategoryId, f.Key }).IsUnique().HasFilter("is_deleted = false");
+        // One key per place it is asked: the whole category (no sub-category) counts as one place.
+        builder.HasIndex(f => new { f.CategoryId, f.SubCategoryId, f.Key })
+            .IsUnique()
+            .AreNullsDistinct(false)
+            .HasFilter("is_deleted = false");
         builder.HasOne(f => f.Category)
             .WithMany(c => c.Fields)
             .HasForeignKey(f => f.CategoryId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(f => f.SubCategory)
+            .WithMany()
+            .HasForeignKey(f => f.SubCategoryId)
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasData(MarketplaceCatalogSeedData.Fields);
     }
@@ -83,9 +114,10 @@ public class MarketplacePostConfiguration : IEntityTypeConfiguration<Marketplace
 
         // The customer screens: live posts by kind, district and end time.
         builder.HasIndex(p => new { p.Kind, p.Status, p.DistrictId, p.EndsAt });
-        builder.HasIndex(p => p.CategoryId);
+        builder.HasIndex(p => new { p.CategoryId, p.SubCategoryId });
 
         builder.HasOne(p => p.Category).WithMany().HasForeignKey(p => p.CategoryId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(p => p.SubCategory).WithMany().HasForeignKey(p => p.SubCategoryId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(p => p.District).WithMany().HasForeignKey(p => p.DistrictId).OnDelete(DeleteBehavior.Restrict);
     }
 }
@@ -145,6 +177,19 @@ public class MarketplaceBusinessPlanConfiguration : IEntityTypeConfiguration<Mar
             t.HasCheckConstraint("ck_marketplace_business_plans_window", "ends_at IS NULL OR ends_at > starts_at"));
         builder.HasIndex(b => new { b.OwnerUserId, b.StartsAt });
         builder.HasOne(b => b.Plan).WithMany().HasForeignKey(b => b.PlanId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class MarketplaceTradeModeOptionConfiguration : IEntityTypeConfiguration<MarketplaceTradeModeOption>
+{
+    public void Configure(EntityTypeBuilder<MarketplaceTradeModeOption> builder)
+    {
+        builder.ToTable("ref_marketplace_trade_modes");
+        builder.HasKey(t => t.Code);
+        builder.Property(t => t.Code).ValueGeneratedNever();
+        builder.Property(t => t.Name).HasMaxLength(50).IsRequired();
+        builder.Property(t => t.Detail).HasMaxLength(150).IsRequired();
+        builder.HasData(MarketplaceCatalogSeedData.TradeModes);
     }
 }
 

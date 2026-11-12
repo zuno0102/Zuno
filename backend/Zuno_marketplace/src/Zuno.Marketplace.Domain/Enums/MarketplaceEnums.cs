@@ -39,6 +39,19 @@ public enum MarketplaceTradeType : short
     Wholesale = 2,
 }
 
+/// <summary>How the posts of a category may sell.</summary>
+public enum MarketplaceTradeMode : short
+{
+    /// <summary>One at a time to customers: sarees, toys, food.</summary>
+    RetailOnly = 1,
+
+    /// <summary>In bulk to businesses (B2B): a price per unit and a smallest order are required.</summary>
+    WholesaleOnly = 2,
+
+    /// <summary>The business chooses per post.</summary>
+    Either = 3,
+}
+
 /// <summary>How a category's own field is filled in on the post form.</summary>
 public enum MarketplaceFieldType : short
 {

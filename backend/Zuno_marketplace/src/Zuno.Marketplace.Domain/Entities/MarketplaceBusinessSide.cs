@@ -64,6 +64,19 @@ public class MarketplaceBusinessPlan : BaseEntity
     public DateTimeOffset? EndsAt { get; set; }
 }
 
+/// <summary>How a trade mode is named on the super admin's screen — "Wholesale only (B2B)". Table-driven, keyed by the enum.</summary>
+public class MarketplaceTradeModeOption
+{
+    public MarketplaceTradeMode Code { get; set; }
+
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>The line under the name, e.g. "Bulk to businesses: price per unit and a smallest order".</summary>
+    public string Detail { get; set; } = string.Empty;
+
+    public short DisplayOrder { get; set; }
+}
+
 /// <summary>How a post kind is named and ordered. Table-driven, keyed by the enum.</summary>
 public class MarketplacePostKindOption
 {

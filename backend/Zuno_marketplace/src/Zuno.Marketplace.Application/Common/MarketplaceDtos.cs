@@ -11,6 +11,10 @@ public class MarketplacePostDto
 
     public string? CategoryIconName { get; set; }
 
+    public Guid? SubCategoryId { get; set; }
+
+    public string? SubCategoryName { get; set; }
+
     public string Kind { get; set; } = string.Empty;
 
     /// <summary>As shown: an Active post whose end has passed comes back <c>Expired</c>.</summary>
@@ -130,24 +134,50 @@ public class MarketplaceCategoryDto
 
     public string Name { get; set; } = string.Empty;
 
+    /// <summary>The few letters the category squares show; the name when there is none.</summary>
+    public string ShortName { get; set; } = string.Empty;
+
+    public string? Description { get; set; }
+
     public string Slug { get; set; } = string.Empty;
 
     public string? IconName { get; set; }
 
     public string Kind { get; set; } = string.Empty;
 
-    public bool AllowsWholesale { get; set; }
+    /// <summary><c>RetailOnly</c>, <c>WholesaleOnly</c> or <c>Either</c>.</summary>
+    public string TradeMode { get; set; } = string.Empty;
 
     public short DisplayOrder { get; set; }
 
     public bool IsActive { get; set; }
 
+    public List<MarketplaceSubCategoryDto> SubCategories { get; set; } = [];
+
     public List<MarketplaceCategoryFieldDto> Fields { get; set; } = [];
+}
+
+public class MarketplaceSubCategoryDto
+{
+    public Guid Id { get; set; }
+
+    public string Name { get; set; } = string.Empty;
+
+    public string Slug { get; set; } = string.Empty;
+
+    public string? IconName { get; set; }
+
+    public short DisplayOrder { get; set; }
+
+    public bool IsActive { get; set; }
 }
 
 public class MarketplaceCategoryFieldDto
 {
     public Guid Id { get; set; }
+
+    /// <summary>The one sub-category it is asked for; null for the whole category.</summary>
+    public Guid? SubCategoryId { get; set; }
 
     public string Key { get; set; } = string.Empty;
 
@@ -171,6 +201,9 @@ public class MarketplaceOptionsDto
 {
     public List<MarketplaceOptionDto> Kinds { get; set; } = [];
 
+    /// <summary>How a category may sell, named for the super admin.</summary>
+    public List<MarketplaceOptionDto> TradeModes { get; set; } = [];
+
     public List<MarketplaceOptionDto> Statuses { get; set; } = [];
 
     public int ImageSlots { get; set; }
@@ -192,4 +225,7 @@ public class MarketplaceOptionDto
 
     /// <summary>The app's status colour; null on a list without colours.</summary>
     public string? Tone { get; set; }
+
+    /// <summary>A line under the name; null on a list without one.</summary>
+    public string? Detail { get; set; }
 }

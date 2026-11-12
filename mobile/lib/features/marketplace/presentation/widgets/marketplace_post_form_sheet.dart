@@ -66,6 +66,7 @@ class _MarketplacePostFormSheetState
   );
 
   late String? _categoryId = _old?.categoryId;
+  late String? _subCategoryId = _old?.subCategoryId;
   late String? _stateId = _old?.stateId;
   late String? _districtId = _old?.districtId;
   late String _tradeType = _old?.tradeType ?? MarketplaceTradeType.retail;
@@ -114,13 +115,18 @@ class _MarketplacePostFormSheetState
     super.dispose();
   }
 
+  /// Whether this post sells in bulk: always in a wholesale-only category (B2B), by choice in an
+  /// either-way one.
+  bool _sellsWholesale(MarketplaceCategory category) =>
+      category.isWholesaleOnly ||
+      (category.sellsEitherWay && _tradeType == MarketplaceTradeType.wholesale);
+
   MarketplacePostInput _input(MarketplaceCategory category) {
     final kind = category.kind;
-    final wholesale =
-        category.allowsWholesale &&
-        _tradeType == MarketplaceTradeType.wholesale;
+    final wholesale = _sellsWholesale(category);
     return MarketplacePostInput(
       categoryId: category.id,
+      subCategoryId: category.subCategories.isEmpty ? null : _subCategoryId,
       title: _title.text.trim(),
       description: _clean(_description),
       price: kind == MarketplacePostKind.advertisement
@@ -146,7 +152,7 @@ class _MarketplacePostFormSheetState
           : null,
       districtId: _districtId!,
       area: _clean(_area),
-      attributes: _attributes.valuesFor(category.fields),
+      attributes: _attributes.valuesFor(category.fieldsFor(_subCategoryId)),
     );
   }
 
@@ -305,17 +311,25 @@ class _MarketplacePostFormSheetState
                       SelectOption(
                         c.id,
                         c.name,
-                        detail: options?.kindName(c.kind),
+                        detail: c.description ?? options?.kindName(c.kind),
                       ),
                   ],
                   initialValue: _categoryId,
                   validator: (v) => v == null ? 'Choose a category.' : null,
                   onChanged: (id) => setState(() {
-                    // The details belong to one category, so they cannot survive a change of it.
-                    if (id != _categoryId) _attributes.clear();
+                    // The details and sub-category belong to one category, so they cannot survive
+                    // a change of it.
+                    if (id != _categoryId) {
+                      _attributes.clear();
+                      _subCategoryId = null;
+                    }
                     _categoryId = id;
                   }),
                 ),
+              if (category != null && category.subCategories.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                _subCategoryField(category),
+              ],
               const SizedBox(height: 14),
               TextFormField(
                 key: const ValueKey('marketplace-title'),
@@ -345,7 +359,7 @@ class _MarketplacePostFormSheetState
               if (category != null) ..._kindSection(category, options),
               if (category != null)
                 MarketplaceCategoryFieldsSection(
-                  fields: category.fields,
+                  fields: category.fieldsFor(_subCategoryId),
                   values: _attributes,
                   onChanged: () => setState(() {}),
                 ),
@@ -374,11 +388,9 @@ class _MarketplacePostFormSheetState
   };
 
   List<Widget> _listingSection(MarketplaceCategory category) {
-    final wholesale =
-        category.allowsWholesale &&
-        _tradeType == MarketplaceTradeType.wholesale;
+    final wholesale = _sellsWholesale(category);
     return [
-      if (category.allowsWholesale) ...[
+      if (category.sellsEitherWay) ...[
         SelectField<String>(
           key: const ValueKey('marketplace-trade-type'),
           label: 'Sell as',
@@ -399,7 +411,11 @@ class _MarketplacePostFormSheetState
         ),
         const SizedBox(height: 14),
       ],
-      _priceRow(priceLabel: 'Price', unitHint: 'kg, sq ft, piece'),
+      _priceRow(
+        priceLabel: wholesale ? 'Price per unit' : 'Price',
+        unitHint: 'kg, dozen, piece',
+        unitRequired: wholesale,
+      ),
       if (wholesale) ...[
         const SizedBox(height: 14),
         Row(
@@ -600,29 +616,61 @@ class _MarketplacePostFormSheetState
     ];
   }
 
-  Widget _priceRow({required String priceLabel, required String unitHint}) =>
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: _money(_price, key: 'marketplace-price', label: priceLabel),
-          ),
-          const SizedBox(width: 12),
-          Expanded(child: _unitField(unitHint)),
-        ],
-      );
+  Widget _priceRow({
+    required String priceLabel,
+    required String unitHint,
+    bool unitRequired = false,
+  }) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Expanded(
+        child: _money(_price, key: 'marketplace-price', label: priceLabel),
+      ),
+      const SizedBox(width: 12),
+      Expanded(child: _unitField(unitHint, required: unitRequired)),
+    ],
+  );
 
-  Widget _unitField(String hint) => TextFormField(
+  /// What the price is for — "kg", "plate". Required for wholesale: "₹45" means nothing in bulk.
+  Widget _unitField(String hint, {bool required = false}) => TextFormField(
     key: const ValueKey('marketplace-price-unit'),
     controller: _priceUnit,
     maxLength: 20,
     decoration: InputDecoration(
-      labelText: 'Per (optional)',
+      labelText: required ? 'Per' : 'Per (optional)',
       hintText: hint,
       border: const OutlineInputBorder(),
       counterText: '',
     ),
+    validator: required
+        ? (v) => (v ?? '').trim().isEmpty ? 'e.g. kg' : null
+        : null,
   );
+
+  /// Which kind within the category — Sarees, Fruits, Biryani & meals. Changing it drops the
+  /// details only the old one asked for.
+  Widget _subCategoryField(MarketplaceCategory category) {
+    final subs = [
+      for (final s in category.subCategories)
+        if (s.isActive) s,
+    ]..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
+    return SelectField<String>(
+      key: const ValueKey('marketplace-sub-category'),
+      label: 'Sub-category',
+      options: [for (final s in subs) SelectOption(s.id, s.name)],
+      initialValue: _subCategoryId,
+      validator: (v) => v == null ? 'Choose what kind it is.' : null,
+      onChanged: (id) => setState(() {
+        if (id != _subCategoryId) {
+          _attributes.clearKeys([
+            for (final f in category.fieldsFor(_subCategoryId))
+              if (f.subCategoryId != null) f.key,
+          ]);
+        }
+        _subCategoryId = id;
+      }),
+    );
+  }
 
   Widget _money(
     TextEditingController controller, {

@@ -85,7 +85,7 @@ public class QueryAndCatalogTests
         {
             p.Title = "Old food";
             p.Kind = MarketplacePostKind.FoodOffer;
-            p.CategoryId = MarketplaceCatalogSeedData.FoodOffers;
+            p.CategoryId = MarketplaceCatalogSeedData.NearbyFood;
             p.EndsAt = test.Now.AddMinutes(-1);
         });
 
@@ -125,8 +125,11 @@ public class QueryAndCatalogTests
         test.Seed(p => { p.OwnerUserId = verified; p.Title = "Paused"; p.Status = MarketplacePostStatus.Paused; });
         test.Seed(p => { p.OwnerUserId = verified; p.Title = "Ended"; p.EndsAt = test.Now; });
         test.Seed(p => { p.OwnerUserId = verified; p.Title = "Not yet"; p.StartsAt = test.Now.AddHours(1); p.EndsAt = test.Now.AddHours(2); });
-        test.Seed(p => { p.OwnerUserId = verified; p.Title = "Category off"; p.CategoryId = MarketplaceCatalogSeedData.Products; });
-        var products = await test.Db.Categories.SingleAsync(c => c.Id == MarketplaceCatalogSeedData.Products);
+        test.Seed(p => { p.OwnerUserId = verified; p.Title = "Category off"; p.CategoryId = MarketplaceCatalogSeedData.B2BWholesale; p.SubCategoryId = null; });
+        test.Seed(p => { p.OwnerUserId = verified; p.Title = "Sub-category off"; p.SubCategoryId = MarketplaceCatalogSeedData.SubId(3, 1); });
+        var sarees = await test.Db.SubCategories.SingleAsync(s => s.Id == MarketplaceCatalogSeedData.SubId(3, 1));
+        sarees.IsActive = false;
+        var products = await test.Db.Categories.SingleAsync(c => c.Id == MarketplaceCatalogSeedData.B2BWholesale);
         products.IsActive = false;
         await test.Db.SaveChangesAsync();
 
@@ -142,10 +145,12 @@ public class QueryAndCatalogTests
 
         var categories = await test.CatalogHandlers.Handle(new GetMarketplaceCategoriesQuery(), default);
 
-        categories.Select(c => c.Slug).Should().Equal("vehicles", "property", "products", "farm-wholesale", "food-offers", "events-sales");
-        categories[0].Fields.Select(f => f.Key).Should().Equal("brand", "model_year", "km_driven", "fuel", "owners");
-        categories.Single(c => c.Slug == "farm-wholesale").AllowsWholesale.Should().BeTrue();
-        categories.Single(c => c.Slug == "food-offers").Kind.Should().Be("FoodOffer");
+        categories.Select(c => c.Slug).Should().Equal("products", "b2b-wholesale", "nearby-food", "advertisements");
+        categories.Select(c => c.ShortName).Should().Equal("Products", "B2B", "Food", "Ads");
+        categories[0].SubCategories.Select(s => s.Name).Should().StartWith(["Sarees", "Clothing", "Footwear", "Toys"]).And.Contain(["Vehicles", "Property"]);
+        categories[0].Fields.Select(f => f.Key).Should().Equal("condition", "brand", "model_year", "km_driven", "fuel", "owners", "property_type", "deal", "area", "bedrooms");
+        categories.Single(c => c.Slug == "b2b-wholesale").TradeMode.Should().Be("WholesaleOnly");
+        categories.Single(c => c.Slug == "nearby-food").Kind.Should().Be("FoodOffer");
     }
 
     [Fact]
@@ -216,7 +221,8 @@ public class QueryAndCatalogTests
 
         var category = await test.AdminHandlers.Handle(new CreateMarketplaceFieldCommand
         {
-            CategoryId = MarketplaceCatalogSeedData.Vehicles,
+            CategoryId = MarketplaceCatalogSeedData.Products,
+            SubCategoryId = MarketplaceCatalogSeedData.Vehicles,
             Label = "Insurance valid till",
             FieldType = "Text",
             IsRequired = true,
@@ -235,7 +241,7 @@ public class QueryAndCatalogTests
         using var test = new TestMarketplace();
 
         var act = () => test.AdminHandlers.Handle(
-            new CreateMarketplaceFieldCommand { CategoryId = MarketplaceCatalogSeedData.Vehicles, Label = "KM driven", FieldType = "Number" }, default);
+            new CreateMarketplaceFieldCommand { CategoryId = MarketplaceCatalogSeedData.Products, SubCategoryId = MarketplaceCatalogSeedData.Vehicles, Label = "KM driven", FieldType = "Number" }, default);
 
         await act.Should().ThrowAsync<DomainException>();
     }
@@ -249,7 +255,8 @@ public class QueryAndCatalogTests
         var category = await test.AdminHandlers.Handle(new UpdateMarketplaceFieldCommand
         {
             Id = fuel,
-            CategoryId = MarketplaceCatalogSeedData.Vehicles,
+            CategoryId = MarketplaceCatalogSeedData.Products,
+            SubCategoryId = MarketplaceCatalogSeedData.Vehicles,
             Label = "Fuel used",
             FieldType = "Text",
             Options = ["Petrol"],
@@ -265,7 +272,7 @@ public class QueryAndCatalogTests
         var fuel = (await test.Db.CategoryFields.SingleAsync(f => f.Key == "fuel")).Id;
 
         var act = () => test.AdminHandlers.Handle(
-            new UpdateMarketplaceFieldCommand { Id = fuel, CategoryId = MarketplaceCatalogSeedData.Property, Label = "Fuel", FieldType = "Text" }, default);
+            new UpdateMarketplaceFieldCommand { Id = fuel, CategoryId = MarketplaceCatalogSeedData.B2BWholesale, Label = "Fuel", FieldType = "Text" }, default);
 
         await act.Should().ThrowAsync<EntityNotFoundException>();
     }
@@ -311,7 +318,7 @@ public class QueryAndCatalogTests
         var fields = MarketplaceCatalogSeedData.Fields;
 
         fields.Where(f => f.FieldType == MarketplaceFieldType.Select).Should().OnlyContain(f => f.Options.Count > 0);
-        fields.GroupBy(f => (f.CategoryId, f.Key)).Should().OnlyContain(g => g.Count() == 1);
+        fields.GroupBy(f => (f.CategoryId, f.SubCategoryId, f.Key)).Should().OnlyContain(g => g.Count() == 1);
         fields.Select(f => f.Id).Should().OnlyHaveUniqueItems();
         fields.Select(f => f.CategoryId).Should().BeSubsetOf(MarketplaceCatalogSeedData.Categories.Select(c => c.Id));
     }

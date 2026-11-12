@@ -16,6 +16,7 @@ public class PostRulesTests
     private static MarketplaceCategory CategoryOf(Guid id)
     {
         var category = MarketplaceCatalogSeedData.Categories.Single(c => c.Id == id);
+        category.SubCategories = MarketplaceCatalogSeedData.SubCategories.Where(s => s.CategoryId == id).ToList();
         category.Fields = MarketplaceCatalogSeedData.Fields.Where(f => f.CategoryId == id).ToList();
         return category;
     }
@@ -35,6 +36,7 @@ public class PostRulesTests
             Quantity = 20,
             StartsAt = Now,
             EndsAt = Now.AddHours(2),
+            SubCategoryId = MarketplaceCatalogSeedData.SubId(5, 1),
             Attributes = new() { ["food_type"] = "Veg" },
         };
         change?.Invoke(command);
@@ -43,21 +45,21 @@ public class PostRulesTests
 
     [Fact]
     public void Check_ValidCar_HasNoErrors() =>
-        Errors(MarketplaceCatalogSeedData.Vehicles, TestMarketplace.Car()).Should().BeEmpty();
+        Errors(MarketplaceCatalogSeedData.Products, TestMarketplace.Car()).Should().BeEmpty();
 
     [Fact]
     public void Check_ListingWithoutPrice_AsksForPrice() =>
-        Errors(MarketplaceCatalogSeedData.Vehicles, TestMarketplace.Car(c => c.Price = null))
+        Errors(MarketplaceCatalogSeedData.Products, TestMarketplace.Car(c => c.Price = null))
             .Should().ContainSingle(e => e.StartsWith("Price:"));
 
     [Fact]
     public void Check_RequiredDetailMissing_NamesTheDetail() =>
-        Errors(MarketplaceCatalogSeedData.Vehicles, TestMarketplace.Car(c => c.Attributes.Remove("km_driven")))
+        Errors(MarketplaceCatalogSeedData.Products, TestMarketplace.Car(c => c.Attributes.Remove("km_driven")))
             .Should().ContainSingle().Which.Should().Be("Attributes.km_driven: KM driven is required.");
 
     [Fact]
     public void Check_RequiredDetailBlank_CountsAsMissing() =>
-        Errors(MarketplaceCatalogSeedData.Vehicles, TestMarketplace.Car(c => c.Attributes["brand"] = "   "))
+        Errors(MarketplaceCatalogSeedData.Products, TestMarketplace.Car(c => c.Attributes["brand"] = "   "))
             .Should().ContainSingle(e => e.StartsWith("Attributes.brand:"));
 
     [Theory]
@@ -65,28 +67,28 @@ public class PostRulesTests
     [InlineData("12,34abc")]
     [InlineData("<script>")]
     public void Check_NumberDetailNotANumber_IsRefused(string value) =>
-        Errors(MarketplaceCatalogSeedData.Vehicles, TestMarketplace.Car(c => c.Attributes["km_driven"] = value))
+        Errors(MarketplaceCatalogSeedData.Products, TestMarketplace.Car(c => c.Attributes["km_driven"] = value))
             .Should().ContainSingle().Which.Should().Contain("must be a number");
 
     [Fact]
     public void Check_SelectValueOutsideOptions_IsRefused() =>
-        Errors(MarketplaceCatalogSeedData.Vehicles, TestMarketplace.Car(c => c.Attributes["fuel"] = "Steam"))
+        Errors(MarketplaceCatalogSeedData.Products, TestMarketplace.Car(c => c.Attributes["fuel"] = "Steam"))
             .Should().ContainSingle().Which.Should().Contain("Choose Fuel from the list");
 
     [Fact]
     public void Check_SelectValueOtherCase_IsRefused() =>
-        Errors(MarketplaceCatalogSeedData.Vehicles, TestMarketplace.Car(c => c.Attributes["fuel"] = "petrol"))
+        Errors(MarketplaceCatalogSeedData.Products, TestMarketplace.Car(c => c.Attributes["fuel"] = "petrol"))
             .Should().ContainSingle();
 
     [Fact]
     public void Check_UnknownDetailKey_IsRefused() =>
-        Errors(MarketplaceCatalogSeedData.Vehicles, TestMarketplace.Car(c => c.Attributes["colour"] = "Red"))
+        Errors(MarketplaceCatalogSeedData.Products, TestMarketplace.Car(c => c.Attributes["colour"] = "Red"))
             .Should().ContainSingle(e => e.StartsWith("Attributes.colour:"));
 
     [Fact]
     public void Check_SwitchedOffField_IsNoLongerAsked()
     {
-        var category = CategoryOf(MarketplaceCatalogSeedData.Vehicles);
+        var category = CategoryOf(MarketplaceCatalogSeedData.Products);
         category.Fields.Single(f => f.Key == "km_driven").IsActive = false;
 
         MarketplacePostRules.Check(category, TestMarketplace.Car(c => c.Attributes.Remove("km_driven")), Now, Limits)
@@ -95,56 +97,56 @@ public class PostRulesTests
 
     [Fact]
     public void Check_WholesaleInRetailOnlyCategory_IsRefused() =>
-        Errors(MarketplaceCatalogSeedData.Vehicles, TestMarketplace.Car(c => { c.TradeType = "Wholesale"; c.MinOrderQuantity = 2; }))
+        Errors(MarketplaceCatalogSeedData.Products, TestMarketplace.Car(c => { c.TradeType = "Wholesale"; c.MinOrderQuantity = 2; }))
             .Should().ContainSingle(e => e.StartsWith("TradeType:"));
 
     [Fact]
     public void Check_ValidWholesale_HasNoErrors() =>
-        Errors(MarketplaceCatalogSeedData.FarmWholesale, TestMarketplace.Bananas()).Should().BeEmpty();
+        Errors(MarketplaceCatalogSeedData.B2BWholesale, TestMarketplace.Bananas()).Should().BeEmpty();
 
     [Fact]
     public void Check_WholesaleWithoutMinimumOrder_AsksForIt() =>
-        Errors(MarketplaceCatalogSeedData.FarmWholesale, TestMarketplace.Bananas(c => c.MinOrderQuantity = null))
+        Errors(MarketplaceCatalogSeedData.B2BWholesale, TestMarketplace.Bananas(c => c.MinOrderQuantity = null))
             .Should().ContainSingle(e => e.StartsWith("MinOrderQuantity:"));
 
     [Theory]
     [InlineData(2000, true)]
     [InlineData(2001, false)]
     public void Check_MinimumOrderAgainstQuantity_BoundaryIsInclusive(int minimum, bool allowed) =>
-        Errors(MarketplaceCatalogSeedData.FarmWholesale, TestMarketplace.Bananas(c => c.MinOrderQuantity = minimum))
+        Errors(MarketplaceCatalogSeedData.B2BWholesale, TestMarketplace.Bananas(c => c.MinOrderQuantity = minimum))
             .Should().HaveCount(allowed ? 0 : 1);
 
     [Fact]
     public void Check_ValidFoodOffer_HasNoErrors() =>
-        Errors(MarketplaceCatalogSeedData.FoodOffers, Food()).Should().BeEmpty();
+        Errors(MarketplaceCatalogSeedData.NearbyFood, Food()).Should().BeEmpty();
 
     [Theory]
     [InlineData(180)]
     [InlineData(200)]
     public void Check_FoodOfferNotCheaper_IsRefused(decimal offer) =>
-        Errors(MarketplaceCatalogSeedData.FoodOffers, Food(c => c.Price = offer))
+        Errors(MarketplaceCatalogSeedData.NearbyFood, Food(c => c.Price = offer))
             .Should().ContainSingle().Which.Should().Contain("less than the usual price");
 
     [Fact]
     public void Check_FoodOfferWithoutUsualPriceOrPortions_AsksForBoth() =>
-        Errors(MarketplaceCatalogSeedData.FoodOffers, Food(c => { c.OriginalPrice = null; c.Quantity = null; }))
+        Errors(MarketplaceCatalogSeedData.NearbyFood, Food(c => { c.OriginalPrice = null; c.Quantity = null; }))
             .Should().HaveCount(2);
 
     [Fact]
     public void Check_FoodOfferWithoutTimes_AsksForThem() =>
-        Errors(MarketplaceCatalogSeedData.FoodOffers, Food(c => c.EndsAt = null))
+        Errors(MarketplaceCatalogSeedData.NearbyFood, Food(c => c.EndsAt = null))
             .Should().ContainSingle().Which.Should().Contain("starts and ends");
 
     [Fact]
     public void Check_EndBeforeStart_IsRefused() =>
-        Errors(MarketplaceCatalogSeedData.FoodOffers, Food(c => c.EndsAt = c.StartsAt))
+        Errors(MarketplaceCatalogSeedData.NearbyFood, Food(c => c.EndsAt = c.StartsAt))
             .Should().Contain(e => e.Contains("after the start"));
 
     [Theory]
     [InlineData(24, true)]
     [InlineData(25, false)]
     public void Check_FoodOfferLength_BoundaryIsTheConfiguredHours(int hours, bool allowed) =>
-        Errors(MarketplaceCatalogSeedData.FoodOffers, Food(c => c.EndsAt = Now.AddHours(hours)))
+        Errors(MarketplaceCatalogSeedData.NearbyFood, Food(c => c.EndsAt = Now.AddHours(hours)))
             .Should().HaveCount(allowed ? 0 : 1);
 
     [Fact]
@@ -152,17 +154,17 @@ public class PostRulesTests
     {
         var longer = new MarketplaceSettings { MaxFoodOfferHours = 48 };
 
-        Errors(MarketplaceCatalogSeedData.FoodOffers, Food(c => c.EndsAt = Now.AddHours(30)), longer).Should().BeEmpty();
+        Errors(MarketplaceCatalogSeedData.NearbyFood, Food(c => c.EndsAt = Now.AddHours(30)), longer).Should().BeEmpty();
     }
 
     [Fact]
     public void Check_EndAlreadyPassed_IsRefused() =>
-        Errors(MarketplaceCatalogSeedData.FoodOffers, Food(c => { c.StartsAt = Now.AddHours(-3); c.EndsAt = Now.AddHours(-1); }))
+        Errors(MarketplaceCatalogSeedData.NearbyFood, Food(c => { c.StartsAt = Now.AddHours(-3); c.EndsAt = Now.AddHours(-1); }))
             .Should().ContainSingle().Which.Should().Contain("in the future");
 
     [Fact]
     public void Check_StartTooFarAhead_IsRefused() =>
-        Errors(MarketplaceCatalogSeedData.FoodOffers, Food(c => { c.StartsAt = Now.AddDays(31); c.EndsAt = Now.AddDays(31).AddHours(1); }))
+        Errors(MarketplaceCatalogSeedData.NearbyFood, Food(c => { c.StartsAt = Now.AddDays(31); c.EndsAt = Now.AddDays(31).AddHours(1); }))
             .Should().ContainSingle(e => e.StartsWith("StartsAt:"));
 
     [Theory]
@@ -175,16 +177,16 @@ public class PostRulesTests
             Title = "Aadi sale",
             StartsAt = Now,
             EndsAt = Now.AddDays(days),
-            Attributes = new() { ["ad_type"] = "Event" },
+            SubCategoryId = MarketplaceCatalogSeedData.SubId(6, 1),
         };
 
-        Errors(MarketplaceCatalogSeedData.EventsSales, ad).Should().HaveCount(allowed ? 0 : 1);
+        Errors(MarketplaceCatalogSeedData.Advertisements, ad).Should().HaveCount(allowed ? 0 : 1);
     }
 
     [Fact]
     public void Attributes_KeepsOnlyFilledDetails_InFieldOrder_WithNumbersPlain()
     {
-        var category = CategoryOf(MarketplaceCatalogSeedData.Vehicles);
+        var category = CategoryOf(MarketplaceCatalogSeedData.Products);
         var command = TestMarketplace.Car(c =>
         {
             c.Attributes["km_driven"] = " 48000.50 ";
@@ -201,8 +203,8 @@ public class PostRulesTests
     [InlineData("", "Retail")]
     [InlineData("wholesale", "Wholesale")]
     [InlineData("99", "Retail")]
-    public void TradeTypeOf_ReadsNameCaseInsensitively(string? sent, string expected) =>
-        MarketplacePostRules.TradeTypeOf(new CreateMarketplacePostCommand { TradeType = sent }).ToString().Should().Be(expected);
+    public void RequestedTradeType_ReadsNameCaseInsensitively(string? sent, string expected) =>
+        MarketplacePostRules.RequestedTradeType(new CreateMarketplacePostCommand { TradeType = sent }).ToString().Should().Be(expected);
 
     [Fact]
     public void Validator_FieldRules_EachReportOnTheirOwn()

@@ -31,6 +31,12 @@ class MarketplaceApi {
 
   static String adminCategoryPath(String id) => '$adminCategoriesPath/$id';
 
+  static String adminSubCategoriesPath(String categoryId) =>
+      '$adminCategoriesPath/$categoryId/sub-categories';
+
+  static String adminSubCategoryPath(String categoryId, String subId) =>
+      '$adminCategoriesPath/$categoryId/sub-categories/$subId';
+
   static String adminFieldsPath(String categoryId) =>
       '$adminCategoriesPath/$categoryId/fields';
 

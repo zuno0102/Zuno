@@ -22,7 +22,8 @@ public class PostHandlerTests
 
         dto.Status.Should().Be("Active");
         dto.Kind.Should().Be("Listing");
-        dto.CategoryName.Should().Be("Vehicles");
+        dto.CategoryName.Should().Be("Products");
+        dto.SubCategoryName.Should().Be("Vehicles");
         dto.DistrictName.Should().Be("Kanyakumari");
         dto.Attributes.Should().ContainKey("km_driven").WhoseValue.Should().Be("48000");
         dto.Actions.Select(a => a.ToStatus).Should().Equal("Paused", "Closed");
@@ -164,7 +165,7 @@ public class PostHandlerTests
     public async Task Create_SwitchedOffCategory_IsAValidationError()
     {
         using var test = new TestMarketplace();
-        var vehicles = await test.Db.Categories.SingleAsync(c => c.Id == MarketplaceCatalogSeedData.Vehicles);
+        var vehicles = await test.Db.Categories.SingleAsync(c => c.Id == MarketplaceCatalogSeedData.Products);
         vehicles.IsActive = false;
         await test.Db.SaveChangesAsync();
 
@@ -489,6 +490,7 @@ public class PostHandlerTests
     {
         var car = TestMarketplace.Car();
         update.CategoryId = car.CategoryId;
+        update.SubCategoryId = car.SubCategoryId;
         update.Title = car.Title;
         update.Price = car.Price;
         update.DistrictId = car.DistrictId;
@@ -500,6 +502,7 @@ public class PostHandlerTests
     {
         var food = test.Biryani();
         update.CategoryId = food.CategoryId;
+        update.SubCategoryId = food.SubCategoryId;
         update.Title = food.Title;
         update.Price = food.Price;
         update.OriginalPrice = food.OriginalPrice;

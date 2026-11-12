@@ -54,16 +54,11 @@ String? marketplaceDetailsLine(
   List<MarketplaceCategory> categories,
 ) {
   if (post.attributes.isEmpty) return null;
-  final fields = categories
-      .where((c) => c.id == post.categoryId)
-      .firstOrNull
-      ?.fields;
-  if (fields == null) return post.attributes.values.join(' · ');
+  final category = categories.where((c) => c.id == post.categoryId).firstOrNull;
+  if (category == null) return post.attributes.values.join(' · ');
 
-  final sorted = [...fields]
-    ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
   final values = [
-    for (final f in sorted)
+    for (final f in category.fieldsFor(post.subCategoryId))
       if (post.attributes[f.key] case final value?)
         f.unit == null ? value : '$value ${f.unit}',
   ];

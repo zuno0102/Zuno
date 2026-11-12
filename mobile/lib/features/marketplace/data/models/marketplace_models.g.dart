@@ -36,6 +36,8 @@ MarketplacePostModel _$MarketplacePostModelFromJson(
   stateId: json['stateId'] as String,
   stateName: json['stateName'] as String,
   categoryIconName: json['categoryIconName'] as String?,
+  subCategoryId: json['subCategoryId'] as String?,
+  subCategoryName: json['subCategoryName'] as String?,
   description: json['description'] as String?,
   price: (json['price'] as num?)?.toDouble(),
   priceUnit: json['priceUnit'] as String?,
@@ -96,6 +98,7 @@ MarketplaceCategoryFieldModel _$MarketplaceCategoryFieldModelFromJson(
   options:
       (json['options'] as List<dynamic>?)?.map((e) => e as String).toList() ??
       const [],
+  subCategoryId: json['subCategoryId'] as String?,
   unit: json['unit'] as String?,
 );
 
@@ -106,10 +109,20 @@ MarketplaceCategoryModel _$MarketplaceCategoryModelFromJson(
   name: json['name'] as String,
   slug: json['slug'] as String,
   kind: json['kind'] as String,
-  allowsWholesale: json['allowsWholesale'] as bool,
+  tradeMode: json['tradeMode'] as String,
   displayOrder: (json['displayOrder'] as num).toInt(),
   isActive: json['isActive'] as bool,
+  shortName: json['shortName'] as String?,
+  description: json['description'] as String?,
   iconName: json['iconName'] as String?,
+  subCategories:
+      (json['subCategories'] as List<dynamic>?)
+          ?.map(
+            (e) =>
+                MarketplaceSubCategoryModel.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const [],
   fields:
       (json['fields'] as List<dynamic>?)
           ?.map(
@@ -119,6 +132,17 @@ MarketplaceCategoryModel _$MarketplaceCategoryModelFromJson(
           )
           .toList() ??
       const [],
+);
+
+MarketplaceSubCategoryModel _$MarketplaceSubCategoryModelFromJson(
+  Map<String, dynamic> json,
+) => MarketplaceSubCategoryModel(
+  id: json['id'] as String,
+  name: json['name'] as String,
+  slug: json['slug'] as String,
+  displayOrder: (json['displayOrder'] as num).toInt(),
+  isActive: json['isActive'] as bool,
+  iconName: json['iconName'] as String?,
 );
 
 MarketplacePlanModel _$MarketplacePlanModelFromJson(
@@ -150,6 +174,7 @@ MarketplaceOptionModel _$MarketplaceOptionModelFromJson(
   code: json['code'] as String,
   name: json['name'] as String,
   tone: json['tone'] as String?,
+  detail: json['detail'] as String?,
 );
 
 MarketplaceOptionsModel _$MarketplaceOptionsModelFromJson(
@@ -163,6 +188,13 @@ MarketplaceOptionsModel _$MarketplaceOptionsModelFromJson(
       .toList(),
   imageSlots: (json['imageSlots'] as num).toInt(),
   maxFoodOfferHours: (json['maxFoodOfferHours'] as num).toInt(),
+  tradeModes:
+      (json['tradeModes'] as List<dynamic>?)
+          ?.map(
+            (e) => MarketplaceOptionModel.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const [],
   maxAdDays: (json['maxAdDays'] as num).toInt(),
 );
 

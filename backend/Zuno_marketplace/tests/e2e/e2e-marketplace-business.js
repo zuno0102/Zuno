@@ -13,11 +13,11 @@ const M = process.env.MARKETPLACE_API ?? "http://localhost:5058/api/v1";
 const run = Date.now().toString(36);
 let pass = 0, fail = 0;
 
-const VEHICLES = "d4444444-0000-0000-0000-000000000001";
-const PRODUCTS = "d4444444-0000-0000-0000-000000000003";
-const FARM = "d4444444-0000-0000-0000-000000000004";
-const FOOD = "d4444444-0000-0000-0000-000000000005";
-const ADS = "d4444444-0000-0000-0000-000000000006";
+// Categories and sub-categories are looked up by their slugs from the server, never typed in.
+const place = (cats, cat, sub) => {
+  const c = cats.find(x => x.slug === cat);
+  return { categoryId: c?.id, subCategoryId: c?.subCategories.find(s => s.slug === sub)?.id };
+};
 
 const ok = (name, cond, detail = "") => {
   if (cond) { pass++; console.log(`PASS  ${name.padEnd(70)} ${detail}`); }
@@ -84,16 +84,24 @@ const register = async (first, role) => {
   no("A list detail without choices is refused", await M_("POST", `/admin/marketplace/categories/${mobiles.data?.id}/fields`, admin, { label: "Colour", fieldType: "Select", options: [] }));
 
   // ── Listing and the free plan ───────────────────────────────────────────────────────────────
-  const car = { categoryId: VEHICLES, title: "Swift VXi 2019", price: 420000, districtId: district, area: "Marthandam",
+  const all = (await M_("GET", "/marketplace-categories", biz)).data ?? [];
+  ok("Four main categories, each with sub-categories",
+    ["products", "b2b-wholesale", "nearby-food", "advertisements"].every(s => all.find(c => c.slug === s)?.subCategories.length > 0));
+  const VEHICLES = place(all, "products", "vehicles"), SAREES = place(all, "products", "sarees");
+  const FRUITS = place(all, "b2b-wholesale", "fruits"), BIRYANI = place(all, "nearby-food", "biryani-meals");
+  const CRICKET = place(all, "advertisements", "cricket-tournament");
+  const car = { ...VEHICLES, title: "Swift VXi 2019", price: 420000, districtId: district, area: "Marthandam",
     attributes: { brand: "Maruti", model_year: "2019", km_driven: "48000", fuel: "Petrol" } };
   no("A car without KM driven is refused", await M_("POST", "/business/marketplace", biz, { ...car, attributes: { brand: "Maruti", model_year: "2019", fuel: "Petrol" } }), "KM driven is required");
   no("A fuel not on the list is refused", await M_("POST", "/business/marketplace", biz, { ...car, attributes: { ...car.attributes, fuel: "Steam" } }), "from the list");
-  no("Wholesale where the category does not allow it is refused", await M_("POST", "/business/marketplace", biz, { ...car, categoryId: PRODUCTS, tradeType: "Wholesale", minOrderQuantity: 5, attributes: { condition: "New" } }), "wholesale");
+  no("Wholesale where the category does not allow it is refused", await M_("POST", "/business/marketplace", biz, { ...car, ...SAREES, tradeType: "Wholesale", minOrderQuantity: 5, attributes: { condition: "New" } }), "wholesale");
+  no("A post without its sub-category is refused", await M_("POST", "/business/marketplace", biz, { ...car, subCategoryId: null }), "what kind");
+  no("A saree is not asked a vehicle's details", await M_("POST", "/business/marketplace", biz, { ...car, ...SAREES }), "no detail called");
   const posted = await M_("POST", "/business/marketplace", biz, car);
   yes("The business posts a car", posted);
   const carId = posted.data?.id;
   ok("...Active, with its details", posted.data?.status === "Active" && posted.data?.attributes?.km_driven === "48000");
-  const food = { categoryId: FOOD, title: "Veg biryani", price: 99, originalPrice: 180, priceUnit: "plate", quantity: 20,
+  const food = { ...BIRYANI, title: "Veg biryani", price: 99, originalPrice: 180, priceUnit: "plate", quantity: 20,
     startsAt: hours(0), endsAt: hours(2), districtId: district, attributes: { food_type: "Veg" } };
   no("A second live post on the free plan is refused", await M_("POST", "/business/marketplace", biz, food), "allows 1 active post");
   const summary = (await M_("GET", "/business/marketplace/summary", biz)).data;
@@ -118,11 +126,15 @@ const register = async (first, role) => {
 
   yes("Closing the food offer", await M_("PATCH", `/business/marketplace/${offer.data?.id}/status`, biz, { status: "Closed" }));
   no("A closed post cannot be put up again", await M_("PATCH", `/business/marketplace/${offer.data?.id}/status`, biz, { status: "Active" }), "cannot be moved");
-  const ad = { categoryId: ADS, title: "Aadi sale 50% off", startsAt: hours(0), endsAt: hours(24 * 30), contactPhone: "9876543210",
-    districtId: district, attributes: { ad_type: "Sale / offer" } };
+  const ad = { ...CRICKET, title: "Aadi sale 50% off", startsAt: hours(0), endsAt: hours(24 * 30), contactPhone: "9876543210",
+    districtId: district, attributes: {} };
   yes("An advert goes up in the freed slot", await M_("POST", "/business/marketplace", biz, ad));
-  const bulk = { categoryId: FARM, title: "Nendran banana", price: 45, priceUnit: "kg", tradeType: "Wholesale", minOrderQuantity: 100,
-    quantity: 2000, districtId: district, attributes: { produce_type: "Fruits" } };
+  const bulk = { ...FRUITS, title: "Nendran banana", price: 45, priceUnit: "kg", tradeType: "Wholesale", minOrderQuantity: 100,
+    quantity: 2000, districtId: district, attributes: {} };
+  no("B2B without a smallest order is refused", await M_("POST", "/business/marketplace", biz2, { ...bulk, minOrderQuantity: null }), "smallest order");
+  const sentRetail = await M_("POST", "/business/marketplace", biz2, { ...bulk, tradeType: "Retail" });
+  ok("B2B sent as retail is saved as wholesale", sentRetail.data?.tradeType === "Wholesale", `${sentRetail.status} ${sentRetail.data?.tradeType}`);
+  yes("...and pausing it frees the slot", await M_("PATCH", `/business/marketplace/${sentRetail.data?.id}/status`, biz2, { status: "Paused" }));
   yes("The second business posts wholesale produce", await M_("POST", "/business/marketplace", biz2, bulk));
   yes("Removing the paused car", await M_("DELETE", `/business/marketplace/${carId}`, biz));
   const mine = (await M_("GET", "/business/marketplace?pageSize=500", biz)).data;

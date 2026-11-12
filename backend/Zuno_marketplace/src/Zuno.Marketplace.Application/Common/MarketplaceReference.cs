@@ -15,12 +15,13 @@ public class MarketplaceReference(IMarketplaceDbContext dbContext, IMemoryCache 
 
     public const string TransitionsKey = "marketplace:transitions";
 
-    /// <summary>Every category, active or not, each with all its fields, in display order.</summary>
+    /// <summary>Every category, active or not, each with all its sub-categories and fields, in display order.</summary>
     public Task<IReadOnlyList<MarketplaceCategory>> CategoriesAsync(CancellationToken cancellationToken) =>
         CachedAsync<MarketplaceCategory>(
             CategoriesKey,
             async () => await dbContext.Categories
                 .AsNoTracking()
+                .Include(c => c.SubCategories)
                 .Include(c => c.Fields)
                 .OrderBy(c => c.DisplayOrder)
                 .ThenBy(c => c.Name)

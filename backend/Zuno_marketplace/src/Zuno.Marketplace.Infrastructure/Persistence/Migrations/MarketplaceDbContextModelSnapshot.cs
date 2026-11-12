@@ -119,10 +119,6 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<bool>("AllowsWholesale")
-                        .HasColumnType("boolean")
-                        .HasColumnName("allows_wholesale");
-
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
@@ -130,6 +126,11 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedDate")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_date");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("description");
 
                     b.Property<short>("DisplayOrder")
                         .HasColumnType("smallint")
@@ -166,11 +167,20 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
+                    b.Property<string>("ShortName")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("short_name");
+
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("slug");
+
+                    b.Property<short>("TradeMode")
+                        .HasColumnType("smallint")
+                        .HasColumnName("trade_mode");
 
                     b.HasKey("Id")
                         .HasName("pk_marketplace_categories");
@@ -183,86 +193,96 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                     b.ToTable("marketplace_categories", null, t =>
                         {
                             t.HasCheckConstraint("ck_marketplace_categories_kind", "kind IN (1, 2, 3)");
+
+                            t.HasCheckConstraint("ck_marketplace_categories_trade_mode", "trade_mode IN (1, 2, 3)");
                         });
 
                     b.HasData(
                         new
                         {
                             Id = new Guid("d4444444-0000-0000-0000-000000000001"),
-                            AllowsWholesale = false,
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DisplayOrder = (short)1,
+                            DisplayOrder = (short)90,
                             IconName = "car",
-                            IsActive = true,
+                            IsActive = false,
                             IsDeleted = false,
                             Kind = (short)1,
                             Name = "Vehicles",
-                            Slug = "vehicles"
+                            Slug = "vehicles",
+                            TradeMode = (short)1
                         },
                         new
                         {
                             Id = new Guid("d4444444-0000-0000-0000-000000000002"),
-                            AllowsWholesale = false,
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DisplayOrder = (short)2,
+                            DisplayOrder = (short)91,
                             IconName = "home",
-                            IsActive = true,
+                            IsActive = false,
                             IsDeleted = false,
                             Kind = (short)1,
                             Name = "Property",
-                            Slug = "property"
+                            Slug = "property",
+                            TradeMode = (short)1
                         },
                         new
                         {
                             Id = new Guid("d4444444-0000-0000-0000-000000000003"),
-                            AllowsWholesale = false,
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DisplayOrder = (short)3,
-                            IconName = "shopping",
+                            Description = "Sarees, shirts, toys, mobiles, vehicles, property",
+                            DisplayOrder = (short)1,
+                            IconName = "shopping_bag_outlined",
                             IsActive = true,
                             IsDeleted = false,
                             Kind = (short)1,
                             Name = "Products",
-                            Slug = "products"
+                            ShortName = "Products",
+                            Slug = "products",
+                            TradeMode = (short)1
                         },
                         new
                         {
                             Id = new Guid("d4444444-0000-0000-0000-000000000004"),
-                            AllowsWholesale = true,
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DisplayOrder = (short)4,
-                            IconName = "agriculture",
+                            Description = "Banana, pineapple, coconut, chicken — in bulk for dealers",
+                            DisplayOrder = (short)2,
+                            IconName = "agriculture_outlined",
                             IsActive = true,
                             IsDeleted = false,
                             Kind = (short)1,
-                            Name = "Farm & Wholesale",
-                            Slug = "farm-wholesale"
+                            Name = "B2B Wholesale",
+                            ShortName = "B2B",
+                            Slug = "b2b-wholesale",
+                            TradeMode = (short)2
                         },
                         new
                         {
                             Id = new Guid("d4444444-0000-0000-0000-000000000005"),
-                            AllowsWholesale = false,
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DisplayOrder = (short)5,
-                            IconName = "food",
+                            Description = "Last-minute offers: biryani, pizza, burgers — no waste",
+                            DisplayOrder = (short)3,
+                            IconName = "restaurant_outlined",
                             IsActive = true,
                             IsDeleted = false,
                             Kind = (short)2,
-                            Name = "Food offers",
-                            Slug = "food-offers"
+                            Name = "Nearby food",
+                            ShortName = "Food",
+                            Slug = "nearby-food",
+                            TradeMode = (short)1
                         },
                         new
                         {
                             Id = new Guid("d4444444-0000-0000-0000-000000000006"),
-                            AllowsWholesale = false,
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DisplayOrder = (short)6,
-                            IconName = "campaign",
+                            Description = "Aadi sale, tournaments, shop and brand openings",
+                            DisplayOrder = (short)4,
+                            IconName = "campaign_outlined",
                             IsActive = true,
                             IsDeleted = false,
                             Kind = (short)3,
-                            Name = "Events & Sales",
-                            Slug = "events-sales"
+                            Name = "Advertisements",
+                            ShortName = "Ads",
+                            Slug = "advertisements",
+                            TradeMode = (short)1
                         });
                 });
 
@@ -330,6 +350,10 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .HasColumnType("text[]")
                         .HasColumnName("options");
 
+                    b.Property<Guid?>("SubCategoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sub_category_id");
+
                     b.Property<string>("Unit")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
@@ -338,10 +362,15 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_marketplace_category_fields");
 
-                    b.HasIndex("CategoryId", "Key")
+                    b.HasIndex("SubCategoryId")
+                        .HasDatabaseName("ix_marketplace_category_fields_sub_category_id");
+
+                    b.HasIndex("CategoryId", "SubCategoryId", "Key")
                         .IsUnique()
-                        .HasDatabaseName("ix_marketplace_category_fields_category_id_key")
+                        .HasDatabaseName("ix_marketplace_category_fields_category_id_sub_category_id_key")
                         .HasFilter("is_deleted = false");
+
+                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("CategoryId", "SubCategoryId", "Key"), false);
 
                     b.ToTable("marketplace_category_fields", null, t =>
                         {
@@ -352,7 +381,7 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = new Guid("f6666666-0000-0000-0001-000000000001"),
-                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000001"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)1,
                             FieldType = (short)1,
@@ -361,12 +390,13 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             IsRequired = true,
                             Key = "brand",
                             Label = "Brand",
-                            Options = new List<string>()
+                            Options = new List<string>(),
+                            SubCategoryId = new Guid("c7777777-0000-0000-0003-000000000010")
                         },
                         new
                         {
                             Id = new Guid("f6666666-0000-0000-0001-000000000002"),
-                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000001"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)2,
                             FieldType = (short)2,
@@ -375,12 +405,13 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             IsRequired = true,
                             Key = "model_year",
                             Label = "Model year",
-                            Options = new List<string>()
+                            Options = new List<string>(),
+                            SubCategoryId = new Guid("c7777777-0000-0000-0003-000000000010")
                         },
                         new
                         {
                             Id = new Guid("f6666666-0000-0000-0001-000000000003"),
-                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000001"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)3,
                             FieldType = (short)2,
@@ -390,12 +421,13 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             Key = "km_driven",
                             Label = "KM driven",
                             Options = new List<string>(),
+                            SubCategoryId = new Guid("c7777777-0000-0000-0003-000000000010"),
                             Unit = "km"
                         },
                         new
                         {
                             Id = new Guid("f6666666-0000-0000-0001-000000000004"),
-                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000001"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)4,
                             FieldType = (short)3,
@@ -404,12 +436,13 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             IsRequired = true,
                             Key = "fuel",
                             Label = "Fuel",
-                            Options = new List<string> { "Petrol", "Diesel", "CNG", "Electric" }
+                            Options = new List<string> { "Petrol", "Diesel", "CNG", "Electric" },
+                            SubCategoryId = new Guid("c7777777-0000-0000-0003-000000000010")
                         },
                         new
                         {
                             Id = new Guid("f6666666-0000-0000-0001-000000000005"),
-                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000001"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)5,
                             FieldType = (short)2,
@@ -418,12 +451,13 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             IsRequired = false,
                             Key = "owners",
                             Label = "Owners",
-                            Options = new List<string>()
+                            Options = new List<string>(),
+                            SubCategoryId = new Guid("c7777777-0000-0000-0003-000000000010")
                         },
                         new
                         {
                             Id = new Guid("f6666666-0000-0000-0002-000000000001"),
-                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000002"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)1,
                             FieldType = (short)3,
@@ -432,12 +466,13 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             IsRequired = true,
                             Key = "property_type",
                             Label = "Property type",
-                            Options = new List<string> { "Land", "House", "Flat", "Shop / commercial" }
+                            Options = new List<string> { "Land", "House", "Flat", "Shop / commercial" },
+                            SubCategoryId = new Guid("c7777777-0000-0000-0003-000000000011")
                         },
                         new
                         {
                             Id = new Guid("f6666666-0000-0000-0002-000000000002"),
-                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000002"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)2,
                             FieldType = (short)3,
@@ -446,12 +481,13 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             IsRequired = true,
                             Key = "deal",
                             Label = "For",
-                            Options = new List<string> { "Sale", "Rent", "Lease" }
+                            Options = new List<string> { "Sale", "Rent", "Lease" },
+                            SubCategoryId = new Guid("c7777777-0000-0000-0003-000000000011")
                         },
                         new
                         {
                             Id = new Guid("f6666666-0000-0000-0002-000000000003"),
-                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000002"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)3,
                             FieldType = (short)2,
@@ -461,12 +497,13 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             Key = "area",
                             Label = "Area",
                             Options = new List<string>(),
+                            SubCategoryId = new Guid("c7777777-0000-0000-0003-000000000011"),
                             Unit = "cents"
                         },
                         new
                         {
                             Id = new Guid("f6666666-0000-0000-0002-000000000004"),
-                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000002"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)4,
                             FieldType = (short)2,
@@ -475,7 +512,8 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             IsRequired = false,
                             Key = "bedrooms",
                             Label = "Bedrooms",
-                            Options = new List<string>()
+                            Options = new List<string>(),
+                            SubCategoryId = new Guid("c7777777-0000-0000-0003-000000000011")
                         },
                         new
                         {
@@ -486,7 +524,7 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             FieldType = (short)3,
                             IsActive = true,
                             IsDeleted = false,
-                            IsRequired = true,
+                            IsRequired = false,
                             Key = "condition",
                             Label = "Condition",
                             Options = new List<string> { "New", "Used" }
@@ -498,7 +536,7 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)2,
                             FieldType = (short)1,
-                            IsActive = true,
+                            IsActive = false,
                             IsDeleted = false,
                             IsRequired = false,
                             Key = "brand",
@@ -512,9 +550,9 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)1,
                             FieldType = (short)3,
-                            IsActive = true,
+                            IsActive = false,
                             IsDeleted = false,
-                            IsRequired = true,
+                            IsRequired = false,
                             Key = "produce_type",
                             Label = "Produce",
                             Options = new List<string> { "Vegetables", "Fruits", "Grains", "Coconut", "Spices", "Dairy", "Other" }
@@ -554,9 +592,9 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)1,
                             FieldType = (short)3,
-                            IsActive = true,
+                            IsActive = false,
                             IsDeleted = false,
-                            IsRequired = true,
+                            IsRequired = false,
                             Key = "ad_type",
                             Label = "Type",
                             Options = new List<string> { "Sale / offer", "Sports tournament", "Event", "Shop opening" }
@@ -766,6 +804,10 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .HasColumnType("smallint")
                         .HasColumnName("status");
 
+                    b.Property<Guid?>("SubCategoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sub_category_id");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(120)
@@ -785,11 +827,14 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_marketplace_posts");
 
-                    b.HasIndex("CategoryId")
-                        .HasDatabaseName("ix_marketplace_posts_category_id");
-
                     b.HasIndex("DistrictId")
                         .HasDatabaseName("ix_marketplace_posts_district_id");
+
+                    b.HasIndex("SubCategoryId")
+                        .HasDatabaseName("ix_marketplace_posts_sub_category_id");
+
+                    b.HasIndex("CategoryId", "SubCategoryId")
+                        .HasDatabaseName("ix_marketplace_posts_category_id_sub_category_id");
 
                     b.HasIndex("OwnerUserId", "CreatedDate")
                         .HasDatabaseName("ix_marketplace_posts_owner_user_id_created_date");
@@ -1036,6 +1081,500 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             ActionName = "Close (sold / done)",
                             DisplayOrder = (short)4,
                             NeedsConfirm = true
+                        });
+                });
+
+            modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceSubCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("category_id");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
+
+                    b.Property<short>("DisplayOrder")
+                        .HasColumnType("smallint")
+                        .HasColumnName("display_order");
+
+                    b.Property<string>("IconName")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("icon_name");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_date");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("slug");
+
+                    b.HasKey("Id")
+                        .HasName("pk_marketplace_sub_categories");
+
+                    b.HasIndex("CategoryId", "Slug")
+                        .IsUnique()
+                        .HasDatabaseName("ix_marketplace_sub_categories_category_id_slug")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("marketplace_sub_categories", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0003-000000000001"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)1,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Sarees",
+                            Slug = "sarees"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0003-000000000002"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)2,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Clothing",
+                            Slug = "clothing"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0003-000000000003"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)3,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Footwear",
+                            Slug = "footwear"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0003-000000000004"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)4,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Toys",
+                            Slug = "toys"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0003-000000000005"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)5,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Mobiles & electronics",
+                            Slug = "mobiles-electronics"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0003-000000000006"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)6,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Home & kitchen",
+                            Slug = "home-kitchen"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0003-000000000007"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)7,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Furniture",
+                            Slug = "furniture"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0003-000000000008"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)8,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Beauty",
+                            Slug = "beauty"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0003-000000000009"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)9,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Books & stationery",
+                            Slug = "books-stationery"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0003-000000000010"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)10,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Vehicles",
+                            Slug = "vehicles"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0003-000000000011"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)11,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Property",
+                            Slug = "property"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0003-000000000012"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000003"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)12,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Other",
+                            Slug = "other"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0004-000000000001"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)1,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Fruits",
+                            Slug = "fruits"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0004-000000000002"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)2,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Vegetables",
+                            Slug = "vegetables"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0004-000000000003"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)3,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Coconut",
+                            Slug = "coconut"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0004-000000000004"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)4,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Chicken & meat",
+                            Slug = "chicken-meat"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0004-000000000005"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)5,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Fish",
+                            Slug = "fish"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0004-000000000006"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)6,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Grains & pulses",
+                            Slug = "grains-pulses"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0004-000000000007"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)7,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Spices",
+                            Slug = "spices"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0004-000000000008"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)8,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Dairy",
+                            Slug = "dairy"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0004-000000000009"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)9,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Other",
+                            Slug = "other"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0005-000000000001"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000005"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)1,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Biryani & meals",
+                            Slug = "biryani-meals"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0005-000000000002"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000005"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)2,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Pizza & burgers",
+                            Slug = "pizza-burgers"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0005-000000000003"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000005"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)3,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Sandwiches & snacks",
+                            Slug = "sandwiches-snacks"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0005-000000000004"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000005"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)4,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Bakery & sweets",
+                            Slug = "bakery-sweets"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0005-000000000005"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000005"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)5,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Tea & juice",
+                            Slug = "tea-juice"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0005-000000000006"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000005"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)6,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Other",
+                            Slug = "other"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0006-000000000001"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000006"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)1,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Sale & offers",
+                            Slug = "sale-offers"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0006-000000000002"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000006"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)2,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Cricket tournament",
+                            Slug = "cricket-tournament"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0006-000000000003"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000006"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)3,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Football tournament",
+                            Slug = "football-tournament"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0006-000000000004"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000006"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)4,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Shop opening",
+                            Slug = "shop-opening"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0006-000000000005"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000006"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)5,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "New brand opening",
+                            Slug = "new-brand-opening"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0006-000000000006"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000006"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)6,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Events & celebrations",
+                            Slug = "events-celebrations"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0006-000000000007"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000006"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)7,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Other",
+                            Slug = "other"
+                        });
+                });
+
+            modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceTradeModeOption", b =>
+                {
+                    b.Property<short>("Code")
+                        .HasColumnType("smallint")
+                        .HasColumnName("code");
+
+                    b.Property<string>("Detail")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("detail");
+
+                    b.Property<short>("DisplayOrder")
+                        .HasColumnType("smallint")
+                        .HasColumnName("display_order");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Code")
+                        .HasName("pk_ref_marketplace_trade_modes");
+
+                    b.ToTable("ref_marketplace_trade_modes", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Code = (short)1,
+                            Detail = "One at a time to customers",
+                            DisplayOrder = (short)1,
+                            Name = "Retail only"
+                        },
+                        new
+                        {
+                            Code = (short)2,
+                            Detail = "Bulk to businesses: price per unit and a smallest order",
+                            DisplayOrder = (short)2,
+                            Name = "Wholesale only (B2B)"
+                        },
+                        new
+                        {
+                            Code = (short)3,
+                            Detail = "The business chooses on each post",
+                            DisplayOrder = (short)3,
+                            Name = "Either"
                         });
                 });
 
@@ -5879,7 +6418,15 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_marketplace_category_fields_marketplace_categories_category");
 
+                    b.HasOne("Zuno.Marketplace.Domain.Entities.MarketplaceSubCategory", "SubCategory")
+                        .WithMany()
+                        .HasForeignKey("SubCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_marketplace_category_fields_sub_categories_sub_category_id");
+
                     b.Navigation("Category");
+
+                    b.Navigation("SubCategory");
                 });
 
             modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplacePost", b =>
@@ -5897,6 +6444,12 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_marketplace_posts_districts_district_id");
+
+                    b.HasOne("Zuno.Marketplace.Domain.Entities.MarketplaceSubCategory", "SubCategory")
+                        .WithMany()
+                        .HasForeignKey("SubCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_marketplace_posts_sub_categories_sub_category_id");
 
                     b.OwnsMany("Zuno.Marketplace.Domain.Entities.MarketplacePostAttribute", "Attributes", b1 =>
                         {
@@ -5934,6 +6487,8 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                     b.Navigation("Category");
 
                     b.Navigation("District");
+
+                    b.Navigation("SubCategory");
                 });
 
             modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplacePostMedia", b =>
@@ -5946,6 +6501,18 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_marketplace_post_media_marketplace_posts_post_id");
 
                     b.Navigation("Post");
+                });
+
+            modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceSubCategory", b =>
+                {
+                    b.HasOne("Zuno.Marketplace.Domain.Entities.MarketplaceCategory", "Category")
+                        .WithMany("SubCategories")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_marketplace_sub_categories_marketplace_categories_category_");
+
+                    b.Navigation("Category");
                 });
 
             modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.RefDistrict", b =>
@@ -5963,6 +6530,8 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceCategory", b =>
                 {
                     b.Navigation("Fields");
+
+                    b.Navigation("SubCategories");
                 });
 
             modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplacePost", b =>

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/features/marketplace/domain/entities/marketplace_post.dart';
 import 'package:zuno/features/marketplace/presentation/providers/marketplace_providers.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
@@ -8,10 +9,9 @@ import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
 import 'package:zuno/shared/widgets/select_field.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
-import 'package:zuno/core/theme/app_colors.dart';
 
-/// The Marketplace categories, and the details each asks a post for — set up by the super admin,
-/// so a new kind of thing to sell ("Mobiles", "Livestock") needs no release.
+/// The Marketplace's main categories, their sub-categories, and the details each asks a post for —
+/// set up by the super admin, so a new kind of thing to sell ("Mobiles", "Watches") needs no release.
 class AdminMarketplaceCategoriesScreen extends ConsumerWidget {
   const AdminMarketplaceCategoriesScreen({super.key});
 
@@ -61,6 +61,10 @@ Future<void> _showSheet(BuildContext context, Widget sheet) =>
       builder: (_) => sheet,
     );
 
+/// The name the server's table gives [code], or [code] until the table has loaded.
+String _optionName(List<MarketplaceOption>? list, String code) =>
+    list?.where((o) => o.code == code).firstOrNull?.name ?? code;
+
 class _CategoryCard extends StatelessWidget {
   const _CategoryCard({required this.category, required this.options});
 
@@ -69,8 +73,9 @@ class _CategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fields = [...category.fields]
+    final subs = [...category.subCategories]
       ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
+    final wholeCategory = category.fieldsFor(null);
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ExpansionTile(
@@ -83,8 +88,8 @@ class _CategoryCard extends StatelessWidget {
         subtitle: Text(
           [
             options?.kindName(category.kind) ?? category.kind,
-            if (category.allowsWholesale) 'Wholesale allowed',
-            '${fields.length} detail${fields.length == 1 ? '' : 's'}',
+            _optionName(options?.tradeModes, category.tradeMode),
+            '${subs.length} sub-categor${subs.length == 1 ? 'y' : 'ies'}',
           ].join(' · '),
         ),
         trailing: category.isActive
@@ -95,33 +100,52 @@ class _CategoryCard extends StatelessWidget {
                 compact: true,
               ),
         children: [
-          for (final f in fields)
+          const _Heading('Sub-categories'),
+          for (final s in subs)
             ListTile(
+              key: ValueKey('admin-marketplace-sub-${s.slug}'),
               dense: true,
-              title: Text(f.isRequired ? f.label : '${f.label} (optional)'),
-              subtitle: Text(
-                [
-                  f.fieldType,
-                  if (f.unit != null) f.unit!,
-                  if (f.options.isNotEmpty) f.options.join(', '),
-                  if (!f.isActive) 'hidden',
-                ].join(' · '),
-              ),
+              title: Text(s.isActive ? s.name : '${s.name} (hidden)'),
+              subtitle: _detailsLine(category.fieldsFor(s.id), s.id),
               trailing: const Icon(Icons.edit_outlined, size: 18),
               onTap: () => _showSheet(
                 context,
-                _FieldSheet(categoryId: category.id, existing: f),
+                _SubCategorySheet(categoryId: category.id, existing: s),
               ),
             ),
+          if (wholeCategory.isNotEmpty) ...[
+            const _Heading('Details asked in every sub-category'),
+            for (final f in wholeCategory)
+              _FieldTile(category: category, field: f),
+          ],
+          for (final s in subs)
+            if (category.fields.any((f) => f.subCategoryId == s.id)) ...[
+              _Heading('Details for ${s.name}'),
+              for (final f in category.fields)
+                if (f.subCategoryId == s.id)
+                  _FieldTile(category: category, field: f),
+            ],
           OverflowBar(
             alignment: MainAxisAlignment.end,
             children: [
               TextButton.icon(
+                key: ValueKey('admin-marketplace-add-sub-${category.slug}'),
+                onPressed: () => _showSheet(
+                  context,
+                  _SubCategorySheet(
+                    categoryId: category.id,
+                    nextOrder: subs.length + 1,
+                  ),
+                ),
+                icon: const Icon(Icons.add),
+                label: const Text('Sub-category'),
+              ),
+              TextButton.icon(
                 onPressed: () => _showSheet(
                   context,
                   _FieldSheet(
-                    categoryId: category.id,
-                    nextOrder: fields.length + 1,
+                    category: category,
+                    nextOrder: category.fields.length + 1,
                   ),
                 ),
                 icon: const Icon(Icons.add),
@@ -133,12 +157,71 @@ class _CategoryCard extends StatelessWidget {
                   _CategorySheet(existing: category, options: options),
                 ),
                 icon: const Icon(Icons.edit_outlined),
-                label: const Text('Edit category'),
+                label: const Text('Edit'),
               ),
             ],
           ),
         ],
       ),
+    );
+  }
+
+  /// "Brand · Model year · KM driven" — what a post in this sub-category is asked beyond the rest.
+  static Widget? _detailsLine(
+    List<MarketplaceCategoryField> fields,
+    String subId,
+  ) {
+    final own = [
+      for (final f in fields)
+        if (f.subCategoryId == subId) f.label,
+    ];
+    return own.isEmpty ? null : Text(own.join(' · '));
+  }
+}
+
+class _Heading extends StatelessWidget {
+  const _Heading(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
+    child: Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+          color: Theme.of(context).colorScheme.primary,
+        ),
+      ),
+    ),
+  );
+}
+
+class _FieldTile extends StatelessWidget {
+  const _FieldTile({required this.category, required this.field});
+
+  final MarketplaceCategory category;
+  final MarketplaceCategoryField field;
+
+  @override
+  Widget build(BuildContext context) {
+    final f = field;
+    return ListTile(
+      dense: true,
+      title: Text(f.isRequired ? f.label : '${f.label} (optional)'),
+      subtitle: Text(
+        [
+          f.fieldType,
+          ?f.unit,
+          if (f.options.isNotEmpty) f.options.join(', '),
+          if (!f.isActive) 'hidden',
+        ].join(' · '),
+      ),
+      trailing: const Icon(Icons.edit_outlined, size: 18),
+      onTap: () =>
+          _showSheet(context, _FieldSheet(category: category, existing: f)),
     );
   }
 }
@@ -162,6 +245,46 @@ Future<void> _saveAndClose(
   }
 }
 
+/// A whole-number box for a display order.
+Widget _orderField(TextEditingController controller) => TextFormField(
+  controller: controller,
+  keyboardType: TextInputType.number,
+  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+  decoration: const InputDecoration(
+    labelText: 'Order',
+    border: OutlineInputBorder(),
+  ),
+);
+
+/// The padding and title every admin sheet shares.
+Widget _sheet(
+  BuildContext context, {
+  required GlobalKey<FormState> formKey,
+  required String title,
+  required List<Widget> children,
+}) => Padding(
+  padding: EdgeInsets.fromLTRB(
+    20,
+    0,
+    20,
+    MediaQuery.of(context).viewInsets.bottom + 20,
+  ),
+  child: SingleChildScrollView(
+    child: Form(
+      key: formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 16),
+          ...children,
+        ],
+      ),
+    ),
+  ),
+);
+
 class _CategorySheet extends ConsumerStatefulWidget {
   const _CategorySheet({required this.options, this.existing});
 
@@ -174,21 +297,27 @@ class _CategorySheet extends ConsumerStatefulWidget {
 
 class _CategorySheetState extends ConsumerState<_CategorySheet> {
   final _formKey = GlobalKey<FormState>();
-  late final _name = TextEditingController(text: widget.existing?.name);
-  late final _icon = TextEditingController(text: widget.existing?.iconName);
-  late final _order = TextEditingController(
-    text: '${widget.existing?.displayOrder ?? 0}',
+  late final MarketplaceCategory? _old = widget.existing;
+  late final _name = TextEditingController(text: _old?.name);
+  late final _shortName = TextEditingController(
+    text: _old == null || _old.shortName == _old.name ? null : _old.shortName,
   );
-  late String _kind = widget.existing?.kind ?? MarketplacePostKind.listing;
-  late bool _wholesale = widget.existing?.allowsWholesale ?? false;
-  late bool _active = widget.existing?.isActive ?? true;
+  late final _description = TextEditingController(text: _old?.description);
+  late final _icon = TextEditingController(text: _old?.iconName);
+  late final _order = TextEditingController(text: '${_old?.displayOrder ?? 0}');
+  late String _kind = _old?.kind ?? MarketplacePostKind.listing;
+  late String _tradeMode = _old?.tradeMode ?? MarketplaceTradeMode.retailOnly;
+  late bool _active = _old?.isActive ?? true;
   bool _saving = false;
+
+  static String? _clean(TextEditingController c) =>
+      c.text.trim().isEmpty ? null : c.text.trim();
 
   @override
   void dispose() {
-    _name.dispose();
-    _icon.dispose();
-    _order.dispose();
+    for (final c in [_name, _shortName, _description, _icon, _order]) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -197,10 +326,158 @@ class _CategorySheetState extends ConsumerState<_CategorySheet> {
     setState(() => _saving = true);
     final input = MarketplaceCategoryInput(
       name: _name.text.trim(),
-      iconName: _icon.text.trim().isEmpty ? null : _icon.text.trim(),
+      shortName: _clean(_shortName),
+      description: _clean(_description),
+      iconName: _clean(_icon),
       kind: _kind,
-      allowsWholesale: _wholesale,
+      tradeMode: _tradeMode,
       displayOrder: int.tryParse(_order.text) ?? 0,
+      isActive: _active,
+    );
+    final repository = ref.read(marketplaceRepositoryProvider);
+    final old = _old;
+    await _saveAndClose(
+      context,
+      ref,
+      () => old == null
+          ? repository.createCategory(input)
+          : repository.updateCategory(old.id, input),
+      '${input.name} saved.',
+    );
+    if (mounted) setState(() => _saving = false);
+  }
+
+  /// A choice from one of the server's tables; until it has loaded, the current value alone.
+  List<SelectOption<String>> _choices(
+    List<MarketplaceOption>? list,
+    String current,
+  ) => list == null || list.isEmpty
+      ? [SelectOption(current, current)]
+      : [for (final o in list) SelectOption(o.code, o.name, detail: o.detail)];
+
+  @override
+  Widget build(BuildContext context) => _sheet(
+    context,
+    formKey: _formKey,
+    title: _old == null ? 'New category' : 'Edit category',
+    children: [
+      TextFormField(
+        key: const ValueKey('admin-marketplace-category-name'),
+        controller: _name,
+        maxLength: 100,
+        decoration: const InputDecoration(
+          labelText: 'Name',
+          border: OutlineInputBorder(),
+          counterText: '',
+        ),
+        validator: (v) => (v ?? '').trim().isEmpty ? 'Name is required.' : null,
+      ),
+      const SizedBox(height: 14),
+      TextFormField(
+        controller: _shortName,
+        maxLength: 20,
+        decoration: const InputDecoration(
+          labelText: 'Short name for the square (optional)',
+          hintText: 'e.g. B2B, Food, Ads',
+          border: OutlineInputBorder(),
+        ),
+      ),
+      const SizedBox(height: 6),
+      TextFormField(
+        controller: _description,
+        maxLength: 200,
+        decoration: const InputDecoration(
+          labelText: 'What goes in it (optional)',
+          hintText: 'e.g. Sarees, shirts, toys',
+          border: OutlineInputBorder(),
+        ),
+      ),
+      const SizedBox(height: 6),
+      SelectField<String>(
+        label: 'Kind',
+        options: _choices(widget.options?.kinds, _kind),
+        initialValue: _kind,
+        onChanged: (v) => setState(() => _kind = v),
+      ),
+      const SizedBox(height: 14),
+      SelectField<String>(
+        key: const ValueKey('admin-marketplace-trade-mode'),
+        label: 'How it sells',
+        options: _choices(widget.options?.tradeModes, _tradeMode),
+        initialValue: _tradeMode,
+        onChanged: (v) => setState(() => _tradeMode = v),
+      ),
+      const SizedBox(height: 14),
+      Row(
+        children: [
+          Expanded(
+            child: TextFormField(
+              controller: _icon,
+              maxLength: 50,
+              decoration: const InputDecoration(
+                labelText: 'Icon name (optional)',
+                border: OutlineInputBorder(),
+                counterText: '',
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: _orderField(_order)),
+        ],
+      ),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Shown to businesses and customers'),
+        value: _active,
+        onChanged: (v) => setState(() => _active = v),
+      ),
+      const SizedBox(height: 8),
+      PrimaryButton(
+        label: 'Save',
+        isLoading: _saving,
+        onPressed: _saving ? null : _save,
+      ),
+    ],
+  );
+}
+
+class _SubCategorySheet extends ConsumerStatefulWidget {
+  const _SubCategorySheet({
+    required this.categoryId,
+    this.existing,
+    this.nextOrder = 1,
+  });
+
+  final String categoryId;
+  final MarketplaceSubCategory? existing;
+  final int nextOrder;
+
+  @override
+  ConsumerState<_SubCategorySheet> createState() => _SubCategorySheetState();
+}
+
+class _SubCategorySheetState extends ConsumerState<_SubCategorySheet> {
+  final _formKey = GlobalKey<FormState>();
+  late final _name = TextEditingController(text: widget.existing?.name);
+  late final _order = TextEditingController(
+    text: '${widget.existing?.displayOrder ?? widget.nextOrder}',
+  );
+  late bool _active = widget.existing?.isActive ?? true;
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _order.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _saving = true);
+    final input = MarketplaceSubCategoryInput(
+      name: _name.text.trim(),
+      displayOrder: int.tryParse(_order.text) ?? widget.nextOrder,
       isActive: _active,
     );
     final repository = ref.read(marketplaceRepositoryProvider);
@@ -209,119 +486,57 @@ class _CategorySheetState extends ConsumerState<_CategorySheet> {
       context,
       ref,
       () => existing == null
-          ? repository.createCategory(input)
-          : repository.updateCategory(existing.id, input),
+          ? repository.createSubCategory(widget.categoryId, input)
+          : repository.updateSubCategory(widget.categoryId, existing.id, input),
       '${input.name} saved.',
     );
     if (mounted) setState(() => _saving = false);
   }
 
   @override
-  Widget build(BuildContext context) {
-    final kinds = widget.options?.kinds ?? const <MarketplaceOption>[];
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        0,
-        20,
-        MediaQuery.of(context).viewInsets.bottom + 20,
-      ),
-      child: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                widget.existing == null ? 'New category' : 'Edit category',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                key: const ValueKey('admin-marketplace-category-name'),
-                controller: _name,
-                maxLength: 100,
-                decoration: const InputDecoration(
-                  labelText: 'Name',
-                  border: OutlineInputBorder(),
-                  counterText: '',
-                ),
-                validator: (v) =>
-                    (v ?? '').trim().isEmpty ? 'Name is required.' : null,
-              ),
-              const SizedBox(height: 14),
-              SelectField<String>(
-                label: 'Kind',
-                options: [
-                  for (final k in kinds) SelectOption(k.code, k.name),
-                  if (kinds.isEmpty) SelectOption(_kind, _kind),
-                ],
-                initialValue: _kind,
-                onChanged: (v) => setState(() => _kind = v),
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _icon,
-                      maxLength: 50,
-                      decoration: const InputDecoration(
-                        labelText: 'Icon name (optional)',
-                        border: OutlineInputBorder(),
-                        counterText: '',
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _order,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      decoration: const InputDecoration(
-                        labelText: 'Order',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Allows wholesale (B2B)'),
-                value: _wholesale,
-                onChanged: (v) => setState(() => _wholesale = v),
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Shown to businesses and customers'),
-                value: _active,
-                onChanged: (v) => setState(() => _active = v),
-              ),
-              const SizedBox(height: 8),
-              PrimaryButton(
-                label: 'Save',
-                isLoading: _saving,
-                onPressed: _saving ? null : _save,
-              ),
-            ],
-          ),
+  Widget build(BuildContext context) => _sheet(
+    context,
+    formKey: _formKey,
+    title: widget.existing == null ? 'New sub-category' : 'Edit sub-category',
+    children: [
+      TextFormField(
+        key: const ValueKey('admin-marketplace-sub-name'),
+        controller: _name,
+        maxLength: 100,
+        decoration: const InputDecoration(
+          labelText: 'Name',
+          hintText: 'e.g. Sarees, Fruits, Cricket tournament',
+          border: OutlineInputBorder(),
+          counterText: '',
         ),
+        validator: (v) => (v ?? '').trim().isEmpty ? 'Name is required.' : null,
       ),
-    );
-  }
+      const SizedBox(height: 14),
+      _orderField(_order),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Shown on the post form'),
+        value: _active,
+        onChanged: (v) => setState(() => _active = v),
+      ),
+      const SizedBox(height: 8),
+      PrimaryButton(
+        label: 'Save',
+        isLoading: _saving,
+        onPressed: _saving ? null : _save,
+      ),
+    ],
+  );
 }
 
 class _FieldSheet extends ConsumerStatefulWidget {
   const _FieldSheet({
-    required this.categoryId,
+    required this.category,
     this.existing,
     this.nextOrder = 1,
   });
 
-  final String categoryId;
+  final MarketplaceCategory category;
   final MarketplaceCategoryField? existing;
   final int nextOrder;
 
@@ -348,18 +563,21 @@ class _FieldSheetState extends ConsumerState<_FieldSheet> {
     ),
   ];
 
+  /// "Applies to" for the whole category — a sub-category id is never empty.
+  static const _wholeCategory = '';
+
   final _formKey = GlobalKey<FormState>();
-  late final _label = TextEditingController(text: widget.existing?.label);
-  late final _unit = TextEditingController(text: widget.existing?.unit);
-  late final _choices = TextEditingController(
-    text: widget.existing?.options.join(', '),
-  );
+  late final MarketplaceCategoryField? _old = widget.existing;
+  late final _label = TextEditingController(text: _old?.label);
+  late final _unit = TextEditingController(text: _old?.unit);
+  late final _choices = TextEditingController(text: _old?.options.join(', '));
   late final _order = TextEditingController(
-    text: '${widget.existing?.displayOrder ?? widget.nextOrder}',
+    text: '${_old?.displayOrder ?? widget.nextOrder}',
   );
-  late String _type = widget.existing?.fieldType ?? MarketplaceFieldType.text;
-  late bool _required = widget.existing?.isRequired ?? false;
-  late bool _active = widget.existing?.isActive ?? true;
+  late String _type = _old?.fieldType ?? MarketplaceFieldType.text;
+  late String _appliesTo = _old?.subCategoryId ?? _wholeCategory;
+  late bool _required = _old?.isRequired ?? false;
+  late bool _active = _old?.isActive ?? true;
   bool _saving = false;
 
   List<String> get _options => [
@@ -369,10 +587,9 @@ class _FieldSheetState extends ConsumerState<_FieldSheet> {
 
   @override
   void dispose() {
-    _label.dispose();
-    _unit.dispose();
-    _choices.dispose();
-    _order.dispose();
+    for (final c in [_label, _unit, _choices, _order]) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -380,6 +597,7 @@ class _FieldSheetState extends ConsumerState<_FieldSheet> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     final input = MarketplaceFieldInput(
+      subCategoryId: _appliesTo == _wholeCategory ? null : _appliesTo,
       label: _label.text.trim(),
       fieldType: _type,
       options: _type == MarketplaceFieldType.select ? _options : const [],
@@ -389,13 +607,14 @@ class _FieldSheetState extends ConsumerState<_FieldSheet> {
       isActive: _active,
     );
     final repository = ref.read(marketplaceRepositoryProvider);
-    final existing = widget.existing;
+    final old = _old;
+    final categoryId = widget.category.id;
     await _saveAndClose(
       context,
       ref,
-      () => existing == null
-          ? repository.createField(widget.categoryId, input)
-          : repository.updateField(widget.categoryId, existing.id, input),
+      () => old == null
+          ? repository.createField(categoryId, input)
+          : repository.updateField(categoryId, old.id, input),
       '${input.label} saved.',
     );
     if (mounted) setState(() => _saving = false);
@@ -404,115 +623,107 @@ class _FieldSheetState extends ConsumerState<_FieldSheet> {
   @override
   Widget build(BuildContext context) {
     final isList = _type == MarketplaceFieldType.select;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        0,
-        20,
-        MediaQuery.of(context).viewInsets.bottom + 20,
-      ),
-      child: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                widget.existing == null ? 'New detail' : 'Edit detail',
-                style: Theme.of(context).textTheme.titleLarge,
+    final subs = [...widget.category.subCategories]
+      ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
+    return _sheet(
+      context,
+      formKey: _formKey,
+      title: _old == null ? 'New detail' : 'Edit detail',
+      children: [
+        TextFormField(
+          key: const ValueKey('admin-marketplace-field-label'),
+          controller: _label,
+          maxLength: 60,
+          decoration: const InputDecoration(
+            labelText: 'Label',
+            hintText: 'e.g. KM driven',
+            border: OutlineInputBorder(),
+            counterText: '',
+          ),
+          validator: (v) =>
+              (v ?? '').trim().isEmpty ? 'Label is required.' : null,
+        ),
+        const SizedBox(height: 14),
+        if (subs.isNotEmpty) ...[
+          SelectField<String>(
+            key: const ValueKey('admin-marketplace-field-applies-to'),
+            label: 'Applies to',
+            options: [
+              SelectOption(
+                _wholeCategory,
+                'All of ${widget.category.name}',
+                detail: 'Asked in every sub-category',
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                key: const ValueKey('admin-marketplace-field-label'),
-                controller: _label,
-                maxLength: 60,
+              for (final s in subs) SelectOption(s.id, s.name),
+            ],
+            initialValue: _appliesTo,
+            onChanged: (v) => setState(() => _appliesTo = v),
+          ),
+          const SizedBox(height: 14),
+        ],
+        SelectField<String>(
+          label: 'Type',
+          options: _types,
+          initialValue: _type,
+          onChanged: (v) => setState(() => _type = v),
+        ),
+        const SizedBox(height: 14),
+        if (isList) ...[
+          TextFormField(
+            controller: _choices,
+            decoration: const InputDecoration(
+              labelText: 'Choices, separated by commas',
+              hintText: 'Petrol, Diesel, Electric',
+              border: OutlineInputBorder(),
+            ),
+            validator: (_) {
+              final options = _options;
+              if (options.isEmpty) return 'Give at least one choice.';
+              final distinct = {for (final o in options) o.toLowerCase()};
+              return distinct.length == options.length
+                  ? null
+                  : 'Each choice must be different.';
+            },
+          ),
+          const SizedBox(height: 14),
+        ],
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: _unit,
+                maxLength: 20,
                 decoration: const InputDecoration(
-                  labelText: 'Label',
-                  hintText: 'e.g. KM driven',
+                  labelText: 'Unit (optional)',
+                  hintText: 'km, cents',
                   border: OutlineInputBorder(),
                   counterText: '',
                 ),
-                validator: (v) =>
-                    (v ?? '').trim().isEmpty ? 'Label is required.' : null,
               ),
-              const SizedBox(height: 14),
-              SelectField<String>(
-                label: 'Type',
-                options: _types,
-                initialValue: _type,
-                onChanged: (v) => setState(() => _type = v),
-              ),
-              const SizedBox(height: 14),
-              if (isList) ...[
-                TextFormField(
-                  controller: _choices,
-                  decoration: const InputDecoration(
-                    labelText: 'Choices, separated by commas',
-                    hintText: 'Petrol, Diesel, Electric',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (_) {
-                    final options = _options;
-                    if (options.isEmpty) return 'Give at least one choice.';
-                    final distinct = {for (final o in options) o.toLowerCase()};
-                    return distinct.length == options.length
-                        ? null
-                        : 'Each choice must be different.';
-                  },
-                ),
-                const SizedBox(height: 14),
-              ],
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _unit,
-                      maxLength: 20,
-                      decoration: const InputDecoration(
-                        labelText: 'Unit (optional)',
-                        hintText: 'km, cents',
-                        border: OutlineInputBorder(),
-                        counterText: '',
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _order,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      decoration: const InputDecoration(
-                        labelText: 'Order',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Required'),
-                value: _required,
-                onChanged: (v) => setState(() => _required = v),
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Shown on the post form'),
-                value: _active,
-                onChanged: (v) => setState(() => _active = v),
-              ),
-              const SizedBox(height: 8),
-              PrimaryButton(
-                label: 'Save',
-                isLoading: _saving,
-                onPressed: _saving ? null : _save,
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: _orderField(_order)),
+          ],
         ),
-      ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Required'),
+          value: _required,
+          onChanged: (v) => setState(() => _required = v),
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Shown on the post form'),
+          value: _active,
+          onChanged: (v) => setState(() => _active = v),
+        ),
+        const SizedBox(height: 8),
+        PrimaryButton(
+          label: 'Save',
+          isLoading: _saving,
+          onPressed: _saving ? null : _save,
+        ),
+      ],
     );
   }
 }

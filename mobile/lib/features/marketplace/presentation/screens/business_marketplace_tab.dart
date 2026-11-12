@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/core/ui_config/ui_icons.dart';
 import 'package:zuno/features/marketplace/data/marketplace_api.dart';
 import 'package:zuno/features/marketplace/domain/entities/marketplace_post.dart';
 import 'package:zuno/features/marketplace/presentation/providers/marketplace_providers.dart';
@@ -10,7 +11,7 @@ import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/confirm_dialog.dart';
 import 'package:zuno/shared/widgets/empty_state.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
-import 'package:zuno/shared/widgets/filter_chip_bar.dart';
+import 'package:zuno/shared/widgets/category_square_row.dart';
 import 'package:zuno/shared/widgets/media_list_card.dart';
 import 'package:zuno/shared/widgets/status_pill.dart';
 
@@ -24,8 +25,8 @@ StatusPill marketplaceStatusPill(MarketplaceOptions? options, String status) {
   );
 }
 
-/// What the business puts up on the Marketplace — listings, food offers and advertisements — with
-/// its plan's room at the top and a filter by kind.
+/// What the business puts up on the Marketplace, in its main categories, with
+/// its plan's room at the top and a square per category to filter by.
 ///
 /// With [status] set it shows only the posts in that state: what a Marketplace tile on the home
 /// screen opens. That view lists and changes posts, but adds from the Marketplace tab.
@@ -41,8 +42,8 @@ class BusinessMarketplaceTab extends ConsumerStatefulWidget {
 
 class _BusinessMarketplaceTabState
     extends ConsumerState<BusinessMarketplaceTab> {
-  /// The kind chosen on the filter bar; null for all.
-  String? _kind;
+  /// The main category chosen on the squares; null for all.
+  String? _categoryId;
 
   @override
   Widget build(BuildContext context) {
@@ -97,10 +98,18 @@ class _BusinessMarketplaceTabState
     MarketplaceSummary? summary,
     MarketplaceOptions? options,
   ) {
-    final shown = _kind == null
+    final shown = _categoryId == null
         ? posts
-        : posts.where((p) => p.kind == _kind).toList();
-    final kinds = options?.kinds ?? const <MarketplaceOption>[];
+        : posts.where((p) => p.categoryId == _categoryId).toList();
+    final categories =
+        ref.watch(marketplaceCategoriesProvider).value ??
+        const <MarketplaceCategory>[];
+    final chosen = categories.where((c) => c.id == _categoryId).firstOrNull;
+    // "products, b2b wholesale, nearby food or advertisements" — from the category table.
+    final names = [for (final c in categories) c.name.toLowerCase()];
+    final what = names.length < 2
+        ? names.join()
+        : '${names.take(names.length - 1).join(', ')} or ${names.last}';
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -118,36 +127,31 @@ class _BusinessMarketplaceTabState
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: MarketplacePlanBanner(plan: summary.plan),
             ),
-          if (posts.isNotEmpty && kinds.isNotEmpty)
-            FilterChipBar(
-              chips: [
-                CountChip(
-                  key: const ValueKey('marketplace-kind-all'),
-                  label: 'All',
-                  count: posts.length,
-                  selected: _kind == null,
-                  onSelected: () => setState(() => _kind = null),
-                ),
-                for (final k in kinds)
-                  CountChip(
-                    key: ValueKey('marketplace-kind-${k.code}'),
-                    label: k.name,
-                    count: posts.where((p) => p.kind == k.code).length,
-                    selected: _kind == k.code,
-                    onSelected: () => setState(() => _kind = k.code),
+          if (categories.isNotEmpty)
+            CategorySquareRow<String>(
+              squares: [
+                for (final c in categories)
+                  CategorySquare(
+                    value: c.id,
+                    label: c.shortName,
+                    icon: UiIcons.byName(c.iconName),
+                    count: posts.where((p) => p.categoryId == c.id).length,
                   ),
               ],
+              selected: _categoryId,
+              onChanged: (id) => setState(() => _categoryId = id),
             ),
           if (shown.isEmpty)
             EmptyState(
               icon: Icons.storefront_outlined,
-              title: posts.isEmpty ? 'Nothing posted yet' : 'None of this kind',
+              title: posts.isEmpty
+                  ? 'Nothing posted yet'
+                  : 'Nothing in ${chosen?.name ?? 'this category'} yet',
               message: widget.status != null
                   ? 'No posts here right now.'
                   : posts.isEmpty
-                  ? 'Tap "Add post" to list a vehicle, property, products, farm produce, '
-                        'a food offer or an advertisement.'
-                  : 'Choose another kind above, or tap "Add post".',
+                  ? 'Tap "Add post" to list $what.'
+                  : 'Choose another category above, or tap "Add post".',
             )
           else
             for (final post in shown)
@@ -238,7 +242,7 @@ class MarketplacePostCard extends ConsumerWidget {
       title: post.title,
       lines: [
         Text(
-          '${post.categoryName} · ${post.placeLine}',
+          '${post.categoryLine} · ${post.placeLine}',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),

@@ -12,6 +12,8 @@ public class MarketplaceDbContext(DbContextOptions<MarketplaceDbContext> options
 {
     public DbSet<MarketplaceCategory> Categories => Set<MarketplaceCategory>();
 
+    public DbSet<MarketplaceSubCategory> SubCategories => Set<MarketplaceSubCategory>();
+
     public DbSet<MarketplaceCategoryField> CategoryFields => Set<MarketplaceCategoryField>();
 
     public DbSet<MarketplacePost> Posts => Set<MarketplacePost>();
@@ -23,6 +25,8 @@ public class MarketplaceDbContext(DbContextOptions<MarketplaceDbContext> options
     public DbSet<MarketplacePlan> Plans => Set<MarketplacePlan>();
 
     public DbSet<MarketplaceBusinessPlan> BusinessPlans => Set<MarketplaceBusinessPlan>();
+
+    public DbSet<MarketplaceTradeModeOption> TradeModes => Set<MarketplaceTradeModeOption>();
 
     public DbSet<MarketplacePostKindOption> PostKinds => Set<MarketplacePostKindOption>();
 

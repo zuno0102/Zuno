@@ -26,17 +26,73 @@ abstract final class MarketplaceFieldType {
   static const select = 'Select';
 }
 
-/// A kind of thing posted — "Vehicles", "Food offers". Set up by the super admin.
+/// How the posts of a category may sell. Names for people come from the server's table.
+abstract final class MarketplaceTradeMode {
+  static const retailOnly = 'RetailOnly';
+  static const wholesaleOnly = 'WholesaleOnly';
+  static const either = 'Either';
+}
+
+/// A main kind of thing posted — "Products", "Nearby food" — holding sub-categories. Set up by the
+/// super admin.
 class MarketplaceCategory {
   const MarketplaceCategory({
     required this.id,
     required this.name,
+    required this.shortName,
     required this.slug,
     required this.kind,
-    required this.allowsWholesale,
+    required this.tradeMode,
     required this.displayOrder,
     required this.isActive,
+    required this.subCategories,
     required this.fields,
+    this.description,
+    this.iconName,
+  });
+
+  final String id;
+  final String name;
+
+  /// The few letters the category squares have room for, e.g. "B2B".
+  final String shortName;
+
+  /// What goes in it, e.g. "Sarees, shirts, toys" — shown in the post form's picker.
+  final String? description;
+  final String slug;
+  final String? iconName;
+  final String kind;
+  final String tradeMode;
+  final int displayOrder;
+  final bool isActive;
+  final List<MarketplaceSubCategory> subCategories;
+  final List<MarketplaceCategoryField> fields;
+
+  bool get isWholesaleOnly => tradeMode == MarketplaceTradeMode.wholesaleOnly;
+
+  bool get sellsEitherWay => tradeMode == MarketplaceTradeMode.either;
+
+  /// The details a post under [subCategoryId] is asked: the whole category's, then that one's.
+  List<MarketplaceCategoryField> fieldsFor(String? subCategoryId) =>
+      [
+        for (final f in fields)
+          if (f.subCategoryId == null || f.subCategoryId == subCategoryId) f,
+      ]..sort((a, b) {
+        final level = (a.subCategoryId == null ? 0 : 1).compareTo(
+          b.subCategoryId == null ? 0 : 1,
+        );
+        return level != 0 ? level : a.displayOrder.compareTo(b.displayOrder);
+      });
+}
+
+/// A narrower kind within a main category, e.g. "Sarees" under Products.
+class MarketplaceSubCategory {
+  const MarketplaceSubCategory({
+    required this.id,
+    required this.name,
+    required this.slug,
+    required this.displayOrder,
+    required this.isActive,
     this.iconName,
   });
 
@@ -44,11 +100,8 @@ class MarketplaceCategory {
   final String name;
   final String slug;
   final String? iconName;
-  final String kind;
-  final bool allowsWholesale;
   final int displayOrder;
   final bool isActive;
-  final List<MarketplaceCategoryField> fields;
 }
 
 /// A detail a category asks for, e.g. "KM driven" (a number in km) or "Fuel" (one of a list).
@@ -62,10 +115,14 @@ class MarketplaceCategoryField {
     required this.isRequired,
     required this.displayOrder,
     required this.isActive,
+    this.subCategoryId,
     this.unit,
   });
 
   final String id;
+
+  /// The one sub-category it is asked for; null for the whole category.
+  final String? subCategoryId;
   final String key;
   final String label;
   final String fieldType;
@@ -107,6 +164,8 @@ class MarketplacePost {
     required this.imageUrls,
     required this.actions,
     this.categoryIconName,
+    this.subCategoryId,
+    this.subCategoryName,
     this.description,
     this.price,
     this.priceUnit,
@@ -125,6 +184,8 @@ class MarketplacePost {
   final String categoryId;
   final String categoryName;
   final String? categoryIconName;
+  final String? subCategoryId;
+  final String? subCategoryName;
   final String kind;
   final String status;
   final String title;
@@ -162,6 +223,9 @@ class MarketplacePost {
 
   bool get isWholesale => tradeType == MarketplaceTradeType.wholesale;
 
+  /// "Products › Sarees" — the category, then the sub-category when it has one.
+  String get categoryLine => [categoryName, ?subCategoryName].join(' › ');
+
   /// "Marthandam, Kanyakumari" — the area when given, then the district.
   String get placeLine =>
       [if (area?.isNotEmpty ?? false) area!, districtName].join(', ');
@@ -171,6 +235,7 @@ class MarketplacePost {
 class MarketplacePostInput {
   const MarketplacePostInput({
     required this.categoryId,
+    this.subCategoryId,
     required this.title,
     required this.districtId,
     required this.tradeType,
@@ -188,6 +253,7 @@ class MarketplacePostInput {
   });
 
   final String categoryId;
+  final String? subCategoryId;
   final String title;
   final String? description;
   final double? price;
@@ -205,6 +271,7 @@ class MarketplacePostInput {
 
   Map<String, dynamic> toJson() => {
     'categoryId': categoryId,
+    'subCategoryId': subCategoryId,
     'title': title,
     'description': description,
     'price': price,
@@ -262,11 +329,19 @@ class MarketplaceSummary {
 
 /// A name from one of the server's reference tables, with its colour where it has one.
 class MarketplaceOption {
-  const MarketplaceOption({required this.code, required this.name, this.tone});
+  const MarketplaceOption({
+    required this.code,
+    required this.name,
+    this.tone,
+    this.detail,
+  });
 
   final String code;
   final String name;
   final String? tone;
+
+  /// A line under the name, e.g. what "Wholesale only" means.
+  final String? detail;
 }
 
 /// The post kinds, statuses and limits the Marketplace screens are drawn from.
@@ -275,12 +350,16 @@ class MarketplaceOptions {
     required this.kinds,
     required this.statuses,
     required this.imageSlots,
+    this.tradeModes = const [],
     required this.maxFoodOfferHours,
     required this.maxAdDays,
   });
 
   final List<MarketplaceOption> kinds;
   final List<MarketplaceOption> statuses;
+
+  /// How a category may sell, named for the super admin.
+  final List<MarketplaceOption> tradeModes;
   final int imageSlots;
   final int maxFoodOfferHours;
   final int maxAdDays;
@@ -306,29 +385,54 @@ class MarketplaceBusiness {
   final bool isKnown;
 }
 
-/// A category as the super admin saves it.
+/// A main category as the super admin saves it.
 class MarketplaceCategoryInput {
   const MarketplaceCategoryInput({
     required this.name,
     required this.kind,
-    required this.allowsWholesale,
+    required this.tradeMode,
     required this.displayOrder,
     required this.isActive,
+    this.shortName,
+    this.description,
     this.iconName,
   });
 
   final String name;
+  final String? shortName;
+  final String? description;
   final String? iconName;
   final String kind;
-  final bool allowsWholesale;
+  final String tradeMode;
   final int displayOrder;
   final bool isActive;
 
   Map<String, dynamic> toJson() => {
     'name': name,
+    'shortName': shortName,
+    'description': description,
     'iconName': iconName,
     'kind': kind,
-    'allowsWholesale': allowsWholesale,
+    'tradeMode': tradeMode,
+    'displayOrder': displayOrder,
+    'isActive': isActive,
+  };
+}
+
+/// A sub-category as the super admin saves it.
+class MarketplaceSubCategoryInput {
+  const MarketplaceSubCategoryInput({
+    required this.name,
+    required this.displayOrder,
+    required this.isActive,
+  });
+
+  final String name;
+  final int displayOrder;
+  final bool isActive;
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
     'displayOrder': displayOrder,
     'isActive': isActive,
   };
@@ -343,9 +447,12 @@ class MarketplaceFieldInput {
     required this.isRequired,
     required this.displayOrder,
     required this.isActive,
+    this.subCategoryId,
     this.unit,
   });
 
+  /// Ask it only under this sub-category; null asks it everywhere in the category.
+  final String? subCategoryId;
   final String label;
   final String fieldType;
   final List<String> options;
@@ -355,6 +462,7 @@ class MarketplaceFieldInput {
   final bool isActive;
 
   Map<String, dynamic> toJson() => {
+    'subCategoryId': subCategoryId,
     'label': label,
     'fieldType': fieldType,
     'options': options,

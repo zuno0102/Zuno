@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 abstract final class UiIcons {
   static const Map<String, IconData> _byName = {
     'add_shopping_cart_outlined': Icons.add_shopping_cart_outlined,
+    'agriculture_outlined': Icons.agriculture_outlined,
     'assignment_ind_outlined': Icons.assignment_ind_outlined,
     'badge_outlined': Icons.badge_outlined,
     'block': Icons.block,
@@ -40,9 +41,12 @@ abstract final class UiIcons {
     'play_circle_fill': Icons.play_circle_fill,
     'play_circle_outline': Icons.play_circle_outline,
     'report_gmailerrorred_outlined': Icons.report_gmailerrorred_outlined,
+    'restaurant_outlined': Icons.restaurant_outlined,
     'schedule': Icons.schedule,
     'send_outlined': Icons.send_outlined,
+    'shopping_bag_outlined': Icons.shopping_bag_outlined,
     'star_outline': Icons.star_outline,
+    'storefront_outlined': Icons.storefront_outlined,
     'task_alt_outlined': Icons.task_alt_outlined,
     'trending_up': Icons.trending_up,
     'verified_outlined': Icons.verified_outlined,

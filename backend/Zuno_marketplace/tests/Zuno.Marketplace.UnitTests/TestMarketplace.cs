@@ -64,7 +64,8 @@ internal sealed class TestMarketplace : IDisposable
     {
         var command = new CreateMarketplacePostCommand
         {
-            CategoryId = MarketplaceCatalogSeedData.Vehicles,
+            CategoryId = MarketplaceCatalogSeedData.Products,
+            SubCategoryId = MarketplaceCatalogSeedData.Vehicles,
             Title = "Swift VXi 2019",
             Price = 420_000m,
             DistrictId = Kanyakumari,
@@ -79,7 +80,8 @@ internal sealed class TestMarketplace : IDisposable
     {
         var command = new CreateMarketplacePostCommand
         {
-            CategoryId = MarketplaceCatalogSeedData.FoodOffers,
+            CategoryId = MarketplaceCatalogSeedData.NearbyFood,
+            SubCategoryId = MarketplaceCatalogSeedData.SubId(5, 1),
             Title = "Veg biryani",
             Price = 99m,
             OriginalPrice = 180m,
@@ -98,13 +100,14 @@ internal sealed class TestMarketplace : IDisposable
     {
         var command = new CreateMarketplacePostCommand
         {
-            CategoryId = MarketplaceCatalogSeedData.EventsSales,
+            CategoryId = MarketplaceCatalogSeedData.Advertisements,
+            SubCategoryId = MarketplaceCatalogSeedData.SubId(6, 1),
             Title = "Aadi sale 50% off",
             StartsAt = Now,
             EndsAt = Now.AddDays(30),
             ContactPhone = "9876543210",
             DistrictId = Kanyakumari,
-            Attributes = new() { ["ad_type"] = "Sale / offer" },
+            Attributes = new(),
         };
         change?.Invoke(command);
         return command;
@@ -114,7 +117,8 @@ internal sealed class TestMarketplace : IDisposable
     {
         var command = new CreateMarketplacePostCommand
         {
-            CategoryId = MarketplaceCatalogSeedData.FarmWholesale,
+            CategoryId = MarketplaceCatalogSeedData.B2BWholesale,
+            SubCategoryId = MarketplaceCatalogSeedData.SubId(4, 1),
             Title = "Nendran banana",
             Price = 45m,
             PriceUnit = "kg",
@@ -122,7 +126,7 @@ internal sealed class TestMarketplace : IDisposable
             MinOrderQuantity = 100,
             Quantity = 2000,
             DistrictId = Kanyakumari,
-            Attributes = new() { ["produce_type"] = "Fruits" },
+            Attributes = new(),
         };
         change?.Invoke(command);
         return command;
@@ -134,7 +138,8 @@ internal sealed class TestMarketplace : IDisposable
         var post = new MarketplacePost
         {
             OwnerUserId = User.UserId ?? OwnerA,
-            CategoryId = MarketplaceCatalogSeedData.Vehicles,
+            CategoryId = MarketplaceCatalogSeedData.Products,
+            SubCategoryId = MarketplaceCatalogSeedData.Vehicles,
             Kind = Domain.Enums.MarketplacePostKind.Listing,
             Title = "Seeded post",
             Price = 100m,

@@ -31,9 +31,18 @@ and a Marketplace tab on the business Orders page. Sections C and D below are th
    ADMIN_EMAIL=... ADMIN_PASSWORD=... node backend/Zuno_marketplace/tests/e2e/e2e-marketplace-business.js
    ```
 
-Seeded on first start: 6 categories (Vehicles, Property, Products, Farm & Wholesale, Food offers,
-Events & Sales) with their details, the **Free plan = 1 active post**, and the post kinds,
-statuses and moves.
+Seeded on first start (all rows the super admin can edit):
+
+| Main category (square) | How it sells | Sub-categories |
+|---|---|---|
+| Products ("Products") | Retail only | Sarees, Clothing, Footwear, Toys, Mobiles & electronics, Home & kitchen, Furniture, Beauty, Books & stationery, **Vehicles** (brand, year, km, fuel), **Property** (type, for, area, bedrooms), Other |
+| B2B Wholesale ("B2B") | **Wholesale only** — price per unit and a smallest order | Fruits, Vegetables, Coconut, Chicken & meat, Fish, Grains & pulses, Spices, Dairy, Other |
+| Nearby food ("Food") | Retail only — usual vs offer price, portions, hours | Biryani & meals, Pizza & burgers, Sandwiches & snacks, Bakery & sweets, Tea & juice, Other |
+| Advertisements ("Ads") | — run of dates, contact phone | Sale & offers, Cricket tournament, Football tournament, Shop opening, New brand opening, Events & celebrations, Other |
+
+Plus the **Free plan = 1 active post**, and the post kinds, statuses, trade modes and moves.
+Posts made before the 4 categories moved automatically: Vehicles and Property posts now sit under
+Products › Vehicles / Property, and farm posts became wholesale.
 
 ## A. Super admin — categories (phase 1)
 
@@ -41,9 +50,9 @@ Sign in as the super admin → **Marketplace categories**.
 
 | # | Step | Expected |
 |---|---|---|
-| A1 | Open the screen | 6 categories, each "kind · N details"; tap one to see its details |
-| A2 | **+ Category** → "Mobiles", kind Listing → Save | Listed at once; a business's category picker shows it |
-| A3 | Mobiles → **Detail** → "Brand", Text, Required → Save | A Mobiles post now asks for Brand |
+| A1 | Open the screen | 4 categories, each "kind · how it sells · N sub-categories"; tap one for its sub-categories and details |
+| A2 | Products → **+ Sub-category** → "Watches" → Save | Listed at once; the post form's Sub-category list shows it |
+| A3 | Products → **+ Detail** → "Strap", Text, Applies to **Watches** → Save | A Watches post asks Strap; a Sarees post does not |
 | A4 | Detail of type List with no choices, or "Yes, yes" | "Give at least one choice" / "Each choice must be different" |
 | A5 | Edit category → switch off "Shown to businesses and customers" | Marked **Hidden**; businesses can no longer pick it |
 | A6 | Same name again ("MOBILES") | "A category with this name already exists." |
@@ -57,21 +66,21 @@ Sign in as a business (e.g. shajil shajil, Marthandam).
 |---|---|---|
 | B1 | **Home** | New **Marketplace** section under Rent: Live posts, Paused, Expired, Free plan `0 / 1` |
 | B2 | **Services → Marketplace** (third tab) | Plan banner "Free plan · 0 of 1 active post used", "Nothing posted yet" |
-| B3 | **Add post** → Vehicles | Form asks Model year, KM driven (km), Fuel (list), Brand, Owners (optional) |
+| B3 | **Add post** → Products → Sub-category **Vehicles** | Picker shows each category with what goes in it; form asks Condition, then Brand, Model year, KM driven (km), Fuel (list), Owners (optional) |
 | B4 | Save with nothing filled | Each missing field says so; nothing is sent |
-| B5 | Swift VXi 2019, ₹4,20,000, details, Tamil Nadu › Kanyakumari, Marthandam, 2 photos → Save | Card: "Vehicles · Marthandam, Kanyakumari", ₹4,20,000, **Active**, "2019 · 48000 km · Petrol"; Home `1 / 1` |
+| B5 | Swift VXi 2019, ₹4,20,000, details, Tamil Nadu › Kanyakumari, Marthandam, 2 photos → Save | Card: "Products › Vehicles · Marthandam, Kanyakumari", ₹4,20,000, **Active**, "2019 · 48000 km · Petrol"; Home `1 / 1` |
 | B6 | **Add post** again | Message: "Your Free plan allows 1 active post. Pause or close one to put up another."; no form |
-| B7 | ⋮ → **Pause**, then Add post → Food offers | Asks Usual price, Offer price, Portions, Per, Starts, Ends ("Up to 24 hours…") |
+| B7 | ⋮ → **Pause**, then Add post → Nearby food → Biryani & meals | Asks Usual price, Offer price, Portions, Per, Starts, Ends ("Up to 24 hours…") |
 | B8 | Offer price ≥ usual, or Ends before Starts | "Must be less than the usual price." / "Must be after the start." |
 | B9 | Veg biryani ₹180 → ₹99 /plate, 20 portions, today 20:00–22:00 → Save | Card "₹180 → ₹99/plate", "20 portions", "Today 20:00 – 22:00" |
 | B10 | After 22:00 (or edit the times into the past) | Status **Expired**; Home Expired 1; the slot is free again |
 | B11 | Paused car ⋮ → **Put up again** while the biryani is live | "Your Free plan allows 1 active post…" |
 | B12 | Events & Sales advert: Aadi sale, 17 Jul – 16 Aug, phone | No price asked; first photo is the banner; phone must be 10–15 digits |
-| B13 | Farm & Wholesale: **Sell as Wholesale**, ₹45 /kg, smallest order 100 | Card "₹45/kg", "Wholesale · min 100 kg" |
+| B13 | B2B Wholesale → Fruits: Nendran banana, ₹45 per kg, smallest order 100 | No "Sell as" — B2B is always wholesale; "Per" and "Smallest order" are required. Card "₹45/kg", "Wholesale · min 100 kg" |
 | B14 | Products with Wholesale (API) | Refused — "Products does not take wholesale posts." (the form does not offer it) |
 | B15 | ⋮ → **Close (sold / done)** | Asks first; then Closed, no Edit, cannot be put up again |
 | B16 | ⋮ → **Remove** | Asks first; post leaves the list; Home tiles update |
-| B17 | Kind chips: All · Listing · Food offer · Advertisement | Counts per kind; tapping filters the list |
+| B17 | The 4 category squares (Products · B2B · Food · Ads) | Each shows its count; tap one to filter ("Showing: Products · Clear"); tap it again or Clear for all. More categories wrap to a second row of the same size |
 | B18 | Tap a Home tile (Paused) | Opens just those posts, without "Add post" |
 | B19 | Another business edits/removes this post (API) | 403 |
 | B20 | Marketplace server stopped | Home shows an error only in the Marketplace section; the tab shows "Try again" |
@@ -92,7 +101,7 @@ on a reservation; enquiries open Call or Chat.
 
 ## Checks behind this playbook
 
-- `dotnet test backend/Zuno_marketplace/Zuno.Marketplace.sln` — 120 unit + 15 integration tests
+- `dotnet test backend/Zuno_marketplace/Zuno.Marketplace.sln` — 141 unit + 16 integration tests (one migrates first-release posts into the 4 categories)
   (integration needs Docker or `ZUNO_TEST_POSTGRES`).
-- `node backend/Zuno_marketplace/tests/e2e/e2e-marketplace-business.js` — 35 checks over HTTP.
+- `node backend/Zuno_marketplace/tests/e2e/e2e-marketplace-business.js` — 41 checks over HTTP.
 - `flutter test test/features/marketplace` — list, plan banner, form per kind, tiles, admin.

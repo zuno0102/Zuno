@@ -108,6 +108,22 @@ class MarketplaceRemoteDataSource {
         : _dio.put(MarketplaceApi.adminCategoryPath(id), data: body),
   );
 
+  Future<MarketplaceCategoryModel> saveSubCategory(
+    String categoryId,
+    Map<String, dynamic> body, {
+    String? subId,
+  }) => _category(
+    () => subId == null
+        ? _dio.post(
+            MarketplaceApi.adminSubCategoriesPath(categoryId),
+            data: body,
+          )
+        : _dio.put(
+            MarketplaceApi.adminSubCategoryPath(categoryId, subId),
+            data: body,
+          ),
+  );
+
   Future<MarketplaceCategoryModel> saveField(
     String categoryId,
     Map<String, dynamic> body, {
