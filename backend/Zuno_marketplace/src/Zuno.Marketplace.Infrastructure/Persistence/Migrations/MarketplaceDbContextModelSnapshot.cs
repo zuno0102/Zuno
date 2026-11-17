@@ -250,7 +250,7 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         {
                             Id = new Guid("d4444444-0000-0000-0000-000000000004"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            Description = "Banana, pineapple, coconut, chicken — in bulk for dealers",
+                            Description = "Fruits, vegetables, spices, plumbing, electrical — in bulk for dealers",
                             DisplayOrder = (short)2,
                             IconName = "agriculture_outlined",
                             IsActive = true,
@@ -679,7 +679,7 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)2,
                             FieldType = (short)3,
-                            IsActive = true,
+                            IsActive = false,
                             IsDeleted = false,
                             IsRequired = false,
                             Key = "organic",
@@ -1679,10 +1679,76 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         },
                         new
                         {
-                            Id = new Guid("c7777777-0000-0000-0004-000000000009"),
+                            Id = new Guid("c7777777-0000-0000-0004-000000000010"),
                             CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)9,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Plumbing & sanitary",
+                            Slug = "plumbing-sanitary"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0004-000000000011"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)10,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Electrical",
+                            Slug = "electrical"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0004-000000000012"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)11,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Hardware & tools",
+                            Slug = "hardware-tools"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0004-000000000013"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)12,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Building materials",
+                            Slug = "building-materials"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0004-000000000014"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)13,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Packaging",
+                            Slug = "packaging"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0004-000000000015"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)14,
+                            IsActive = true,
+                            IsDeleted = false,
+                            Name = "Textiles & garments",
+                            Slug = "textiles-garments"
+                        },
+                        new
+                        {
+                            Id = new Guid("c7777777-0000-0000-0004-000000000009"),
+                            CategoryId = new Guid("d4444444-0000-0000-0000-000000000004"),
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)15,
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Other",

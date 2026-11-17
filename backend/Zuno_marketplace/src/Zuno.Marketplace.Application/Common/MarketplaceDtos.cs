@@ -308,6 +308,9 @@ public class MarketplaceOptionsDto
     /// <summary>Photo slots per colour / size.</summary>
     public int VariantImageSlots { get; set; }
 
+    /// <summary>The units a B2B post can be sold in, in order.</summary>
+    public List<string> WholesaleUnits { get; set; } = [];
+
     public int MaxFoodOfferHours { get; set; }
 
     public int MaxAdDays { get; set; }

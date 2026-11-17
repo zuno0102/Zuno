@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/router/push_screen.dart';
 import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_profile_notifier.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/service_form_message_banner.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/service_media_slots.dart';
@@ -935,38 +936,78 @@ class _MarketplacePostFormSheetState
       ],
       // A product is priced above, with its MRP and offer — sold by the piece, no "Per".
       if (!category.tracksStock) ...[
-        _priceRow(
-          priceLabel: wholesale ? 'Price per unit' : 'Price',
-          unitHint: 'kg, dozen, piece',
-          unitRequired: wholesale,
-        ),
-        if (wholesale) ...[
-          const SizedBox(height: 14),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _wholeNumber(
-                  _minOrder,
-                  key: 'marketplace-min-order',
-                  label: 'Smallest order',
-                  required: true,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _wholeNumber(
-                  _quantity,
-                  key: 'marketplace-quantity',
-                  label: 'Quantity for sale (optional)',
-                  required: false,
-                ),
-              ),
-            ],
-          ),
-        ],
+        if (wholesale)
+          ..._wholesaleSection(options)
+        else
+          _priceRow(priceLabel: 'Price', unitHint: 'kg, dozen, piece'),
         const SizedBox(height: 14),
       ],
+    ];
+  }
+
+  /// B2B, in plain words and in the order a dealer thinks of it: what it is sold in (kg for
+  /// onions, piece for taps), the price for one of those, the least one buyer must order, and how
+  /// much there is — then the whole of it in one line.
+  List<Widget> _wholesaleSection(MarketplaceOptions? options) {
+    final units = options?.wholesaleUnits ?? marketplaceDefaultWholesaleUnits;
+    final chosen = _clean(_priceUnit);
+    // A unit an older post was saved with stays choosable.
+    final choices = [
+      ...units,
+      if (chosen != null && !units.contains(chosen)) chosen,
+    ];
+    final unit = chosen ?? 'unit';
+    return [
+      SelectField<String>(
+        key: const ValueKey('marketplace-price-unit'),
+        label: 'Sold in',
+        helperText: 'kg for onions, piece for taps, box for tiles.',
+        options: [for (final u in choices) SelectOption(u, u)],
+        initialValue: chosen,
+        validator: (v) => v == null ? 'Choose what it is sold in.' : null,
+        onChanged: (v) => setState(() => _priceUnit.text = v),
+      ),
+      const SizedBox(height: 14),
+      _money(_price, key: 'marketplace-price', label: 'Price per $unit'),
+      const SizedBox(height: 14),
+      _wholeNumber(
+        _minOrder,
+        key: 'marketplace-min-order',
+        label: 'Minimum order ($unit)',
+        helperText: 'The least one buyer must order, e.g. 100 $unit.',
+        required: true,
+      ),
+      const SizedBox(height: 14),
+      _wholeNumber(
+        _quantity,
+        key: 'marketplace-quantity',
+        label: 'Stock available ($unit, optional)',
+        helperText: 'How much you have to sell in all.',
+        required: false,
+      ),
+      const SizedBox(height: 10),
+      // "₹45 per kg · buyers order at least 100 kg · 2,000 kg available" — as buyers will read it.
+      ListenableBuilder(
+        listenable: Listenable.merge([_price, _minOrder, _quantity]),
+        builder: (context, _) {
+          final price = double.tryParse(_price.text.trim());
+          final min = int.tryParse(_minOrder.text.trim());
+          final stock = int.tryParse(_quantity.text.trim());
+          final parts = [
+            if (price != null) '${rupees(price)} per $unit',
+            if (min != null) 'buyers order at least $min $unit',
+            if (stock != null) '$stock $unit available',
+          ];
+          if (parts.isEmpty) return const SizedBox.shrink();
+          return Text(
+            parts.join(' · '),
+            key: const ValueKey('marketplace-wholesale-summary'),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+          );
+        },
+      ),
     ];
   }
 
@@ -1312,35 +1353,30 @@ class _MarketplacePostFormSheetState
     ];
   }
 
-  Widget _priceRow({
-    required String priceLabel,
-    required String unitHint,
-    bool unitRequired = false,
-  }) => Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Expanded(
-        child: _money(_price, key: 'marketplace-price', label: priceLabel),
-      ),
-      const SizedBox(width: 12),
-      Expanded(child: _unitField(unitHint, required: unitRequired)),
-    ],
-  );
+  Widget _priceRow({required String priceLabel, required String unitHint}) =>
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: _money(_price, key: 'marketplace-price', label: priceLabel),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: _unitField(unitHint)),
+        ],
+      );
 
-  /// What the price is for — "kg", "plate". Required for wholesale: "₹45" means nothing in bulk.
-  Widget _unitField(String hint, {bool required = false}) => TextFormField(
+  /// What a retail price or food offer is for — "plate", "box" — if anything. B2B picks its unit
+  /// from a list instead ("Sold in").
+  Widget _unitField(String hint) => TextFormField(
     key: const ValueKey('marketplace-price-unit'),
     controller: _priceUnit,
     maxLength: _limits.priceUnit,
     decoration: InputDecoration(
-      labelText: required ? 'Per' : 'Per (optional)',
+      labelText: 'Per (optional)',
       hintText: hint,
       border: const OutlineInputBorder(),
       counterText: '',
     ),
-    validator: required
-        ? (v) => (v ?? '').trim().isEmpty ? 'e.g. kg' : null
-        : null,
   );
 
   /// Which kind within the category — Sarees, Fruits, Biryani & meals. Changing it drops the

@@ -26,6 +26,13 @@ public class MarketplaceSettings
     [Range(1, 10)]
     public int VariantImageSlots { get; set; } = 3;
 
+    /// <summary>
+    /// What a B2B post can be sold in — "Sold in" on the form: kg for onions, piece for taps. Set in
+    /// appsettings only: configuration adds a list to a default given here instead of replacing it,
+    /// so a default would show every unit twice. Empty, the app uses its own list.
+    /// </summary>
+    public string[] WholesaleUnits { get; set; } = [];
+
     /// <summary>The longest a food offer may run — "last-time" food is gone the same day.</summary>
     [Range(1, 168)]
     public int MaxFoodOfferHours { get; set; } = 24;

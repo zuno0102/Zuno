@@ -48,6 +48,8 @@ public class MarketplaceCatalogHandlers(
             Conditions = conditions.Select(c => new MarketplaceOptionDto { Code = c.Code.ToString(), Name = c.Name, Detail = c.Detail }).ToList(),
             ImageSlots = limits.ImageSlots,
             VariantImageSlots = limits.VariantImageSlots,
+            // Trimmed and once each, whatever the settings hold.
+            WholesaleUnits = [.. limits.WholesaleUnits.Select(u => u.Trim()).Where(u => u.Length != 0).Distinct(StringComparer.OrdinalIgnoreCase)],
             MaxFoodOfferHours = limits.MaxFoodOfferHours,
             MaxAdDays = limits.MaxAdDays,
             MaxPrice = limits.MaxPrice,

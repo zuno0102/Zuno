@@ -584,6 +584,22 @@ const marketplaceDefaultMaxQuantity = 1000000;
 /// Photo slots per colour / size until the server says otherwise.
 const marketplaceDefaultVariantImageSlots = 3;
 
+/// What a B2B post can be sold in until the server says otherwise — the server's own list.
+const marketplaceDefaultWholesaleUnits = [
+  'kg',
+  'quintal',
+  'tonne',
+  'piece',
+  'dozen',
+  'box',
+  'bag',
+  'packet',
+  'litre',
+  'metre',
+  'bundle',
+  'set',
+];
+
 /// The post kinds, statuses and limits the Marketplace screens are drawn from.
 class MarketplaceOptions {
   const MarketplaceOptions({
@@ -598,10 +614,14 @@ class MarketplaceOptions {
     this.maxStartDaysAhead = MarketplaceTextLimits.fallbackStartDaysAhead,
     this.textLimits = const MarketplaceTextLimits(),
     this.variantImageSlots = marketplaceDefaultVariantImageSlots,
+    this.wholesaleUnits = marketplaceDefaultWholesaleUnits,
   });
 
   /// Photo slots per colour / size — `Marketplace:VariantImageSlots` on the server.
   final int variantImageSlots;
+
+  /// What a B2B post can be sold in — kg, piece, box … — `Marketplace:WholesaleUnits` on the server.
+  final List<String> wholesaleUnits;
 
   final List<MarketplaceOption> kinds;
   final List<MarketplaceOption> statuses;

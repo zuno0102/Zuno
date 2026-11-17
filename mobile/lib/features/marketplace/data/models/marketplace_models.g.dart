@@ -302,6 +302,11 @@ MarketplaceOptionsModel _$MarketplaceOptionsModelFromJson(
   variantImageSlots:
       (json['variantImageSlots'] as num?)?.toInt() ??
       marketplaceDefaultVariantImageSlots,
+  wholesaleUnits:
+      (json['wholesaleUnits'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      marketplaceDefaultWholesaleUnits,
 );
 
 MarketplaceBusinessModel _$MarketplaceBusinessModelFromJson(

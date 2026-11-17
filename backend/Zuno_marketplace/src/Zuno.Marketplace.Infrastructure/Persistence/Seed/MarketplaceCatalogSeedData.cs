@@ -40,7 +40,7 @@ public static class MarketplaceCatalogSeedData
         Category(LegacyVehicles, "Vehicles", null, null, "vehicles", "car", MarketplacePostKind.Listing, MarketplaceTradeMode.RetailOnly, 90, isActive: false),
         Category(LegacyProperty, "Property", null, null, "property", "home", MarketplacePostKind.Listing, MarketplaceTradeMode.RetailOnly, 91, isActive: false),
         Category(Products, "Products", "Products", "Sarees, shirts, toys, mobiles, vehicles, property", "products", "shopping_bag_outlined", MarketplacePostKind.Listing, MarketplaceTradeMode.RetailOnly, 1, tracksStock: true),
-        Category(B2BWholesale, "B2B Wholesale", "B2B", "Banana, pineapple, coconut, chicken — in bulk for dealers", "b2b-wholesale", "agriculture_outlined", MarketplacePostKind.Listing, MarketplaceTradeMode.WholesaleOnly, 2),
+        Category(B2BWholesale, "B2B Wholesale", "B2B", "Fruits, vegetables, spices, plumbing, electrical — in bulk for dealers", "b2b-wholesale", "agriculture_outlined", MarketplacePostKind.Listing, MarketplaceTradeMode.WholesaleOnly, 2),
         Category(NearbyFood, "Nearby food", "Food", "Last-minute offers: biryani, pizza, burgers — no waste", "nearby-food", "restaurant_outlined", MarketplacePostKind.FoodOffer, MarketplaceTradeMode.RetailOnly, 3),
         Category(Advertisements, "Advertisements", "Ads", "Aadi sale, tournaments, shop and brand openings", "advertisements", "campaign_outlined", MarketplacePostKind.Advertisement, MarketplaceTradeMode.RetailOnly, 4),
     ];
@@ -49,7 +49,7 @@ public static class MarketplaceCatalogSeedData
     public static MarketplaceSubCategory[] SubCategories =>
     [
         .. Subs(3, Products, "Sarees", "Clothing", "Footwear", "Toys", "Mobiles & electronics", "Home & kitchen", "Furniture", "Beauty", "Books & stationery", "Vehicles", "Property", "Other"),
-        .. Subs(4, B2BWholesale, "Fruits", "Vegetables", "Coconut", "Chicken & meat", "Fish", "Grains & pulses", "Spices", "Dairy", "Other"),
+        .. B2BSubs(),
         .. Subs(5, NearbyFood, "Biryani & meals", "Pizza & burgers", "Sandwiches & snacks", "Bakery & sweets", "Tea & juice", "Other"),
         .. Subs(6, Advertisements, "Sale & offers", "Cricket tournament", "Football tournament", "Shop opening", "New brand opening", "Events & celebrations", "Other"),
     ];
@@ -85,7 +85,7 @@ public static class MarketplaceCatalogSeedData
         Field(3, 9, Products, SubId(3, 7), "material", "Material", MarketplaceFieldType.Select, options: ["Wood", "Metal", "Plastic", "Glass", "Other"], isActive: false),
 
         Field(4, 1, B2BWholesale, null, "produce_type", "Produce", MarketplaceFieldType.Select, options: ["Vegetables", "Fruits", "Grains", "Coconut", "Spices", "Dairy", "Other"], isActive: false),
-        Field(4, 2, B2BWholesale, null, "organic", "Organic", MarketplaceFieldType.Select, options: ["Yes", "No"]),
+        Field(4, 2, B2BWholesale, null, "organic", "Organic", MarketplaceFieldType.Select, options: ["Yes", "No"], isActive: false),
 
         Field(5, 1, NearbyFood, null, "food_type", "Food type", MarketplaceFieldType.Select, required: true, options: ["Veg", "Non-veg"]),
 
@@ -178,6 +178,29 @@ public static class MarketplaceCatalogSeedData
             IsActive = isActive,
             CreatedDate = SeedDate,
         };
+
+    /// <summary>
+    /// B2B's groups: the first nine keep their ids (live posts point at them); the trade groups added
+    /// later — plumbing, electrical and the rest — take the next ids, shown before "Other", which stays last.
+    /// </summary>
+    private static IEnumerable<MarketplaceSubCategory> B2BSubs()
+    {
+        var first = Subs(4, B2BWholesale, "Fruits", "Vegetables", "Coconut", "Chicken & meat", "Fish", "Grains & pulses", "Spices", "Dairy", "Other").ToList();
+        string[] trades = ["Plumbing & sanitary", "Electrical", "Hardware & tools", "Building materials", "Packaging", "Textiles & garments"];
+        var other = first[^1];
+        var added = trades.Select((name, i) => new MarketplaceSubCategory
+        {
+            Id = SubId(4, first.Count + 1 + i),
+            CategoryId = B2BWholesale,
+            Name = name,
+            Slug = Slug(name),
+            DisplayOrder = (short)(first.Count + i),
+            IsActive = true,
+            CreatedDate = SeedDate,
+        }).ToList();
+        other.DisplayOrder = (short)(first.Count + trades.Length);
+        return [.. first.Take(first.Count - 1), .. added, other];
+    }
 
     private static IEnumerable<MarketplaceSubCategory> Subs(int category, Guid categoryId, params string[] names) =>
         names.Select((name, i) => new MarketplaceSubCategory

@@ -712,16 +712,16 @@ public static class MarketplacePostRules
 
         if (string.IsNullOrWhiteSpace(request.PriceUnit))
         {
-            fail(nameof(request.PriceUnit), "Enter what the price is per, e.g. kg.");
+            fail(nameof(request.PriceUnit), "Choose what it is sold in, e.g. kg.");
         }
 
         if (request.MinOrderQuantity is null)
         {
-            fail(nameof(request.MinOrderQuantity), "Enter the smallest order for wholesale.");
+            fail(nameof(request.MinOrderQuantity), "Enter the minimum order.");
         }
         else if (request.Quantity is { } quantity && request.MinOrderQuantity > quantity)
         {
-            fail(nameof(request.MinOrderQuantity), "The smallest order cannot be more than the quantity for sale.");
+            fail(nameof(request.MinOrderQuantity), "The minimum order cannot be more than the stock available.");
         }
     }
 

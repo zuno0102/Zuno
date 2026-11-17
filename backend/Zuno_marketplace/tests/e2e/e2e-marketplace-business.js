@@ -131,7 +131,7 @@ const register = async (first, role) => {
   yes("An advert goes up in the freed slot", await M_("POST", "/business/marketplace", biz, ad));
   const bulk = { ...FRUITS, title: "Nendran banana", price: 45, priceUnit: "kg", tradeType: "Wholesale", minOrderQuantity: 100,
     quantity: 2000, districtId: district, attributes: {} };
-  no("B2B without a smallest order is refused", await M_("POST", "/business/marketplace", biz2, { ...bulk, minOrderQuantity: null }), "smallest order");
+  no("B2B without a minimum order is refused", await M_("POST", "/business/marketplace", biz2, { ...bulk, minOrderQuantity: null }), "minimum order");
   const sentRetail = await M_("POST", "/business/marketplace", biz2, { ...bulk, tradeType: "Retail" });
   ok("B2B sent as retail is saved as wholesale", sentRetail.data?.tradeType === "Wholesale", `${sentRetail.status} ${sentRetail.data?.tradeType}`);
   yes("...and pausing it frees the slot", await M_("PATCH", `/business/marketplace/${sentRetail.data?.id}/status`, biz2, { status: "Paused" }));

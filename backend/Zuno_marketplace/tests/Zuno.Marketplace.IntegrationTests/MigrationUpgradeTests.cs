@@ -307,6 +307,57 @@ public class MigrationUpgradeTests(MarketplaceApiFactory factory) : IClassFixtur
         await migrator.MigrateAsync();
     }
 
+    [Fact]
+    public async Task B2BTradeGroups_KeepsOrganicAsAnOwnDetail_AddsTheGroups_AndRollsBackToOther()
+    {
+        var connectionString = await factory.NewDatabaseAsync();
+        await using var db = new MarketplaceDbContext(new DbContextOptionsBuilder<MarketplaceDbContext>()
+            .UseNpgsql(connectionString)
+            .UseSnakeCaseNamingConvention()
+            .Options);
+        var migrator = db.GetService<IMigrator>();
+        await migrator.MigrateAsync(VariantPhotos);
+
+        var bananas = Guid.NewGuid();
+        await using (var connection = new NpgsqlConnection(connectionString))
+        {
+            await connection.OpenAsync();
+            await InsertAsync(connection, bananas, MarketplaceCatalogSeedData.B2BWholesale, "Nendran banana", minOrder: 100,
+                attributes: """[{"Key":"organic","Value":"Yes"}]""");
+        }
+
+        await migrator.MigrateAsync();
+
+        var post = await db.Posts.IgnoreQueryFilters().AsNoTracking().SingleAsync(p => p.Id == bananas);
+        post.Attributes.Should().BeEmpty();
+        post.CustomDetails.Select(d => (d.Key, d.Value)).Should().Equal(("Organic", "Yes"));
+        var groups = await db.SubCategories.AsNoTracking()
+            .Where(s => s.CategoryId == MarketplaceCatalogSeedData.B2BWholesale)
+            .OrderBy(s => s.DisplayOrder)
+            .Select(s => s.Name)
+            .ToListAsync();
+        groups.Should().Contain(["Plumbing & sanitary", "Electrical", "Hardware & tools"]);
+        groups[^1].Should().Be("Other", "Other stays last");
+
+        // A post filed under a new group goes back to Other on a rollback.
+        var plumbing = MarketplaceCatalogSeedData.SubId(4, 10);
+        await using (var connection = new NpgsqlConnection(connectionString))
+        {
+            await connection.OpenAsync();
+            await using var command = new NpgsqlCommand("UPDATE marketplace_posts SET sub_category_id = @plumbing WHERE id = @id;", connection);
+            command.Parameters.AddWithValue("plumbing", plumbing);
+            command.Parameters.AddWithValue("id", bananas);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        await migrator.MigrateAsync(VariantPhotos);
+        (await db.Posts.IgnoreQueryFilters().AsNoTracking().SingleAsync(p => p.Id == bananas))
+            .SubCategoryId.Should().Be(MarketplaceCatalogSeedData.SubId(4, 9));
+        await migrator.MigrateAsync();
+    }
+
+    private const string VariantPhotos = "20261117061043_VariantPhotos";
+
     private const string PackQuantity = "20261112175516_ProductPackQuantity";
 
     private const string BasicFieldsOnly = "20261112152852_ProductsBasicFieldsOnly";

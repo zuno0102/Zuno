@@ -496,6 +496,7 @@ class MarketplaceOptionsModel {
     this.maxStartDaysAhead = MarketplaceTextLimits.fallbackStartDaysAhead,
     this.textLimits = const MarketplaceTextLimits(),
     this.variantImageSlots = marketplaceDefaultVariantImageSlots,
+    this.wholesaleUnits = marketplaceDefaultWholesaleUnits,
   });
 
   factory MarketplaceOptionsModel.fromJson(Map<String, dynamic> json) =>
@@ -513,6 +514,7 @@ class MarketplaceOptionsModel {
   @JsonKey(fromJson: marketplaceTextLimitsFromJson)
   final MarketplaceTextLimits textLimits;
   final int variantImageSlots;
+  final List<String> wholesaleUnits;
 
   MarketplaceOptions toEntity() => MarketplaceOptions(
     kinds: [for (final k in kinds) k.toEntity()],
@@ -525,6 +527,10 @@ class MarketplaceOptionsModel {
     maxQuantity: maxQuantity,
     maxStartDaysAhead: maxStartDaysAhead,
     variantImageSlots: variantImageSlots,
+    // An older server sends none: the app's own list.
+    wholesaleUnits: wholesaleUnits.isEmpty
+        ? marketplaceDefaultWholesaleUnits
+        : wholesaleUnits,
     textLimits: textLimits,
   );
 }

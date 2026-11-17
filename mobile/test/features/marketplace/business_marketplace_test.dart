@@ -636,7 +636,7 @@ Future<void> _openFormFor(
 
 /// Fills what a B2B post needs beyond a title and price: what the price is per, and a smallest order.
 Future<void> _fillWholesale(WidgetTester tester) async {
-  await _type(tester, 'marketplace-price-unit', 'kg');
+  await _choose(tester, 'marketplace-price-unit', 'kg');
   await _type(tester, 'marketplace-min-order', '100');
 }
 
@@ -1168,15 +1168,30 @@ void main() {
           find.byKey(const ValueKey('marketplace-trade-type')),
           findsNothing,
         );
+        // Plain words: what it is sold in, the price for one, the least a buyer orders, the stock.
+        expect(find.text('Sold in'), findsOneWidget);
         expect(find.text('Price per unit'), findsOneWidget);
+        expect(find.text('Minimum order (unit)'), findsOneWidget);
+        expect(find.text('Stock available (unit, optional)'), findsOneWidget);
         await _type(tester, 'marketplace-title', 'Nendran banana');
         await _type(tester, 'marketplace-price', '45');
         await _save(tester);
-        expect(find.text('e.g. kg'), findsOneWidget);
+        expect(find.text('Choose what it is sold in.'), findsOneWidget);
         expect(find.text('Required.'), findsOneWidget);
         expect(repo.created, isEmpty);
 
         await _fillWholesale(tester);
+        await _type(tester, 'marketplace-quantity', '2000');
+        await tester.pump();
+        // The labels follow the unit, and one line says it as a buyer reads it.
+        expect(find.text('Price per kg'), findsOneWidget);
+        expect(find.text('Minimum order (kg)'), findsOneWidget);
+        expect(
+          find.text(
+            '${rupees(45)} per kg · buyers order at least 100 kg · 2000 kg available',
+          ),
+          findsOneWidget,
+        );
         await _save(tester);
 
         final input = repo.created.single;
