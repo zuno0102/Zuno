@@ -44,6 +44,7 @@ class MarketplaceRemoteDataSource {
     String? categoryId,
     String? status,
     bool keepsStock = false,
+    bool wholesale = false,
     bool inactive = false,
     int? pageSize,
   }) => _run(() async {
@@ -53,6 +54,7 @@ class MarketplaceRemoteDataSource {
         'categoryId': ?categoryId,
         'status': ?status,
         if (keepsStock) 'keepsStock': true,
+        if (wholesale) 'wholesale': true,
         if (inactive) 'inactive': true,
         'pageSize': ?pageSize,
       },

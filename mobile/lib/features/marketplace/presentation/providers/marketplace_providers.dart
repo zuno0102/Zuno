@@ -184,10 +184,15 @@ Future<List<MarketplacePost>> businessMarketplacePosts(
   );
 }
 
-/// The Stock page: the new products that keep a stock count, each with its colours and sizes.
+/// The Stock page: the new products that keep a stock count, each with its colours and sizes — or,
+/// with [wholesale], the B2B stock page: the business's B2B posts with their available quantity.
 @riverpod
-Future<List<MarketplacePost>> marketplaceStock(Ref ref) =>
-    ref.watch(marketplaceRepositoryProvider).getMyPosts(keepsStock: true);
+Future<List<MarketplacePost>> marketplaceStock(
+  Ref ref, {
+  bool wholesale = false,
+}) => wholesale
+    ? ref.watch(marketplaceRepositoryProvider).getMyPosts(wholesale: true)
+    : ref.watch(marketplaceRepositoryProvider).getMyPosts(keepsStock: true);
 
 /// The super admin's categories: every one, switched off or not.
 @riverpod

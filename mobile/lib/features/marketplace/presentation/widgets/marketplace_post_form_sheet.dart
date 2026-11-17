@@ -584,7 +584,8 @@ class _MarketplacePostFormSheetState
       // Switched on or off: the post's status follows (a product is paused, not deleted).
       final wasActive =
           old == null || old.status != MarketplacePostStatus.paused;
-      if (category.tracksStock && _isActive != wasActive) {
+      if ((category.tracksStock || _sellsWholesale(category)) &&
+          _isActive != wasActive) {
         await repository.changeStatus(
           id,
           _isActive
@@ -868,14 +869,18 @@ class _MarketplacePostFormSheetState
                       const SizedBox(height: 14),
                     ],
                     ..._placeSection(category),
-                    // As on a service: off hides the whole product, its colours and sizes too.
-                    if (category?.tracksStock ?? false)
+                    // As on a service: off hides the whole product (its colours and sizes too)
+                    // or B2B lot — the way these are taken down, as their menu has no Pause.
+                    if (category != null &&
+                        (category.tracksStock || _sellsWholesale(category)))
                       SwitchListTile(
                         key: const ValueKey('marketplace-active'),
                         contentPadding: EdgeInsets.zero,
                         title: const Text('Active'),
-                        subtitle: const Text(
-                          'Inactive products are hidden from customers.',
+                        subtitle: Text(
+                          category.tracksStock
+                              ? 'Inactive products are hidden from customers.'
+                              : 'Inactive B2B posts are hidden from buyers.',
                         ),
                         value: _isActive,
                         onChanged: (value) => setState(() => _isActive = value),

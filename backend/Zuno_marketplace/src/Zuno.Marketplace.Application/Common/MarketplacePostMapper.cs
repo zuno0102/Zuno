@@ -28,7 +28,7 @@ internal static class MarketplacePostMapper
             PackQuantity = post.PackQuantity,
             Condition = post.Condition?.ToString(),
             IsOutOfStock = post.IsOutOfStock,
-            CanUpdateStock = post.KeepsStock && !post.IsFinal,
+            CanUpdateStock = post.CountsStock && !post.IsFinal,
             OriginalPrice = post.OriginalPrice,
             StartsAt = post.StartsAt,
             EndsAt = post.EndsAt,

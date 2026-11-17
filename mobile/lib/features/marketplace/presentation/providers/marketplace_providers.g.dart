@@ -452,12 +452,14 @@ final class BusinessMarketplacePostsFamily extends $Family
   String toString() => r'businessMarketplacePostsProvider';
 }
 
-/// The Stock page: the new products that keep a stock count, each with its colours and sizes.
+/// The Stock page: the new products that keep a stock count, each with its colours and sizes — or,
+/// with [wholesale], the B2B stock page: the business's B2B posts with their available quantity.
 
 @ProviderFor(marketplaceStock)
-final marketplaceStockProvider = MarketplaceStockProvider._();
+final marketplaceStockProvider = MarketplaceStockFamily._();
 
-/// The Stock page: the new products that keep a stock count, each with its colours and sizes.
+/// The Stock page: the new products that keep a stock count, each with its colours and sizes — or,
+/// with [wholesale], the B2B stock page: the business's B2B posts with their available quantity.
 
 final class MarketplaceStockProvider
     extends
@@ -469,20 +471,28 @@ final class MarketplaceStockProvider
     with
         $FutureModifier<List<MarketplacePost>>,
         $FutureProvider<List<MarketplacePost>> {
-  /// The Stock page: the new products that keep a stock count, each with its colours and sizes.
-  MarketplaceStockProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'marketplaceStockProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
+  /// The Stock page: the new products that keep a stock count, each with its colours and sizes — or,
+  /// with [wholesale], the B2B stock page: the business's B2B posts with their available quantity.
+  MarketplaceStockProvider._({
+    required MarketplaceStockFamily super.from,
+    required bool super.argument,
+  }) : super(
+         retry: null,
+         name: r'marketplaceStockProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
 
   @override
   String debugGetCreateSourceHash() => _$marketplaceStockHash();
+
+  @override
+  String toString() {
+    return r'marketplaceStockProvider'
+        ''
+        '($argument)';
+  }
 
   @$internal
   @override
@@ -492,11 +502,46 @@ final class MarketplaceStockProvider
 
   @override
   FutureOr<List<MarketplacePost>> create(Ref ref) {
-    return marketplaceStock(ref);
+    final argument = this.argument as bool;
+    return marketplaceStock(ref, wholesale: argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is MarketplaceStockProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
   }
 }
 
-String _$marketplaceStockHash() => r'cbb1dd7f746c16badbc2a64871768c02622fcb11';
+String _$marketplaceStockHash() => r'0d7cd299d38617e7d26ef4447695a180b4fdd21f';
+
+/// The Stock page: the new products that keep a stock count, each with its colours and sizes — or,
+/// with [wholesale], the B2B stock page: the business's B2B posts with their available quantity.
+
+final class MarketplaceStockFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<List<MarketplacePost>>, bool> {
+  MarketplaceStockFamily._()
+    : super(
+        retry: null,
+        name: r'marketplaceStockProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// The Stock page: the new products that keep a stock count, each with its colours and sizes — or,
+  /// with [wholesale], the B2B stock page: the business's B2B posts with their available quantity.
+
+  MarketplaceStockProvider call({bool wholesale = false}) =>
+      MarketplaceStockProvider._(argument: wholesale, from: this);
+
+  @override
+  String toString() => r'marketplaceStockProvider';
+}
 
 /// The super admin's categories: every one, switched off or not.
 

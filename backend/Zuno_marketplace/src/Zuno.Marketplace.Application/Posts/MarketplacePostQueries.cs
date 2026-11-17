@@ -28,6 +28,9 @@ public class GetMyMarketplacePostsQuery : IRequest<MarketplacePostPageDto>
     /// <summary>True for the Stock page: only new products that keep a stock count and are not closed or sold.</summary>
     public bool? KeepsStock { get; set; }
 
+    /// <summary>True for the B2B stock page: the business's B2B posts not closed or sold.</summary>
+    public bool? Wholesale { get; set; }
+
     /// <summary>True for the Inactive tile: paused posts, and live products with a colour / size switched off.</summary>
     public bool? Inactive { get; set; }
 }
@@ -82,6 +85,12 @@ public class MarketplacePostQueryHandlers(
         if (request.KeepsStock == true)
         {
             mine = mine.Where(p => p.Condition == MarketplaceItemCondition.New
+                && p.Status != MarketplacePostStatus.Closed && p.Status != MarketplacePostStatus.Sold);
+        }
+
+        if (request.Wholesale == true)
+        {
+            mine = mine.Where(p => p.TradeType == MarketplaceTradeType.Wholesale
                 && p.Status != MarketplacePostStatus.Closed && p.Status != MarketplacePostStatus.Sold);
         }
 

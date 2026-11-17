@@ -9,7 +9,8 @@ import 'package:zuno/features/marketplace/presentation/screens/marketplace_stock
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/stat_tile.dart';
 
-/// The Marketplace section of the business home screen: live, inactive and expired items, and Stock.
+/// The Marketplace section of the business home screen: live, inactive and expired items, Stock and
+/// B2B stock.
 /// Each tile opens the posts behind its number; Stock opens the products' stock.
 ///
 /// Counted by the Marketplace server, like the Rent tiles beside it.
@@ -81,6 +82,18 @@ class MarketplaceDashboardTiles extends ConsumerWidget {
           icon: Icons.inventory_outlined,
           tone: StatusTone.progress,
           onTap: () => pushScreen(context, const MarketplaceStockScreen()),
+        ),
+        // The same for B2B: a tile per B2B post, its available quantity changed in a few taps.
+        StatTile(
+          key: const ValueKey('marketplace-tile-b2b-stock'),
+          label: 'B2B stock',
+          value: '',
+          icon: Icons.local_shipping_outlined,
+          tone: StatusTone.progress,
+          onTap: () => pushScreen(
+            context,
+            const MarketplaceStockScreen(wholesale: true),
+          ),
         ),
       ],
     );

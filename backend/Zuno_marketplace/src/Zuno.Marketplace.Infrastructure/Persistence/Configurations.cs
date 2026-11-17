@@ -84,7 +84,10 @@ public class MarketplacePostConfiguration : IEntityTypeConfiguration<Marketplace
             t.HasCheckConstraint("ck_marketplace_posts_price", "price IS NULL OR price > 0");
 
             // 0 is a new item out of stock; every other quantity is at least 1.
-            t.HasCheckConstraint("ck_marketplace_posts_quantity", "quantity IS NULL OR quantity >= 1 OR (quantity = 0 AND condition = 1)");
+            // 0 is sold out — for a new item (condition 1) and for a B2B lot (trade type 2).
+            t.HasCheckConstraint(
+                "ck_marketplace_posts_quantity",
+                "quantity IS NULL OR quantity >= 1 OR (quantity = 0 AND (condition = 1 OR trade_type = 2))");
             t.HasCheckConstraint("ck_marketplace_posts_pack_quantity", "pack_quantity IS NULL OR pack_quantity >= 1");
             t.HasCheckConstraint("ck_marketplace_posts_window", "ends_at IS NULL OR starts_at IS NULL OR ends_at > starts_at");
             t.HasCheckConstraint("ck_marketplace_posts_location", "(latitude IS NULL) = (longitude IS NULL)");

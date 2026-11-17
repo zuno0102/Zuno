@@ -1040,7 +1040,7 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_marketplace_posts_price", "price IS NULL OR price > 0");
 
-                            t.HasCheckConstraint("ck_marketplace_posts_quantity", "quantity IS NULL OR quantity >= 1 OR (quantity = 0 AND condition = 1)");
+                            t.HasCheckConstraint("ck_marketplace_posts_quantity", "quantity IS NULL OR quantity >= 1 OR (quantity = 0 AND (condition = 1 OR trade_type = 2))");
 
                             t.HasCheckConstraint("ck_marketplace_posts_ships_to", "delivers_everywhere OR delivery_state_id IS NOT NULL");
 

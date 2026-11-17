@@ -103,7 +103,8 @@ public class ProductStockTests
         food.Condition.Should().BeNull();
         food.Quantity.Should().Be(20);
 
-        var failed = await FailedAsync(() => test.SaveHandlers.Handle(TestMarketplace.Bananas(c => c.Quantity = 0), default));
+        // A food offer at 0 portions is refused; only a new item or a B2B lot can be at 0 (sold out).
+        var failed = await FailedAsync(() => test.SaveHandlers.Handle(test.Biryani(c => c.Quantity = 0), default));
         failed.Should().Contain("The quantity must be at least 1.");
     }
 
@@ -201,7 +202,7 @@ public class ProductStockTests
 
         var act = () => test.StockHandler.Handle(new UpdateMarketplacePostStockCommand { Id = car.Id, Quantity = 3 }, default);
 
-        await act.Should().ThrowAsync<DomainException>().WithMessage("Only a new item keeps a stock count.");
+        await act.Should().ThrowAsync<DomainException>().WithMessage("Only a new item or a B2B post keeps a stock count.");
     }
 
     [Fact]

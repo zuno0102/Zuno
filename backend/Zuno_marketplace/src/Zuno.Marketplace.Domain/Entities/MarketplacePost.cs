@@ -147,8 +147,20 @@ public class MarketplacePost : BaseEntity
     /// <summary>A new item with a stock count: the business keeps the count up to date.</summary>
     public bool KeepsStock => Condition == MarketplaceItemCondition.New;
 
-    /// <summary>A new item whose stock has run out: listed, but not shown to customers.</summary>
-    public bool IsOutOfStock => KeepsStock && Quantity is null or <= 0;
+    /// <summary>Sold in bulk to businesses (B2B).</summary>
+    public bool IsWholesale => TradeType == MarketplaceTradeType.Wholesale;
+
+    /// <summary>
+    /// Its stock is kept up to date on the Stock pages: a new product, or a B2B lot (its available
+    /// quantity — none given means it was not stated).
+    /// </summary>
+    public bool CountsStock => KeepsStock || IsWholesale;
+
+    /// <summary>
+    /// Run out: listed, but not shown to customers — a new item at 0 (or with no count), a B2B lot at
+    /// 0. A B2B lot with no quantity stated is not out.
+    /// </summary>
+    public bool IsOutOfStock => (KeepsStock && Quantity is null or <= 0) || (IsWholesale && Quantity == 0);
 
     /// <summary>Closed or Sold: nothing about the post changes any more.</summary>
     public bool IsFinal => Status is MarketplacePostStatus.Closed or MarketplacePostStatus.Sold;

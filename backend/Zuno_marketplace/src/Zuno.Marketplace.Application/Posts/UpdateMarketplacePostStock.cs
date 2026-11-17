@@ -38,9 +38,9 @@ public class UpdateMarketplacePostStockHandler(
     public async Task<MarketplacePostDto> Handle(UpdateMarketplacePostStockCommand request, CancellationToken cancellationToken)
     {
         var post = await dbContext.OwnedPostAsync(request.Id, currentUser.OwnerId(), cancellationToken);
-        if (!post.KeepsStock)
+        if (!post.CountsStock)
         {
-            throw new DomainException("Only a new item keeps a stock count.");
+            throw new DomainException("Only a new item or a B2B post keeps a stock count.");
         }
 
         if (post.IsFinal)

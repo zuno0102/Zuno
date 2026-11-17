@@ -190,7 +190,8 @@ class _BusinessMarketplaceTabState
 /// be put back up, and a used one marked sold.
 List<MarketplacePostAction> marketplaceMenuActions(MarketplacePost post) => [
   for (final action in post.actions)
-    if (post.condition == null ||
+    // A product or a B2B post: Edit and Remove only — its Active switch (Edit) takes it down.
+    if ((post.condition == null && !post.isWholesale) ||
         (action.toStatus != MarketplacePostStatus.paused &&
             action.toStatus != MarketplacePostStatus.closed))
       action,

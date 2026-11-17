@@ -11,16 +11,20 @@ import 'package:zuno/shared/widgets/stock_figure_row.dart';
 
 /// Stock: a tile per new product the business sells, each with how many are in stock, its colours
 /// and sizes, and how many of those have run out. Opened from the Stock tile on the home screen, the
-/// way Rent's Stock page is.
+/// way Rent's Stock page is. With [wholesale], the B2B stock page: a tile per B2B post with its
+/// available quantity and minimum order, in its own unit.
 class MarketplaceStockScreen extends ConsumerWidget {
-  const MarketplaceStockScreen({super.key});
+  const MarketplaceStockScreen({this.wholesale = false, super.key});
+
+  final bool wholesale;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final stockAsync = ref.watch(marketplaceStockProvider);
+    final stock = marketplaceStockProvider(wholesale: wholesale);
+    final stockAsync = ref.watch(stock);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Stock')),
+      appBar: AppBar(title: Text(wholesale ? 'B2B stock' : 'Stock')),
       body: stockAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(
@@ -32,7 +36,7 @@ class MarketplaceStockScreen extends ConsumerWidget {
                 ErrorBanner(message: error.toString()),
                 const SizedBox(height: 12),
                 TextButton.icon(
-                  onPressed: () => ref.invalidate(marketplaceStockProvider),
+                  onPressed: () => ref.invalidate(stock),
                   icon: const Icon(Icons.refresh),
                   label: const Text('Try again'),
                 ),
@@ -42,18 +46,19 @@ class MarketplaceStockScreen extends ConsumerWidget {
         ),
         data: (posts) {
           if (posts.isEmpty) {
-            return const EmptyState(
+            return EmptyState(
               icon: Icons.inventory_outlined,
-              title: 'No stock yet',
-              message:
-                  'Add a new product on the Marketplace and its stock shows here.',
+              title: wholesale ? 'No B2B posts yet' : 'No stock yet',
+              message: wholesale
+                  ? 'Post a B2B item on the Marketplace and its stock shows here.'
+                  : 'Add a new product on the Marketplace and its stock shows here.',
             );
           }
 
           return RefreshIndicator(
             onRefresh: () async {
               reloadMarketplace(ref);
-              await ref.read(marketplaceStockProvider.future);
+              await ref.read(stock.future);
             },
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -88,6 +93,12 @@ class MarketplaceStockScreen extends ConsumerWidget {
   }
 }
 
+/// What a B2B lot is counted in — "kg", "piece" — or "unit" when an older post has none.
+String marketplaceUnitOf(MarketplacePost post) =>
+    (post.priceUnit?.trim().isNotEmpty ?? false)
+    ? post.priceUnit!.trim()
+    : 'unit';
+
 /// How many of each line a product has run out of: its colours and sizes on sale at 0, or the
 /// product itself when it has one stock count. An inactive one is not on sale, so not run out.
 int marketplaceLinesOut(MarketplacePost post) => post.variants.isEmpty
@@ -101,6 +112,30 @@ class MarketplaceStockTile extends StatelessWidget {
 
   final MarketplacePost post;
 
+  /// A B2B lot: what is available and the least one buyer orders, in its own unit — "Available
+  /// (kg) 2000", "Min order (kg) 100". No quantity stated reads as such, not as sold out.
+  List<Widget> _wholesaleFigures(ThemeData theme) {
+    final unit = marketplaceUnitOf(post);
+    final available = post.quantity;
+    return [
+      if (available == null)
+        Text(
+          'Available: not stated',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        )
+      else
+        StockFigureRow(
+          label: 'Available ($unit)',
+          value: available,
+          tone: available > 0 ? StatusTone.success : StatusTone.danger,
+        ),
+      if (post.minOrderQuantity case final min?)
+        StockFigureRow(label: 'Min order ($unit)', value: min),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -111,8 +146,13 @@ class MarketplaceStockTile extends StatelessWidget {
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () =>
-            pushScreen(context, MarketplaceStockItemScreen(postId: post.id)),
+        onTap: () => pushScreen(
+          context,
+          MarketplaceStockItemScreen(
+            postId: post.id,
+            wholesale: post.isWholesale,
+          ),
+        ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
           child: Column(
@@ -146,23 +186,27 @@ class MarketplaceStockTile extends StatelessWidget {
                   ),
                 ),
               const SizedBox(height: 8),
-              StockFigureRow(
-                label: 'In stock',
-                value: post.quantity ?? 0,
-                tone: (post.quantity ?? 0) > 0
-                    ? StatusTone.success
-                    : StatusTone.danger,
-              ),
-              if (post.variants.isNotEmpty)
+              if (post.isWholesale)
+                ..._wholesaleFigures(theme)
+              else ...[
                 StockFigureRow(
-                  label: 'Colours / sizes',
-                  value: post.variants.length,
+                  label: 'In stock',
+                  value: post.quantity ?? 0,
+                  tone: (post.quantity ?? 0) > 0
+                      ? StatusTone.success
+                      : StatusTone.danger,
                 ),
-              StockFigureRow(
-                label: 'Run out',
-                value: out,
-                tone: out > 0 ? StatusTone.danger : StatusTone.waiting,
-              ),
+                if (post.variants.isNotEmpty)
+                  StockFigureRow(
+                    label: 'Colours / sizes',
+                    value: post.variants.length,
+                  ),
+                StockFigureRow(
+                  label: 'Run out',
+                  value: out,
+                  tone: out > 0 ? StatusTone.danger : StatusTone.waiting,
+                ),
+              ],
             ],
           ),
         ),

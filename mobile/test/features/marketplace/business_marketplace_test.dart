@@ -392,9 +392,11 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
     String? status,
     bool keepsStock = false,
     bool inactive = false,
+    bool wholesale = false,
   }) async {
     if (failList case final error?) throw error;
     return posts
+        .where((p) => !wholesale || p.isWholesale)
         .where(
           (p) =>
               !inactive ||
@@ -2824,6 +2826,54 @@ void main() {
       expect(find.text('Pause'), findsNothing);
     });
 
+    testWidgets('a B2B post menu is Edit and Remove only — no Pause or Close', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        const BusinessMarketplaceTab(),
+        repository: _FakeMarketplaceRepository(
+          posts: [
+            _post(
+              title: 'Nendran banana',
+              categoryId: _b2b.id,
+              categoryName: _b2b.name,
+              subCategoryId: 's-fruits',
+              subCategoryName: 'Fruits',
+              tradeType: MarketplaceTradeType.wholesale,
+              price: 45,
+              priceUnit: 'kg',
+              minOrder: 100,
+              quantity: 2000,
+              attributes: const {},
+            ),
+          ],
+        ),
+      );
+
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      expect(find.text('Edit'), findsOneWidget);
+      expect(find.text('Remove'), findsOneWidget);
+      expect(find.text('Pause'), findsNothing);
+      expect(find.text('Close (sold / done)'), findsNothing);
+    });
+
+    testWidgets('the B2B form has an Active switch, as a product does', (
+      tester,
+    ) async {
+      await _pump(tester, const BusinessMarketplaceTab());
+      await _openFormFor(tester, _b2b);
+
+      final active = find.byKey(const ValueKey('marketplace-active'));
+      await tester.ensureVisible(active);
+      expect(tester.widget<SwitchListTile>(active).value, isTrue);
+      expect(
+        find.text('Inactive B2B posts are hidden from buyers.'),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('a post outside Products can still be paused and closed', (
       tester,
     ) async {
@@ -3104,6 +3154,64 @@ void main() {
   });
 
   group('Marketplace tiles on the business home screen', () {
+    testWidgets('the B2B stock tile lists B2B posts; one changes its available '
+        'quantity in big steps', (tester) async {
+      final repo = await _pump(
+        tester,
+        const MarketplaceDashboardTiles(),
+        repository: _FakeMarketplaceRepository(
+          posts: [
+            _post(
+              title: 'Nendran banana',
+              categoryId: _b2b.id,
+              categoryName: _b2b.name,
+              subCategoryId: 's-fruits',
+              subCategoryName: 'Fruits',
+              tradeType: MarketplaceTradeType.wholesale,
+              price: 45,
+              priceUnit: 'kg',
+              minOrder: 100,
+              quantity: 2000,
+              canUpdateStock: true,
+              attributes: const {},
+            ),
+            _post(
+              id: 'p-2',
+              title: 'Silk saree',
+              condition: MarketplaceItemCondition.newItem,
+              quantity: 4,
+              canUpdateStock: true,
+            ),
+          ],
+          plan: _plan(max: 3, used: 2),
+        ),
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey('marketplace-tile-b2b-stock')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('B2B stock'), findsOneWidget);
+      expect(find.text('Nendran banana'), findsOneWidget);
+      expect(
+        find.text('Silk saree'),
+        findsNothing,
+        reason: 'products have their own Stock',
+      );
+      expect(find.text('Available (kg)'), findsOneWidget);
+      expect(find.text('Min order (kg)'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('marketplace-stock-p-1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('-100'));
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('marketplace-stock-save')));
+      await tester.pumpAndSettle();
+
+      expect(repo.stockChanges, [('p-1', 1900)]);
+      expect(find.text('Nendran banana: 1900 kg available.'), findsOneWidget);
+    });
+
     testWidgets('the Stock tile opens the stock of every product', (
       tester,
     ) async {

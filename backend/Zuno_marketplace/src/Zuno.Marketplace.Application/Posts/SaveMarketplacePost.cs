@@ -619,7 +619,8 @@ public static class MarketplacePostRules
     {
         if (!category.TracksStock)
         {
-            if (request.Quantity == 0)
+            // 0 is a sold-out B2B lot; anything else sells at least one.
+            if (request.Quantity == 0 && TradeTypeOf(category, request) != MarketplaceTradeType.Wholesale)
             {
                 fail(nameof(request.Quantity), "The quantity must be at least 1.");
             }
@@ -719,7 +720,7 @@ public static class MarketplacePostRules
         {
             fail(nameof(request.MinOrderQuantity), "Enter the minimum order.");
         }
-        else if (request.Quantity is { } quantity && request.MinOrderQuantity > quantity)
+        else if (request.Quantity is { } quantity && quantity > 0 && request.MinOrderQuantity > quantity)
         {
             fail(nameof(request.MinOrderQuantity), "The minimum order cannot be more than the stock available.");
         }

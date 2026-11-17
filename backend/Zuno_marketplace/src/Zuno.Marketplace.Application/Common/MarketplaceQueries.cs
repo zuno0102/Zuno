@@ -70,6 +70,8 @@ internal static class MarketplaceQueries
             .Where(p => p.Category.IsActive)
             .Where(p => p.SubCategory == null || p.SubCategory.IsActive)
             .Where(p => p.Condition != MarketplaceItemCondition.New || p.Quantity > 0)
+            // A B2B lot at 0 is sold out; one with no quantity stated still shows.
+            .Where(p => p.TradeType != MarketplaceTradeType.Wholesale || p.Quantity == null || p.Quantity > 0)
             .Where(p => businesses.Any(b => b.OwnerUserId == p.OwnerUserId && b.IsVerified));
 
     /// <summary>Clamps a page request to the configured limits.</summary>

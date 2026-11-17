@@ -20,15 +20,22 @@ import 'package:zuno/shared/widgets/stock_figure_row.dart';
 /// One product from the Stock page, in two tabs, as Rent's are: **Stock** — its figures and the
 /// quick count change, per colour / size — and **Orders** — its customers' orders.
 class MarketplaceStockItemScreen extends ConsumerWidget {
-  const MarketplaceStockItemScreen({required this.postId, super.key});
+  const MarketplaceStockItemScreen({
+    required this.postId,
+    this.wholesale = false,
+    super.key,
+  });
 
   final String postId;
+
+  /// Opened from the B2B stock page: the post is one of its B2B lots.
+  final bool wholesale;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // The latest figures, so a saved count shows at once.
     final post = ref
-        .watch(marketplaceStockProvider)
+        .watch(marketplaceStockProvider(wholesale: wholesale))
         .value
         ?.firstWhereOrNull((p) => p.id == postId);
 
@@ -177,7 +184,11 @@ class _StockTabState extends ConsumerState<_StockTab>
           .updateStock(widget.post.id, count, variantId: _variant?.id);
       reloadMarketplace(ref);
       messenger.showSuccess(
-        count == 0 ? '$name: out of stock.' : '$name: $count in stock.',
+        count == 0
+            ? '$name: ${widget.post.isWholesale ? 'sold out' : 'out of stock'}.'
+            : widget.post.isWholesale
+            ? '$name: $count ${marketplaceUnitOf(widget.post)} available.'
+            : '$name: $count in stock.',
       );
     } catch (e) {
       if (mounted) setState(() => _saveError = e.toString());
@@ -193,6 +204,7 @@ class _StockTabState extends ConsumerState<_StockTab>
     final post = widget.post;
     final out = marketplaceLinesOut(post);
     final price = marketplacePriceLine(post);
+    final unit = marketplaceUnitOf(post);
 
     return PopScope(
       canPop: !_changed || _isSaving,
@@ -211,22 +223,29 @@ class _StockTabState extends ConsumerState<_StockTab>
               child: Column(
                 children: [
                   StockFigureRow(
-                    label: 'In stock',
+                    label: post.isWholesale ? 'Available ($unit)' : 'In stock',
                     value: post.quantity ?? 0,
                     tone: (post.quantity ?? 0) > 0
                         ? StatusTone.success
                         : StatusTone.danger,
                   ),
-                  if (post.variants.isNotEmpty)
+                  if (post.isWholesale)
                     StockFigureRow(
-                      label: 'Colours / sizes',
-                      value: post.variants.length,
+                      label: 'Min order ($unit)',
+                      value: post.minOrderQuantity ?? 0,
+                    )
+                  else ...[
+                    if (post.variants.isNotEmpty)
+                      StockFigureRow(
+                        label: 'Colours / sizes',
+                        value: post.variants.length,
+                      ),
+                    StockFigureRow(
+                      label: 'Run out',
+                      value: out,
+                      tone: out > 0 ? StatusTone.danger : StatusTone.waiting,
                     ),
-                  StockFigureRow(
-                    label: 'Run out',
-                    value: out,
-                    tone: out > 0 ? StatusTone.danger : StatusTone.waiting,
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -276,7 +295,11 @@ class _StockTabState extends ConsumerState<_StockTab>
           ],
           const SizedBox(height: 20),
           Text(
-            _variant == null ? 'Stock you have' : 'Stock of ${_variant!.name}',
+            post.isWholesale
+                ? 'Available ($unit)'
+                : _variant == null
+                ? 'Stock you have'
+                : 'Stock of ${_variant!.name}',
             textAlign: TextAlign.center,
             style: theme.textTheme.titleSmall,
           ),
@@ -289,11 +312,18 @@ class _StockTabState extends ConsumerState<_StockTab>
             canLess: _count > 0,
             canMore: _count < _max,
             errorText: _inputError,
+            // Bulk moves in bigger steps.
+            jumps: post.isWholesale
+                ? const [-100, 100, 500]
+                : const [-10, 10, 50],
           ),
           const SizedBox(height: 8),
           Text(
-            'Sold some in the shop? Take them off. A new purchase came in? Add it. '
-            '0 shows it as out of stock.',
+            post.isWholesale
+                ? 'Sold some to a dealer? Take it off. A new lot came in? Add it. '
+                      '0 shows it as sold out.'
+                : 'Sold some in the shop? Take them off. A new purchase came in? Add it. '
+                      '0 shows it as out of stock.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -311,13 +341,14 @@ class _StockTabState extends ConsumerState<_StockTab>
             isLoading: _isSaving,
           ),
           const SizedBox(height: 8),
-          TextButton.icon(
-            key: const ValueKey('marketplace-stock-variants'),
-            onPressed: () =>
-                pushScreen(context, MarketplaceVariantsScreen(post: post)),
-            icon: const Icon(Icons.palette_outlined),
-            label: const Text('Manage colours and sizes'),
-          ),
+          if (!post.isWholesale)
+            TextButton.icon(
+              key: const ValueKey('marketplace-stock-variants'),
+              onPressed: () =>
+                  pushScreen(context, MarketplaceVariantsScreen(post: post)),
+              icon: const Icon(Icons.palette_outlined),
+              label: const Text('Manage colours and sizes'),
+            ),
           TextButton.icon(
             onPressed: () =>
                 showMarketplacePostFormSheet(context, existing: post),
