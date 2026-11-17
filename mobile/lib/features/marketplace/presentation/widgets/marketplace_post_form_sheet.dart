@@ -162,12 +162,101 @@ class _MarketplacePostFormSheetState
   /// A colour / size saved, added or removed in its sheet. On a product already posted it is saved
   /// at once — with its photos — so Save variant is final and the product's own Save is not needed
   /// for it. A new post has no id yet: its colours and sizes go with Save post.
+  /// A new post the business has started — typed in, a photo picked, a colour / size added — and
+  /// not posted yet. Leaving it asks once: Save post, or Discard. A post already up never asks:
+  /// its colours and sizes save on their own.
+  /// Something that would be lost: a name, description, price, colour / size or stock typed, a
+  /// photo picked, a colour / size added. Picking a category alone is not.
+  bool get _hasContent =>
+      [
+        _title,
+        _description,
+        _price,
+        _originalPrice,
+        _colour,
+        _size,
+        _quantity,
+      ].any((c) => c.text.trim().isNotEmpty) ||
+      _media.hasChanges ||
+      !_variants.isEmpty;
+
+  /// What [_hasContent] was at the last build: the form rebuilds only when it changes, so Back
+  /// starts (or stops) asking without a rebuild on every key.
+  bool _hadContent = false;
+
+  /// Posted, or the business chose Discard: closing asks nothing.
+  bool _settled = false;
+
+  void _markStarted() {
+    if (_old == null && mounted && _hasContent != _hadContent) {
+      setState(() => _hadContent = _hasContent);
+    }
+  }
+
+  bool get _unsavedNewPost => _old == null && !_settled && _hasContent;
+
+  /// Whether the form may close now. A new post not yet posted asks first, offering to post it —
+  /// its colours and sizes go up with it, so leaving would lose them too. Tapping outside the
+  /// question goes back to the form.
+  Future<bool> _mayLeave() async {
+    if (!_unsavedNewPost) return true;
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Post not saved yet'),
+        content: Text(
+          _variants.isEmpty
+              ? 'This product is not posted yet. Save it now, or discard it?'
+              : 'This product and its colours / sizes are not posted yet. Save it now, or '
+                    'discard it?',
+        ),
+        actions: [
+          TextButton(
+            key: const ValueKey('marketplace-leave-discard'),
+            onPressed: () => Navigator.of(context).pop('discard'),
+            child: const Text('Discard'),
+          ),
+          FilledButton(
+            key: const ValueKey('marketplace-leave-save'),
+            onPressed: () => Navigator.of(context).pop('save'),
+            child: const Text('Save post'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return false;
+    if (choice == 'discard') {
+      _settled = true;
+      return true;
+    }
+    if (choice == 'save') {
+      // Saving closes the form itself once the post is up; a problem shows on the form.
+      final categories =
+          ref.read(marketplaceCategoriesProvider).value ??
+          const <MarketplaceCategory>[];
+      await _submit(categories.where((c) => c.id == _categoryId).firstOrNull);
+    }
+    return false;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (_old == null) {
+      SheetLeaveGuard.watch(widget, _mayLeave);
+      _media.addListener(_markStarted);
+    }
+  }
+
   Future<void> _noteVariant(String change) async {
     final old = _old;
     final main = _firstVariant;
     if (old == null || !old.keepsStock || main == null) {
+      // Not saved on its own: it goes up with the product. Said plainly, so it is not taken as saved.
       _showVariantNotice(
-        '$change — saved with the post when you tap Save post.',
+        old == null
+            ? '$change — tap Save post to post it with the product.'
+            : '$change — tap Save changes to save it with the product.',
       );
       return;
     }
@@ -207,6 +296,7 @@ class _MarketplacePostFormSheetState
 
   @override
   void dispose() {
+    SheetLeaveGuard.forget(widget);
     for (final c in [
       _title,
       _description,
@@ -520,9 +610,11 @@ class _MarketplacePostFormSheetState
 
       reloadMarketplace(ref);
       if (!mounted) return;
-      setState(
-        () => _successMessage = old == null ? 'Post added.' : 'Post updated.',
-      );
+      setState(() {
+        // Posted: closing now loses nothing, so it asks nothing.
+        _settled = true;
+        _successMessage = old == null ? 'Post added.' : 'Post updated.';
+      });
       await Future<void>.delayed(const Duration(milliseconds: 900));
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
@@ -585,36 +677,48 @@ class _MarketplacePostFormSheetState
     final theme = Theme.of(context);
 
     // A Stack like the rent item form's, so "Post added." shows over the form wherever it is
-    // scrolled to — the business saves from the bottom.
-    return Stack(
-      children: [
-        _form(context, theme, categoriesAsync, categories, category, options),
-        if (_successMessage == null && _variantNotice != null)
-          Positioned(
-            top: 12,
-            right: 20,
-            left: 20,
-            child: ServiceFormMessageBanner(
-              key: const ValueKey('marketplace-variant-saved'),
-              message: _variantNotice!,
-              color: theme.colorScheme.primary,
-              onColor: theme.colorScheme.onPrimary,
-              icon: Icons.check_circle,
+    // scrolled to — the business saves from the bottom. A new post not yet posted asks before it
+    // closes (Save post or Discard); anything else closes at once.
+    return PopScope(
+      canPop: !_unsavedNewPost || _isSaving,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final navigator = Navigator.of(context);
+        if (await _mayLeave()) navigator.pop();
+      },
+      child: Stack(
+        children: [
+          _form(context, theme, categoriesAsync, categories, category, options),
+          if (_successMessage == null && _variantNotice != null)
+            Positioned(
+              top: 12,
+              right: 20,
+              left: 20,
+              child: ServiceFormMessageBanner(
+                key: const ValueKey('marketplace-variant-saved'),
+                message: _variantNotice!,
+                color: theme.colorScheme.primary,
+                onColor: theme.colorScheme.onPrimary,
+                // A tick only when it is really saved; otherwise what to do next.
+                icon: _variantNotice!.endsWith('saved.')
+                    ? Icons.check_circle
+                    : Icons.info_outline,
+              ),
             ),
-          ),
-        if (_successMessage case final message?)
-          Positioned(
-            top: 12,
-            right: 20,
-            child: ServiceFormMessageBanner(
-              key: const ValueKey('marketplace-post-saved'),
-              message: message,
-              color: theme.colorScheme.primary,
-              onColor: theme.colorScheme.onPrimary,
-              icon: Icons.check_circle,
+          if (_successMessage case final message?)
+            Positioned(
+              top: 12,
+              right: 20,
+              child: ServiceFormMessageBanner(
+                key: const ValueKey('marketplace-post-saved'),
+                message: message,
+                color: theme.colorScheme.primary,
+                onColor: theme.colorScheme.onPrimary,
+                icon: Icons.check_circle,
+              ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -644,6 +748,7 @@ class _MarketplacePostFormSheetState
               controller: _scroll,
               child: Form(
                 key: _formKey,
+                onChanged: _markStarted,
                 autovalidateMode: _submitted
                     ? AutovalidateMode.always
                     : AutovalidateMode.disabled,

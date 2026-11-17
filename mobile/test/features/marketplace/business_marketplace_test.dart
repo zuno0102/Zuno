@@ -1609,6 +1609,80 @@ void main() {
       );
     });
 
+    testWidgets('a new post with a colour added asks before it closes: Discard '
+        'posts nothing', (tester) async {
+      final repo = await _pump(tester, const BusinessMarketplaceTab());
+      await openNew(tester);
+      await _type(tester, 'marketplace-title', 'Silk saree');
+      await _type(tester, 'marketplace-price', '499');
+      await _type(tester, 'marketplace-colour', 'Red');
+      await _type(tester, 'marketplace-stock', '10');
+      await tap(tester, find.byKey(const ValueKey('marketplace-add-variant')));
+      await fillVariant(tester, colour: 'Green', price: '449', stock: '5');
+      expect(
+        find.text('Green added — tap Save post to post it with the product.'),
+        findsOneWidget,
+        reason: 'not "saved": the colour goes up with the post',
+      );
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('Post not saved yet'), findsOneWidget);
+      expect(
+        find.text(
+          'This product and its colours / sizes are not posted yet. Save it now, '
+          'or discard it?',
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('marketplace-leave-discard')));
+      await tester.pumpAndSettle();
+      expect(find.byType(MarketplacePostFormSheet), findsNothing);
+      expect(repo.created, isEmpty);
+    });
+
+    testWidgets(
+      '…or Save post right from the question posts it with its colour',
+      (tester) async {
+        final repo = await _pump(tester, const BusinessMarketplaceTab());
+        await openNew(tester);
+        await _type(tester, 'marketplace-title', 'Silk saree');
+        await _type(tester, 'marketplace-price', '499');
+        await _type(tester, 'marketplace-colour', 'Red');
+        await _type(tester, 'marketplace-stock', '10');
+        await tap(
+          tester,
+          find.byKey(const ValueKey('marketplace-add-variant')),
+        );
+        await fillVariant(tester, colour: 'Green', price: '449', stock: '5');
+
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('marketplace-leave-save')));
+        await tester.pumpAndSettle();
+
+        expect(
+          [for (final v in repo.created.single.variants) v.name],
+          ['Red', 'Green'],
+        );
+        expect(find.byType(MarketplacePostFormSheet), findsNothing);
+      },
+    );
+
+    testWidgets('a new post left untouched closes without asking', (
+      tester,
+    ) async {
+      await _pump(tester, const BusinessMarketplaceTab());
+      await openNew(tester);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Post not saved yet'), findsNothing);
+      expect(find.byType(MarketplacePostFormSheet), findsNothing);
+    });
+
     testWidgets('a colour and size typed on the form, and more added like a '
         'service items: add, edit, remove', (tester) async {
       final repo = await _pump(tester, const BusinessMarketplaceTab());
@@ -1631,7 +1705,7 @@ void main() {
       );
       await fillVariant(tester, colour: 'Green', price: '449', stock: '25');
       expect(
-        find.text('Green added — saved with the post when you tap Save post.'),
+        find.text('Green added — tap Save post to post it with the product.'),
         findsOneWidget,
         reason: 'said inside the form, where it can be seen',
       );
