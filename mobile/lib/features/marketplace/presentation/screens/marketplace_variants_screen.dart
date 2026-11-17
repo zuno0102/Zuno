@@ -4,13 +4,11 @@ import 'package:zuno/features/marketplace/domain/entities/marketplace_post.dart'
 import 'package:zuno/features/marketplace/presentation/providers/marketplace_providers.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_product_sections.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
-import 'package:zuno/shared/widgets/confirm_dialog.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
-import 'package:zuno/shared/widgets/primary_button.dart';
 
 /// "Manage variants": a new product's colours and sizes — a saree in Red and Green, a shirt in M, L
-/// and XL — each with its own price and stock, added, edited and removed like a service's items, and
-/// saved without the whole form.
+/// and XL — each with its own price, stock and photos, added, edited and removed like a service's
+/// items. Each one is saved as soon as its sheet's Save variant (or Remove) is tapped.
 class MarketplaceVariantsScreen extends ConsumerStatefulWidget {
   const MarketplaceVariantsScreen({required this.post, super.key});
 
@@ -31,12 +29,8 @@ class _MarketplaceVariantsScreenState
   late final _variants = MarketplaceVariantList(
     widget.post.variants.skip(1).toList(),
     price: widget.post.price,
-  )..addListener(_rebuild);
-  bool _changed = false;
-  bool _isSaving = false;
+  );
   String? _saveError;
-
-  void _rebuild() => setState(() => _changed = true);
 
   @override
   void dispose() {
@@ -44,14 +38,12 @@ class _MarketplaceVariantsScreenState
     super.dispose();
   }
 
-  Future<void> _save() async {
+  /// Saves the colours and sizes as they now are — with the photos just picked — the moment one is
+  /// saved, added or removed in its sheet. [change] says which ("Pink · M changed").
+  Future<void> _saveNow(String change) async {
     // Before the await, as the app's messages need: the screen's colours and its messenger.
     final messenger = AppMessenger.of(context);
-    final navigator = Navigator.of(context);
-    setState(() {
-      _isSaving = true;
-      _saveError = null;
-    });
+    setState(() => _saveError = null);
     try {
       final repository = ref.read(marketplaceRepositoryProvider);
       final saved = await repository.replaceVariants(widget.post.id, [
@@ -65,25 +57,24 @@ class _MarketplaceVariantsScreenState
             stock: main.stock,
             isActive: true,
             customDetails: main.customDetails,
+            imageUrls: main.imageUrls,
           ),
         ..._variants.items,
       ]);
-      // Each colour / size's own photos, now that every one has an id.
-      await uploadMarketplaceVariantPhotos(
+      final latest = await uploadMarketplaceVariantPhotos(
         repository,
         saved,
         _variants.pendingPhotos,
       );
-      reloadMarketplace(ref);
-      messenger.showSuccess(
-        '${widget.post.title}: colours and sizes saved — '
-        '${(_main?.stock ?? 0) + _variants.totalStock} in stock.',
+      // The rows as the server keeps them now: new ones have ids, photos are uploaded.
+      _variants.resetFrom(
+        latest.variants.skip(_main == null ? 0 : 1).toList(),
+        price: latest.price,
       );
-      navigator.pop();
+      reloadMarketplace(ref);
+      messenger.showSuccess('$change — saved.');
     } catch (e) {
       if (mounted) setState(() => _saveError = e.toString());
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -93,76 +84,48 @@ class _MarketplaceVariantsScreenState
     final options = ref.watch(marketplaceOptionsProvider).value;
     final post = widget.post;
 
-    return PopScope(
-      canPop: !_changed || _isSaving,
-      onPopInvokedWithResult: (didPop, _) async {
-        if (didPop) return;
-        final navigator = Navigator.of(context);
-        final discard = await showConfirmDialog(
-          context,
-          title: 'Discard changes?',
-          message:
-              'The colours and sizes of "${post.title}" have not been saved.',
-          confirmLabel: 'Discard',
-          cancelLabel: 'Keep editing',
-          destructive: true,
-        );
-        if (discard) navigator.pop();
-      },
-      child: Scaffold(
-        appBar: AppBar(title: Text(post.title)),
-        body: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-          children: [
-            if (_main case final main?) ...[
-              _MainProductLine(main: main),
-              const SizedBox(height: 16),
-            ],
-            MarketplaceVariantsSection(
-              variants: _variants,
-              // The main's colour / size is taken too: the same one twice is refused.
-              alsoTaken: () => [?_main],
-              mrp: () => post.originalPrice,
-              defaultPrice: () => post.price,
-              limits: options?.textLimits ?? const MarketplaceTextLimits(),
-              maxQuantity:
-                  options?.maxQuantity ?? marketplaceDefaultMaxQuantity,
-              photoSlots:
-                  options?.variantImageSlots ??
-                  marketplaceDefaultVariantImageSlots,
-              title: 'Colours and sizes',
-              hint:
-                  'The same product in another colour or size — a saree in Red and Green, '
-                  'a shirt in M, L and XL — each with its own price and stock.',
-              addLabel: 'Add colour / size',
-              onChanged: (change) => AppMessenger.of(context).showSuccess(
-                '$change — not saved yet. Tap Save colours and sizes.',
+    return Scaffold(
+      appBar: AppBar(title: Text(post.title)),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        children: [
+          if (_main case final main?) ...[
+            _MainProductLine(main: main),
+            const SizedBox(height: 16),
+          ],
+          MarketplaceVariantsSection(
+            variants: _variants,
+            // The main's colour / size is taken too: the same one twice is refused.
+            alsoTaken: () => [?_main],
+            mrp: () => post.originalPrice,
+            defaultPrice: () => post.price,
+            limits: options?.textLimits ?? const MarketplaceTextLimits(),
+            maxQuantity: options?.maxQuantity ?? marketplaceDefaultMaxQuantity,
+            photoSlots:
+                options?.variantImageSlots ??
+                marketplaceDefaultVariantImageSlots,
+            title: 'Colours and sizes',
+            hint:
+                'The same product in another colour or size — a saree in Red and Green, '
+                'a shirt in M, L and XL — each with its own price and stock. Saved as soon '
+                'as you save each one.',
+            addLabel: 'Add colour / size',
+            onChanged: _saveNow,
+          ),
+          if (_main == null && _variants.isEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Keep at least one. To sell it as one stock count, use Edit.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
-            ),
-            if (_main == null && _variants.isEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Keep at least one. To sell it as one stock count, use Edit.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-            if (_saveError != null) ...[
-              const SizedBox(height: 12),
-              ErrorBanner(message: _saveError!),
-            ],
-            const SizedBox(height: 20),
-            PrimaryButton(
-              key: const ValueKey('marketplace-variants-save'),
-              label: 'Save colours and sizes',
-              onPressed: _changed && (_main != null || !_variants.isEmpty)
-                  ? _save
-                  : null,
-              isLoading: _isSaving,
             ),
           ],
-        ),
+          if (_saveError != null) ...[
+            const SizedBox(height: 12),
+            ErrorBanner(message: _saveError!),
+          ],
+        ],
       ),
     );
   }

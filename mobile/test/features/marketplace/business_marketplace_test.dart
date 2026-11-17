@@ -436,7 +436,25 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
     List<MarketplaceVariant> variants,
   ) async {
     replacedVariants.add((id, variants));
-    return _post(id: id);
+    // As the server answers: the colours and sizes saved, a new one with its id.
+    return _post(
+      id: id,
+      condition: MarketplaceItemCondition.newItem,
+      canUpdateStock: true,
+      variants: [
+        for (final (i, v) in variants.indexed)
+          MarketplaceVariant(
+            id: v.id ?? 'v-new-$i',
+            colour: v.colour,
+            size: v.size,
+            price: v.price,
+            stock: v.stock,
+            isActive: v.isActive,
+            customDetails: v.customDetails,
+            imageUrls: v.imageUrls,
+          ),
+      ],
+    );
   }
 
   @override
@@ -1613,7 +1631,7 @@ void main() {
       );
       await fillVariant(tester, colour: 'Green', price: '449', stock: '25');
       expect(
-        find.text('Green added — not saved yet. Tap Save post.'),
+        find.text('Green added — saved with the post when you tap Save post.'),
         findsOneWidget,
         reason: 'said inside the form, where it can be seen',
       );
@@ -2197,19 +2215,18 @@ void main() {
       );
       await tester.tap(find.byKey(const ValueKey('marketplace-variant-save')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('marketplace-variants-save')));
-      await tester.pumpAndSettle();
 
+      // Saved by Save variant itself: no second Save on the screen.
       final (id, variants) = repo.replacedVariants.single;
       expect(id, 'p-1');
       expect(
         [for (final v in variants) (v.id, v.name, v.price, v.stock)],
         [('v-red', 'Red', 2400.0, 12), (null, 'Green', 2200.0, 5)],
       );
-      expect(find.byType(MarketplaceVariantsScreen), findsNothing);
+      expect(find.text('Green added — saved.'), findsOneWidget);
       expect(
-        find.text('Silk saree: colours and sizes saved — 17 in stock.'),
-        findsOneWidget,
+        find.byKey(const ValueKey('marketplace-variants-save')),
+        findsNothing,
       );
     });
 
@@ -2274,8 +2291,6 @@ void main() {
         find.text('Inactive · ${rupees(2400)} · 5 in stock'),
         findsOneWidget,
       );
-      await tester.tap(find.byKey(const ValueKey('marketplace-variants-save')));
-      await tester.pumpAndSettle();
 
       final (_, variants) = repo.replacedVariants.single;
       expect(
@@ -2403,10 +2418,6 @@ void main() {
           find.text('${rupees(2400)} · 12 in stock\nBorder: Zari'),
           findsOneWidget,
         );
-        await tester.tap(
-          find.byKey(const ValueKey('marketplace-variants-save')),
-        );
-        await tester.pumpAndSettle();
 
         final (_, variants) = repo.replacedVariants.single;
         expect(
@@ -2476,7 +2487,7 @@ void main() {
       },
     );
 
-    testWidgets('a typed change makes Back ask first, and Keep editing stays', (
+    testWidgets('Back closes the form at once, without a Discard question', (
       tester,
     ) async {
       final repo = await _pump(
@@ -2496,14 +2507,8 @@ void main() {
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
 
-      expect(find.text('Discard changes?'), findsOneWidget);
-      expect(
-        find.text('Your changes are not saved until you tap Save changes.'),
-        findsOneWidget,
-      );
-      await tester.tap(find.text('Keep editing'));
-      await tester.pumpAndSettle();
-      expect(find.byType(MarketplacePostFormSheet), findsOneWidget);
+      expect(find.text('Discard changes?'), findsNothing);
+      expect(find.byType(MarketplacePostFormSheet), findsNothing);
       expect(repo.updated, isEmpty);
     });
 
@@ -2687,21 +2692,21 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.textContaining('Inactive'), findsWidgets);
 
-      // Closing without Save changes asks first; Keep editing stays in the form.
-      await tester.binding.handlePopRoute();
-      await tester.pumpAndSettle();
-      expect(find.text('Discard changes?'), findsOneWidget);
-      await tester.tap(find.text('Keep editing'));
-      await tester.pumpAndSettle();
-      expect(find.byType(MarketplacePostFormSheet), findsOneWidget);
-      expect(repo.updated, isEmpty);
-      await _save(tester);
-
-      final (_, input) = repo.updated.single;
+      // Saved by Save variant itself — the main product's Save changes is not needed for it.
+      final (id, variants) = repo.replacedVariants.single;
+      expect(id, 'p-1');
       expect(
-        [for (final v in input.variants) (v.colour, v.isActive)],
+        [for (final v in variants) (v.colour, v.isActive)],
         [('Red', true), ('Green', false)],
       );
+      expect(find.text('Green changed to inactive — saved.'), findsOneWidget);
+      expect(repo.updated, isEmpty);
+
+      // Back closes at once: nothing is left unsaved.
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('Discard changes?'), findsNothing);
+      expect(find.byType(MarketplacePostFormSheet), findsNothing);
     });
 
     testWidgets('a used item has no stock or variants on its menu', (

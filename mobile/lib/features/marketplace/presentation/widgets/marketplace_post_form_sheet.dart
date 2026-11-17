@@ -16,7 +16,6 @@ import 'package:zuno/features/marketplace/domain/entities/marketplace_post.dart'
 import 'package:zuno/features/marketplace/presentation/providers/marketplace_providers.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_category_fields_section.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_product_sections.dart';
-import 'package:zuno/shared/widgets/confirm_dialog.dart';
 import 'package:zuno/shared/widgets/date_time_field.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/multi_select_sheet.dart';
@@ -146,69 +145,54 @@ class _MarketplacePostFormSheetState
   String? _errorMessage;
   String? _successMessage;
 
-  /// A colour / size was added, changed or removed in this form and not saved yet.
-  bool _variantsChanged = false;
-
-  /// Saved, or the business chose Discard: closing loses nothing more and asks nothing.
-  bool _settled = false;
-
-  /// A field of the form was typed in or changed (name, price, details, ships to …), or a photo
-  /// picked or removed.
-  bool _edited = false;
-
-  /// The first edit rebuilds, so Back and a tap outside start asking before they close.
-  void _markEdited() {
-    if (!_edited && mounted) setState(() => _edited = true);
-  }
-
-  /// What closing the form would lose: any edit, a colour / size change, or the Active switch moved.
-  bool get _unsaved =>
-      !_settled &&
-      (_edited ||
-          _variantsChanged ||
-          _isActive !=
-              (_old == null || _old.status != MarketplacePostStatus.paused));
-
-  /// Whether the form may close now: at once with nothing unsaved, else after "Discard changes?".
-  /// Asked by Back and a tap outside (through PopScope), the handle, and the router when the
-  /// browser's back button takes the sheet away.
-  Future<bool> _mayLeave() async {
-    if (!_unsaved) return true;
-    final discard = await showConfirmDialog(
-      context,
-      title: 'Discard changes?',
-      message:
-          'Your changes are not saved until you tap '
-          '${_old == null ? 'Save post' : 'Save changes'}.',
-      confirmLabel: 'Discard',
-      cancelLabel: 'Keep editing',
-      destructive: true,
-    );
-    if (discard) _settled = true;
-    return discard;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    SheetLeaveGuard.watch(widget, _mayLeave);
-    _media.addListener(_markEdited);
-  }
-
   /// A colour / size just changed in its sheet: said for a moment, as the form stays open.
   String? _variantNotice;
   Timer? _variantNoticeTimer;
 
-  void _noteVariant(String change) {
-    _variantsChanged = true;
-    final notice =
-        '$change — not saved yet. Tap ${_old == null ? 'Save post' : 'Save changes'}.';
+  void _showVariantNotice(String notice) {
+    if (!mounted) return;
     setState(() => _variantNotice = notice);
     // A later change starts its own three seconds.
     _variantNoticeTimer?.cancel();
     _variantNoticeTimer = Timer(const Duration(seconds: 3), () {
       if (mounted) setState(() => _variantNotice = null);
     });
+  }
+
+  /// A colour / size saved, added or removed in its sheet. On a product already posted it is saved
+  /// at once — with its photos — so Save variant is final and the product's own Save is not needed
+  /// for it. A new post has no id yet: its colours and sizes go with Save post.
+  Future<void> _noteVariant(String change) async {
+    final old = _old;
+    final main = _firstVariant;
+    if (old == null || !old.keepsStock || main == null) {
+      _showVariantNotice(
+        '$change — saved with the post when you tap Save post.',
+      );
+      return;
+    }
+
+    try {
+      final repository = ref.read(marketplaceRepositoryProvider);
+      final saved = await repository.replaceVariants(old.id, [
+        main,
+        ..._variants.items,
+      ]);
+      final latest = await uploadMarketplaceVariantPhotos(
+        repository,
+        saved,
+        _variants.pendingPhotos,
+      );
+      // The rows as the server keeps them now: new ones have ids, photos are uploaded.
+      _variants.resetFrom(
+        latest.variants.skip(1).toList(),
+        price: latest.price,
+      );
+      reloadMarketplace(ref);
+      _showVariantNotice('$change — saved.');
+    } catch (e) {
+      if (mounted) _showError(e.toString());
+    }
   }
 
   static String _plain(double? value) {
@@ -223,7 +207,6 @@ class _MarketplacePostFormSheetState
 
   @override
   void dispose() {
-    SheetLeaveGuard.forget(widget);
     for (final c in [
       _title,
       _description,
@@ -537,8 +520,6 @@ class _MarketplacePostFormSheetState
 
       reloadMarketplace(ref);
       if (!mounted) return;
-      // Saved: closing now loses nothing, so it asks nothing.
-      _settled = true;
       setState(
         () => _successMessage = old == null ? 'Post added.' : 'Post updated.',
       );
@@ -604,45 +585,36 @@ class _MarketplacePostFormSheetState
     final theme = Theme.of(context);
 
     // A Stack like the rent item form's, so "Post added." shows over the form wherever it is
-    // scrolled to — the business saves from the bottom. Closing it with a colour / size or the
-    // Active switch changed but not saved asks first, as Rent's Stock page does.
-    return PopScope(
-      canPop: !_unsaved || _isSaving,
-      onPopInvokedWithResult: (didPop, _) async {
-        if (didPop) return;
-        final navigator = Navigator.of(context);
-        if (await _mayLeave()) navigator.pop();
-      },
-      child: Stack(
-        children: [
-          _form(context, theme, categoriesAsync, categories, category, options),
-          if (_successMessage == null && _variantNotice != null)
-            Positioned(
-              top: 12,
-              right: 20,
-              left: 20,
-              child: ServiceFormMessageBanner(
-                key: const ValueKey('marketplace-variant-saved'),
-                message: _variantNotice!,
-                color: theme.colorScheme.primary,
-                onColor: theme.colorScheme.onPrimary,
-                icon: Icons.check_circle,
-              ),
+    // scrolled to — the business saves from the bottom.
+    return Stack(
+      children: [
+        _form(context, theme, categoriesAsync, categories, category, options),
+        if (_successMessage == null && _variantNotice != null)
+          Positioned(
+            top: 12,
+            right: 20,
+            left: 20,
+            child: ServiceFormMessageBanner(
+              key: const ValueKey('marketplace-variant-saved'),
+              message: _variantNotice!,
+              color: theme.colorScheme.primary,
+              onColor: theme.colorScheme.onPrimary,
+              icon: Icons.check_circle,
             ),
-          if (_successMessage case final message?)
-            Positioned(
-              top: 12,
-              right: 20,
-              child: ServiceFormMessageBanner(
-                key: const ValueKey('marketplace-post-saved'),
-                message: message,
-                color: theme.colorScheme.primary,
-                onColor: theme.colorScheme.onPrimary,
-                icon: Icons.check_circle,
-              ),
+          ),
+        if (_successMessage case final message?)
+          Positioned(
+            top: 12,
+            right: 20,
+            child: ServiceFormMessageBanner(
+              key: const ValueKey('marketplace-post-saved'),
+              message: message,
+              color: theme.colorScheme.primary,
+              onColor: theme.colorScheme.onPrimary,
+              icon: Icons.check_circle,
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 
@@ -672,7 +644,6 @@ class _MarketplacePostFormSheetState
               controller: _scroll,
               child: Form(
                 key: _formKey,
-                onChanged: _markEdited,
                 autovalidateMode: _submitted
                     ? AutovalidateMode.always
                     : AutovalidateMode.disabled,

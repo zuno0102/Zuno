@@ -229,6 +229,21 @@ class MarketplaceVariantList extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// The rows as the server keeps them after a save — new ones with their ids, photos uploaded —
+  /// so the next save updates them rather than adding them again.
+  void resetFrom(List<MarketplaceVariant> saved, {double? price}) {
+    for (final photos in _photos) {
+      photos?.dispose();
+    }
+    _items
+      ..clear()
+      ..addAll(MarketplaceVariantList(saved, price: price)._items);
+    _photos
+      ..clear()
+      ..addAll(List.filled(saved.length, null));
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     for (final photos in _photos) {
