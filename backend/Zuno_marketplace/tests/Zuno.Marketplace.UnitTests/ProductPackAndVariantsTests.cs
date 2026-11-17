@@ -303,6 +303,41 @@ public class ProductPackAndVariantsTests
     }
 
     [Fact]
+    public async Task TheInactiveTile_CountsItems_AMainAndItsThreeColoursPausedIsFour()
+    {
+        using var test = new TestMarketplace();
+        var free = await test.Db.Plans.SingleAsync(p => p.IsDefault);
+        free.MaxActivePosts = 5;
+        await test.Db.SaveChangesAsync();
+        var saree = await test.SaveHandlers.Handle(Saree(c => c.Variants =
+        [
+            new() { Colour = "Red", Price = 2_400m, Stock = 10 },
+            new() { Colour = "Green", Price = 2_400m, Stock = 3 },
+            new() { Colour = "Blue", Price = 2_400m, Stock = 4 },
+            new() { Colour = "Yellow", Price = 2_400m, Stock = 5 },
+        ]), default);
+        await test.ManageHandlers.Handle(
+            new ChangeMarketplacePostStatusCommand { Id = saree.Id, Status = nameof(MarketplacePostStatus.Paused) }, default);
+
+        (await test.QueryHandlers.Handle(new GetMyMarketplaceSummaryQuery(), default)).Inactive
+            .Should().Be(4, "the main colour and its three others are all off sale");
+
+        // A live shirt with two of its three sizes switched off adds two.
+        await test.SaveHandlers.Handle(Saree(c =>
+        {
+            c.Title = "Cotton shirt";
+            c.Variants =
+            [
+                new() { Size = "M", Price = 900m, Stock = 2 },
+                new() { Size = "L", Price = 900m, Stock = 2, IsActive = false },
+                new() { Size = "XL", Price = 900m, Stock = 2, IsActive = false },
+            ];
+        }), default);
+
+        (await test.QueryHandlers.Handle(new GetMyMarketplaceSummaryQuery(), default)).Inactive.Should().Be(6);
+    }
+
+    [Fact]
     public async Task EveryColourSwitchedOff_IsOutOfStock()
     {
         using var test = new TestMarketplace();

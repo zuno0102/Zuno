@@ -342,14 +342,18 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
     return MarketplaceSummary(
       active: plan.usedActivePosts,
       paused: posts.where((p) => p.status == 'Paused').length,
-      inactive: posts
-          .where(
-            (p) =>
-                p.status == 'Paused' ||
-                (p.status == MarketplacePostStatus.active &&
-                    p.variants.any((v) => !v.isActive)),
-          )
-          .length,
+      // Item by item, as the server counts: a paused product's every colour / size (one for a
+      // post with none), and each one switched off on a live product.
+      inactive: posts.fold<int>(
+        0,
+        (sum, p) =>
+            sum +
+            (p.status == MarketplacePostStatus.paused
+                ? (p.variants.isEmpty ? 1 : p.variants.length)
+                : p.status == MarketplacePostStatus.active
+                ? p.variants.where((v) => !v.isActive).length
+                : 0),
+      ),
       expired: posts.where((p) => p.status == 'Expired').length,
       closed: 0,
       sold: posts.where((p) => p.status == MarketplacePostStatus.sold).length,
@@ -1517,7 +1521,7 @@ void main() {
       );
       await fillVariant(tester, colour: 'Green', price: '449', stock: '25');
       expect(
-        find.text('Green added. Tap Save post to keep it.'),
+        find.text('Green added — not saved yet. Tap Save post.'),
         findsOneWidget,
         reason: 'said inside the form, where it can be seen',
       );
@@ -2226,6 +2230,26 @@ void main() {
       },
     );
 
+    testWidgets('an untouched form closes without asking', (tester) async {
+      await _pump(
+        tester,
+        const BusinessMarketplaceTab(),
+        repository: _FakeMarketplaceRepository(
+          posts: [_post(condition: MarketplaceItemCondition.used)],
+        ),
+      );
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Edit'));
+      await tester.pumpAndSettle();
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Discard changes?'), findsNothing);
+      expect(find.byType(MarketplacePostFormSheet), findsNothing);
+    });
+
     testWidgets('an untouched Active switch changes no status', (tester) async {
       final repo = await _pump(
         tester,
@@ -2301,6 +2325,85 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(repo.deleted, ['p-1']);
+    });
+
+    testWidgets('switching a colour off in the product form saves it inactive', (
+      tester,
+    ) async {
+      final repo = await _pump(
+        tester,
+        const BusinessMarketplaceTab(),
+        repository: _FakeMarketplaceRepository(
+          posts: [
+            _post(
+              title: 'Silk saree',
+              condition: MarketplaceItemCondition.newItem,
+              subCategoryId: 's-sarees',
+              subCategoryName: 'Sarees',
+              attributes: const {},
+              price: 449,
+              originalPrice: 999,
+              quantity: 15,
+              canUpdateStock: true,
+              variants: const [
+                MarketplaceVariant(
+                  id: 'v-red',
+                  colour: 'Red',
+                  price: 499,
+                  stock: 10,
+                ),
+                MarketplaceVariant(
+                  id: 'v-green',
+                  colour: 'Green',
+                  price: 449,
+                  stock: 5,
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      await tester.tap(find.byType(PopupMenuButton<String>).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Edit'));
+      await tester.pumpAndSettle();
+      final menu = find.byKey(const ValueKey('marketplace-variant-menu-0'));
+      await tester.ensureVisible(menu);
+      await tester.pumpAndSettle();
+      await tester.tap(menu);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Edit').last);
+      await tester.pumpAndSettle();
+      final active = find.byKey(const ValueKey('marketplace-variant-active'));
+      await tester.ensureVisible(active);
+      await tester.pumpAndSettle();
+      await tester.tap(active);
+      await tester.pumpAndSettle();
+      expect(tester.widget<SwitchListTile>(active).value, isFalse);
+      final saveVariant = find.byKey(
+        const ValueKey('marketplace-variant-save'),
+      );
+      await tester.ensureVisible(saveVariant);
+      await tester.tap(saveVariant);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Inactive'), findsWidgets);
+
+      // Closing without Save changes asks first; Keep editing stays in the form.
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('Discard changes?'), findsOneWidget);
+      await tester.tap(find.text('Keep editing'));
+      await tester.pumpAndSettle();
+      expect(find.byType(MarketplacePostFormSheet), findsOneWidget);
+      expect(repo.updated, isEmpty);
+      await _save(tester);
+
+      final (_, input) = repo.updated.single;
+      expect(
+        [for (final v in input.variants) (v.colour, v.isActive)],
+        [('Red', true), ('Green', false)],
+      );
     });
 
     testWidgets('a used item has no stock or variants on its menu', (
@@ -2648,6 +2751,42 @@ void main() {
       expect(valueOf('expired'), '0');
       expect(valueOf('plan'), '1 / 1');
       expect(find.text('Free plan'), findsOneWidget);
+    });
+
+    testWidgets('Inactive counts items: a paused main and its 3 colours is 4', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        const MarketplaceDashboardTiles(),
+        repository: _FakeMarketplaceRepository(
+          posts: [
+            _post(
+              title: 'Silk saree',
+              status: MarketplacePostStatus.paused,
+              condition: MarketplaceItemCondition.newItem,
+              quantity: 22,
+              canUpdateStock: true,
+              variants: const [
+                MarketplaceVariant(id: 'v-1', colour: 'Red', stock: 10),
+                MarketplaceVariant(id: 'v-2', colour: 'Green', stock: 3),
+                MarketplaceVariant(id: 'v-3', colour: 'Blue', stock: 4),
+                MarketplaceVariant(id: 'v-4', colour: 'Yellow', stock: 5),
+              ],
+            ),
+          ],
+          plan: _plan(used: 0),
+        ),
+      );
+
+      expect(
+        tester
+            .widget<StatTile>(
+              find.byKey(const ValueKey('marketplace-tile-inactive')),
+            )
+            .value,
+        '4',
+      );
     });
 
     testWidgets('Inactive counts and lists a live product with a colour off', (

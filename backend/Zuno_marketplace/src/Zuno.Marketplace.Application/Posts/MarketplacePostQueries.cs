@@ -136,17 +136,24 @@ public class MarketplacePostQueryHandlers(
             .ToListAsync(cancellationToken);
 
         var live = byCategory.Sum(c => c.Active);
-        // A live product with a colour / size switched off is partly inactive: it is on the tile too.
-        var withInactiveColour = await dbContext.Posts
+        // The Inactive tile counts what is not on sale, item by item: a paused product is its main
+        // colour / size and every other one (a post with none is one item); a live product adds each
+        // colour / size switched off. Main + 3 colours paused is 4.
+        var pausedItems = await dbContext.Posts
             .AsNoTracking()
-            .Where(p => p.OwnerUserId == ownerId && p.Status == MarketplacePostStatus.Active)
-            .CountAsync(p => p.Variants.Any(v => !v.IsActive), cancellationToken);
+            .Where(p => p.OwnerUserId == ownerId && p.Status == MarketplacePostStatus.Paused)
+            .SumAsync(p => p.Variants.Count() == 0 ? 1 : p.Variants.Count(), cancellationToken);
+        var switchedOffItems = await dbContext.PostVariants
+            .AsNoTracking()
+            .CountAsync(
+                v => !v.IsActive && v.Post.OwnerUserId == ownerId && v.Post.Status == MarketplacePostStatus.Active,
+                cancellationToken);
         var (plan, endsAt) = await dbContext.CurrentAsync(ownerId, now, cancellationToken);
         return new MarketplaceSummaryDto
         {
             Active = live,
             Paused = byCategory.Sum(c => c.Paused),
-            Inactive = byCategory.Sum(c => c.Paused) + withInactiveColour,
+            Inactive = pausedItems + switchedOffItems,
             Expired = byCategory.Sum(c => c.Expired),
             Closed = byCategory.Sum(c => c.Closed),
             Sold = byCategory.Sum(c => c.Sold),

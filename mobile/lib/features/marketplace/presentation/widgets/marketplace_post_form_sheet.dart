@@ -15,6 +15,7 @@ import 'package:zuno/features/marketplace/domain/entities/marketplace_post.dart'
 import 'package:zuno/features/marketplace/presentation/providers/marketplace_providers.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_category_fields_section.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_product_sections.dart';
+import 'package:zuno/shared/widgets/confirm_dialog.dart';
 import 'package:zuno/shared/widgets/date_time_field.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/multi_select_sheet.dart';
@@ -33,6 +34,9 @@ Future<void> showMarketplacePostFormSheet(
 }) => showModalBottomSheet<void>(
   context: context,
   isScrollControlled: true,
+  // Closed by tapping outside or Back, which ask first when a change is not saved; a drag would
+  // close it without asking.
+  enableDrag: false,
   builder: (context) =>
       MarketplacePostFormSheet(existing: existing, categoryId: categoryId),
 );
@@ -140,12 +144,22 @@ class _MarketplacePostFormSheetState
   String? _successMessage;
 
   /// A colour / size just changed in its sheet: said for a moment, as the form stays open.
+  /// A colour / size was added, changed or removed in this form and not saved yet.
+  bool _variantsChanged = false;
+
+  /// What closing the form would lose: a colour / size change, or the Active switch moved.
+  bool get _unsaved =>
+      _variantsChanged ||
+      _isActive !=
+          (_old == null || _old.status != MarketplacePostStatus.paused);
+
   String? _variantNotice;
   Timer? _variantNoticeTimer;
 
   void _noteVariant(String change) {
+    _variantsChanged = true;
     final notice =
-        '$change Tap ${_old == null ? 'Save post' : 'Save changes'} to keep it.';
+        '$change — not saved yet. Tap ${_old == null ? 'Save post' : 'Save changes'}.';
     setState(() => _variantNotice = notice);
     // A later change starts its own three seconds.
     _variantNoticeTimer?.cancel();
@@ -478,36 +492,55 @@ class _MarketplacePostFormSheetState
     final theme = Theme.of(context);
 
     // A Stack like the rent item form's, so "Post added." shows over the form wherever it is
-    // scrolled to — the business saves from the bottom.
-    return Stack(
-      children: [
-        _form(context, theme, categoriesAsync, categories, category, options),
-        if (_successMessage == null && _variantNotice != null)
-          Positioned(
-            top: 12,
-            right: 20,
-            left: 20,
-            child: ServiceFormMessageBanner(
-              key: const ValueKey('marketplace-variant-saved'),
-              message: _variantNotice!,
-              color: theme.colorScheme.primary,
-              onColor: theme.colorScheme.onPrimary,
-              icon: Icons.check_circle,
+    // scrolled to — the business saves from the bottom. Closing it with a colour / size or the
+    // Active switch changed but not saved asks first, as Rent's Stock page does.
+    return PopScope(
+      canPop: !_unsaved || _isSaving,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final navigator = Navigator.of(context);
+        final discard = await showConfirmDialog(
+          context,
+          title: 'Discard changes?',
+          message:
+              'Your colour / size and Active changes are not saved until you tap '
+              '${_old == null ? 'Save post' : 'Save changes'}.',
+          confirmLabel: 'Discard',
+          cancelLabel: 'Keep editing',
+          destructive: true,
+        );
+        if (discard) navigator.pop();
+      },
+      child: Stack(
+        children: [
+          _form(context, theme, categoriesAsync, categories, category, options),
+          if (_successMessage == null && _variantNotice != null)
+            Positioned(
+              top: 12,
+              right: 20,
+              left: 20,
+              child: ServiceFormMessageBanner(
+                key: const ValueKey('marketplace-variant-saved'),
+                message: _variantNotice!,
+                color: theme.colorScheme.primary,
+                onColor: theme.colorScheme.onPrimary,
+                icon: Icons.check_circle,
+              ),
             ),
-          ),
-        if (_successMessage case final message?)
-          Positioned(
-            top: 12,
-            right: 20,
-            child: ServiceFormMessageBanner(
-              key: const ValueKey('marketplace-post-saved'),
-              message: message,
-              color: theme.colorScheme.primary,
-              onColor: theme.colorScheme.onPrimary,
-              icon: Icons.check_circle,
+          if (_successMessage case final message?)
+            Positioned(
+              top: 12,
+              right: 20,
+              child: ServiceFormMessageBanner(
+                key: const ValueKey('marketplace-post-saved'),
+                message: message,
+                color: theme.colorScheme.primary,
+                onColor: theme.colorScheme.onPrimary,
+                icon: Icons.check_circle,
+              ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 

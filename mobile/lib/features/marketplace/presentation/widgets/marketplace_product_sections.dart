@@ -256,8 +256,8 @@ class MarketplaceVariantsSection extends StatelessWidget {
     if (saved == null) return;
     variants.put(saved, at: index);
     onChanged?.call(
-      '${saved.name} ${index == null ? 'added' : 'saved'}'
-      '${saved.isActive ? '' : ' as inactive'}.',
+      '${saved.name} ${index == null ? 'added' : 'changed'}'
+      '${saved.isActive ? '' : ' to inactive'}',
     );
   }
 
@@ -271,7 +271,7 @@ class MarketplaceVariantsSection extends StatelessWidget {
     if (!confirmed) return;
     final name = variants.items[index].name;
     variants.removeAt(index);
-    onChanged?.call('$name removed.');
+    onChanged?.call('$name removed');
   }
 
   @override
