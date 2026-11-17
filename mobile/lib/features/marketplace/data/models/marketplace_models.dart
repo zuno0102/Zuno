@@ -399,6 +399,7 @@ class MarketplaceSummaryModel {
     required this.closed,
     this.sold = 0,
     this.inactive,
+    this.liveItems,
     required this.plan,
     this.categories = const [],
   });
@@ -412,6 +413,7 @@ class MarketplaceSummaryModel {
   final int closed;
   final int sold;
   final int? inactive;
+  final int? liveItems;
   final MarketplacePlanModel plan;
   final List<MarketplaceCategoryCountModel> categories;
 
@@ -419,6 +421,7 @@ class MarketplaceSummaryModel {
     active: active,
     paused: paused,
     inactive: inactive,
+    liveItems: liveItems,
     expired: expired,
     closed: closed,
     sold: sold,

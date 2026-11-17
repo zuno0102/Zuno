@@ -303,6 +303,28 @@ public class ProductPackAndVariantsTests
     }
 
     [Fact]
+    public async Task TheLiveTile_CountsItems_AMainAndTwoColoursIsThree()
+    {
+        using var test = new TestMarketplace();
+        var free = await test.Db.Plans.SingleAsync(p => p.IsDefault);
+        free.MaxActivePosts = 5;
+        await test.Db.SaveChangesAsync();
+        await test.SaveHandlers.Handle(Saree(c => c.Variants =
+        [
+            new() { Colour = "Red", Price = 2_400m, Stock = 10 },
+            new() { Colour = "Green", Price = 2_400m, Stock = 3 },
+            new() { Colour = "Blue", Price = 2_400m, Stock = 4 },
+            new() { Colour = "Yellow", Price = 2_400m, Stock = 2, IsActive = false },
+        ]), default);
+        await test.SaveHandlers.Handle(Saree(c => c.Title = "Cotton saree"), default);
+
+        var summary = await test.QueryHandlers.Handle(new GetMyMarketplaceSummaryQuery(), default);
+
+        summary.LiveItems.Should().Be(4, "Red, Green and Blue on sale (Yellow is off), and the single-stock saree");
+        summary.Active.Should().Be(2, "the plan still counts posts");
+    }
+
+    [Fact]
     public async Task TheInactiveTile_CountsItems_AMainAndItsThreeColoursPausedIsFour()
     {
         using var test = new TestMarketplace();

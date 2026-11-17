@@ -9,9 +9,8 @@ import 'package:zuno/features/marketplace/presentation/screens/marketplace_stock
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/stat_tile.dart';
 
-/// The Marketplace section of the business home screen: live, inactive and expired posts, how much of
-/// the plan is used, and Stock. Each tile opens the posts behind its number; Stock opens the products'
-/// stock.
+/// The Marketplace section of the business home screen: live, inactive and expired items, and Stock.
+/// Each tile opens the posts behind its number; Stock opens the products' stock.
 ///
 /// Counted by the Marketplace server, like the Rent tiles beside it.
 class MarketplaceDashboardTiles extends ConsumerWidget {
@@ -48,9 +47,10 @@ class MarketplaceDashboardTiles extends ConsumerWidget {
         StatTile(
           key: const ValueKey('marketplace-tile-active'),
           label: 'Live posts',
-          value: count((s) => s.active),
+          // Item by item: a product's main colour / size and each other one on sale.
+          value: count((s) => s.liveCount),
           icon: Icons.storefront_outlined,
-          tone: some(s?.active, StatusTone.success),
+          tone: some(s?.liveCount, StatusTone.success),
           onTap: () => open('Live posts', status: MarketplacePostStatus.active),
         ),
         // Paused posts, and live products with a colour / size switched off: everything the
@@ -71,18 +71,6 @@ class MarketplaceDashboardTiles extends ConsumerWidget {
           // Asks for a look: an offer or advert has run out and may want new dates.
           tone: some(s?.expired, StatusTone.danger),
           onTap: () => open('Expired', status: MarketplacePostStatus.expired),
-        ),
-        StatTile(
-          key: const ValueKey('marketplace-tile-plan'),
-          label: s == null ? 'Plan' : '${s.plan.name} plan',
-          value: s == null
-              ? '–'
-              : '${s.plan.usedActivePosts} / ${s.plan.maxActivePosts}',
-          icon: Icons.workspace_premium_outlined,
-          tone: s == null || s.plan.canAddActivePost
-              ? StatusTone.success
-              : StatusTone.progress,
-          onTap: () => open('Marketplace posts'),
         ),
         // One tile for all stock, and no number on it, as on Rent: the Stock page it opens has a
         // tile per product with its figures.

@@ -161,6 +161,12 @@ public class MarketplaceSummaryDto
     public int Paused { get; set; }
 
     /// <summary>
+    /// The Live tile, item by item: each live product's main colour / size and every other one on
+    /// sale (one for a post with none). <see cref="Active"/> counts posts, as the plan does.
+    /// </summary>
+    public int LiveItems { get; set; }
+
+    /// <summary>
     /// The Inactive tile, item by item: every colour / size of a paused product (one for a post with
     /// none), and each one switched off on a live product.
     /// </summary>

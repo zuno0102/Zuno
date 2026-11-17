@@ -347,6 +347,13 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
       paused: posts.where((p) => p.status == 'Paused').length,
       // Item by item, as the server counts: a paused product's every colour / size (one for a
       // post with none), and each one switched off on a live product.
+      // Live, item by item as the server counts: each live post's colours / sizes on sale, or one.
+      liveItems: posts
+          .where((p) => p.status == MarketplacePostStatus.active)
+          .fold<int>(0, (sum, p) {
+            final onSale = p.variants.where((v) => v.isActive).length;
+            return sum + (onSale == 0 ? 1 : onSale);
+          }),
       inactive: posts.fold<int>(
         0,
         (sum, p) =>
@@ -3107,7 +3114,9 @@ void main() {
       expect(find.text('Silk saree'), findsOneWidget);
     });
 
-    testWidgets('show live, paused, expired and the plan', (tester) async {
+    testWidgets('show live, inactive, expired and Stock — no plan tile', (
+      tester,
+    ) async {
       await _pump(
         tester,
         const MarketplaceDashboardTiles(),
@@ -3126,8 +3135,45 @@ void main() {
       expect(valueOf('active'), '1');
       expect(valueOf('inactive'), '1');
       expect(valueOf('expired'), '0');
-      expect(valueOf('plan'), '1 / 1');
-      expect(find.text('Free plan'), findsOneWidget);
+      expect(find.byKey(const ValueKey('marketplace-tile-plan')), findsNothing);
+      expect(find.text('Free plan'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('marketplace-tile-stock')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('Live counts items: a main and its 2 colours on sale is 3', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        const MarketplaceDashboardTiles(),
+        repository: _FakeMarketplaceRepository(
+          posts: [
+            _post(
+              title: 'Silk saree',
+              condition: MarketplaceItemCondition.newItem,
+              quantity: 15,
+              canUpdateStock: true,
+              variants: const [
+                MarketplaceVariant(id: 'v-1', colour: 'Red', stock: 10),
+                MarketplaceVariant(id: 'v-2', colour: 'Green', stock: 3),
+                MarketplaceVariant(id: 'v-3', colour: 'Blue', stock: 2),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      expect(
+        tester
+            .widget<StatTile>(
+              find.byKey(const ValueKey('marketplace-tile-active')),
+            )
+            .value,
+        '3',
+      );
     });
 
     testWidgets('Inactive counts items: a paused main and its 3 colours is 4', (

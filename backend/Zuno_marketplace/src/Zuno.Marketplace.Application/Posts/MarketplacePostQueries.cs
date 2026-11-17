@@ -148,10 +148,19 @@ public class MarketplacePostQueryHandlers(
             .CountAsync(
                 v => !v.IsActive && v.Post.OwnerUserId == ownerId && v.Post.Status == MarketplacePostStatus.Active,
                 cancellationToken);
+        // The Live tile, item by item too: a live product counts its main colour / size and each one
+        // on sale (main + 2 colours is 3); a post with none is one item. The plan counts posts.
+        var liveItems = await dbContext.Posts
+            .AsNoTracking()
+            .Where(p => p.OwnerUserId == ownerId
+                && p.Status == MarketplacePostStatus.Active
+                && (p.EndsAt == null || p.EndsAt > now))
+            .SumAsync(p => p.Variants.Count(v => v.IsActive) == 0 ? 1 : p.Variants.Count(v => v.IsActive), cancellationToken);
         var (plan, endsAt) = await dbContext.CurrentAsync(ownerId, now, cancellationToken);
         return new MarketplaceSummaryDto
         {
             Active = live,
+            LiveItems = liveItems,
             Paused = byCategory.Sum(c => c.Paused),
             Inactive = pausedItems + switchedOffItems,
             Expired = byCategory.Sum(c => c.Expired),

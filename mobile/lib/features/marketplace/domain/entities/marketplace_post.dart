@@ -469,6 +469,7 @@ class MarketplaceSummary {
     required this.plan,
     this.sold = 0,
     this.inactive,
+    this.liveItems,
     this.categories = const [],
   });
 
@@ -480,6 +481,12 @@ class MarketplaceSummary {
   final int? inactive;
 
   int get inactiveCount => inactive ?? paused;
+
+  /// The Live tile, item by item: each live product's main colour / size and every other one on
+  /// sale (one for a post with none). Null from an older server, which counts the posts.
+  final int? liveItems;
+
+  int get liveCount => liveItems ?? active;
   final int expired;
   final int closed;
   final int sold;
