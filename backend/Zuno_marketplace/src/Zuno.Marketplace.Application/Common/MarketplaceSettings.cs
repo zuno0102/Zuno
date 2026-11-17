@@ -22,6 +22,10 @@ public class MarketplaceSettings
     [Range(1, 10)]
     public int ImageSlots { get; set; } = 5;
 
+    /// <summary>Photo slots per colour / size — the saree in that colour.</summary>
+    [Range(1, 10)]
+    public int VariantImageSlots { get; set; } = 3;
+
     /// <summary>The longest a food offer may run — "last-time" food is gone the same day.</summary>
     [Range(1, 168)]
     public int MaxFoodOfferHours { get; set; } = 24;

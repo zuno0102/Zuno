@@ -68,8 +68,12 @@ public interface ICurrentUser
 /// <summary>Where a post's photos are kept.</summary>
 public interface IMarketplaceMediaStorage
 {
-    /// <summary>Saves a photo into <paramref name="slot"/>, replacing what was there. Returns its public URL.</summary>
-    public Task<string> SaveImageAsync(Guid postId, int slot, Stream content, string fileExtension, CancellationToken cancellationToken);
+    /// <summary>
+    /// Saves a photo into <paramref name="slot"/> — of the colour / size <paramref name="variantId"/>, or
+    /// of the post itself when null — replacing what was there. Returns its public URL.
+    /// </summary>
+    public Task<string> SaveImageAsync(
+        Guid postId, int slot, Stream content, string fileExtension, CancellationToken cancellationToken, Guid? variantId = null);
 
     /// <summary>Deletes the file behind a URL this storage returned, if it is still there.</summary>
     public void Delete(string publicUrl);

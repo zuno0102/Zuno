@@ -46,12 +46,19 @@ internal static class MarketplacePostMapper
                 .OrderBy(v => v.SortOrder)
                 .Select(v => new MarketplaceVariantDto { Id = v.Id, Colour = v.Colour, Size = v.Size, Name = v.Name, Price = v.Price, Stock = v.Stock, IsActive = v.IsActive,
                     CustomDetails = v.CustomDetails.Select(d => new MarketplaceCustomDetailDto { Name = d.Key, Value = d.Value }).ToList(),
+                    // Its own photos; they live on the post, tagged with the colour / size.
+                    Media = post.Media
+                        .Where(m => m.VariantId == v.Id)
+                        .OrderBy(m => m.SortOrder)
+                        .Select(m => new MarketplacePostMediaDto { Url = m.Url, SortOrder = m.SortOrder })
+                        .ToList(),
                 })
                 .ToList(),
             DeliversEverywhere = post.DeliversEverywhere,
             DeliveryStateId = post.DeliveryStateId,
             DeliveryDistrictIds = post.DeliveryDistrictIds,
             Media = post.Media
+                .Where(m => m.VariantId == null)
                 .OrderBy(m => m.SortOrder)
                 .Select(m => new MarketplacePostMediaDto { Url = m.Url, SortOrder = m.SortOrder })
                 .ToList(),

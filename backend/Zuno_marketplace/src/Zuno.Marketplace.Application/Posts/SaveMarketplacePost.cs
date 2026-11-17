@@ -200,7 +200,8 @@ public class SaveMarketplacePostHandlers(
     IMarketplaceDbContext dbContext,
     MarketplaceReference reference,
     TimeProvider clock,
-    IOptions<MarketplaceSettings> settings) :
+    IOptions<MarketplaceSettings> settings,
+    IMarketplaceMediaStorage storage) :
     IRequestHandler<CreateMarketplacePostCommand, MarketplacePostDto>,
     IRequestHandler<UpdateMarketplacePostCommand, MarketplacePostDto>
 {
@@ -212,7 +213,8 @@ public class SaveMarketplacePostHandlers(
 
         var post = new MarketplacePost { OwnerUserId = ownerId, Status = MarketplacePostStatus.Active };
         Apply(post, request, category);
-        ApplyVariants(post, request, category);
+        // A new post has no photos yet, so nothing to take down.
+        _ = ApplyVariants(post, request, category);
 
         return await dbContext.WithOwnerLockAsync(ownerId, async () =>
         {
@@ -239,7 +241,7 @@ public class SaveMarketplacePostHandlers(
 
         var category = await CheckedCategoryAsync(request, now, cancellationToken);
         Apply(post, request, category);
-        ApplyVariants(post, request, category);
+        var removedPhotos = ApplyVariants(post, request, category);
 
         return await dbContext.WithOwnerLockAsync(ownerId, async () =>
         {
@@ -250,6 +252,13 @@ public class SaveMarketplacePostHandlers(
             }
 
             await dbContext.SaveChangesAsync(cancellationToken);
+
+            // The photos of a colour / size taken off go once the edit is saved.
+            foreach (var url in removedPhotos)
+            {
+                storage.Delete(url);
+            }
+
             return await ReloadAsync(post.Id, ownerId, now, cancellationToken);
         }, cancellationToken);
     }
@@ -319,12 +328,22 @@ public class SaveMarketplacePostHandlers(
     /// A new product's colours and sizes: one sent with an id updates that row, a row not sent any more
     /// is removed, the rest are added. With any, the post's stock is theirs added up.
     /// </summary>
-    private void ApplyVariants(MarketplacePost post, MarketplacePostFields request, MarketplaceCategory category)
+    /// <returns>The photos of the colours / sizes taken off, to delete once the edit is saved.</returns>
+    private List<string> ApplyVariants(MarketplacePost post, MarketplacePostFields request, MarketplaceCategory category)
     {
         var wanted = post.KeepsStock && category.TracksStock ? request.Variants : [];
         var kept = wanted.Where(v => v.Id is not null).Select(v => v.Id!.Value).ToHashSet();
+        var removedPhotos = new List<string>();
         foreach (var gone in post.Variants.Where(v => !kept.Contains(v.Id)).ToList())
         {
+            // Its own photos go with it.
+            foreach (var photo in post.Media.Where(m => m.VariantId == gone.Id).ToList())
+            {
+                post.Media.Remove(photo);
+                dbContext.PostMedia.Remove(photo);
+                removedPhotos.Add(photo.Url);
+            }
+
             post.Variants.Remove(gone);
             dbContext.PostVariants.Remove(gone);
         }
@@ -346,7 +365,10 @@ public class SaveMarketplacePostHandlers(
             variant.Size = Clean(input.Size);
             variant.Price = input.Price;
             variant.Stock = input.Stock;
-            variant.IsActive = input.IsActive;
+            // The main product (the first) is never switched off on its own: the post's Active
+            // switch is its on/off. Switching it off here took its stock out of the count and
+            // left an active product "Out of stock".
+            variant.IsActive = order == 0 || input.IsActive;
             variant.CustomDetails = input.CustomDetails
                 .Where(d => !string.IsNullOrWhiteSpace(d.Name) && !string.IsNullOrWhiteSpace(d.Value))
                 .Select(d => new MarketplacePostAttribute { Key = d.Name.Trim(), Value = d.Value.Trim() })
@@ -356,13 +378,15 @@ public class SaveMarketplacePostHandlers(
 
         if (wanted.Count != 0)
         {
-            // Its stock is the ones on sale added up; its price the lowest they sell at ("from ₹449").
-            // With every one switched off it is out of stock, priced as before.
-            var onSale = wanted.Where(v => v.IsActive).ToList();
+            // Its stock is the main product's own count plus each colour / size on sale; its price
+            // the lowest they sell at ("from ₹449"). Out of stock only when all of those are at 0.
+            var onSale = wanted.Where((v, index) => index == 0 || v.IsActive).ToList();
             post.Quantity = onSale.Sum(v => v.Stock);
             post.Price = (onSale.Count != 0 ? onSale : wanted)
                 .Select(v => v.Price ?? request.Price).OfType<decimal>().Min();
         }
+
+        return removedPhotos;
     }
 
     private static void Apply(MarketplacePost post, MarketplacePostFields request, MarketplaceCategory category)

@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter/services.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:zuno/core/utils/formatting.dart';
+import 'package:zuno/features/business_owner/presentation/widgets/service_media_slots.dart';
+import 'package:zuno/features/marketplace/data/marketplace_api.dart';
 import 'package:zuno/features/marketplace/domain/entities/marketplace_post.dart';
+import 'package:zuno/features/marketplace/domain/marketplace_repository.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_post_lines.dart';
 import 'package:zuno/shared/widgets/confirm_dialog.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
@@ -168,13 +173,28 @@ class MarketplaceVariantList extends ChangeNotifier {
             stock: v.stock,
             isActive: v.isActive,
             customDetails: v.customDetails,
+            imageUrls: v.imageUrls,
           ),
-      ];
+      ],
+      _photos = List.filled(saved.length, null, growable: true);
 
   final List<MarketplaceVariant> _items;
 
+  /// Each row's photos picked or removed in its sheet and not uploaded yet; null for none touched.
+  /// Uploaded by [uploadMarketplaceVariantPhotos] once the post is saved and every row has an id.
+  final List<ServiceMediaSelection?> _photos;
+
   List<MarketplaceVariant> get items => List.unmodifiable(_items);
   bool get isEmpty => _items.isEmpty;
+
+  /// The photo changes waiting for row [index], or null.
+  ServiceMediaSelection? photosAt(int index) => _photos[index];
+
+  /// The rows with photo changes to send, each with its colour / size.
+  List<(MarketplaceVariant, ServiceMediaSelection)> get pendingPhotos => [
+    for (final (i, v) in _items.indexed)
+      if (_photos[i] case final photos? when photos.hasChanges) (v, photos),
+  ];
 
   /// The stock of the variants on sale, added up — the product's stock. An inactive one's is
   /// not counted.
@@ -187,15 +207,75 @@ class MarketplaceVariantList extends ChangeNotifier {
       .whereType<double>()
       .fold<double?>(null, (a, b) => a == null || b > a ? b : a);
 
-  void put(MarketplaceVariant variant, {int? at}) {
-    at == null ? _items.add(variant) : _items[at] = variant;
+  void put(
+    MarketplaceVariant variant, {
+    int? at,
+    ServiceMediaSelection? photos,
+  }) {
+    if (at == null) {
+      _items.add(variant);
+      _photos.add(photos);
+    } else {
+      _items[at] = variant;
+      if (!identical(_photos[at], photos)) _photos[at]?.dispose();
+      _photos[at] = photos;
+    }
     notifyListeners();
   }
 
   void removeAt(int index) {
     _items.removeAt(index);
+    _photos.removeAt(index)?.dispose();
     notifyListeners();
   }
+
+  @override
+  void dispose() {
+    for (final photos in _photos) {
+      photos?.dispose();
+    }
+    super.dispose();
+  }
+}
+
+/// Sends each colour / size's picked and removed photos, once [saved] — the post as the server
+/// returned it — gives every row its id. A row is found by its id, or a new one by its colour and
+/// size (no two are alike). Returns the post as the last change left it, or [saved] when there was
+/// nothing to send.
+Future<MarketplacePost> uploadMarketplaceVariantPhotos(
+  MarketplaceRepository repository,
+  MarketplacePost saved,
+  List<(MarketplaceVariant, ServiceMediaSelection)> pending,
+) async {
+  String key(MarketplaceVariant v) =>
+      '${v.colour?.trim().toLowerCase()}|${v.size?.trim().toLowerCase()}';
+  var latest = saved;
+  for (final (row, photos) in pending) {
+    final variantId = saved.variants
+        .firstWhereOrNull(
+          (v) => (row.id != null && v.id == row.id) || key(v) == key(row),
+        )
+        ?.id;
+    if (variantId == null) continue;
+    for (var slot = 0; slot < photos.slotCount; slot++) {
+      final bytes = photos.pickedImage(slot);
+      if (bytes != null) {
+        latest = await repository.uploadImage(
+          saved.id,
+          slot,
+          bytes,
+          variantId: variantId,
+        );
+      } else if (photos.isImageRemoved(slot)) {
+        latest = await repository.removeImage(
+          saved.id,
+          slot,
+          variantId: variantId,
+        );
+      }
+    }
+  }
+  return latest;
 }
 
 /// "Variants": a card per colour / size with its price and stock, edited or removed from its menu,
@@ -212,6 +292,7 @@ class MarketplaceVariantsSection extends StatelessWidget {
     this.hint =
         'Sold in another colour or size too? Add each with its own price and stock.',
     this.addLabel = 'Add another colour / size',
+    this.photoSlots = marketplaceDefaultVariantImageSlots,
     this.onChanged,
     super.key,
   });
@@ -223,6 +304,9 @@ class MarketplaceVariantsSection extends StatelessWidget {
   final String title;
   final String hint;
   final String addLabel;
+
+  /// How many photos a colour / size may have — from the server's options.
+  final int photoSlots;
 
   /// Told what changed — "Green · large saved." — so the page can say so; the change is kept
   /// only once the page itself is saved.
@@ -241,9 +325,11 @@ class MarketplaceVariantsSection extends StatelessWidget {
 
   Future<void> _edit(BuildContext context, {int? index}) async {
     final existing = index == null ? null : variants.items[index];
-    final saved = await showMarketplaceVariantSheet(
+    final edit = await showMarketplaceVariantSheet(
       context,
       existing: existing,
+      photos: index == null ? null : variants.photosAt(index),
+      photoSlots: photoSlots,
       startPrice: existing?.price ?? defaultPrice(),
       others: [
         ...alsoTaken(),
@@ -253,8 +339,9 @@ class MarketplaceVariantsSection extends StatelessWidget {
       limits: limits,
       maxQuantity: maxQuantity,
     );
-    if (saved == null) return;
-    variants.put(saved, at: index);
+    if (edit == null) return;
+    final (saved, photos) = edit;
+    variants.put(saved, at: index, photos: photos);
     onChanged?.call(
       '${saved.name} ${index == null ? 'added' : 'changed'}'
       '${saved.isActive ? '' : ' to inactive'}',
@@ -299,6 +386,14 @@ class MarketplaceVariantsSection extends StatelessWidget {
               key: ValueKey('marketplace-variant-$i'),
               margin: const EdgeInsets.only(top: 10),
               child: ListTile(
+                // Its first photo, just picked or saved, so each colour is seen at a glance.
+                leading: _variantThumb(
+                  variants.photosAt(i),
+                  v.imageUrls.entries
+                      .sortedBy<num>((e) => e.key)
+                      .firstOrNull
+                      ?.value,
+                ),
                 title: Text(
                   v.name,
                   style: const TextStyle(fontWeight: FontWeight.w600),
@@ -350,14 +445,20 @@ class MarketplaceVariantsSection extends StatelessWidget {
 
 /// Adds or edits one variant: its colour and / or size, typed in, its price and its stock. Null when
 /// closed without saving.
-Future<MarketplaceVariant?> showMarketplaceVariantSheet(
+/// What the sheet hands back: the colour / size, and its photos picked or removed (sent once the
+/// post is saved and the colour / size has an id).
+typedef MarketplaceVariantEdit = (MarketplaceVariant, ServiceMediaSelection);
+
+Future<MarketplaceVariantEdit?> showMarketplaceVariantSheet(
   BuildContext context, {
   required MarketplaceVariant? existing,
   required double? startPrice,
   required List<MarketplaceVariant> others,
   required MarketplaceTextLimits limits,
   required int maxQuantity,
-}) => showModalBottomSheet<MarketplaceVariant>(
+  ServiceMediaSelection? photos,
+  int photoSlots = marketplaceDefaultVariantImageSlots,
+}) => showModalBottomSheet<MarketplaceVariantEdit>(
   context: context,
   isScrollControlled: true,
   builder: (_) => _VariantSheet(
@@ -366,6 +467,8 @@ Future<MarketplaceVariant?> showMarketplaceVariantSheet(
     others: others,
     limits: limits,
     maxQuantity: maxQuantity,
+    photos: photos,
+    photoSlots: photoSlots,
   ),
 );
 
@@ -376,6 +479,8 @@ class _VariantSheet extends StatefulWidget {
     required this.others,
     required this.limits,
     required this.maxQuantity,
+    required this.photos,
+    required this.photoSlots,
   });
 
   final MarketplaceVariant? existing;
@@ -383,6 +488,10 @@ class _VariantSheet extends StatefulWidget {
   final List<MarketplaceVariant> others;
   final MarketplaceTextLimits limits;
   final int maxQuantity;
+
+  /// Photo changes made in an earlier opening and not uploaded yet; null to start from the saved.
+  final ServiceMediaSelection? photos;
+  final int photoSlots;
 
   @override
   State<_VariantSheet> createState() => _VariantSheetState();
@@ -400,10 +509,28 @@ class _VariantSheetState extends State<_VariantSheet> {
   /// On sale; off keeps it but hides it from customers.
   late bool _isActive = widget.existing?.isActive ?? true;
 
+  /// Set by the first Save: from then on each field is checked again as it changes, so an error
+  /// goes as soon as the value is put right.
+  bool _submitted = false;
+
   /// Details only this colour / size has — "Border: Zari".
   late final _details = MarketplaceCustomDetailRows(
     widget.existing?.customDetails ?? const [],
   );
+
+  /// Its own photos: the changes from an earlier opening, or a fresh start from the saved ones.
+  late final _photos =
+      widget.photos ??
+      ServiceMediaSelection(
+        slotCount: widget.photoSlots,
+        savedImageUrl: (slot) => widget.existing?.imageUrls[slot],
+      );
+
+  /// Handed back with the colour / size on Save; the list then keeps (and frees) it.
+  bool _photosHandedOver = false;
+
+  /// Why a picked photo could not be used, under the photo slots.
+  String? _photoError;
 
   @override
   void dispose() {
@@ -411,6 +538,8 @@ class _VariantSheetState extends State<_VariantSheet> {
       c.dispose();
     }
     _details.dispose();
+    // A fresh selection not handed back (closed without Save) is this sheet's to free.
+    if (widget.photos == null && !_photosHandedOver) _photos.dispose();
     super.dispose();
   }
 
@@ -431,8 +560,10 @@ class _VariantSheetState extends State<_VariantSheet> {
   }
 
   void _save() {
+    setState(() => _submitted = true);
     if (!_formKey.currentState!.validate()) return;
-    Navigator.of(context).pop(
+    _photosHandedOver = true;
+    Navigator.of(context).pop((
       MarketplaceVariant(
         id: widget.existing?.id,
         colour: _clean(_colour),
@@ -441,8 +572,10 @@ class _VariantSheetState extends State<_VariantSheet> {
         stock: int.parse(_stock.text.trim()),
         isActive: _isActive,
         customDetails: _details.values,
+        imageUrls: widget.existing?.imageUrls ?? const {},
       ),
-    );
+      _photos,
+    ));
   }
 
   @override
@@ -465,6 +598,9 @@ class _VariantSheetState extends State<_VariantSheet> {
         ),
         child: Form(
           key: _formKey,
+          autovalidateMode: _submitted
+              ? AutovalidateMode.always
+              : AutovalidateMode.disabled,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -475,6 +611,26 @@ class _VariantSheetState extends State<_VariantSheet> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              const SizedBox(height: 16),
+              // Its own photos — the product in this colour / size — as the product form's are.
+              ServiceMediaSlots(
+                key: const ValueKey('marketplace-variant-photos'),
+                media: _photos,
+                mediaBaseUrl: MarketplaceApi.baseUrl,
+                allowVideo: false,
+                hint:
+                    'Photos of this colour / size. Sent when you save the product.',
+                onError: (message) => setState(() => _photoError = message),
+              ),
+              if (_photoError case final message?) ...[
+                const SizedBox(height: 6),
+                Text(
+                  message,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -737,4 +893,35 @@ class MarketplaceCustomDetailsSection extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A colour / size card's thumbnail: the first photo picked in its sheet (not uploaded yet), else
+/// its first saved one. Null when it has none, so the card keeps no empty space for one.
+Widget? _variantThumb(ServiceMediaSelection? photos, String? savedUrl) {
+  const size = 48.0;
+  Uint8List? picked;
+  var saved = savedUrl;
+  if (photos != null) {
+    saved = null;
+    for (var slot = 0; slot < photos.slotCount; slot++) {
+      picked = photos.pickedImage(slot);
+      if (picked != null) break;
+      saved ??= photos.existingImageUrl(slot);
+    }
+  }
+  final Widget? image = picked != null
+      ? Image.memory(picked, fit: BoxFit.cover)
+      : saved != null
+      ? CachedNetworkImage(
+          imageUrl: MarketplaceApi.mediaUrl(saved),
+          fit: BoxFit.cover,
+          errorWidget: (_, _, _) => const Icon(Icons.broken_image_outlined),
+        )
+      : null;
+  if (image == null) return null;
+  return ClipRRect(
+    key: const ValueKey('marketplace-variant-thumb'),
+    borderRadius: BorderRadius.circular(8),
+    child: SizedBox.square(dimension: size, child: image),
+  );
 }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zuno/core/router/push_screen.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/features/business_owner/presentation/providers/business_profile_notifier.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/service_form_message_banner.dart';
@@ -19,6 +20,7 @@ import 'package:zuno/shared/widgets/confirm_dialog.dart';
 import 'package:zuno/shared/widgets/date_time_field.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/multi_select_sheet.dart';
+import 'package:zuno/shared/widgets/sheet_drag_handle.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
 import 'package:zuno/shared/widgets/select_field.dart';
 
@@ -31,14 +33,11 @@ Future<void> showMarketplacePostFormSheet(
   BuildContext context, {
   MarketplacePost? existing,
   String? categoryId,
-}) => showModalBottomSheet<void>(
-  context: context,
-  isScrollControlled: true,
-  // Closed by tapping outside or Back, which ask first when a change is not saved; a drag would
-  // close it without asking.
-  enableDrag: false,
-  builder: (context) =>
-      MarketplacePostFormSheet(existing: existing, categoryId: categoryId),
+}) => pushSheet<void>(
+  context,
+  // Through the router: the phone's back button closes the form instead of leaving the app, and
+  // asks first when a change is not saved — as do a tap outside and the handle.
+  MarketplacePostFormSheet(existing: existing, categoryId: categoryId),
 );
 
 /// The post form: photos, category, then what that category's kind asks — a price for a listing,
@@ -140,19 +139,63 @@ class _MarketplacePostFormSheetState
   }
 
   bool _isSaving = false;
+
+  /// Set by the first Save. From then on every field is checked again as it changes, so an error
+  /// goes away as soon as the value is put right (it used to stay until the next Save).
+  bool _submitted = false;
   String? _errorMessage;
   String? _successMessage;
 
-  /// A colour / size just changed in its sheet: said for a moment, as the form stays open.
   /// A colour / size was added, changed or removed in this form and not saved yet.
   bool _variantsChanged = false;
 
-  /// What closing the form would lose: a colour / size change, or the Active switch moved.
-  bool get _unsaved =>
-      _variantsChanged ||
-      _isActive !=
-          (_old == null || _old.status != MarketplacePostStatus.paused);
+  /// Saved, or the business chose Discard: closing loses nothing more and asks nothing.
+  bool _settled = false;
 
+  /// A field of the form was typed in or changed (name, price, details, ships to …), or a photo
+  /// picked or removed.
+  bool _edited = false;
+
+  /// The first edit rebuilds, so Back and a tap outside start asking before they close.
+  void _markEdited() {
+    if (!_edited && mounted) setState(() => _edited = true);
+  }
+
+  /// What closing the form would lose: any edit, a colour / size change, or the Active switch moved.
+  bool get _unsaved =>
+      !_settled &&
+      (_edited ||
+          _variantsChanged ||
+          _isActive !=
+              (_old == null || _old.status != MarketplacePostStatus.paused));
+
+  /// Whether the form may close now: at once with nothing unsaved, else after "Discard changes?".
+  /// Asked by Back and a tap outside (through PopScope), the handle, and the router when the
+  /// browser's back button takes the sheet away.
+  Future<bool> _mayLeave() async {
+    if (!_unsaved) return true;
+    final discard = await showConfirmDialog(
+      context,
+      title: 'Discard changes?',
+      message:
+          'Your changes are not saved until you tap '
+          '${_old == null ? 'Save post' : 'Save changes'}.',
+      confirmLabel: 'Discard',
+      cancelLabel: 'Keep editing',
+      destructive: true,
+    );
+    if (discard) _settled = true;
+    return discard;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    SheetLeaveGuard.watch(widget, _mayLeave);
+    _media.addListener(_markEdited);
+  }
+
+  /// A colour / size just changed in its sheet: said for a moment, as the form stays open.
   String? _variantNotice;
   Timer? _variantNoticeTimer;
 
@@ -180,6 +223,7 @@ class _MarketplacePostFormSheetState
 
   @override
   void dispose() {
+    SheetLeaveGuard.forget(widget);
     for (final c in [
       _title,
       _description,
@@ -279,6 +323,8 @@ class _MarketplacePostFormSheetState
           limits: _limits,
           maxQuantity: options?.maxQuantity ?? marketplaceDefaultMaxQuantity,
           onChanged: _noteVariant,
+          photoSlots:
+              options?.variantImageSlots ?? marketplaceDefaultVariantImageSlots,
         ),
         const SizedBox(height: 14),
       ],
@@ -321,7 +367,9 @@ class _MarketplacePostFormSheetState
           size: _clean(_size),
           price: double.tryParse(_price.text.trim()),
           stock: int.tryParse(_quantity.text.trim()) ?? 0,
-          isActive: _firstSaved?.isActive ?? true,
+          // The main product is on sale whenever the post is: its on/off is the Active switch
+          // above, never a switch of its own.
+          isActive: true,
           customDetails: _firstSaved?.customDetails ?? const [],
         );
 
@@ -337,6 +385,22 @@ class _MarketplacePostFormSheetState
   /// Where the post is: where the business is registered. An old post the address cannot place
   /// keeps where it was.
   String? get _placeDistrictId => _businessDistrict?.id ?? _old?.districtId;
+
+  /// What stops the post being placed, or null. Waits while the business's place is still being
+  /// worked out — Save pressed early is not "no address". A lookup that failed asks to try again;
+  /// only an address that truly cannot be placed sends the business to its profile.
+  Future<String?> _placeProblem() async {
+    try {
+      await ref.read(marketplaceBusinessDistrictProvider.future);
+    } on Object catch (error) {
+      // An old post keeps where it was.
+      if (_old?.districtId != null) return null;
+      return error is BusinessPlaceUncheckedException
+          ? error.toString()
+          : const BusinessPlaceUncheckedException().toString();
+    }
+    return _placeDistrictId == null ? _noAddress : null;
+  }
 
   MarketplacePostInput _input(MarketplaceCategory category) {
     final kind = category.kind;
@@ -410,14 +474,20 @@ class _MarketplacePostFormSheetState
 
   Future<void> _submit(MarketplaceCategory? category) async {
     FocusScope.of(context).unfocus();
+    setState(() => _submitted = true);
     final valid = _formKey.currentState!.validate();
     final problem = category == null
         ? 'Choose a category.'
-        : _placeDistrictId == null
-        ? _noAddress
-        : null;
+        : await _placeProblem();
+    if (!mounted) return;
     if (!valid || problem != null || category == null) {
       setState(() => _errorMessage = problem);
+      // Save is at the bottom: bring the first field in error into view, or the message at the top.
+      if (!valid) {
+        _showFirstFieldError();
+      } else if (problem != null) {
+        _showError(problem);
+      }
       return;
     }
 
@@ -431,9 +501,11 @@ class _MarketplacePostFormSheetState
     try {
       // The post first: a new one has no id to upload its photos against until it exists.
       final input = _input(category);
-      final id = old == null
-          ? (await repository.create(input)).id
-          : (await repository.update(old.id, input)).id;
+      // Kept whole: its colours / sizes now have ids for their own photos.
+      final saved = old == null
+          ? await repository.create(input)
+          : await repository.update(old.id, input);
+      final id = saved.id;
 
       // Switched on or off: the post's status follows (a product is paused, not deleted).
       final wasActive =
@@ -456,8 +528,17 @@ class _MarketplacePostFormSheetState
         }
       }
 
+      // Each colour / size's own photos, now that every one has an id.
+      await uploadMarketplaceVariantPhotos(
+        repository,
+        saved,
+        _variants.pendingPhotos,
+      );
+
       reloadMarketplace(ref);
       if (!mounted) return;
+      // Saved: closing now loses nothing, so it asks nothing.
+      _settled = true;
       setState(
         () => _successMessage = old == null ? 'Post added.' : 'Post updated.',
       );
@@ -483,6 +564,37 @@ class _MarketplacePostFormSheetState
     }
   }
 
+  /// Scrolls the first field that failed its check (in form order) into view, so a Save from the
+  /// bottom shows what to put right — the error under "Product name" is otherwise out of sight.
+  void _showFirstFieldError() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final formContext = _formKey.currentContext;
+      if (!mounted || formContext == null) return;
+      BuildContext? first;
+      void visit(Element element) {
+        if (first != null) return;
+        if (element is StatefulElement &&
+            element.state is FormFieldState &&
+            (element.state as FormFieldState).hasError) {
+          first = element;
+          return;
+        }
+        element.visitChildren(visit);
+      }
+
+      (formContext as Element).visitChildren(visit);
+      final target = first;
+      if (target != null && target.mounted) {
+        Scrollable.ensureVisible(
+          target,
+          alignment: 0.2,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final categoriesAsync = ref.watch(marketplaceCategoriesProvider);
@@ -499,17 +611,7 @@ class _MarketplacePostFormSheetState
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final navigator = Navigator.of(context);
-        final discard = await showConfirmDialog(
-          context,
-          title: 'Discard changes?',
-          message:
-              'Your colour / size and Active changes are not saved until you tap '
-              '${_old == null ? 'Save post' : 'Save changes'}.',
-          confirmLabel: 'Discard',
-          cancelLabel: 'Keep editing',
-          destructive: true,
-        );
-        if (discard) navigator.pop();
+        if (await _mayLeave()) navigator.pop();
       },
       child: Stack(
         children: [
@@ -558,145 +660,161 @@ class _MarketplacePostFormSheetState
       padding: EdgeInsets.only(
         left: 20,
         right: 20,
-        top: 20,
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
-      child: SingleChildScrollView(
-        controller: _scroll,
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                _old == null ? 'Add post' : 'Edit post',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              if (_errorMessage case final message?) ...[
-                ServiceFormMessageBanner(
-                  message: message,
-                  color: AppColors.error,
-                  onColor: theme.colorScheme.onError,
-                  icon: Icons.error_outline,
-                ),
-                const SizedBox(height: 16),
-              ],
-              ServiceMediaSlots(
-                media: _media,
-                mediaBaseUrl: MarketplaceApi.baseUrl,
-                allowVideo: false,
-                hint: category?.kind == MarketplacePostKind.advertisement
-                    ? 'The first photo is the advert banner.'
-                    : 'The first photo is the cover customers see.',
-                onError: (message) => setState(() => _errorMessage = message),
-              ),
-              const SizedBox(height: 16),
-              if (categoriesAsync.hasError && categories.isEmpty)
-                ErrorBanner(
-                  message:
-                      'Failed to load categories: ${categoriesAsync.error}',
-                )
-              else
-                SelectField<String>(
-                  key: const ValueKey('marketplace-category'),
-                  label: 'Category',
-                  options: [
-                    for (final c in categories)
-                      SelectOption(
-                        c.id,
-                        c.name,
-                        detail: c.description ?? options?.kindName(c.kind),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Pulled down, it asks to close — and the form asks first when a change is not saved.
+          SheetDragHandle(onDismiss: () => Navigator.maybePop(context)),
+          Flexible(
+            child: SingleChildScrollView(
+              controller: _scroll,
+              child: Form(
+                key: _formKey,
+                onChanged: _markEdited,
+                autovalidateMode: _submitted
+                    ? AutovalidateMode.always
+                    : AutovalidateMode.disabled,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      _old == null ? 'Add post' : 'Edit post',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (_errorMessage case final message?) ...[
+                      ServiceFormMessageBanner(
+                        message: message,
+                        color: AppColors.error,
+                        onColor: theme.colorScheme.onError,
+                        icon: Icons.error_outline,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    ServiceMediaSlots(
+                      media: _media,
+                      mediaBaseUrl: MarketplaceApi.baseUrl,
+                      allowVideo: false,
+                      hint: category?.kind == MarketplacePostKind.advertisement
+                          ? 'The first photo is the advert banner.'
+                          : 'The first photo is the cover customers see.',
+                      onError: (message) =>
+                          setState(() => _errorMessage = message),
+                    ),
+                    const SizedBox(height: 16),
+                    if (categoriesAsync.hasError && categories.isEmpty)
+                      ErrorBanner(
+                        message:
+                            'Failed to load categories: ${categoriesAsync.error}',
+                      )
+                    else
+                      SelectField<String>(
+                        key: const ValueKey('marketplace-category'),
+                        label: 'Category',
+                        options: [
+                          for (final c in categories)
+                            SelectOption(
+                              c.id,
+                              c.name,
+                              detail:
+                                  c.description ?? options?.kindName(c.kind),
+                            ),
+                        ],
+                        initialValue: _categoryId,
+                        validator: (v) =>
+                            v == null ? 'Choose a category.' : null,
+                        onChanged: (id) => setState(() {
+                          // The details and sub-category belong to one category, so they cannot survive
+                          // a change of it.
+                          if (id != _categoryId) {
+                            _attributes.clear();
+                            _subCategoryId = null;
+                          }
+                          _categoryId = id;
+                        }),
+                      ),
+                    if (category != null &&
+                        category.subCategories.isNotEmpty) ...[
+                      const SizedBox(height: 14),
+                      _subCategoryField(category),
+                    ],
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      key: const ValueKey('marketplace-title'),
+                      controller: _title,
+                      maxLength: _limits.title,
+                      decoration: InputDecoration(
+                        labelText: isProduct ? 'Product name' : 'Title',
+                        hintText: isProduct
+                            ? 'e.g. Silk saree, Cotton shirt, Swift VXi 2019'
+                            : 'e.g. 10 kg bananas, Veg biryani, Cricket tournament',
+                        border: const OutlineInputBorder(),
+                        counterText: '',
+                      ),
+                      validator: (v) => (v ?? '').trim().isEmpty
+                          ? '${isProduct ? 'Product name' : 'Title'} is required.'
+                          : null,
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      key: const ValueKey('marketplace-description'),
+                      controller: _description,
+                      maxLines: 3,
+                      maxLength: _limits.description,
+                      decoration: InputDecoration(
+                        labelText: isProduct
+                            ? 'Product description (optional)'
+                            : 'Description (optional)',
+                        border: const OutlineInputBorder(),
+                        counterText: '',
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    if (category != null) ..._kindSection(category, options),
+                    if (category != null)
+                      MarketplaceCategoryFieldsSection(
+                        fields: category.fieldsFor(_subCategoryId),
+                        values: _attributes,
+                        maxValueLength: _limits.attributeValue,
+                        onChanged: () => setState(() {}),
+                      ),
+                    if (category != null) ...[
+                      MarketplaceCustomDetailsSection(
+                        rows: _customDetails,
+                        limits: _limits,
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+                    ..._placeSection(category),
+                    // As on a service: off hides the whole product, its colours and sizes too.
+                    if (category?.tracksStock ?? false)
+                      SwitchListTile(
+                        key: const ValueKey('marketplace-active'),
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Active'),
+                        subtitle: const Text(
+                          'Inactive products are hidden from customers.',
+                        ),
+                        value: _isActive,
+                        onChanged: (value) => setState(() => _isActive = value),
+                      ),
+                    const SizedBox(height: 20),
+                    PrimaryButton(
+                      label: _old == null ? 'Save post' : 'Save changes',
+                      isLoading: _isSaving,
+                      onPressed: _isSaving ? null : () => _submit(category),
+                    ),
                   ],
-                  initialValue: _categoryId,
-                  validator: (v) => v == null ? 'Choose a category.' : null,
-                  onChanged: (id) => setState(() {
-                    // The details and sub-category belong to one category, so they cannot survive
-                    // a change of it.
-                    if (id != _categoryId) {
-                      _attributes.clear();
-                      _subCategoryId = null;
-                    }
-                    _categoryId = id;
-                  }),
-                ),
-              if (category != null && category.subCategories.isNotEmpty) ...[
-                const SizedBox(height: 14),
-                _subCategoryField(category),
-              ],
-              const SizedBox(height: 14),
-              TextFormField(
-                key: const ValueKey('marketplace-title'),
-                controller: _title,
-                maxLength: _limits.title,
-                decoration: InputDecoration(
-                  labelText: isProduct ? 'Product name' : 'Title',
-                  hintText: isProduct
-                      ? 'e.g. Silk saree, Cotton shirt, Swift VXi 2019'
-                      : 'e.g. 10 kg bananas, Veg biryani, Cricket tournament',
-                  border: const OutlineInputBorder(),
-                  counterText: '',
-                ),
-                validator: (v) => (v ?? '').trim().isEmpty
-                    ? '${isProduct ? 'Product name' : 'Title'} is required.'
-                    : null,
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                key: const ValueKey('marketplace-description'),
-                controller: _description,
-                maxLines: 3,
-                maxLength: _limits.description,
-                decoration: InputDecoration(
-                  labelText: isProduct
-                      ? 'Product description (optional)'
-                      : 'Description (optional)',
-                  border: const OutlineInputBorder(),
-                  counterText: '',
                 ),
               ),
-              const SizedBox(height: 14),
-              if (category != null) ..._kindSection(category, options),
-              if (category != null)
-                MarketplaceCategoryFieldsSection(
-                  fields: category.fieldsFor(_subCategoryId),
-                  values: _attributes,
-                  maxValueLength: _limits.attributeValue,
-                  onChanged: () => setState(() {}),
-                ),
-              if (category != null) ...[
-                MarketplaceCustomDetailsSection(
-                  rows: _customDetails,
-                  limits: _limits,
-                ),
-                const SizedBox(height: 14),
-              ],
-              ..._placeSection(category),
-              // As on a service: off hides the whole product, its colours and sizes too.
-              if (category?.tracksStock ?? false)
-                SwitchListTile(
-                  key: const ValueKey('marketplace-active'),
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Active'),
-                  subtitle: const Text(
-                    'Inactive products are hidden from customers.',
-                  ),
-                  value: _isActive,
-                  onChanged: (value) => setState(() => _isActive = value),
-                ),
-              const SizedBox(height: 20),
-              PrimaryButton(
-                label: _old == null ? 'Save post' : 'Save changes',
-                isLoading: _isSaving,
-                onPressed: _isSaving ? null : () => _submit(category),
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -973,9 +1091,44 @@ class _MarketplacePostFormSheetState
     final business = ref.watch(marketplaceBusinessDistrictProvider);
     // Kept loaded: the post takes its town and pin from the profile when saved.
     ref.watch(businessProfileProvider);
+    // A lookup that failed is not a missing address: it can be tried again.
+    final unchecked = !business.isLoading && business.hasError && _old == null;
     final unplaced =
-        !business.isLoading && business.value == null && _old == null;
+        !business.isLoading &&
+        !business.hasError &&
+        business.value == null &&
+        _old == null;
     return [
+      if (unchecked) ...[
+        Row(
+          key: const ValueKey('marketplace-place-unchecked'),
+          children: [
+            Icon(
+              Icons.wifi_off_rounded,
+              size: 18,
+              color: theme.colorScheme.error,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                const BusinessPlaceUncheckedException().toString(),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.error,
+                ),
+              ),
+            ),
+            TextButton(
+              key: const ValueKey('marketplace-place-retry'),
+              onPressed: () {
+                setState(() => _errorMessage = null);
+                ref.invalidate(marketplaceBusinessDistrictProvider);
+              },
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+      ],
       if (unplaced) ...[
         Row(
           key: const ValueKey('marketplace-no-business-address'),

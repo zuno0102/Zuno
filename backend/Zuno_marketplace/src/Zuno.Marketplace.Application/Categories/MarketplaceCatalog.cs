@@ -47,6 +47,7 @@ public class MarketplaceCatalogHandlers(
             TradeModes = tradeModes.Select(t => new MarketplaceOptionDto { Code = t.Code.ToString(), Name = t.Name, Detail = t.Detail }).ToList(),
             Conditions = conditions.Select(c => new MarketplaceOptionDto { Code = c.Code.ToString(), Name = c.Name, Detail = c.Detail }).ToList(),
             ImageSlots = limits.ImageSlots,
+            VariantImageSlots = limits.VariantImageSlots,
             MaxFoodOfferHours = limits.MaxFoodOfferHours,
             MaxAdDays = limits.MaxAdDays,
             MaxPrice = limits.MaxPrice,

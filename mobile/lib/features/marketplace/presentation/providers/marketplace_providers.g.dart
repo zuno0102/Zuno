@@ -110,6 +110,13 @@ String _$marketplaceRepositoryHash() =>
 /// 2. its registered address (street, town, PIN code, state) found on the map;
 /// 3. its town matched to a district's name in its state.
 /// Null when none does: the form then sends the business to its profile.
+///
+/// Each lookup is a request, tried twice (a server waking up fails the first). When one still
+/// fails and nothing else places the business, it is not known that the address cannot be placed —
+/// only that it could not be checked: that is [BusinessPlaceUncheckedException], not null, so the
+/// form offers to try again instead of sending a business with an address to add one. Not retried
+/// on its own: the lookups were already tried twice, and the form's Retry asks again — while
+/// Riverpod's own retries would keep Save waiting with nothing said.
 
 @ProviderFor(marketplaceBusinessDistrict)
 final marketplaceBusinessDistrictProvider =
@@ -121,6 +128,13 @@ final marketplaceBusinessDistrictProvider =
 /// 2. its registered address (street, town, PIN code, state) found on the map;
 /// 3. its town matched to a district's name in its state.
 /// Null when none does: the form then sends the business to its profile.
+///
+/// Each lookup is a request, tried twice (a server waking up fails the first). When one still
+/// fails and nothing else places the business, it is not known that the address cannot be placed —
+/// only that it could not be checked: that is [BusinessPlaceUncheckedException], not null, so the
+/// form offers to try again instead of sending a business with an address to add one. Not retried
+/// on its own: the lookups were already tried twice, and the form's Retry asks again — while
+/// Riverpod's own retries would keep Save waiting with nothing said.
 
 final class MarketplaceBusinessDistrictProvider
     extends
@@ -136,11 +150,18 @@ final class MarketplaceBusinessDistrictProvider
   /// 2. its registered address (street, town, PIN code, state) found on the map;
   /// 3. its town matched to a district's name in its state.
   /// Null when none does: the form then sends the business to its profile.
+  ///
+  /// Each lookup is a request, tried twice (a server waking up fails the first). When one still
+  /// fails and nothing else places the business, it is not known that the address cannot be placed —
+  /// only that it could not be checked: that is [BusinessPlaceUncheckedException], not null, so the
+  /// form offers to try again instead of sending a business with an address to add one. Not retried
+  /// on its own: the lookups were already tried twice, and the form's Retry asks again — while
+  /// Riverpod's own retries would keep Save waiting with nothing said.
   MarketplaceBusinessDistrictProvider._()
     : super(
         from: null,
         argument: null,
-        retry: null,
+        retry: _noRetry,
         name: r'marketplaceBusinessDistrictProvider',
         isAutoDispose: true,
         dependencies: null,
@@ -162,7 +183,7 @@ final class MarketplaceBusinessDistrictProvider
 }
 
 String _$marketplaceBusinessDistrictHash() =>
-    r'df2d55d404a64c1060a9cee6cd6f714cdd3801d9';
+    r'004f398cbc2d2fac1f1d09b044743c15c9780d92';
 
 /// The categories a business can post in, with their details. The server caches them too. Kept
 /// for the session — they change only when the super admin edits them, which reloads them — so

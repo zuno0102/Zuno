@@ -30,6 +30,10 @@ class MarketplaceApi {
   static String postImagePath(String id, int slot) =>
       '$myPostsPath/$id/images/$slot';
 
+  /// A colour / size's own photo slot.
+  static String postVariantImagePath(String id, String variantId, int slot) =>
+      '$myPostsPath/$id/variants/$variantId/images/$slot';
+
   static const String adminCategoriesPath =
       '/api/v1/admin/marketplace/categories';
 

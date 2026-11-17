@@ -105,6 +105,8 @@ public class SecurityAttackTests(MarketplaceApiFactory factory) : IClassFixture<
             ["remove"] = () => attacker.DeleteAsync($"{Posts}/{id}"),
             ["replace photo"] = () => attacker.PostAsync($"{Posts}/{id}/images/0", File(Png, "image/png")),
             ["remove photo"] = () => attacker.DeleteAsync($"{Posts}/{id}/images/0"),
+            ["colour photo"] = () => attacker.PostAsync($"{Posts}/{id}/variants/{Guid.NewGuid()}/images/0", File(Png, "image/png")),
+            ["remove colour photo"] = () => attacker.DeleteAsync($"{Posts}/{id}/variants/{Guid.NewGuid()}/images/0"),
         };
         foreach (var (name, attempt) in attempts)
         {

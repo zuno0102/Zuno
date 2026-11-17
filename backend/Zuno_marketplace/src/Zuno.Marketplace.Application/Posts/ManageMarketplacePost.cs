@@ -35,6 +35,9 @@ public class SetMarketplacePostImageCommand : IRequest<MarketplacePostDto>
 
     /// <summary>Chosen by the server from the file's bytes, with the dot, e.g. <c>.jpg</c>.</summary>
     public string FileExtension { get; set; } = ".jpg";
+
+    /// <summary>A colour / size of the post, for its own photos; null for the post's.</summary>
+    public Guid? VariantId { get; set; }
 }
 
 public class RemoveMarketplacePostImageCommand : IRequest<MarketplacePostDto>
@@ -42,6 +45,9 @@ public class RemoveMarketplacePostImageCommand : IRequest<MarketplacePostDto>
     public Guid PostId { get; set; }
 
     public int SlotIndex { get; set; }
+
+    /// <summary>A colour / size of the post; null for the post's own photos.</summary>
+    public Guid? VariantId { get; set; }
 }
 
 public class ChangeMarketplacePostStatusCommandValidator : AbstractValidator<ChangeMarketplacePostStatusCommand>
@@ -65,7 +71,9 @@ public class SetMarketplacePostImageCommandValidator : AbstractValidator<SetMark
     public SetMarketplacePostImageCommandValidator(IOptions<MarketplaceSettings> settings)
     {
         RuleFor(x => x.PostId).NotEmpty();
-        RuleFor(x => x.SlotIndex).InclusiveBetween(0, settings.Value.ImageSlots - 1);
+        // A colour / size has fewer slots than the post.
+        RuleFor(x => x.SlotIndex).InclusiveBetween(0, settings.Value.ImageSlots - 1).When(x => x.VariantId is null);
+        RuleFor(x => x.SlotIndex).InclusiveBetween(0, settings.Value.VariantImageSlots - 1).When(x => x.VariantId is not null);
         RuleFor(x => x.FileExtension).NotEmpty().MaximumLength(10);
     }
 }
@@ -75,7 +83,8 @@ public class RemoveMarketplacePostImageCommandValidator : AbstractValidator<Remo
     public RemoveMarketplacePostImageCommandValidator(IOptions<MarketplaceSettings> settings)
     {
         RuleFor(x => x.PostId).NotEmpty();
-        RuleFor(x => x.SlotIndex).InclusiveBetween(0, settings.Value.ImageSlots - 1);
+        RuleFor(x => x.SlotIndex).InclusiveBetween(0, settings.Value.ImageSlots - 1).When(x => x.VariantId is null);
+        RuleFor(x => x.SlotIndex).InclusiveBetween(0, settings.Value.VariantImageSlots - 1).When(x => x.VariantId is not null);
     }
 }
 
@@ -152,10 +161,13 @@ public class ManageMarketplacePostHandlers(
     public async Task<MarketplacePostDto> Handle(SetMarketplacePostImageCommand request, CancellationToken cancellationToken)
     {
         var post = await dbContext.OwnedPostAsync(request.PostId, currentUser.OwnerId(), cancellationToken);
-        var url = await storage.SaveImageAsync(post.Id, request.SlotIndex, request.Content, request.FileExtension, cancellationToken);
+        // The colour / size is checked before any file is written.
+        var variant = VariantOf(post, request.VariantId);
+        var url = await storage.SaveImageAsync(
+            post.Id, request.SlotIndex, request.Content, request.FileExtension, cancellationToken, variant?.Id);
         var sortOrder = (short)request.SlotIndex;
 
-        var existing = post.Media.FirstOrDefault(m => m.SortOrder == sortOrder);
+        var existing = post.Media.FirstOrDefault(m => m.VariantId == variant?.Id && m.SortOrder == sortOrder);
         if (existing is not null)
         {
             existing.Url = url;
@@ -164,7 +176,14 @@ public class ManageMarketplacePostHandlers(
         {
             // On the DbSet: its Guid key is preset, so found only through the collection EF would take
             // it for an existing row and send an UPDATE for a row that is not there.
-            var media = new MarketplacePostMedia { PostId = post.Id, Post = post, SortOrder = sortOrder, Url = url };
+            var media = new MarketplacePostMedia
+            {
+                PostId = post.Id,
+                Post = post,
+                VariantId = variant?.Id,
+                SortOrder = sortOrder,
+                Url = url,
+            };
             dbContext.PostMedia.Add(media);
             post.Media.AddIfMissing(media);
         }
@@ -176,7 +195,8 @@ public class ManageMarketplacePostHandlers(
     public async Task<MarketplacePostDto> Handle(RemoveMarketplacePostImageCommand request, CancellationToken cancellationToken)
     {
         var post = await dbContext.OwnedPostAsync(request.PostId, currentUser.OwnerId(), cancellationToken);
-        var existing = post.Media.FirstOrDefault(m => m.SortOrder == request.SlotIndex);
+        var variant = VariantOf(post, request.VariantId);
+        var existing = post.Media.FirstOrDefault(m => m.VariantId == variant?.Id && m.SortOrder == request.SlotIndex);
 
         // Removing an empty slot is not an error: the screen already shows what the caller wants.
         if (existing is not null)
@@ -189,4 +209,14 @@ public class ManageMarketplacePostHandlers(
 
         return post.ToDto(clock.GetUtcNow(), await reference.TransitionsAsync(cancellationToken));
     }
+
+    /// <summary>
+    /// The post's colour / size <paramref name="variantId"/> (null for the post itself). One of another post — or none —
+    /// is not found, so a business cannot attach photos to someone else's colour.
+    /// </summary>
+    private static MarketplacePostVariant? VariantOf(MarketplacePost post, Guid? variantId) =>
+        variantId is null
+            ? null
+            : post.Variants.FirstOrDefault(v => v.Id == variantId)
+                ?? throw new EntityNotFoundException("Colour / size", variantId);
 }

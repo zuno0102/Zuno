@@ -1142,11 +1142,18 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("url");
 
+                    b.Property<Guid?>("VariantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("variant_id");
+
                     b.HasKey("Id")
                         .HasName("pk_marketplace_post_media");
 
                     b.HasIndex("PostId")
                         .HasDatabaseName("ix_marketplace_post_media_post_id");
+
+                    b.HasIndex("VariantId")
+                        .HasDatabaseName("ix_marketplace_post_media_variant_id");
 
                     b.ToTable("marketplace_post_media", (string)null);
                 });
@@ -6838,7 +6845,15 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_marketplace_post_media_marketplace_posts_post_id");
 
+                    b.HasOne("Zuno.Marketplace.Domain.Entities.MarketplacePostVariant", "Variant")
+                        .WithMany("Media")
+                        .HasForeignKey("VariantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_marketplace_post_media_post_variants_variant_id");
+
                     b.Navigation("Post");
+
+                    b.Navigation("Variant");
                 });
 
             modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplacePostVariant", b =>
@@ -6922,6 +6937,11 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                     b.Navigation("Media");
 
                     b.Navigation("Variants");
+                });
+
+            modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplacePostVariant", b =>
+                {
+                    b.Navigation("Media");
                 });
 #pragma warning restore 612, 618
         }

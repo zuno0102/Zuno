@@ -129,6 +129,14 @@ MarketplaceVariantModel _$MarketplaceVariantModelFromJson(
           )
           .toList() ??
       [],
+  media:
+      (json['media'] as List<dynamic>?)
+          ?.map(
+            (e) =>
+                MarketplacePostMediaModel.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      [],
 );
 
 MarketplacePostPageModel _$MarketplacePostPageModelFromJson(
@@ -290,6 +298,9 @@ MarketplaceOptionsModel _$MarketplaceOptionsModelFromJson(
       : marketplaceTextLimitsFromJson(
           json['textLimits'] as Map<String, dynamic>,
         ),
+  variantImageSlots:
+      (json['variantImageSlots'] as num?)?.toInt() ??
+      marketplaceDefaultVariantImageSlots,
 );
 
 MarketplaceBusinessModel _$MarketplaceBusinessModelFromJson(

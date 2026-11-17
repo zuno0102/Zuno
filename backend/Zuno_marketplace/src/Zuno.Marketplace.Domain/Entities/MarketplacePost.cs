@@ -106,8 +106,25 @@ public class MarketplacePost : BaseEntity
     /// </summary>
     public ICollection<MarketplacePostVariant> Variants { get; set; } = new List<MarketplacePostVariant>();
 
-    /// <summary>The stock of the colours and sizes still on sale, added up.</summary>
-    public int ActiveVariantStock => Variants.Where(v => v.IsActive).Sum(v => v.Stock);
+    /// <summary>
+    /// The main product: the first colour / size, typed on the form itself. Its stock is its own,
+    /// and it is on sale whenever the post is — the post's own Active switch turns it on and off.
+    /// Only the colours and sizes added under it are switched off one by one.
+    /// </summary>
+    public MarketplacePostVariant? MainVariant => Variants.OrderBy(v => v.SortOrder).FirstOrDefault();
+
+    /// <summary>
+    /// The product's stock on sale: the main product's own count, plus each colour / size still on
+    /// sale. Main 50 and one colour at 25 is 75; with that colour switched off, 50.
+    /// </summary>
+    public int ActiveVariantStock
+    {
+        get
+        {
+            var main = MainVariant;
+            return Variants.Where(v => v == main || v.IsActive).Sum(v => v.Stock);
+        }
+    }
 
     /// <summary>
     /// The colours and sizes added under the main one (the first, typed on the form itself) that are
@@ -177,6 +194,9 @@ public class MarketplacePostVariant : BaseEntity
 
     public short SortOrder { get; set; }
 
+    /// <summary>Its own photos — a saree in this colour — by slot. The product's photos are the post's.</summary>
+    public ICollection<MarketplacePostMedia> Media { get; set; } = new List<MarketplacePostMedia>();
+
     /// <summary>"Red · M", "Red", "M".</summary>
     public string Name => string.Join(" · ", new[] { Colour, Size }.Where(p => !string.IsNullOrWhiteSpace(p)));
 }
@@ -187,6 +207,11 @@ public class MarketplacePostMedia : BaseEntity
     public Guid PostId { get; set; }
 
     public MarketplacePost Post { get; set; } = null!;
+
+    /// <summary>The colour / size this photo shows; null for the product's own photos.</summary>
+    public Guid? VariantId { get; set; }
+
+    public MarketplacePostVariant? Variant { get; set; }
 
     public string Url { get; set; } = string.Empty;
 

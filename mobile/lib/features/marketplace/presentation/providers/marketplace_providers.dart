@@ -39,13 +39,23 @@ MarketplaceRepository marketplaceRepository(Ref ref) =>
 /// 2. its registered address (street, town, PIN code, state) found on the map;
 /// 3. its town matched to a district's name in its state.
 /// Null when none does: the form then sends the business to its profile.
-@riverpod
+///
+/// Each lookup is a request, tried twice (a server waking up fails the first). When one still
+/// fails and nothing else places the business, it is not known that the address cannot be placed —
+/// only that it could not be checked: that is [BusinessPlaceUncheckedException], not null, so the
+/// form offers to try again instead of sending a business with an address to add one. Not retried
+/// on its own: the lookups were already tried twice, and the form's Retry asks again — while
+/// Riverpod's own retries would keep Save waiting with nothing said.
+@Riverpod(retry: _noRetry)
 Future<District?> marketplaceBusinessDistrict(Ref ref) async {
   final profile = await ref.watch(businessProfileProvider.future);
+  var unchecked = false;
+
   final pin = (profile.latitude, profile.longitude);
   if (pin case (final double latitude, final double longitude)) {
     final fromPin = await _nearestDistrict(ref, latitude, longitude);
-    if (fromPin != null) return fromPin;
+    if (fromPin.district case final district?) return district;
+    unchecked |= fromPin.failed;
   }
 
   final address = [
@@ -55,46 +65,83 @@ Future<District?> marketplaceBusinessDistrict(Ref ref) async {
   ].where((p) => p != null && p.trim().isNotEmpty).join(', ');
   if (address.isNotEmpty) {
     final fromAddress = await _districtOfAddress(ref, address);
-    if (fromAddress != null) return fromAddress;
+    if (fromAddress.district case final district?) return district;
+    unchecked |= fromAddress.failed;
   }
 
   String key(String? name) => (name ?? '').trim().toLowerCase();
   final stateName = key(profile.state);
   final town = key(profile.city);
-  if (stateName.isEmpty || town.isEmpty) return null;
-  final districts = await ref.watch(allDistrictsProvider.future);
-  return districts
-      .where((d) => key(d.stateName) == stateName && key(d.name) == town)
-      .firstOrNull;
+  if (stateName.isNotEmpty && town.isNotEmpty) {
+    final districts = await ref.watch(allDistrictsProvider.future);
+    final byName = districts
+        .where((d) => key(d.stateName) == stateName && key(d.name) == town)
+        .firstOrNull;
+    if (byName != null) return byName;
+  }
+
+  if (unchecked) throw const BusinessPlaceUncheckedException();
+  return null;
 }
 
-/// The district a point is in; null when it cannot be told — offline, or too far from every one.
-Future<District?> _nearestDistrict(
+/// The business's place could not be worked out because a lookup failed — offline, or a server
+/// not answering — not because its address cannot be placed.
+class BusinessPlaceUncheckedException implements Exception {
+  const BusinessPlaceUncheckedException();
+
+  @override
+  String toString() =>
+      "Couldn't check where your business is. Check your connection and try again.";
+}
+
+/// Never retried by Riverpod.
+Duration? _noRetry(int retryCount, Object error) => null;
+
+/// A lookup's answer: the district (null when there is none), and whether the lookup failed — so
+/// "there is none" and "could not ask" stay apart.
+typedef _Lookup = ({District? district, bool failed});
+
+/// Runs [lookup], once more if it fails.
+Future<T> _twice<T>(Future<T> Function() lookup) async {
+  try {
+    return await lookup();
+  } on Object {
+    return lookup();
+  }
+}
+
+/// The district a point is in; none when it is too far from every one.
+Future<_Lookup> _nearestDistrict(
   Ref ref,
   double latitude,
   double longitude,
 ) async {
   try {
-    return await ref
-        .read(customerLocationApiProvider)
-        .nearestDistrict(latitude, longitude);
+    final district = await _twice(
+      () => ref
+          .read(customerLocationApiProvider)
+          .nearestDistrict(latitude, longitude),
+    );
+    return (district: district, failed: false);
   } on AppException catch (error, stack) {
     AppLog.handled('marketplace business district (pin)', error, stack);
-    return null;
+    return (district: null, failed: true);
   }
 }
 
-/// The district a typed address is in, through the map search; null when the map does not know it.
-Future<District?> _districtOfAddress(Ref ref, String address) async {
+/// The district a typed address is in, through the map search; none when the map does not know it.
+Future<_Lookup> _districtOfAddress(Ref ref, String address) async {
   try {
-    final places = await ref.read(placeSearchClientProvider).search(address);
+    final places = await _twice(
+      () => ref.read(placeSearchClientProvider).search(address),
+    );
     final place = places.firstOrNull;
     return place == null
-        ? null
+        ? (district: null, failed: false)
         : await _nearestDistrict(ref, place.latitude, place.longitude);
   } on DioException catch (error, stack) {
     AppLog.handled('marketplace business district (address)', error, stack);
-    return null;
+    return (district: null, failed: true);
   }
 }
 

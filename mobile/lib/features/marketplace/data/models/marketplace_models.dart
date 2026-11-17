@@ -187,6 +187,7 @@ class MarketplaceVariantModel {
     this.price,
     this.isActive = true,
     this.customDetails = const [],
+    this.media = const [],
   });
 
   factory MarketplaceVariantModel.fromJson(Map<String, dynamic> json) =>
@@ -206,6 +207,10 @@ class MarketplaceVariantModel {
   @JsonKey(defaultValue: <MarketplaceCustomDetailModel>[])
   final List<MarketplaceCustomDetailModel> customDetails;
 
+  /// Missing from an older server: none.
+  @JsonKey(defaultValue: <MarketplacePostMediaModel>[])
+  final List<MarketplacePostMediaModel> media;
+
   MarketplaceVariant toEntity() => MarketplaceVariant(
     id: id,
     colour: colour,
@@ -214,6 +219,7 @@ class MarketplaceVariantModel {
     stock: stock,
     isActive: isActive,
     customDetails: [for (final d in customDetails) d.toEntity()],
+    imageUrls: {for (final m in media) m.sortOrder: m.url},
   );
 }
 
@@ -486,6 +492,7 @@ class MarketplaceOptionsModel {
     this.maxQuantity = marketplaceDefaultMaxQuantity,
     this.maxStartDaysAhead = MarketplaceTextLimits.fallbackStartDaysAhead,
     this.textLimits = const MarketplaceTextLimits(),
+    this.variantImageSlots = marketplaceDefaultVariantImageSlots,
   });
 
   factory MarketplaceOptionsModel.fromJson(Map<String, dynamic> json) =>
@@ -502,6 +509,7 @@ class MarketplaceOptionsModel {
   final int maxStartDaysAhead;
   @JsonKey(fromJson: marketplaceTextLimitsFromJson)
   final MarketplaceTextLimits textLimits;
+  final int variantImageSlots;
 
   MarketplaceOptions toEntity() => MarketplaceOptions(
     kinds: [for (final k in kinds) k.toEntity()],
@@ -513,6 +521,7 @@ class MarketplaceOptionsModel {
     maxAdDays: maxAdDays,
     maxQuantity: maxQuantity,
     maxStartDaysAhead: maxStartDaysAhead,
+    variantImageSlots: variantImageSlots,
     textLimits: textLimits,
   );
 }

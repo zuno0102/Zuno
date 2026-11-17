@@ -43,9 +43,15 @@ abstract interface class MarketplaceRepository {
 
   Future<void> delete(String id);
 
-  Future<MarketplacePost> uploadImage(String id, int slot, Uint8List bytes);
+  /// A photo into [slot] of the post — or of its colour / size [variantId].
+  Future<MarketplacePost> uploadImage(
+    String id,
+    int slot,
+    Uint8List bytes, {
+    String? variantId,
+  });
 
-  Future<MarketplacePost> removeImage(String id, int slot);
+  Future<MarketplacePost> removeImage(String id, int slot, {String? variantId});
 
   /// Refreshes the business's name and verification from its Service profile.
   Future<MarketplaceBusiness> syncProfile();

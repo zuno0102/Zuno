@@ -120,6 +120,9 @@ public class MarketplaceVariantDto
 
     /// <summary>Its own details, in the business's order — "Border: Zari".</summary>
     public List<MarketplaceCustomDetailDto> CustomDetails { get; set; } = [];
+
+    /// <summary>Its own photos by slot — the product in this colour / size.</summary>
+    public List<MarketplacePostMediaDto> Media { get; set; } = [];
 }
 
 public class MarketplacePostMediaDto
@@ -295,6 +298,9 @@ public class MarketplaceOptionsDto
     public List<MarketplaceOptionDto> Statuses { get; set; } = [];
 
     public int ImageSlots { get; set; }
+
+    /// <summary>Photo slots per colour / size.</summary>
+    public int VariantImageSlots { get; set; }
 
     public int MaxFoodOfferHours { get; set; }
 

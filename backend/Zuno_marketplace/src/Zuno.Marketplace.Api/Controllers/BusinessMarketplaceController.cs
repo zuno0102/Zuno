@@ -91,9 +91,32 @@ public class BusinessMarketplaceController(
     [HttpPost("{id:guid}/images/{slot:int}")]
     [RequestSizeLimit(10_000_000)]
     [EnableRateLimiting(MarketplacePolicies.UploadPolicy)]
-    public async Task<IActionResult> UploadImage(Guid id, int slot, IFormFile? file, CancellationToken cancellationToken)
+    public Task<IActionResult> UploadImage(Guid id, int slot, IFormFile? file, CancellationToken cancellationToken) =>
+        Upload(id, null, slot, file, cancellationToken);
+
+    [HttpDelete("{id:guid}/images/{slot:int}")]
+    public async Task<IActionResult> RemoveImage(Guid id, int slot, CancellationToken cancellationToken) =>
+        Ok(await mediator.Send(new RemoveMarketplacePostImageCommand { PostId = id, SlotIndex = slot }, cancellationToken));
+
+    /// <summary>A photo of one colour / size — the saree in that colour.</summary>
+    [HttpPost("{id:guid}/variants/{variantId:guid}/images/{slot:int}")]
+    [RequestSizeLimit(10_000_000)]
+    [EnableRateLimiting(MarketplacePolicies.UploadPolicy)]
+    public Task<IActionResult> UploadVariantImage(
+        Guid id, Guid variantId, int slot, IFormFile? file, CancellationToken cancellationToken) =>
+        Upload(id, variantId, slot, file, cancellationToken);
+
+    [HttpDelete("{id:guid}/variants/{variantId:guid}/images/{slot:int}")]
+    public async Task<IActionResult> RemoveVariantImage(Guid id, Guid variantId, int slot, CancellationToken cancellationToken) =>
+        Ok(await mediator.Send(
+            new RemoveMarketplacePostImageCommand { PostId = id, VariantId = variantId, SlotIndex = slot },
+            cancellationToken));
+
+    /// <summary>The checks every photo passes before it is handed on: slot, size, and real image bytes.</summary>
+    private async Task<IActionResult> Upload(
+        Guid id, Guid? variantId, int slot, IFormFile? file, CancellationToken cancellationToken)
     {
-        var slots = settings.Value.ImageSlots;
+        var slots = variantId is null ? settings.Value.ImageSlots : settings.Value.VariantImageSlots;
         if (slot < 0 || slot >= slots)
         {
             return Fail($"Image slot must be between 0 and {slots - 1}.");
@@ -116,16 +139,19 @@ public class BusinessMarketplaceController(
             return Fail(MediaUpload.ImageRule);
         }
 
-        // Handed to the command, which saves it only after checking the post is the caller's.
+        // Handed to the command, which saves it only after checking the post (and colour) is the caller's.
         await using var stream = file.OpenReadStream();
         return Ok(await mediator.Send(
-            new SetMarketplacePostImageCommand { PostId = id, SlotIndex = slot, Content = stream, FileExtension = extension },
+            new SetMarketplacePostImageCommand
+            {
+                PostId = id,
+                VariantId = variantId,
+                SlotIndex = slot,
+                Content = stream,
+                FileExtension = extension,
+            },
             cancellationToken));
     }
-
-    [HttpDelete("{id:guid}/images/{slot:int}")]
-    public async Task<IActionResult> RemoveImage(Guid id, int slot, CancellationToken cancellationToken) =>
-        Ok(await mediator.Send(new RemoveMarketplacePostImageCommand { PostId = id, SlotIndex = slot }, cancellationToken));
 
     private BadRequestObjectResult Fail(string message) =>
         BadRequest(ApiResponse.Fail(message, HttpContext.TraceIdentifier));

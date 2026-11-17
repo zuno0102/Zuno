@@ -42,16 +42,23 @@ class _Profile extends BusinessProfileNotifier {
 
 /// Answers "which district is this point in" with [district], or fails like a phone offline.
 class _Api extends CustomerLocationApi {
-  _Api(this.district, {this.fails = false}) : super(Dio());
+  _Api(this.district, {this.fails = false, this.failsFirst = 0}) : super(Dio());
 
   final District? district;
   final bool fails;
+
+  /// How many first calls fail, as a server waking up does.
+  int failsFirst;
   final asked = <(double, double)>[];
 
   @override
   Future<District?> nearestDistrict(double latitude, double longitude) async {
     asked.add((latitude, longitude));
     if (fails) throw const NetworkAppException('offline');
+    if (failsFirst > 0) {
+      failsFirst--;
+      throw const NetworkAppException('timed out');
+    }
     return district;
   }
 }
@@ -107,6 +114,8 @@ Future<District?> _resolve(
     ],
   );
   addTearDown(container.dispose);
+  // Watched, as the post form watches it, so it is not let go while it works.
+  container.listen(marketplaceBusinessDistrictProvider, (_, _) {});
   return container.read(marketplaceBusinessDistrictProvider.future);
 }
 
@@ -175,6 +184,37 @@ void main() {
 
     expect(district?.id, 'd-tvm');
   });
+
+  test('a lookup that fails once is asked again', () async {
+    final api = _Api(_kanyakumari, failsFirst: 1);
+
+    final district = await _resolve(
+      _business(city: 'Marthandam', latitude: 8.3, longitude: 77.2),
+      api,
+    );
+
+    expect(district?.id, 'd-kk');
+    expect(api.asked, hasLength(2));
+  });
+
+  test(
+    'lookups that keep failing, and no name match: "could not check", not "no address"',
+    () async {
+      await expectLater(
+        _resolve(
+          _business(
+            city: 'Marthandam',
+            state: 'Tamil Nadu',
+            latitude: 8.3,
+            longitude: 77.2,
+          ),
+          _Api(null, fails: true),
+          _Search(const [], true),
+        ),
+        throwsA(isA<BusinessPlaceUncheckedException>()),
+      );
+    },
+  );
 
   test('an address nothing can place says nothing', () async {
     final district = await _resolve(

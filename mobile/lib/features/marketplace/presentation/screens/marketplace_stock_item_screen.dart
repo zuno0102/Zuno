@@ -256,10 +256,16 @@ class _StockTabState extends ConsumerState<_StockTab>
                     // The chosen one is filled in; no tick.
                     showCheckmark: false,
                     label: Text(
+                      // Each one says its own state: "Red · 50 · main", "Green · 0 · out of
+                      // stock", "Blue · 25 · inactive".
                       [
                         v.name,
                         '${v.stock}',
-                        if (!v.isActive) 'inactive',
+                        if (i == 0) 'main',
+                        if (i > 0 && !v.isActive)
+                          'inactive'
+                        else if (v.stock <= 0)
+                          'out of stock',
                       ].join(' · '),
                     ),
                     selected: v.id == _variantId,

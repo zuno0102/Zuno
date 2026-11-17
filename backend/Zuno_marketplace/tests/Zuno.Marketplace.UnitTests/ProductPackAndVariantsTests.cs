@@ -337,8 +337,11 @@ public class ProductPackAndVariantsTests
         (await test.QueryHandlers.Handle(new GetMyMarketplaceSummaryQuery(), default)).Inactive.Should().Be(6);
     }
 
+    // The report: colours switched off on Manage variants (the main among them) left an active
+    // product "Out of stock". The main product keeps its own count and stays on sale; each colour /
+    // size counts on its own while it is on.
     [Fact]
-    public async Task EveryColourSwitchedOff_IsOutOfStock()
+    public async Task TheMainProduct_CannotBeSwitchedOffOnItsOwn_AndKeepsItsStock()
     {
         using var test = new TestMarketplace();
         var saved = await test.SaveHandlers.Handle(Saree(), default);
@@ -346,7 +349,63 @@ public class ProductPackAndVariantsTests
         var dto = await test.VariantsHandler.Handle(Replace(saved.Id,
             [new() { Colour = "Red", Price = 2_400m, Stock = 10, IsActive = false }]), default);
 
-        (dto.Quantity, dto.IsOutOfStock, dto.Price).Should().Be((0, true, 2_400m));
+        (dto.Quantity, dto.IsOutOfStock).Should().Be((10, false));
+        dto.Variants.Single().IsActive.Should().BeTrue();
+    }
+
+    [Theory]
+    // Main 50, Green 25, Blue 25 — each counted on its own.
+    [InlineData(true, true, 100)]
+    [InlineData(true, false, 75)]
+    // Both colours off: the main's 50 is still on sale — not out of stock.
+    [InlineData(false, false, 50)]
+    public async Task Stock_IsTheMainsOwnCount_PlusEachColourOnSale(bool greenOn, bool blueOn, int expected)
+    {
+        using var test = new TestMarketplace();
+        var saved = await test.SaveHandlers.Handle(Saree(c => c.Variants =
+        [
+            new() { Colour = "Red", Price = 2_400m, Stock = 50 },
+            new() { Colour = "Green", Price = 2_400m, Stock = 25, IsActive = greenOn },
+            new() { Colour = "Blue", Price = 2_400m, Stock = 25, IsActive = blueOn },
+        ]), default);
+
+        (saved.Quantity, saved.IsOutOfStock).Should().Be((expected, false));
+    }
+
+    [Fact]
+    public async Task OutOfStock_OnlyWhenTheMainAndEveryColourOnSaleAreAtZero()
+    {
+        using var test = new TestMarketplace();
+        var mainEmpty = await test.SaveHandlers.Handle(Saree(c => c.Variants =
+        [
+            new() { Colour = "Red", Price = 2_400m, Stock = 0 },
+            new() { Colour = "Green", Price = 2_400m, Stock = 25 },
+        ]), default);
+        (mainEmpty.Quantity, mainEmpty.IsOutOfStock).Should().Be((25, false));
+
+        var allEmpty = await test.VariantsHandler.Handle(Replace(mainEmpty.Id,
+        [
+            new() { Id = mainEmpty.Variants[0].Id, Colour = "Red", Price = 2_400m, Stock = 0 },
+            new() { Id = mainEmpty.Variants[1].Id, Colour = "Green", Price = 2_400m, Stock = 25, IsActive = false },
+        ]), default);
+        (allEmpty.Quantity, allEmpty.IsOutOfStock).Should().Be((0, true));
+    }
+
+    [Fact]
+    public async Task UpdatingTheMainsStock_KeepsTheColoursSwitchedOffOutOfTheCount()
+    {
+        using var test = new TestMarketplace();
+        var saved = await test.SaveHandlers.Handle(Saree(c => c.Variants =
+        [
+            new() { Colour = "Red", Price = 2_400m, Stock = 50 },
+            new() { Colour = "Green", Price = 2_400m, Stock = 25, IsActive = false },
+        ]), default);
+        var red = saved.Variants.Single(v => v.Colour == "Red");
+
+        var dto = await test.StockHandler.Handle(
+            new UpdateMarketplacePostStockCommand { Id = saved.Id, VariantId = red.Id, Quantity = 0 }, default);
+
+        (dto.Quantity, dto.IsOutOfStock).Should().Be((0, true));
     }
 
     [Fact]

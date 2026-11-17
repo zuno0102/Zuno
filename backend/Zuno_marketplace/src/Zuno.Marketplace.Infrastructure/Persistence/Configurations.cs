@@ -177,6 +177,13 @@ public class MarketplacePostMediaConfiguration : IEntityTypeConfiguration<Market
             .WithMany(p => p.Media)
             .HasForeignKey(m => m.PostId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // A colour / size's own photos; null for the product's.
+        builder.HasIndex(m => m.VariantId);
+        builder.HasOne(m => m.Variant)
+            .WithMany(v => v.Media)
+            .HasForeignKey(m => m.VariantId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
 

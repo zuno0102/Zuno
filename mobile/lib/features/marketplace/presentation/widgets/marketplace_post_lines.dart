@@ -52,10 +52,15 @@ String? marketplaceQuantityLine(
       post.variants.length == 1
           ? '1 colour / size'
           : '${post.variants.length} colours / sizes',
-    // "1 inactive": colours / sizes switched off, kept but not on sale.
-    if (post.variants.where((v) => !v.isActive).length case final off
+    // "1 inactive": colours / sizes switched off, kept but not on sale. The main product (the
+    // first) is never one of them — the post's own switch is its on/off.
+    if (post.variants.skip(1).where((v) => !v.isActive).length case final off
         when off > 0)
       '$off inactive',
+    // "1 out of stock": the main or a colour / size on sale at 0, while the product as a whole
+    // still has stock (then the card's own "Out of stock" says it).
+    if (!post.isOutOfStock && _emptyOnSale(post) > 0)
+      '${_emptyOnSale(post)} out of stock',
     if (condition == MarketplaceItemCondition.used) 'one piece',
     if (post.isFoodOffer && post.quantity != null) '${post.quantity} portions',
     if (post.isWholesale) 'Wholesale',
@@ -102,3 +107,10 @@ String? marketplaceDetailsLine(
   ];
   return values.isEmpty ? null : values.join(' · ');
 }
+
+/// How many of a product's items on sale — the main product, and each colour / size switched on —
+/// are at 0. Each keeps its own count: main 50 with Green at 0 is "1 out of stock".
+int _emptyOnSale(MarketplacePost post) => [
+  ...post.variants.take(1),
+  ...post.variants.skip(1).where((v) => v.isActive),
+].where((v) => v.stock <= 0).length;

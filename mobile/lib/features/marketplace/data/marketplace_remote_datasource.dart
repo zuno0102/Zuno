@@ -99,10 +99,13 @@ class MarketplaceRemoteDataSource {
   Future<MarketplacePostModel> uploadImage(
     String id,
     int slot,
-    Uint8List bytes,
-  ) => _post(
+    Uint8List bytes, {
+    String? variantId,
+  }) => _post(
     () => _dio.post(
-      MarketplaceApi.postImagePath(id, slot),
+      variantId == null
+          ? MarketplaceApi.postImagePath(id, slot)
+          : MarketplaceApi.postVariantImagePath(id, variantId, slot),
       // Pictures are compressed to JPEG as they are picked; said explicitly because the server
       // accepts only real images and Dio would otherwise send application/octet-stream.
       data: FormData.fromMap({
@@ -115,8 +118,17 @@ class MarketplaceRemoteDataSource {
     ),
   );
 
-  Future<MarketplacePostModel> removeImage(String id, int slot) =>
-      _post(() => _dio.delete(MarketplaceApi.postImagePath(id, slot)));
+  Future<MarketplacePostModel> removeImage(
+    String id,
+    int slot, {
+    String? variantId,
+  }) => _post(
+    () => _dio.delete(
+      variantId == null
+          ? MarketplaceApi.postImagePath(id, slot)
+          : MarketplaceApi.postVariantImagePath(id, variantId, slot),
+    ),
+  );
 
   Future<MarketplaceBusinessModel> syncProfile() => _run(() async {
     final response = await _dio.post<Map<String, dynamic>>(

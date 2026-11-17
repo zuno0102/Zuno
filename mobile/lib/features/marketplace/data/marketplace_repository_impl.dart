@@ -85,12 +85,22 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
   Future<MarketplacePost> uploadImage(
     String id,
     int slot,
-    Uint8List bytes,
-  ) async => (await _remote.uploadImage(id, slot, bytes)).toEntity();
+    Uint8List bytes, {
+    String? variantId,
+  }) async => (await _remote.uploadImage(
+    id,
+    slot,
+    bytes,
+    variantId: variantId,
+  )).toEntity();
 
   @override
-  Future<MarketplacePost> removeImage(String id, int slot) async =>
-      (await _remote.removeImage(id, slot)).toEntity();
+  Future<MarketplacePost> removeImage(
+    String id,
+    int slot, {
+    String? variantId,
+  }) async =>
+      (await _remote.removeImage(id, slot, variantId: variantId)).toEntity();
 
   @override
   Future<MarketplaceBusiness> syncProfile() async =>

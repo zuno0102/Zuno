@@ -120,4 +120,70 @@ void main() {
     expect(list.items.length, 2);
     expect(list.totalStock, 12);
   });
+
+  // The report: main 50 with its colours switched off showed "Out of stock". Each item keeps its
+  // own count, and the card names the ones at 0.
+  group('stock per item on the card', () {
+    MarketplacePost product(List<MarketplaceVariant> variants, int total) =>
+        MarketplacePost(
+          id: 'p-1',
+          categoryId: 'cat-products',
+          categoryName: 'Products',
+          kind: MarketplacePostKind.listing,
+          status: MarketplacePostStatus.active,
+          title: 'Silk saree',
+          condition: MarketplaceItemCondition.newItem,
+          price: 2400,
+          quantity: total,
+          isOutOfStock: total <= 0,
+          tradeType: MarketplaceTradeType.retail,
+          districtId: 'd-kk',
+          districtName: 'Kanyakumari',
+          stateId: 's-tn',
+          stateName: 'Tamil Nadu',
+          attributes: const {},
+          imageUrls: const {},
+          actions: const [],
+          variants: variants,
+        );
+
+    test(
+      'main 50, its colours switched off: in stock, only the colours inactive',
+      () {
+        final line = marketplaceQuantityLine(
+          product(const [
+            MarketplaceVariant(colour: 'Red', stock: 50),
+            MarketplaceVariant(colour: 'Green', stock: 25, isActive: false),
+            MarketplaceVariant(colour: 'Blue', stock: 25, isActive: false),
+          ], 50),
+        )!;
+        expect(line, contains('50 in stock'));
+        expect(line, contains('2 inactive'));
+        expect(line, isNot(contains('out of stock')));
+      },
+    );
+
+    test(
+      'a colour on sale at 0 is named, while the product still has stock',
+      () {
+        final line = marketplaceQuantityLine(
+          product(const [
+            MarketplaceVariant(colour: 'Red', stock: 50),
+            MarketplaceVariant(colour: 'Green', stock: 0),
+          ], 50),
+        )!;
+        expect(line, contains('1 out of stock'));
+      },
+    );
+
+    test('a switched-off colour at 0 is not counted as out of stock', () {
+      final line = marketplaceQuantityLine(
+        product(const [
+          MarketplaceVariant(colour: 'Red', stock: 50),
+          MarketplaceVariant(colour: 'Green', stock: 0, isActive: false),
+        ], 50),
+      )!;
+      expect(line, isNot(contains('out of stock')));
+    });
+  });
 }

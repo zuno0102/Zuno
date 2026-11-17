@@ -10,6 +10,7 @@ import 'package:zuno/core/router/app_router.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/theme/app_theme.dart';
 import 'package:zuno/core/ui_config/ui_config_provider.dart';
+import 'package:zuno/core/web/keyboard_viewport.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_state.dart';
 import 'package:zuno/features/marketplace/data/marketplace_api.dart';
@@ -18,6 +19,10 @@ import 'package:zuno/features/rental/data/rental_api.dart';
 Future<void> main() async {
   // Needed before any plugin is touched, which the notification channel below is.
   WidgetsFlutterBinding.ensureInitialized();
+
+  // In the phone's browser, the keyboard shrinks the page instead of sliding it up — otherwise a
+  // form slides off the top and leaves an empty strip above the keyboard.
+  useKeyboardResizesContent();
 
   // Set up before the first frame, so a notification tapped from a cold start — where the tap is
   // what launched the app — is already recorded by the time a screen exists to act on it.

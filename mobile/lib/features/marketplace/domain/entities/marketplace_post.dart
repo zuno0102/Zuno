@@ -314,6 +314,7 @@ class MarketplaceVariant {
     this.price,
     this.isActive = true,
     this.customDetails = const [],
+    this.imageUrls = const {},
   });
 
   /// Null for one not saved yet.
@@ -330,6 +331,9 @@ class MarketplaceVariant {
 
   /// Details only this colour / size has — "Border: Zari".
   final List<MarketplaceCustomDetail> customDetails;
+
+  /// Its own saved photos by slot — the product in this colour / size.
+  final Map<int, String> imageUrls;
 
   /// "Red · M".
   String get name => [?colour, ?size].join(' · ');
@@ -570,6 +574,9 @@ class MarketplaceOption {
 /// The largest quantity until the server's own number has loaded — `Marketplace:MaxQuantity`.
 const marketplaceDefaultMaxQuantity = 1000000;
 
+/// Photo slots per colour / size until the server says otherwise.
+const marketplaceDefaultVariantImageSlots = 3;
+
 /// The post kinds, statuses and limits the Marketplace screens are drawn from.
 class MarketplaceOptions {
   const MarketplaceOptions({
@@ -583,7 +590,11 @@ class MarketplaceOptions {
     this.maxQuantity = marketplaceDefaultMaxQuantity,
     this.maxStartDaysAhead = MarketplaceTextLimits.fallbackStartDaysAhead,
     this.textLimits = const MarketplaceTextLimits(),
+    this.variantImageSlots = marketplaceDefaultVariantImageSlots,
   });
+
+  /// Photo slots per colour / size — `Marketplace:VariantImageSlots` on the server.
+  final int variantImageSlots;
 
   final List<MarketplaceOption> kinds;
   final List<MarketplaceOption> statuses;

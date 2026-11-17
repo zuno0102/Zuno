@@ -50,7 +50,7 @@ internal sealed class TestMarketplace : IDisposable
 
     public MarketplaceReference Reference => new(Db, _cache, Settings);
 
-    public SaveMarketplacePostHandlers SaveHandlers => new(User, Db, Reference, Clock, Settings);
+    public SaveMarketplacePostHandlers SaveHandlers => new(User, Db, Reference, Clock, Settings, Storage);
 
     public ManageMarketplacePostHandlers ManageHandlers => new(User, Db, Storage, Reference, Clock);
 
@@ -194,9 +194,11 @@ internal sealed class FakeMediaStorage : IMarketplaceMediaStorage
 
     public List<string> Deleted { get; } = [];
 
-    public Task<string> SaveImageAsync(Guid postId, int slot, Stream content, string fileExtension, CancellationToken cancellationToken)
+    public Task<string> SaveImageAsync(
+        Guid postId, int slot, Stream content, string fileExtension, CancellationToken cancellationToken, Guid? variantId = null)
     {
-        var url = $"/uploads/marketplace/{postId}/image-{slot}-{++_counter:x12}{fileExtension}";
+        var name = variantId is { } variant ? $"variant-{variant:N}-{slot}" : $"image-{slot}";
+        var url = $"/uploads/marketplace/{postId}/{name}-{++_counter:x12}{fileExtension}";
         Saved.Add(url);
         return Task.FromResult(url);
     }

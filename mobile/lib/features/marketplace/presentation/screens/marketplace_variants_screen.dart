@@ -23,8 +23,13 @@ class MarketplaceVariantsScreen extends ConsumerStatefulWidget {
 
 class _MarketplaceVariantsScreenState
     extends ConsumerState<MarketplaceVariantsScreen> {
+  /// The main product: the first colour / size, typed on the product form. Shown here with its own
+  /// stock, but not switched off or removed here — the product's Active switch is its on/off.
+  late final MarketplaceVariant? _main = widget.post.variants.firstOrNull;
+
+  /// The colours and sizes added under the main one, each switched on and off on its own.
   late final _variants = MarketplaceVariantList(
-    widget.post.variants,
+    widget.post.variants.skip(1).toList(),
     price: widget.post.price,
   )..addListener(_rebuild);
   bool _changed = false;
@@ -48,13 +53,31 @@ class _MarketplaceVariantsScreenState
       _saveError = null;
     });
     try {
-      await ref
-          .read(marketplaceRepositoryProvider)
-          .replaceVariants(widget.post.id, _variants.items);
+      final repository = ref.read(marketplaceRepositoryProvider);
+      final saved = await repository.replaceVariants(widget.post.id, [
+        // The main product goes back first, unchanged and on sale.
+        if (_main case final main?)
+          MarketplaceVariant(
+            id: main.id,
+            colour: main.colour,
+            size: main.size,
+            price: main.price ?? widget.post.price,
+            stock: main.stock,
+            isActive: true,
+            customDetails: main.customDetails,
+          ),
+        ..._variants.items,
+      ]);
+      // Each colour / size's own photos, now that every one has an id.
+      await uploadMarketplaceVariantPhotos(
+        repository,
+        saved,
+        _variants.pendingPhotos,
+      );
       reloadMarketplace(ref);
       messenger.showSuccess(
         '${widget.post.title}: colours and sizes saved — '
-        '${_variants.totalStock} in stock.',
+        '${(_main?.stock ?? 0) + _variants.totalStock} in stock.',
       );
       navigator.pop();
     } catch (e) {
@@ -91,14 +114,22 @@ class _MarketplaceVariantsScreenState
         body: ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
           children: [
+            if (_main case final main?) ...[
+              _MainProductLine(main: main),
+              const SizedBox(height: 16),
+            ],
             MarketplaceVariantsSection(
               variants: _variants,
-              alsoTaken: () => const [],
+              // The main's colour / size is taken too: the same one twice is refused.
+              alsoTaken: () => [?_main],
               mrp: () => post.originalPrice,
               defaultPrice: () => post.price,
               limits: options?.textLimits ?? const MarketplaceTextLimits(),
               maxQuantity:
                   options?.maxQuantity ?? marketplaceDefaultMaxQuantity,
+              photoSlots:
+                  options?.variantImageSlots ??
+                  marketplaceDefaultVariantImageSlots,
               title: 'Colours and sizes',
               hint:
                   'The same product in another colour or size — a saree in Red and Green, '
@@ -108,7 +139,7 @@ class _MarketplaceVariantsScreenState
                 '$change — not saved yet. Tap Save colours and sizes.',
               ),
             ),
-            if (_variants.isEmpty) ...[
+            if (_main == null && _variants.isEmpty) ...[
               const SizedBox(height: 8),
               Text(
                 'Keep at least one. To sell it as one stock count, use Edit.',
@@ -125,10 +156,40 @@ class _MarketplaceVariantsScreenState
             PrimaryButton(
               key: const ValueKey('marketplace-variants-save'),
               label: 'Save colours and sizes',
-              onPressed: _changed && !_variants.isEmpty ? _save : null,
+              onPressed: _changed && (_main != null || !_variants.isEmpty)
+                  ? _save
+                  : null,
               isLoading: _isSaving,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The main product at the top of Manage variants: its colour / size and its own stock, with
+/// "Out of stock" at 0. Not switched off here — the product's Active switch (Edit) is its on/off.
+class _MainProductLine extends StatelessWidget {
+  const _MainProductLine({required this.main});
+
+  final MarketplaceVariant main;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final empty = main.stock <= 0;
+    return Card(
+      key: const ValueKey('marketplace-variants-main'),
+      margin: EdgeInsets.zero,
+      child: ListTile(
+        leading: const Icon(Icons.inventory_2_outlined),
+        title: Text('Main product · ${main.name}'),
+        subtitle: Text(
+          empty
+              ? 'Out of stock. Change its stock on the Stock page or with Edit.'
+              : '${main.stock} in stock. Change it on the Stock page or with Edit.',
+          style: empty ? TextStyle(color: theme.colorScheme.error) : null,
         ),
       ),
     );

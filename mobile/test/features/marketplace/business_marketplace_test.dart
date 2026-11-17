@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -322,6 +324,7 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
   final replacedVariants = <(String, List<MarketplaceVariant>)>[];
   final deleted = <String>[];
   final uploads = <(String, int)>[];
+  final variantUploads = <(String, int)>[];
   final savedCategories = <MarketplaceCategoryInput>[];
   final savedSubCategories = <(String, MarketplaceSubCategoryInput)>[];
   int syncs = 0;
@@ -443,15 +446,23 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
   Future<MarketplacePost> uploadImage(
     String id,
     int slot,
-    Uint8List bytes,
-  ) async {
+    Uint8List bytes, {
+    String? variantId,
+  }) async {
+    if (variantId != null) {
+      variantUploads.add((variantId, slot));
+      return _post(id: id);
+    }
     uploads.add((id, slot));
     return _post(id: id);
   }
 
   @override
-  Future<MarketplacePost> removeImage(String id, int slot) async =>
-      _post(id: id);
+  Future<MarketplacePost> removeImage(
+    String id,
+    int slot, {
+    String? variantId,
+  }) async => _post(id: id);
 
   @override
   Future<MarketplaceBusiness> syncProfile() async {
@@ -540,6 +551,7 @@ Future<_FakeMarketplaceRepository> _pump(
   _FakeMarketplaceRepository? repository,
   BusinessProfile profile = _profile,
   District? businessDistrict = _kanyakumari,
+  Future<District?> Function()? businessDistrictLookup,
 }) async {
   // A tall phone, so a long form needs no scrolling to reach a field.
   tester.view.physicalSize = const Size(1080, 4000);
@@ -554,7 +566,8 @@ Future<_FakeMarketplaceRepository> _pump(
         businessProfileProvider.overrideWith(() => _Profile(profile)),
         // Where the business is: Kanyakumari unless a test says its address cannot be placed.
         marketplaceBusinessDistrictProvider.overrideWith(
-          (ref) async => businessDistrict,
+          (ref) =>
+              businessDistrictLookup?.call() ?? Future.value(businessDistrict),
         ),
         currentAppOptionsProvider.overrideWithValue(AppOptions.defaults),
         locationStatesProvider.overrideWith(
@@ -1481,6 +1494,85 @@ void main() {
       );
     });
 
+    testWidgets(
+      'after a Save, an error goes as soon as the value is put right',
+      (tester) async {
+        final repo = await _pump(tester, const BusinessMarketplaceTab());
+        await openNew(tester);
+        await _type(tester, 'marketplace-title', 'Cotton saree');
+        await _type(tester, 'marketplace-mrp', '650');
+        await _type(tester, 'marketplace-offer', '100');
+        await _save(tester);
+
+        expect(find.text('Between 1 and 99.'), findsOneWidget);
+        expect(find.text('Required.'), findsWidgets, reason: 'stock is empty');
+        expect(repo.created, isEmpty);
+
+        // Put right — no second Save — and the errors go.
+        await _type(tester, 'marketplace-offer', '44');
+        await _type(tester, 'marketplace-stock', '50');
+        await tester.pumpAndSettle();
+
+        expect(find.text('Between 1 and 99.'), findsNothing);
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('marketplace-stock')),
+            matching: find.text('Required.'),
+          ),
+          findsNothing,
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('marketplace-price')),
+            matching: find.text('364'),
+          ),
+          findsOneWidget,
+          reason: '44% off ₹650 worked out into the price',
+        );
+
+        await _save(tester);
+        expect(repo.created.single.quantity, 50);
+      },
+    );
+
+    testWidgets('a colour / size: its error goes once the stock is typed', (
+      tester,
+    ) async {
+      await _pump(tester, const BusinessMarketplaceTab());
+      await openNew(tester);
+      await _type(tester, 'marketplace-price', '400');
+      await tap(tester, find.byKey(const ValueKey('marketplace-add-variant')));
+      await tester.enterText(
+        find.byKey(const ValueKey('marketplace-variant-colour')),
+        'Green',
+      );
+      await tap(tester, find.byKey(const ValueKey('marketplace-variant-save')));
+
+      final stockError = find.descendant(
+        of: find.byKey(const ValueKey('marketplace-variant-stock')),
+        matching: find.text('Required.'),
+      );
+      expect(stockError, findsOneWidget);
+
+      await tester.enterText(
+        find.byKey(const ValueKey('marketplace-variant-stock')),
+        '25',
+      );
+      await tester.pumpAndSettle();
+      expect(stockError, findsNothing);
+    });
+
+    testWidgets('before any Save, typing shows no errors', (tester) async {
+      await _pump(tester, const BusinessMarketplaceTab());
+      await openNew(tester);
+      await _type(tester, 'marketplace-mrp', '650');
+      await _type(tester, 'marketplace-offer', '100');
+      await tester.pump();
+
+      expect(find.text('Between 1 and 99.'), findsNothing);
+      expect(find.text('Required.'), findsNothing);
+    });
+
     testWidgets('typing an offer works the price out from the MRP', (
       tester,
     ) async {
@@ -1684,6 +1776,94 @@ void main() {
         await _save(tester);
 
         expect(repo.created, isEmpty);
+      },
+    );
+
+    testWidgets(
+      'a place lookup that failed is not a missing address: it offers to try again, then saves',
+      (tester) async {
+        var lookups = 0;
+        final repo = await _pump(
+          tester,
+          const BusinessMarketplaceTab(),
+          // Offline the first time, Kanyakumari once asked again.
+          businessDistrictLookup: () async {
+            lookups++;
+            if (lookups == 1) throw const BusinessPlaceUncheckedException();
+            return _kanyakumari;
+          },
+        );
+        await _openFormFor(tester, _products, sub: 's-sarees');
+
+        expect(
+          find.byKey(const ValueKey('marketplace-place-unchecked')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('marketplace-no-business-address')),
+          findsNothing,
+          reason: 'the business has an address; it just could not be checked',
+        );
+
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('marketplace-place-retry')),
+        );
+        await tester.tap(find.byKey(const ValueKey('marketplace-place-retry')));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const ValueKey('marketplace-place-unchecked')),
+          findsNothing,
+        );
+        await fillSaree(tester);
+        await _save(tester);
+
+        expect(repo.created.single.districtId, 'd-kk');
+      },
+    );
+
+    testWidgets(
+      'saved while the lookup still fails: says to try again, never "add your address"',
+      (tester) async {
+        final repo = await _pump(
+          tester,
+          const BusinessMarketplaceTab(),
+          businessDistrictLookup: () async =>
+              throw const BusinessPlaceUncheckedException(),
+        );
+        await _openFormFor(tester, _products, sub: 's-sarees');
+        await fillSaree(tester);
+        await _save(tester);
+
+        expect(repo.created, isEmpty);
+        expect(
+          find.textContaining("Couldn't check where your business is"),
+          findsWidgets,
+        );
+        expect(find.textContaining('Add your business address'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Save pressed while the place is still being worked out waits for it',
+      (tester) async {
+        final place = Completer<District?>();
+        final repo = await _pump(
+          tester,
+          const BusinessMarketplaceTab(),
+          businessDistrictLookup: () => place.future,
+        );
+        await _openFormFor(tester, _products, sub: 's-sarees');
+        await fillSaree(tester);
+        await _save(tester);
+
+        expect(repo.created, isEmpty, reason: 'still waiting for the place');
+        expect(find.textContaining('Add your business address'), findsNothing);
+
+        place.complete(_kanyakumari);
+        await tester.pumpAndSettle();
+
+        expect(repo.created.single.districtId, 'd-kk');
       },
     );
 
@@ -1998,7 +2178,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(MarketplaceVariantsScreen), findsOneWidget);
       expect(find.text('Colours and sizes'), findsOneWidget);
-      expect(find.text('Red'), findsOneWidget);
+      // The main product sits on its own line above the colours and sizes added under it.
+      expect(find.text('Main product · Red'), findsOneWidget);
 
       await tester.tap(find.byKey(const ValueKey('marketplace-add-variant')));
       await tester.pumpAndSettle();
@@ -2062,8 +2243,9 @@ void main() {
         repository: _FakeMarketplaceRepository(posts: [post]),
       );
 
+      // Blue is the first one listed: Red is the main product, on a line of its own.
       await tester.tap(
-        find.byKey(const ValueKey('marketplace-variant-menu-1')),
+        find.byKey(const ValueKey('marketplace-variant-menu-0')),
       );
       await tester.pumpAndSettle();
       await tester.tap(find.text('Edit'));
@@ -2099,8 +2281,65 @@ void main() {
       expect(
         [for (final v in variants) (v.name, v.isActive)],
         [('Red', true), ('Blue', false)],
+        reason: 'the main goes back first, on sale',
       );
     });
+
+    // The report: switching off the colours on Manage variants (the main listed among them) left
+    // an active product "Out of stock". The main is now a line of its own: no switch, its stock.
+    testWidgets(
+      'the main product is shown with its stock and cannot be switched off',
+      (tester) async {
+        final post = _post(
+          title: 'Silk saree',
+          condition: MarketplaceItemCondition.newItem,
+          price: 2400,
+          quantity: 50,
+          canUpdateStock: true,
+          variants: const [
+            MarketplaceVariant(
+              id: 'v-red',
+              colour: 'Red',
+              price: 2400,
+              stock: 50,
+            ),
+            MarketplaceVariant(
+              id: 'v-blue',
+              colour: 'Blue',
+              price: 2400,
+              stock: 25,
+            ),
+          ],
+        );
+        await _pump(
+          tester,
+          MarketplaceVariantsScreen(post: post),
+          repository: _FakeMarketplaceRepository(posts: [post]),
+        );
+
+        final main = find.byKey(const ValueKey('marketplace-variants-main'));
+        expect(
+          find.descendant(of: main, matching: find.text('Main product · Red')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: main,
+            matching: find.textContaining('50 in stock'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('marketplace-variant-menu-0')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('marketplace-variant-menu-1')),
+          findsNothing,
+          reason: 'only Blue has a menu — the main has no switch here',
+        );
+      },
+    );
 
     testWidgets(
       'a colour / size has More details of its own, like the product',
@@ -2109,12 +2348,18 @@ void main() {
           title: 'Silk saree',
           condition: MarketplaceItemCondition.newItem,
           price: 2400,
-          quantity: 12,
+          quantity: 17,
           canUpdateStock: true,
           variants: const [
             MarketplaceVariant(
               id: 'v-red',
               colour: 'Red',
+              price: 2400,
+              stock: 5,
+            ),
+            MarketplaceVariant(
+              id: 'v-blue',
+              colour: 'Blue',
               price: 2400,
               stock: 12,
             ),
@@ -2126,6 +2371,7 @@ void main() {
           repository: _FakeMarketplaceRepository(posts: [post]),
         );
 
+        // Blue: the main's own details are kept on the product form.
         await tester.tap(
           find.byKey(const ValueKey('marketplace-variant-menu-0')),
         );
@@ -2164,7 +2410,7 @@ void main() {
 
         final (_, variants) = repo.replacedVariants.single;
         expect(
-          [for (final d in variants.single.customDetails) (d.name, d.value)],
+          [for (final d in variants.last.customDetails) (d.name, d.value)],
           [('Border', 'Zari')],
         );
       },
@@ -2229,6 +2475,58 @@ void main() {
         expect(repo.statusChanges, [('p-1', MarketplacePostStatus.paused)]);
       },
     );
+
+    testWidgets('a typed change makes Back ask first, and Keep editing stays', (
+      tester,
+    ) async {
+      final repo = await _pump(
+        tester,
+        const BusinessMarketplaceTab(),
+        repository: _FakeMarketplaceRepository(
+          posts: [_post(condition: MarketplaceItemCondition.used)],
+        ),
+      );
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Edit'));
+      await tester.pumpAndSettle();
+      await _type(tester, 'marketplace-title', 'Swift VXi 2020');
+      await tester.pump();
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Discard changes?'), findsOneWidget);
+      expect(
+        find.text('Your changes are not saved until you tap Save changes.'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Keep editing'));
+      await tester.pumpAndSettle();
+      expect(find.byType(MarketplacePostFormSheet), findsOneWidget);
+      expect(repo.updated, isEmpty);
+    });
+
+    testWidgets('an emptied Product name shows its error on Save', (
+      tester,
+    ) async {
+      final repo = await _pump(
+        tester,
+        const BusinessMarketplaceTab(),
+        repository: _FakeMarketplaceRepository(
+          posts: [_post(condition: MarketplaceItemCondition.used)],
+        ),
+      );
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Edit'));
+      await tester.pumpAndSettle();
+      await _type(tester, 'marketplace-title', '');
+      await _save(tester);
+
+      expect(repo.updated, isEmpty);
+      expect(find.text('Product name is required.'), findsOneWidget);
+    });
 
     testWidgets('an untouched form closes without asking', (tester) async {
       await _pump(

@@ -42,7 +42,7 @@ public partial class MarketplaceMediaStorage(IHostEnvironment hostEnvironment, I
     private const string Folder = "marketplace";
 
     public async Task<string> SaveImageAsync(
-        Guid postId, int slot, Stream content, string fileExtension, CancellationToken cancellationToken)
+        Guid postId, int slot, Stream content, string fileExtension, CancellationToken cancellationToken, Guid? variantId = null)
     {
         var extension = fileExtension.ToLowerInvariant();
         if (!SafeExtension().IsMatch(extension))
@@ -53,7 +53,8 @@ public partial class MarketplaceMediaStorage(IHostEnvironment hostEnvironment, I
         var directory = PostDirectory(postId);
         Directory.CreateDirectory(directory);
 
-        var slotName = $"image-{slot}";
+        // A colour / size's photos are named apart, so its slot 0 never replaces the cover.
+        var slotName = variantId is { } variant ? $"variant-{variant:N}-{slot}" : $"image-{slot}";
         foreach (var earlier in Directory.EnumerateFiles(directory, $"{slotName}-*"))
         {
             File.Delete(earlier);
@@ -97,6 +98,7 @@ public partial class MarketplaceMediaStorage(IHostEnvironment hostEnvironment, I
     [GeneratedRegex(@"^\.[a-z0-9]{1,5}$")]
     private static partial Regex SafeExtension();
 
-    [GeneratedRegex(@"^image-\d+-[a-f0-9]{12}\.[a-z0-9]{1,5}$")]
+    // The post's own photos ("image-0-…") and a colour / size's ("variant-{32 hex}-0-…"); nothing else.
+    [GeneratedRegex(@"^(image|variant-[a-f0-9]{32})-\d+-[a-f0-9]{12}\.[a-z0-9]{1,5}$")]
     private static partial Regex SafeFileName();
 }

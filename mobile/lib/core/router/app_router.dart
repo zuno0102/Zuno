@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:zuno/core/router/go_router_refresh_notifier.dart';
+import 'package:zuno/core/router/push_screen.dart';
 import 'package:zuno/features/admin/presentation/screens/admin_dashboard_shell.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_state.dart';
@@ -76,6 +77,28 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) => switch (state.extra) {
           final Widget screen => screen,
           _ => const _BackToHome(),
+        },
+      ),
+      // Where every sheet opened with pushSheet() lands: a history entry of its own, so the
+      // device's back button closes the sheet instead of leaving the app. Like /screen, the sheet
+      // is handed over built, and a reload (with nothing to show) goes home.
+      GoRoute(
+        path: '/sheet',
+        redirect: (context, state) {
+          if (state.extra is Widget) return null;
+          final user = ref.read(authProvider).value;
+          return user is AuthAuthenticated
+              ? _homeRouteForRole(user.user.role)
+              : '/login';
+        },
+        // Back on the web takes the sheet away without asking it: it is asked here instead.
+        onExit: (context, state) => SheetLeaveGuard.mayLeave(state.extra),
+        pageBuilder: (context, state) => switch (state.extra) {
+          final Widget sheet => SheetPage<Object?>(
+            key: state.pageKey,
+            child: sheet,
+          ),
+          _ => NoTransitionPage<void>(child: const _BackToHome()),
         },
       ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
