@@ -203,6 +203,13 @@ internal sealed class FakeMediaStorage : IMarketplaceMediaStorage
         return Task.FromResult(url);
     }
 
+    public Task<string> SaveOrderReceiptAsync(Guid orderId, Stream content, string fileExtension, CancellationToken cancellationToken)
+    {
+        var url = $"/uploads/marketplace/{orderId}/receipt-0-{++_counter:x12}{fileExtension}";
+        Saved.Add(url);
+        return Task.FromResult(url);
+    }
+
     public void Delete(string publicUrl) => Deleted.Add(publicUrl);
 }
 
@@ -210,5 +217,47 @@ internal sealed class FakeServiceDirectory : IServiceDirectory
 {
     public ServiceBusiness? Business { get; set; } = new("shajil shajil", null, IsVerified: true);
 
+    public ServicePerson? Person { get; set; } = new("Priya S", "9876543210");
+
     public Task<ServiceBusiness?> GetCurrentBusinessAsync(CancellationToken cancellationToken) => Task.FromResult(Business);
+
+    public Task<ServicePerson?> GetCurrentPersonAsync(CancellationToken cancellationToken) => Task.FromResult(Person);
+}
+
+/// <summary>A gateway that takes no money: payments "go through" when the test says so.</summary>
+internal sealed class FakePaymentGateway : IMarketplacePaymentGateway
+{
+    public bool IsReady { get; set; } = true;
+
+    public bool IsSimulated => false;
+
+    public string KeyId => "rzp_test_key";
+
+    /// <summary>The gateway order the job finds paid; null when none was.</summary>
+    public Dictionary<string, string> Captured { get; } = [];
+
+    public List<string> Refunded { get; } = [];
+
+    /// <summary>The next refund fails, as when the gateway is down.</summary>
+    public bool RefundFails { get; set; }
+
+    public Task<string> CreateOrderAsync(decimal amount, string receipt, string description, CancellationToken cancellationToken) =>
+        Task.FromResult($"order_{receipt}");
+
+    /// <summary>"good" is a valid signature; anything else is forged.</summary>
+    public bool VerifySignature(string providerOrderId, string paymentId, string signature) => signature == "good";
+
+    public Task<string?> FindCapturedPaymentAsync(string providerOrderId, CancellationToken cancellationToken) =>
+        Task.FromResult(Captured.GetValueOrDefault(providerOrderId));
+
+    public Task<string> RefundAsync(string paymentId, decimal amount, CancellationToken cancellationToken)
+    {
+        if (RefundFails)
+        {
+            throw new HttpRequestException("The payment gateway refused to give this payment back.");
+        }
+
+        Refunded.Add(paymentId);
+        return Task.FromResult($"rfnd_{paymentId}");
+    }
 }

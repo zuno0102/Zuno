@@ -129,6 +129,25 @@ Future<_Lookup> _nearestDistrict(
   }
 }
 
+/// The district a pin dropped on the map is in — a food offer's or advert's own place. Null when the
+/// point is outside every district; throws [BusinessPlaceUncheckedException] when it could not be asked.
+Future<District?> marketplaceDistrictAt(
+  WidgetRef ref,
+  double latitude,
+  double longitude,
+) async {
+  try {
+    return await _twice(
+      () => ref
+          .read(customerLocationApiProvider)
+          .nearestDistrict(latitude, longitude),
+    );
+  } on AppException catch (error, stack) {
+    AppLog.handled('marketplace post place (pin)', error, stack);
+    throw const BusinessPlaceUncheckedException();
+  }
+}
+
 /// The district a typed address is in, through the map search; none when the map does not know it.
 Future<_Lookup> _districtOfAddress(Ref ref, String address) async {
   try {

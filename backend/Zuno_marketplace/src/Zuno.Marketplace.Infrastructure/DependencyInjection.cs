@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Npgsql;
 using Zuno.Marketplace.Application.Common;
 using Zuno.Marketplace.Infrastructure.Persistence;
@@ -34,6 +36,33 @@ public static class DependencyInjection
 
         // Names and verification come from the Service API, asked with the caller's own login.
         services.AddHttpClient<IServiceDirectory, ServiceDirectory>();
+
+        // Online pay for orders. Simulated collection takes no money, so it is refused outside Development.
+        services.AddOptions<MarketplacePaymentSettings>()
+            .Bind(configuration.GetSection(MarketplacePaymentSettings.SectionName))
+            .Validate<IHostEnvironment>(
+                (settings, environment) => !settings.SimulateCollection || environment.IsDevelopment(),
+                "MarketplacePayments:SimulateCollection must be false outside Development: it marks payments as made without taking money.")
+            .ValidateOnStart();
+
+        // One merchant account for the whole platform: without keys of its own, Marketplace takes
+        // payments with the Service API's Razorpay keys, as Rent does.
+        services.PostConfigure<MarketplacePaymentSettings>(settings =>
+        {
+            if (string.IsNullOrWhiteSpace(settings.KeyId) && string.IsNullOrWhiteSpace(settings.KeySecret))
+            {
+                settings.KeyId = configuration["Razorpay:KeyId"] ?? string.Empty;
+                settings.KeySecret = configuration["Razorpay:KeySecret"] ?? string.Empty;
+            }
+        });
+        services.AddHttpClient<IMarketplacePaymentGateway, RazorpayMarketplaceGateway>((sp, client) =>
+        {
+            client.BaseAddress = new Uri(sp.GetRequiredService<IOptions<MarketplacePaymentSettings>>().Value.BaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(15);
+        });
+
+        // Lets go of unpaid online orders, closes delivered ones after their review days, retries refunds.
+        services.AddHostedService<MarketplaceOrderJobService>();
 
         // Read when the context is first built, not here, so a test host's own connection string is
         // the one used.

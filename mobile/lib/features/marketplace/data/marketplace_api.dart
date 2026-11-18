@@ -34,6 +34,25 @@ class MarketplaceApi {
   static String postVariantImagePath(String id, String variantId, int slot) =>
       '$myPostsPath/$id/variants/$variantId/images/$slot';
 
+  /// The business's product orders and how its customers may pay.
+  static const String ordersPath = '$myPostsPath/orders';
+
+  static String orderPath(String id) => '$ordersPath/$id';
+
+  static String orderStatusPath(String id) => '$ordersPath/$id/status';
+
+  static String orderShipPath(String id) => '$ordersPath/$id/ship';
+
+  static String orderReceiptPath(String id) => '$ordersPath/$id/receipt';
+
+  static const String paymentSettingsPath = '$myPostsPath/payment-settings';
+
+  /// B2B requests buyers send on the business's lots.
+  static const String b2bRequestsPath = '$myPostsPath/b2b-requests';
+
+  static String b2bRequestAnswerPath(String id, {required bool accept}) =>
+      '$b2bRequestsPath/$id/${accept ? 'accept' : 'decline'}';
+
   static const String adminCategoriesPath =
       '/api/v1/admin/marketplace/categories';
 

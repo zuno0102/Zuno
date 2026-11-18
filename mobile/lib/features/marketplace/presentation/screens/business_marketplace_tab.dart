@@ -5,8 +5,10 @@ import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/ui_config/ui_icons.dart';
 import 'package:zuno/features/marketplace/data/marketplace_api.dart';
 import 'package:zuno/features/marketplace/domain/entities/marketplace_post.dart';
+import 'package:zuno/features/marketplace/presentation/providers/marketplace_order_providers.dart';
 import 'package:zuno/features/marketplace/presentation/providers/marketplace_providers.dart';
 import 'package:zuno/features/marketplace/presentation/screens/marketplace_variants_screen.dart';
+import 'package:zuno/features/marketplace/presentation/widgets/marketplace_payment_settings_sheet.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_post_form_sheet.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_post_lines.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
@@ -149,6 +151,26 @@ class _BusinessMarketplaceTabState
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: MarketplacePlanBanner(plan: summary.plan),
+            ),
+          // How customers may pay for the business's products: opens the payment choices.
+          if (!widget.isFiltered)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              child: Card(
+                margin: EdgeInsets.zero,
+                child: ListTile(
+                  key: const ValueKey('marketplace-payment-settings'),
+                  leading: const Icon(Icons.payments_outlined),
+                  title: const Text('How customers pay'),
+                  subtitle: Text(
+                    marketplacePaymentSummary(
+                      ref.watch(marketplacePaymentSettingsProvider).value,
+                    ),
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => showMarketplacePaymentSettingsSheet(context),
+                ),
+              ),
             ),
           // A square per main category starts a post already in it; the business then picks the
           // sub-category. Only where posts are added — not on a home tile's list.

@@ -18,6 +18,12 @@ public class MarketplaceBusiness
     public bool IsVerified { get; set; }
 
     public DateTimeOffset RefreshedAt { get; set; }
+
+    /// <summary>Customers may order with cash on delivery. At least one way to pay is always on.</summary>
+    public bool AcceptsCashOnDelivery { get; set; } = true;
+
+    /// <summary>Customers may pay online, through the gateway, collected by Zuno.</summary>
+    public bool AcceptsOnlinePay { get; set; } = true;
 }
 
 /// <summary>
@@ -31,6 +37,9 @@ public class MarketplacePlan : BaseEntity
     public string Name { get; set; } = string.Empty;
 
     public decimal Price { get; set; }
+
+    /// <summary>Posting for a business, or a B2B buyer's contact plan. A business's post limit reads posting plans only.</summary>
+    public MarketplacePlanPurpose Purpose { get; set; } = MarketplacePlanPurpose.Posting;
 
     /// <summary>How many Active, not-yet-ended posts a business on this plan may have at once.</summary>
     public int MaxActivePosts { get; set; }

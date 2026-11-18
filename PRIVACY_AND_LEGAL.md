@@ -74,13 +74,13 @@ The test cannot see new database fields or new sharing rules. Those depend on th
 |---|---|---|---|---|
 | Name | Yes | No | Account, bookings | No |
 | Email address | Yes | No | Account | No |
-| Phone number | Yes | No | Account, bookings | No |
-| Address | Yes | No | Bookings, rent delivery, business address | No |
+| Phone number | Yes | No | Account, bookings, Marketplace orders, B2B contact once accepted | No |
+| Address | Yes | No | Bookings, rent and Marketplace delivery, business address | No |
 | Precise and approximate location | Yes | No | Nearby jobs and services, map pins | Yes |
-| Photos and videos | Yes | No | Profile, services, rent items | Yes |
+| Photos and videos | Yes | No | Profile, services, rent items, Marketplace posts, courier receipts | Yes |
 | Files and documents | Yes | No | Job applications | Yes |
 | Messages in the app | Yes | No | Talking about a booking | Yes |
-| Purchase history | Yes | No | Bookings, orders, payments | No |
+| Purchase history | Yes | No | Bookings, rent and Marketplace orders, refunds, B2B buyer plan | No |
 | Financial info: UPI ID, bank account | Yes | No | Paying businesses and workers | Yes |
 | Payment card details | No: Razorpay handles them | Razorpay (as processor) | Online payment | — |
 | Other user content: reviews | Yes | No | Ratings | Yes |

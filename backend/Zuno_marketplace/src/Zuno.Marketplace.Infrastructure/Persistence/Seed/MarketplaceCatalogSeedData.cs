@@ -26,6 +26,8 @@ public static class MarketplaceCatalogSeedData
 
     public static readonly Guid FreePlan = new("e5555555-0000-0000-0000-000000000001");
 
+    public static readonly Guid B2BBuyerPlan = new("e5555555-0000-0000-0000-000000000002");
+
     /// <summary>The first releases kept New / Used as a Products detail under this key; it is now the post's own condition.</summary>
     public const string LegacyConditionKey = MarketplacePost.LegacyConditionKey;
 
@@ -105,6 +107,22 @@ public static class MarketplaceCatalogSeedData
             IsDefault = true,
             IsActive = true,
             DisplayOrder = 1,
+            CreatedDate = SeedDate,
+        },
+
+        // A buyer's monthly plan: an accepted B2B request shows the seller's contact while it runs.
+        new()
+        {
+            Id = B2BBuyerPlan,
+            Code = "b2b-buyer",
+            Name = "B2B buyer",
+            Purpose = MarketplacePlanPurpose.B2BBuyer,
+            Price = 199m,
+            MaxActivePosts = 0,
+            DurationDays = 30,
+            IsDefault = false,
+            IsActive = true,
+            DisplayOrder = 2,
             CreatedDate = SeedDate,
         },
     ];

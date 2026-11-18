@@ -23,11 +23,191 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceB2BRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BuyerName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("buyer_name");
+
+                    b.Property<string>("BuyerPhone")
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)")
+                        .HasColumnName("buyer_phone");
+
+                    b.Property<Guid>("BuyerUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("buyer_user_id");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("message");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_date");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_user_id");
+
+                    b.Property<Guid>("PostId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("post_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<DateTimeOffset?>("RespondedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("responded_at");
+
+                    b.Property<string>("SellerName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("seller_name");
+
+                    b.Property<string>("SellerPhone")
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)")
+                        .HasColumnName("seller_phone");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("title");
+
+                    b.Property<string>("Unit")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("unit");
+
+                    b.Property<decimal?>("UnitPrice")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)")
+                        .HasColumnName("unit_price");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_marketplace_b2b_requests");
+
+                    b.HasIndex("BuyerUserId", "CreatedDate")
+                        .HasDatabaseName("ix_marketplace_b2b_requests_buyer_user_id_created_date");
+
+                    b.HasIndex("PostId", "BuyerUserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_marketplace_b2b_requests_post_id_buyer_user_id")
+                        .HasFilter("status = 1 AND is_deleted = false");
+
+                    b.HasIndex("OwnerUserId", "Status", "CreatedDate")
+                        .HasDatabaseName("ix_marketplace_b2b_requests_owner_user_id_status_created_date");
+
+                    b.ToTable("marketplace_b2b_requests", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_marketplace_b2b_requests_quantity", "quantity >= 1");
+
+                            t.HasCheckConstraint("ck_marketplace_b2b_requests_status", "status IN (1, 2, 3)");
+                        });
+                });
+
+            modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceB2BRequestStatusOption", b =>
+                {
+                    b.Property<short>("Code")
+                        .HasColumnType("smallint")
+                        .HasColumnName("code");
+
+                    b.Property<short>("DisplayOrder")
+                        .HasColumnType("smallint")
+                        .HasColumnName("display_order");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Tone")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("tone");
+
+                    b.HasKey("Code")
+                        .HasName("pk_ref_marketplace_b2b_request_statuses");
+
+                    b.ToTable("ref_marketplace_b2b_request_statuses", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Code = (short)1,
+                            DisplayOrder = (short)1,
+                            Name = "New",
+                            Tone = "danger"
+                        },
+                        new
+                        {
+                            Code = (short)2,
+                            DisplayOrder = (short)2,
+                            Name = "Accepted",
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Code = (short)3,
+                            DisplayOrder = (short)3,
+                            Name = "Declined",
+                            Tone = "waiting"
+                        });
+                });
+
             modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceBusiness", b =>
                 {
                     b.Property<Guid>("OwnerUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("owner_user_id");
+
+                    b.Property<bool>("AcceptsCashOnDelivery")
+                        .HasColumnType("boolean")
+                        .HasColumnName("accepts_cash_on_delivery");
+
+                    b.Property<bool>("AcceptsOnlinePay")
+                        .HasColumnType("boolean")
+                        .HasColumnName("accepts_online_pay");
 
                     b.Property<bool>("IsVerified")
                         .HasColumnType("boolean")
@@ -51,7 +231,10 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                     b.HasKey("OwnerUserId")
                         .HasName("pk_marketplace_businesses");
 
-                    b.ToTable("marketplace_businesses", (string)null);
+                    b.ToTable("marketplace_businesses", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_marketplace_businesses_payment", "accepts_cash_on_delivery OR accepts_online_pay");
+                        });
                 });
 
             modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceBusinessPlan", b =>
@@ -716,6 +899,101 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceCourier", b =>
+                {
+                    b.Property<string>("Code")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("code");
+
+                    b.Property<short>("DisplayOrder")
+                        .HasColumnType("smallint")
+                        .HasColumnName("display_order");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("name");
+
+                    b.Property<bool>("TakesCustomName")
+                        .HasColumnType("boolean")
+                        .HasColumnName("takes_custom_name");
+
+                    b.Property<string>("TrackingUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("tracking_url");
+
+                    b.HasKey("Code")
+                        .HasName("pk_ref_marketplace_couriers");
+
+                    b.ToTable("ref_marketplace_couriers", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Code = "india-post",
+                            DisplayOrder = (short)1,
+                            IsActive = true,
+                            Name = "India Post",
+                            TakesCustomName = false
+                        },
+                        new
+                        {
+                            Code = "dtdc",
+                            DisplayOrder = (short)2,
+                            IsActive = true,
+                            Name = "DTDC",
+                            TakesCustomName = false
+                        },
+                        new
+                        {
+                            Code = "st-courier",
+                            DisplayOrder = (short)3,
+                            IsActive = true,
+                            Name = "ST Courier",
+                            TakesCustomName = false
+                        },
+                        new
+                        {
+                            Code = "professional",
+                            DisplayOrder = (short)4,
+                            IsActive = true,
+                            Name = "The Professional Couriers",
+                            TakesCustomName = false
+                        },
+                        new
+                        {
+                            Code = "delhivery",
+                            DisplayOrder = (short)5,
+                            IsActive = true,
+                            Name = "Delhivery",
+                            TakesCustomName = false,
+                            TrackingUrl = "https://www.delhivery.com/track/package/{number}"
+                        },
+                        new
+                        {
+                            Code = "blue-dart",
+                            DisplayOrder = (short)6,
+                            IsActive = true,
+                            Name = "Blue Dart",
+                            TakesCustomName = false
+                        },
+                        new
+                        {
+                            Code = "other",
+                            DisplayOrder = (short)99,
+                            IsActive = true,
+                            Name = "Other",
+                            TakesCustomName = true
+                        });
+                });
+
             modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceItemConditionOption", b =>
                 {
                     b.Property<short>("Code")
@@ -757,6 +1035,561 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             Detail = "One piece — mark it sold when it goes",
                             DisplayOrder = (short)2,
                             Name = "Used"
+                        });
+                });
+
+            modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<DateTimeOffset?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelled_at");
+
+                    b.Property<short?>("CancelledBy")
+                        .HasColumnType("smallint")
+                        .HasColumnName("cancelled_by");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closed_at");
+
+                    b.Property<DateTimeOffset?>("ClosesAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closes_at");
+
+                    b.Property<string>("CourierCode")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("courier_code");
+
+                    b.Property<string>("CourierName")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("courier_name");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
+
+                    b.Property<string>("CustomerName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("customer_name");
+
+                    b.Property<string>("CustomerPhone")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)")
+                        .HasColumnName("customer_phone");
+
+                    b.Property<Guid>("CustomerUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_user_id");
+
+                    b.Property<DateTimeOffset?>("DeliveredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("delivered_at");
+
+                    b.Property<string>("DeliveryAddress")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("delivery_address");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_date");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_user_id");
+
+                    b.Property<DateTimeOffset?>("PaidAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("paid_at");
+
+                    b.Property<DateTimeOffset?>("PayBy")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("pay_by");
+
+                    b.Property<short>("PaymentMethod")
+                        .HasColumnType("smallint")
+                        .HasColumnName("payment_method");
+
+                    b.Property<string>("Pincode")
+                        .IsRequired()
+                        .HasMaxLength(6)
+                        .HasColumnType("character varying(6)")
+                        .HasColumnName("pincode");
+
+                    b.Property<Guid>("PostId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("post_id");
+
+                    b.Property<string>("ProviderOrderId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("provider_order_id");
+
+                    b.Property<string>("ProviderPaymentId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("provider_payment_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<DateTimeOffset?>("RatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("rated_at");
+
+                    b.Property<string>("RatingComment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("rating_comment");
+
+                    b.Property<short?>("RatingScore")
+                        .HasColumnType("smallint")
+                        .HasColumnName("rating_score");
+
+                    b.Property<string>("ReceiptUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("receipt_url");
+
+                    b.Property<bool>("RefundDue")
+                        .HasColumnType("boolean")
+                        .HasColumnName("refund_due");
+
+                    b.Property<string>("RefundId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("refund_id");
+
+                    b.Property<DateTimeOffset?>("ShippedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("shipped_at");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("title");
+
+                    b.Property<string>("TrackingNumber")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("tracking_number");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)")
+                        .HasColumnName("unit_price");
+
+                    b.Property<Guid?>("VariantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("variant_id");
+
+                    b.Property<string>("VariantName")
+                        .HasMaxLength(70)
+                        .HasColumnType("character varying(70)")
+                        .HasColumnName("variant_name");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_marketplace_orders");
+
+                    b.HasIndex("PostId")
+                        .HasDatabaseName("ix_marketplace_orders_post_id");
+
+                    b.HasIndex("ProviderPaymentId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_marketplace_orders_provider_payment_id")
+                        .HasFilter("provider_payment_id IS NOT NULL");
+
+                    b.HasIndex("CustomerUserId", "CreatedDate")
+                        .HasDatabaseName("ix_marketplace_orders_customer_user_id_created_date");
+
+                    b.HasIndex("Status", "ClosesAt")
+                        .HasDatabaseName("ix_marketplace_orders_status_closes_at");
+
+                    b.HasIndex("Status", "PayBy")
+                        .HasDatabaseName("ix_marketplace_orders_status_pay_by");
+
+                    b.HasIndex("OwnerUserId", "Status", "CreatedDate")
+                        .HasDatabaseName("ix_marketplace_orders_owner_user_id_status_created_date");
+
+                    b.ToTable("marketplace_orders", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_marketplace_orders_amount", "unit_price > 0 AND amount > 0");
+
+                            t.HasCheckConstraint("ck_marketplace_orders_payment_method", "payment_method IN (1, 2)");
+
+                            t.HasCheckConstraint("ck_marketplace_orders_quantity", "quantity >= 1");
+
+                            t.HasCheckConstraint("ck_marketplace_orders_rating", "rating_score IS NULL OR rating_score BETWEEN 1 AND 5");
+
+                            t.HasCheckConstraint("ck_marketplace_orders_status", "status BETWEEN 1 AND 8");
+
+                            t.HasCheckConstraint("ck_marketplace_orders_tracking", "status NOT IN (4, 5) OR (courier_name IS NOT NULL AND tracking_number IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceOrderEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<short>("Actor")
+                        .HasColumnType("smallint")
+                        .HasColumnName("actor");
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_date");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("note");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("order_id");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_marketplace_order_events");
+
+                    b.HasIndex("OrderId", "At")
+                        .HasDatabaseName("ix_marketplace_order_events_order_id_at");
+
+                    b.ToTable("marketplace_order_events", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_marketplace_order_events_actor", "actor IN (1, 2, 3)");
+                        });
+                });
+
+            modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceOrderStatusOption", b =>
+                {
+                    b.Property<short>("Code")
+                        .HasColumnType("smallint")
+                        .HasColumnName("code");
+
+                    b.Property<short>("DisplayOrder")
+                        .HasColumnType("smallint")
+                        .HasColumnName("display_order");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Tone")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("tone");
+
+                    b.HasKey("Code")
+                        .HasName("pk_ref_marketplace_order_statuses");
+
+                    b.ToTable("ref_marketplace_order_statuses", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Code = (short)2,
+                            DisplayOrder = (short)1,
+                            Name = "New",
+                            Tone = "danger"
+                        },
+                        new
+                        {
+                            Code = (short)1,
+                            DisplayOrder = (short)2,
+                            Name = "Awaiting payment",
+                            Tone = "waiting"
+                        },
+                        new
+                        {
+                            Code = (short)3,
+                            DisplayOrder = (short)3,
+                            Name = "Confirmed",
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Code = (short)4,
+                            DisplayOrder = (short)4,
+                            Name = "Shipped",
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Code = (short)5,
+                            DisplayOrder = (short)5,
+                            Name = "Out for delivery",
+                            Tone = "progress"
+                        },
+                        new
+                        {
+                            Code = (short)6,
+                            DisplayOrder = (short)6,
+                            Name = "Delivered",
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Code = (short)7,
+                            DisplayOrder = (short)7,
+                            Name = "Closed",
+                            Tone = "success"
+                        },
+                        new
+                        {
+                            Code = (short)8,
+                            DisplayOrder = (short)8,
+                            Name = "Cancelled",
+                            Tone = "waiting"
+                        });
+                });
+
+            modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceOrderTransition", b =>
+                {
+                    b.Property<short>("FromStatus")
+                        .HasColumnType("smallint")
+                        .HasColumnName("from_status");
+
+                    b.Property<short>("ToStatus")
+                        .HasColumnType("smallint")
+                        .HasColumnName("to_status");
+
+                    b.Property<string>("ActionName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("action_name");
+
+                    b.Property<bool>("BusinessMay")
+                        .HasColumnType("boolean")
+                        .HasColumnName("business_may");
+
+                    b.Property<bool>("CustomerMay")
+                        .HasColumnType("boolean")
+                        .HasColumnName("customer_may");
+
+                    b.Property<short>("DisplayOrder")
+                        .HasColumnType("smallint")
+                        .HasColumnName("display_order");
+
+                    b.Property<bool>("NeedsConfirm")
+                        .HasColumnType("boolean")
+                        .HasColumnName("needs_confirm");
+
+                    b.Property<bool>("NeedsTracking")
+                        .HasColumnType("boolean")
+                        .HasColumnName("needs_tracking");
+
+                    b.HasKey("FromStatus", "ToStatus")
+                        .HasName("pk_ref_marketplace_order_transitions");
+
+                    b.ToTable("ref_marketplace_order_transitions", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            FromStatus = (short)2,
+                            ToStatus = (short)3,
+                            ActionName = "Confirm order",
+                            BusinessMay = true,
+                            CustomerMay = false,
+                            DisplayOrder = (short)1,
+                            NeedsConfirm = false,
+                            NeedsTracking = false
+                        },
+                        new
+                        {
+                            FromStatus = (short)3,
+                            ToStatus = (short)4,
+                            ActionName = "Mark shipped",
+                            BusinessMay = true,
+                            CustomerMay = false,
+                            DisplayOrder = (short)2,
+                            NeedsConfirm = false,
+                            NeedsTracking = true
+                        },
+                        new
+                        {
+                            FromStatus = (short)4,
+                            ToStatus = (short)5,
+                            ActionName = "Out for delivery",
+                            BusinessMay = true,
+                            CustomerMay = false,
+                            DisplayOrder = (short)3,
+                            NeedsConfirm = false,
+                            NeedsTracking = false
+                        },
+                        new
+                        {
+                            FromStatus = (short)5,
+                            ToStatus = (short)6,
+                            ActionName = "Mark delivered",
+                            BusinessMay = true,
+                            CustomerMay = false,
+                            DisplayOrder = (short)4,
+                            NeedsConfirm = true,
+                            NeedsTracking = false
+                        },
+                        new
+                        {
+                            FromStatus = (short)4,
+                            ToStatus = (short)6,
+                            ActionName = "Mark delivered",
+                            BusinessMay = true,
+                            CustomerMay = false,
+                            DisplayOrder = (short)5,
+                            NeedsConfirm = true,
+                            NeedsTracking = false
+                        },
+                        new
+                        {
+                            FromStatus = (short)1,
+                            ToStatus = (short)8,
+                            ActionName = "Cancel order",
+                            BusinessMay = false,
+                            CustomerMay = true,
+                            DisplayOrder = (short)6,
+                            NeedsConfirm = true,
+                            NeedsTracking = false
+                        },
+                        new
+                        {
+                            FromStatus = (short)2,
+                            ToStatus = (short)8,
+                            ActionName = "Cancel order",
+                            BusinessMay = false,
+                            CustomerMay = true,
+                            DisplayOrder = (short)7,
+                            NeedsConfirm = true,
+                            NeedsTracking = false
+                        },
+                        new
+                        {
+                            FromStatus = (short)3,
+                            ToStatus = (short)8,
+                            ActionName = "Cancel order",
+                            BusinessMay = false,
+                            CustomerMay = true,
+                            DisplayOrder = (short)8,
+                            NeedsConfirm = true,
+                            NeedsTracking = false
+                        });
+                });
+
+            modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplacePaymentMethodOption", b =>
+                {
+                    b.Property<short>("Code")
+                        .HasColumnType("smallint")
+                        .HasColumnName("code");
+
+                    b.Property<string>("Detail")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("detail");
+
+                    b.Property<short>("DisplayOrder")
+                        .HasColumnType("smallint")
+                        .HasColumnName("display_order");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Code")
+                        .HasName("pk_ref_marketplace_payment_methods");
+
+                    b.ToTable("ref_marketplace_payment_methods", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Code = (short)1,
+                            Detail = "The customer pays the courier or you when it arrives.",
+                            DisplayOrder = (short)1,
+                            Name = "Cash on delivery"
+                        },
+                        new
+                        {
+                            Code = (short)2,
+                            Detail = "UPI, cards and net banking. The order is confirmed only after the payment goes through.",
+                            DisplayOrder = (short)2,
+                            Name = "Online pay"
                         });
                 });
 
@@ -824,6 +1657,10 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .HasColumnType("numeric(12,2)")
                         .HasColumnName("price");
 
+                    b.Property<short>("Purpose")
+                        .HasColumnType("smallint")
+                        .HasColumnName("purpose");
+
                     b.HasKey("Id")
                         .HasName("pk_marketplace_plans");
 
@@ -844,6 +1681,8 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_marketplace_plans_max_active_posts", "max_active_posts >= 0");
 
                             t.HasCheckConstraint("ck_marketplace_plans_price", "price >= 0");
+
+                            t.HasCheckConstraint("ck_marketplace_plans_purpose", "purpose IN (1, 2)");
                         });
 
                     b.HasData(
@@ -858,7 +1697,23 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             IsDeleted = false,
                             MaxActivePosts = 1,
                             Name = "Free",
-                            Price = 0m
+                            Price = 0m,
+                            Purpose = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("e5555555-0000-0000-0000-000000000002"),
+                            Code = "b2b-buyer",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DisplayOrder = (short)2,
+                            DurationDays = 30,
+                            IsActive = true,
+                            IsDefault = false,
+                            IsDeleted = false,
+                            MaxActivePosts = 0,
+                            Name = "B2B buyer",
+                            Price = 199m,
+                            Purpose = (short)2
                         });
                 });
 
@@ -6769,6 +7624,18 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceB2BRequest", b =>
+                {
+                    b.HasOne("Zuno.Marketplace.Domain.Entities.MarketplacePost", "Post")
+                        .WithMany()
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_marketplace_b2b_requests_posts_post_id");
+
+                    b.Navigation("Post");
+                });
+
             modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceBusinessPlan", b =>
                 {
                     b.HasOne("Zuno.Marketplace.Domain.Entities.MarketplacePlan", "Plan")
@@ -6799,6 +7666,28 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                     b.Navigation("Category");
 
                     b.Navigation("SubCategory");
+                });
+
+            modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceOrder", b =>
+                {
+                    b.HasOne("Zuno.Marketplace.Domain.Entities.MarketplacePost", "Post")
+                        .WithMany()
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_marketplace_orders_posts_post_id");
+
+                    b.Navigation("Post");
+                });
+
+            modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceOrderEvent", b =>
+                {
+                    b.HasOne("Zuno.Marketplace.Domain.Entities.MarketplaceOrder", null)
+                        .WithMany("Events")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_marketplace_order_events_marketplace_orders_order_id");
                 });
 
             modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplacePost", b =>
@@ -6996,6 +7885,11 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                     b.Navigation("Fields");
 
                     b.Navigation("SubCategories");
+                });
+
+            modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceOrder", b =>
+                {
+                    b.Navigation("Events");
                 });
 
             modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplacePost", b =>

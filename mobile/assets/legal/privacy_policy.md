@@ -26,11 +26,14 @@ We collect only what the app needs to do its job. We do not sell your data, we d
 - The services, rent items, prices, photos, hire posts and full-time job posts you create.
 - Your Marketplace posts — listings, food offers and adverts — with their prices, photos, the
   district, town and map pin of your registered business address (a post is shown where your
-  business is), where a product ships (all of India, a state, or chosen districts), the
+  business is) — or, for a food offer or advert, the place and map pin you give it — where a product ships (all of India, a state, or chosen districts), the
   details you fill in or add yourself (such as a vehicle's year, a plot's size or a leather type),
   its colours and sizes with the price, stock and details of each and whether each is on sale, how many come in one pack, whether a product is new or used, how
   many you have in stock, whether it has sold, and the contact number you give on an advert.
-- Your Marketplace plan and how many posts it allows.
+- Your Marketplace plan and how many posts it allows, and whether you take cash on delivery,
+  online payment or both.
+- For each product order: the courier you sent it with, its tracking number, and a photo of the
+  courier receipt if you add one.
 - Your verification status, ratings, reviews and level.
 
 ### If you work through the app
@@ -40,11 +43,17 @@ We collect only what the app needs to do its job. We do not sell your data, we d
 - Your payout details: a UPI ID or a bank account number with its IFSC code, so you can be paid.
 - Your ratings and reviews.
 
-### Bookings, rent orders and payments
+### Bookings, rent orders, Marketplace orders and payments
 
 - What you book or rent, the dates, the address it goes to and the people involved.
+- What you order on the Marketplace: the product, its colour or size, how many, the delivery
+  address and pincode, the mobile number the courier calls, and your star rating and review.
+- B2B requests: the lot, the quantity and your note, and — once the seller accepts — the
+  contact details shared between you.
 - The messages you send to a business, worker or customer in the app.
-- Payment records: the amount, the method (online, UPI QR or cash), the payment reference and the status.
+- Payment records: the amount, the method (online, UPI QR, cash or cash on delivery), the payment
+  reference, the status, and any refund.
+- A B2B buyer plan you take, and until when it runs.
 - Card, net-banking and UPI app payments made online go through our payment partner, Razorpay. We never see or store your card number, CVV or bank login.
 
 ### Job applications
@@ -76,10 +85,10 @@ We collect only what the app needs to do its job. We do not sell your data, we d
 
 ## 3. Who can see your information
 
-- **Other users, only as needed.** A business sees the name, mobile number and address of a customer who books or rents from it. A worker sees the details of a job they are assigned to. A business sees what an applicant sent with an application to its job.
+- **Other users, only as needed.** A business sees the name, mobile number and address of a customer who books, rents or orders from it. A customer who orders sees the courier and tracking number. When a seller accepts a B2B request, the seller sees the buyer's name and mobile number, and the buyer sees the seller's while the buyer's B2B plan is active. A worker sees the details of a job they are assigned to. A business sees what an applicant sent with an application to its job.
 - **Everyone using the app.** A business's name, logo, services, rent items, Marketplace posts (with an advert's contact number), area, verification status, ratings and reviews are public in the app. A review you write is shown with your name.
 - **Service providers who work for us**, only for the job they do:
-  - Razorpay, to process online payments.
+  - Razorpay, to process online payments and refunds. Marketplace payments made online are collected by us and paid on to the business.
   - Render, Neon and Vercel, which host our servers, database and website.
   - OpenStreetMap and Esri, which provide the map pictures. Your phone fetches the map squares it shows from them.
 - **The law.** We share information when the law requires it, or to protect our users and our service from fraud or harm.

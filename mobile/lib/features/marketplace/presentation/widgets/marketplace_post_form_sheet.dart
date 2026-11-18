@@ -19,6 +19,8 @@ import 'package:zuno/features/marketplace/presentation/widgets/marketplace_categ
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_product_sections.dart';
 import 'package:zuno/shared/widgets/date_time_field.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
+import 'package:zuno/shared/widgets/job_location_card.dart';
+import 'package:zuno/shared/widgets/location_pin_picker.dart';
 import 'package:zuno/shared/widgets/multi_select_sheet.dart';
 import 'package:zuno/shared/widgets/sheet_drag_handle.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
@@ -89,6 +91,30 @@ class _MarketplacePostFormSheetState
     text: _old?.minOrderQuantity?.toString(),
   );
   late final _phone = TextEditingController(text: _old?.contactPhone);
+
+  /// A food offer's or advert's own place — a stall, an event ground — typed and pinned on the map.
+  /// Until a pin is dropped, the post is where the business is registered.
+  late final _place = TextEditingController(
+    text: _hasOwnPlace ? _old?.area : null,
+  );
+  late double? _pinLatitude = _hasOwnPlace ? _old?.latitude : null;
+  late double? _pinLongitude = _hasOwnPlace ? _old?.longitude : null;
+  late String? _pinDistrictId = _hasOwnPlace ? _old?.districtId : null;
+  bool _findingPin = false;
+
+  /// A saved food offer or advert keeps the place it was saved with.
+  bool get _hasOwnPlace =>
+      _old != null &&
+      (_old.kind == MarketplacePostKind.foodOffer ||
+          _old.kind == MarketplacePostKind.advertisement);
+
+  /// Food offers and adverts take a place of their own; products and B2B lots are where the business is.
+  static bool _takesOwnPlace(MarketplaceCategory? category) =>
+      category?.kind == MarketplacePostKind.foodOffer ||
+      category?.kind == MarketplacePostKind.advertisement;
+
+  /// The longest place text, the same as the server's.
+  static const _placeMaxLength = 120;
   late final _attributes = MarketplaceAttributeValues(
     _old?.attributes ?? const {},
   );
@@ -310,6 +336,7 @@ class _MarketplacePostFormSheetState
       _colour,
       _size,
       _phone,
+      _place,
     ]) {
       c.dispose();
     }
@@ -474,7 +501,9 @@ class _MarketplacePostFormSheetState
   /// What stops the post being placed, or null. Waits while the business's place is still being
   /// worked out — Save pressed early is not "no address". A lookup that failed asks to try again;
   /// only an address that truly cannot be placed sends the business to its profile.
-  Future<String?> _placeProblem() async {
+  Future<String?> _placeProblem(MarketplaceCategory category) async {
+    // Pinned on the map: the pin says where, whatever the business address.
+    if (_takesOwnPlace(category) && _pinDistrictId != null) return null;
     try {
       await ref.read(marketplaceBusinessDistrictProvider.future);
     } on Object catch (error) {
@@ -498,6 +527,9 @@ class _MarketplacePostFormSheetState
     final byVariant = variants.isNotEmpty;
     final fromBusiness = _businessDistrict != null;
     final profile = ref.read(businessProfileProvider).value;
+    final ownPlace = _takesOwnPlace(category);
+    final pinned = ownPlace && _pinDistrictId != null;
+    final typedPlace = ownPlace ? _clean(_place) : null;
     final shipsTo = category.tracksStock
         ? _shipsTo
         : MarketplaceShipsTo.allIndia;
@@ -536,9 +568,18 @@ class _MarketplacePostFormSheetState
           ? double.tryParse(_originalPrice.text.trim())
           : null,
       customDetails: _customDetails.values,
-      // A post's place is the business's: its pin, so "near you" works.
-      latitude: fromBusiness ? profile?.latitude : _old?.latitude,
-      longitude: fromBusiness ? profile?.longitude : _old?.longitude,
+      // A post's place is the business's — its pin, so "near you" works — unless a food offer or
+      // advert was pinned somewhere of its own.
+      latitude: pinned
+          ? _pinLatitude
+          : fromBusiness
+          ? profile?.latitude
+          : _old?.latitude,
+      longitude: pinned
+          ? _pinLongitude
+          : fromBusiness
+          ? profile?.longitude
+          : _old?.longitude,
       deliversEverywhere: shipsTo == MarketplaceShipsTo.allIndia,
       deliveryStateId: shipsTo == MarketplaceShipsTo.allIndia
           ? null
@@ -551,8 +592,8 @@ class _MarketplacePostFormSheetState
       contactPhone: kind == MarketplacePostKind.advertisement
           ? _clean(_phone)
           : null,
-      districtId: _placeDistrictId!,
-      area: fromBusiness ? profile?.city : _old?.area,
+      districtId: pinned ? _pinDistrictId! : _placeDistrictId!,
+      area: typedPlace ?? (fromBusiness ? profile?.city : _old?.area),
       attributes: _attributes.valuesFor(category.fieldsFor(_subCategoryId)),
     );
   }
@@ -563,7 +604,7 @@ class _MarketplacePostFormSheetState
     final valid = _formKey.currentState!.validate();
     final problem = category == null
         ? 'Choose a category.'
-        : await _placeProblem();
+        : await _placeProblem(category);
     if (!mounted) return;
     if (!valid || problem != null || category == null) {
       setState(() => _errorMessage = problem);
@@ -788,8 +829,13 @@ class _MarketplacePostFormSheetState
                       media: _media,
                       mediaBaseUrl: MarketplaceApi.baseUrl,
                       allowVideo: false,
+                      // An advert's banner is framed wide, as the banner strip shows it.
+                      firstSlotAspectRatio:
+                          category?.kind == MarketplacePostKind.advertisement
+                          ? 3
+                          : null,
                       hint: category?.kind == MarketplacePostKind.advertisement
-                          ? 'The first photo is the advert banner.'
+                          ? 'The first photo is the advert banner: framed wide (3 : 1), as customers see it in the banner strip.'
                           : 'The first photo is the cover customers see.',
                       onError: (message) =>
                           setState(() => _errorMessage = message),
@@ -1071,7 +1117,7 @@ class _MarketplacePostFormSheetState
         withTime: true,
         helper: hours == null
             ? null
-            : 'Up to $hours hours. Customers reserve and pay at your shop.',
+            : 'Up to $hours hours. Customers see it on the map and come to your shop.',
       ),
     ];
   }
@@ -1218,14 +1264,32 @@ class _MarketplacePostFormSheetState
     final business = ref.watch(marketplaceBusinessDistrictProvider);
     // Kept loaded: the post takes its town and pin from the profile when saved.
     ref.watch(businessProfileProvider);
+    // Pinned on the map, a food offer or advert does not need the business's own place.
+    final pinned = _takesOwnPlace(category) && _pinDistrictId != null;
     // A lookup that failed is not a missing address: it can be tried again.
-    final unchecked = !business.isLoading && business.hasError && _old == null;
+    final unchecked =
+        !pinned && !business.isLoading && business.hasError && _old == null;
     final unplaced =
+        !pinned &&
         !business.isLoading &&
         !business.hasError &&
         business.value == null &&
         _old == null;
     return [
+      if (_takesOwnPlace(category)) ...[
+        _placeField(category!),
+        if (_pinLatitude != null && _pinLongitude != null) ...[
+          const SizedBox(height: 8),
+          JobLocationCard(
+            key: const ValueKey('marketplace-place-map'),
+            addressLines: [_place.text.trim()],
+            latitude: _pinLatitude,
+            longitude: _pinLongitude,
+            showActions: false,
+          ),
+        ],
+        const SizedBox(height: 14),
+      ],
       if (unchecked) ...[
         Row(
           key: const ValueKey('marketplace-place-unchecked'),
@@ -1278,6 +1342,91 @@ class _MarketplacePostFormSheetState
       if (category?.tracksStock ?? false)
         ..._shipsToSection(ref.watch(locationStatesProvider).value ?? const []),
     ];
+  }
+
+  /// Where a food offer or advert is: typed, and pinned on the same map picker the vacancy form uses.
+  /// Without a pin it is where the business is registered.
+  Widget _placeField(MarketplaceCategory category) {
+    final pinned = _pinDistrictId != null;
+    final isFood = category.kind == MarketplacePostKind.foodOffer;
+    return TextFormField(
+      key: const ValueKey('marketplace-place'),
+      controller: _place,
+      maxLength: _placeMaxLength,
+      textCapitalization: TextCapitalization.words,
+      decoration: InputDecoration(
+        labelText: 'Location',
+        hintText: isFood
+            ? 'e.g. Anna Bus Stand, Nagercoil'
+            : 'e.g. KP Road, Nagercoil',
+        helperText: pinned
+            ? 'Pinned on the map. Customers get directions to it.'
+            : 'Your business address, unless you pin another place.',
+        helperMaxLines: 2,
+        suffixIcon: _findingPin
+            ? const Padding(
+                padding: EdgeInsets.all(12),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              )
+            : IconButton(
+                key: const ValueKey('marketplace-place-pin'),
+                tooltip: 'Pin on the map',
+                icon: Icon(
+                  pinned ? Icons.location_on : Icons.add_location_alt_outlined,
+                ),
+                onPressed: _pinPlace,
+              ),
+      ),
+    );
+  }
+
+  /// Opens the map at the pin (or the business's own), and keeps the place picked — with the
+  /// district it is in, which decides where customers see the post.
+  Future<void> _pinPlace() async {
+    final profile = ref.read(businessProfileProvider).value;
+    final picked = await showLocationPinPicker(
+      context,
+      initialLatitude: _pinLatitude ?? profile?.latitude,
+      initialLongitude: _pinLongitude ?? profile?.longitude,
+      title: 'Where is it?',
+    );
+    if (picked == null || !mounted) return;
+
+    setState(() => _findingPin = true);
+    try {
+      final district = await marketplaceDistrictAt(
+        ref,
+        picked.latitude,
+        picked.longitude,
+      );
+      if (!mounted) return;
+      if (district == null) {
+        _showError(
+          'That place is outside the districts Zuno covers. Pin a place nearer.',
+        );
+        return;
+      }
+      setState(() {
+        _pinLatitude = picked.latitude;
+        _pinLongitude = picked.longitude;
+        _pinDistrictId = district.id;
+        if (_place.text.trim().isEmpty) {
+          final summary = picked.summary;
+          _place.text = summary.length > _placeMaxLength
+              ? summary.substring(0, _placeMaxLength)
+              : summary;
+        }
+        _errorMessage = null;
+      });
+    } on BusinessPlaceUncheckedException catch (e) {
+      if (mounted) _showError(e.toString());
+    } finally {
+      if (mounted) setState(() => _findingPin = false);
+    }
   }
 
   /// "Ships to": All India; a whole state; or a state and the districts in it.

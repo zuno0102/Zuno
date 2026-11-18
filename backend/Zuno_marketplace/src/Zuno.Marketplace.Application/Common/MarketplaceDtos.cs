@@ -353,6 +353,22 @@ public class MarketplaceOptionsDto
 
     /// <summary>How long each text may be, so the form stops where the server would.</summary>
     public MarketplaceTextLimitsDto TextLimits { get; set; } = new();
+
+    /// <summary>Product order statuses with their colours, in the order the chips show them.</summary>
+    public List<MarketplaceOptionDto> OrderStatuses { get; set; } = [];
+
+    /// <summary>B2B request statuses with their colours.</summary>
+    [System.Text.Json.Serialization.JsonPropertyName("b2bRequestStatuses")]
+    public List<MarketplaceOptionDto> B2BRequestStatuses { get; set; } = [];
+
+    /// <summary>Cash on delivery and online pay, with the line under each.</summary>
+    public List<MarketplaceOptionDto> PaymentMethods { get; set; } = [];
+
+    /// <summary>The couriers the ship sheet offers, "Other" last.</summary>
+    public List<Orders.MarketplaceCourierDto> Couriers { get; set; } = [];
+
+    /// <summary>A delivered order with no review closes by itself after this many days.</summary>
+    public int AutoCloseDays { get; set; }
 }
 
 public class MarketplaceOptionDto

@@ -38,6 +38,22 @@ public class MarketplaceDbContext(DbContextOptions<MarketplaceDbContext> options
 
     public DbSet<MarketplacePostTransition> PostTransitions => Set<MarketplacePostTransition>();
 
+    public DbSet<MarketplaceOrder> Orders => Set<MarketplaceOrder>();
+
+    public DbSet<MarketplaceOrderEvent> OrderEvents => Set<MarketplaceOrderEvent>();
+
+    public DbSet<MarketplaceOrderStatusOption> OrderStatuses => Set<MarketplaceOrderStatusOption>();
+
+    public DbSet<MarketplaceOrderTransition> OrderTransitions => Set<MarketplaceOrderTransition>();
+
+    public DbSet<MarketplaceCourier> Couriers => Set<MarketplaceCourier>();
+
+    public DbSet<MarketplacePaymentMethodOption> PaymentMethods => Set<MarketplacePaymentMethodOption>();
+
+    public DbSet<MarketplaceB2BRequest> B2BRequests => Set<MarketplaceB2BRequest>();
+
+    public DbSet<MarketplaceB2BRequestStatusOption> B2BRequestStatuses => Set<MarketplaceB2BRequestStatusOption>();
+
     public DbSet<RefState> States => Set<RefState>();
 
     public DbSet<RefDistrict> Districts => Set<RefDistrict>();

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Zuno.Marketplace.Domain.Entities;
+using Zuno.Marketplace.Domain.Enums;
 using Zuno.Marketplace.Domain.Exceptions;
 
 namespace Zuno.Marketplace.Application.Common;
@@ -18,7 +19,7 @@ internal static class MarketplacePlans
             .AsNoTracking()
             .Include(b => b.Plan)
             .Where(b => b.OwnerUserId == ownerUserId && b.StartsAt <= now && (b.EndsAt == null || b.EndsAt > now))
-            .Where(b => b.Plan.IsActive)
+            .Where(b => b.Plan.IsActive && b.Plan.Purpose == MarketplacePlanPurpose.Posting)
             .OrderByDescending(b => b.StartsAt)
             .FirstOrDefaultAsync(cancellationToken);
         if (taken is not null)
@@ -26,10 +27,22 @@ internal static class MarketplacePlans
             return (taken.Plan, taken.EndsAt);
         }
 
-        var fallback = await dbContext.Plans.AsNoTracking().FirstOrDefaultAsync(p => p.IsDefault && p.IsActive, cancellationToken)
+        var fallback = await dbContext.Plans.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.IsDefault && p.IsActive && p.Purpose == MarketplacePlanPurpose.Posting, cancellationToken)
             ?? throw new InvalidOperationException("No default Marketplace plan is set up.");
         return (fallback, null);
     }
+
+    /// <summary>Whether <paramref name="userId"/> has a B2B buyer plan running now: it shows accepted sellers' contacts.</summary>
+    public static Task<bool> HasB2BBuyerPlanAsync(
+        this IMarketplaceDbContext dbContext, Guid userId, DateTimeOffset now, CancellationToken cancellationToken) =>
+        dbContext.BusinessPlans.AnyAsync(
+            b => b.OwnerUserId == userId
+                && b.Plan.Purpose == MarketplacePlanPurpose.B2BBuyer
+                && b.Plan.IsActive
+                && b.StartsAt <= now
+                && (b.EndsAt == null || b.EndsAt > now),
+            cancellationToken);
 
     /// <summary>How many of the business's posts use a plan slot now, leaving out <paramref name="exceptPostId"/>.</summary>
     public static Task<int> LiveCountAsync(

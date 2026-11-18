@@ -51,6 +51,14 @@ public class MarketplaceSettings
     [Range(1, 500)]
     public int MaxPageSize { get; set; } = 100;
 
+    /// <summary>How long an online order holds its stock while the customer pays; unpaid by then, it is let go.</summary>
+    [Range(1, 1440)]
+    public int PaymentHoldMinutes { get; set; } = 15;
+
+    /// <summary>A delivered order with no review closes by itself this many days after delivery.</summary>
+    [Range(1, 90)]
+    public int AutoCloseDays { get; set; } = 10;
+
     /// <summary>How long the category list and options are cached; they change rarely.</summary>
     [Range(0, 86_400)]
     public int CategoryCacheSeconds { get; set; } = 600;

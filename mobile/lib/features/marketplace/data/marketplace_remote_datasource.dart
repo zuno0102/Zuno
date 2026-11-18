@@ -5,6 +5,7 @@ import 'package:http_parser/http_parser.dart';
 import 'package:zuno/core/network/dio_error_mapper.dart';
 import 'package:zuno/features/marketplace/data/marketplace_api.dart';
 import 'package:zuno/features/marketplace/data/models/marketplace_models.dart';
+import 'package:zuno/features/marketplace/data/models/marketplace_order_models.dart';
 
 /// Talks to the Marketplace service. The [Dio] it is given already points at Marketplace and
 /// carries the shared login, so a token refresh here is the same refresh as everywhere else.
@@ -143,6 +144,105 @@ class MarketplaceRemoteDataSource {
     return MarketplaceBusinessModel.fromJson(response.data!);
   });
 
+  /// The business's product orders, one page, narrowed to [status]; with a count per status.
+  Future<MarketplaceOrderPageModel> getOrders({
+    String? status,
+    int? pageSize,
+  }) => _run(() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      MarketplaceApi.ordersPath,
+      queryParameters: {'status': ?status, 'pageSize': ?pageSize},
+    );
+    return MarketplaceOrderPageModel.fromJson(response.data!);
+  });
+
+  Future<MarketplaceOrderModel> getOrder(String id) =>
+      _order(() => _dio.get(MarketplaceApi.orderPath(id)));
+
+  Future<MarketplaceOrderModel> changeOrderStatus(String id, String status) =>
+      _order(
+        () => _dio.patch(
+          MarketplaceApi.orderStatusPath(id),
+          data: {'status': status},
+        ),
+      );
+
+  Future<MarketplaceOrderModel> shipOrder(
+    String id, {
+    required String courierCode,
+    required String trackingNumber,
+    String? courierName,
+  }) => _order(
+    () => _dio.post(
+      MarketplaceApi.orderShipPath(id),
+      data: {
+        'courierCode': courierCode,
+        'courierName': ?courierName,
+        'trackingNumber': trackingNumber,
+      },
+    ),
+  );
+
+  /// A photo of the courier's receipt, compressed to JPEG as it was picked.
+  Future<MarketplaceOrderModel> uploadOrderReceipt(
+    String id,
+    Uint8List bytes,
+  ) => _order(
+    () => _dio.post(
+      MarketplaceApi.orderReceiptPath(id),
+      data: FormData.fromMap({
+        'file': MultipartFile.fromBytes(
+          bytes,
+          filename: 'receipt.jpg',
+          contentType: MediaType('image', 'jpeg'),
+        ),
+      }),
+    ),
+  );
+
+  Future<MarketplacePaymentSettingsModel> getPaymentSettings() =>
+      _run(() async {
+        final response = await _dio.get<Map<String, dynamic>>(
+          MarketplaceApi.paymentSettingsPath,
+        );
+        return MarketplacePaymentSettingsModel.fromJson(response.data!);
+      });
+
+  Future<MarketplacePaymentSettingsModel> updatePaymentSettings({
+    required bool acceptsCashOnDelivery,
+    required bool acceptsOnlinePay,
+  }) => _run(() async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      MarketplaceApi.paymentSettingsPath,
+      data: {
+        'acceptsCashOnDelivery': acceptsCashOnDelivery,
+        'acceptsOnlinePay': acceptsOnlinePay,
+      },
+    );
+    return MarketplacePaymentSettingsModel.fromJson(response.data!);
+  });
+
+  Future<MarketplaceB2BRequestPageModel> getB2BRequests({
+    String? status,
+    int? pageSize,
+  }) => _run(() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      MarketplaceApi.b2bRequestsPath,
+      queryParameters: {'status': ?status, 'pageSize': ?pageSize},
+    );
+    return MarketplaceB2BRequestPageModel.fromJson(response.data!);
+  });
+
+  Future<MarketplaceB2BRequestModel> answerB2BRequest(
+    String id, {
+    required bool accept,
+  }) => _run(() async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      MarketplaceApi.b2bRequestAnswerPath(id, accept: accept),
+    );
+    return MarketplaceB2BRequestModel.fromJson(response.data!);
+  });
+
   Future<MarketplaceCategoryModel> saveCategory(
     Map<String, dynamic> body, {
     String? id,
@@ -193,6 +293,15 @@ class MarketplaceRemoteDataSource {
   ) => _run(() async {
     final response = await call();
     return MarketplaceCategoryModel.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  });
+
+  Future<MarketplaceOrderModel> _order(
+    Future<Response<dynamic>> Function() call,
+  ) => _run(() async {
+    final response = await call();
+    return MarketplaceOrderModel.fromJson(
       response.data as Map<String, dynamic>,
     );
   });

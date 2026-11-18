@@ -45,6 +45,18 @@ public class ServiceDirectory(
             string.Equals(Text(profile, "verificationStatus"), VerifiedStatus, StringComparison.OrdinalIgnoreCase));
     }
 
+    public async Task<ServicePerson?> GetCurrentPersonAsync(CancellationToken cancellationToken)
+    {
+        var data = await GetAsync("api/v1/auth/me", cancellationToken);
+        if (data is not { } user)
+        {
+            return null;
+        }
+
+        var name = $"{Text(user, "firstName")} {Text(user, "lastName")}".Trim();
+        return new ServicePerson(name.Length == 0 ? "Customer" : name, Text(user, "phoneNumber"));
+    }
+
     /// <summary>The <c>data</c> of the Service API's reply, or null on any failure — logged, never thrown.</summary>
     private async Task<JsonElement?> GetAsync(string path, CancellationToken cancellationToken)
     {

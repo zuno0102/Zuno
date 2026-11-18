@@ -199,6 +199,10 @@ public class MarketplaceBusinessConfiguration : IEntityTypeConfiguration<Marketp
         builder.Property(b => b.OwnerUserId).ValueGeneratedNever();
         builder.Property(b => b.Name).HasMaxLength(200).IsRequired();
         builder.Property(b => b.LogoUrl).HasMaxLength(500);
+
+        // A business must leave customers a way to pay.
+        builder.ToTable(t => t.HasCheckConstraint(
+            "ck_marketplace_businesses_payment", "accepts_cash_on_delivery OR accepts_online_pay"));
     }
 }
 
@@ -211,6 +215,7 @@ public class MarketplacePlanConfiguration : IEntityTypeConfiguration<Marketplace
             t.HasCheckConstraint("ck_marketplace_plans_price", "price >= 0");
             t.HasCheckConstraint("ck_marketplace_plans_max_active_posts", "max_active_posts >= 0");
             t.HasCheckConstraint("ck_marketplace_plans_duration", "duration_days IS NULL OR duration_days >= 1");
+            t.HasCheckConstraint("ck_marketplace_plans_purpose", "purpose IN (1, 2)");
         });
         builder.Property(p => p.Code).HasMaxLength(30).IsRequired();
         builder.Property(p => p.Name).HasMaxLength(60).IsRequired();

@@ -56,6 +56,26 @@ public class MarketplaceCatalogHandlers(
             MaxQuantity = limits.MaxQuantity,
             MaxStartDaysAhead = limits.MaxStartDaysAhead,
             TextLimits = MarketplaceTextLimits.ToDto(),
+            OrderStatuses = (await reference.OrderStatusesAsync(cancellationToken))
+                .Select(s => new MarketplaceOptionDto { Code = s.Code.ToString(), Name = s.Name, Tone = s.Tone })
+                .ToList(),
+            B2BRequestStatuses = (await reference.B2BRequestStatusesAsync(cancellationToken))
+                .Select(s => new MarketplaceOptionDto { Code = s.Code.ToString(), Name = s.Name, Tone = s.Tone })
+                .ToList(),
+            PaymentMethods = (await reference.PaymentMethodsAsync(cancellationToken))
+                .Select(m => new MarketplaceOptionDto { Code = m.Code.ToString(), Name = m.Name, Detail = m.Detail })
+                .ToList(),
+            Couriers = (await reference.CouriersAsync(cancellationToken))
+                .Where(c => c.IsActive)
+                .Select(c => new Orders.MarketplaceCourierDto
+                {
+                    Code = c.Code,
+                    Name = c.Name,
+                    TakesCustomName = c.TakesCustomName,
+                    HasTrackingLink = c.TrackingUrl != null,
+                })
+                .ToList(),
+            AutoCloseDays = limits.AutoCloseDays,
         };
     }
 }

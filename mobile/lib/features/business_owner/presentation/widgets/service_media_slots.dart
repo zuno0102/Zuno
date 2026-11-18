@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:zuno/core/constants/api_constants.dart';
 import 'package:zuno/core/utils/upload_image.dart';
 import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
+import 'package:zuno/shared/widgets/avatar_crop_screen.dart';
 import 'package:zuno/shared/widgets/video_preview_player.dart';
 
 /// The video's subtype for the upload — "mp4", "quicktime", "webm" — from the picked file.
@@ -125,10 +126,15 @@ class ServiceMediaSlots extends ConsumerStatefulWidget {
     this.mediaBaseUrl = ApiConstants.baseUrl,
     this.allowVideo = true,
     this.hint,
+    this.firstSlotAspectRatio,
     super.key,
   });
 
   final ServiceMediaSelection media;
+
+  /// Frames the first photo to this width-over-height before it is kept — an advert's 3 : 1
+  /// banner. Null keeps every photo as picked.
+  final double? firstSlotAspectRatio;
 
   /// The server the saved photos and video are fetched from. The main API unless another
   /// service (Rent, Marketplace) keeps its own files.
@@ -162,6 +168,20 @@ class _ServiceMediaSlotsState extends ConsumerState<ServiceMediaSlots> {
 
     try {
       final rawBytes = await picked.readAsBytes();
+      final ratio = widget.firstSlotAspectRatio;
+      if (ratio != null && slot == 0) {
+        if (!mounted) return;
+        final framed = await AvatarCropScreen.frame(
+          context,
+          rawBytes,
+          aspectRatio: ratio,
+          outputWidth: 1200,
+        );
+        if (framed == null) return;
+        _media.setImage(slot, framed);
+        _report(null);
+        return;
+      }
       final compressed = await compressForUpload(
         rawBytes,
         ref.read(currentAppOptionsProvider),

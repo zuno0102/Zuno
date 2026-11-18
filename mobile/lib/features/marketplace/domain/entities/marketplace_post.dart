@@ -1,3 +1,5 @@
+import 'package:zuno/features/marketplace/domain/entities/marketplace_order.dart';
+
 /// What a post is — decides which parts of the form show and which rules the server checks.
 abstract final class MarketplacePostKind {
   static const listing = 'Listing';
@@ -630,6 +632,9 @@ const marketplaceDefaultWholesaleUnits = [
   'set',
 ];
 
+/// Days after delivery an order closes by itself until the server says otherwise.
+const marketplaceDefaultAutoCloseDays = 10;
+
 /// The post kinds, statuses and limits the Marketplace screens are drawn from.
 class MarketplaceOptions {
   const MarketplaceOptions({
@@ -645,7 +650,27 @@ class MarketplaceOptions {
     this.textLimits = const MarketplaceTextLimits(),
     this.variantImageSlots = marketplaceDefaultVariantImageSlots,
     this.wholesaleUnits = marketplaceDefaultWholesaleUnits,
+    this.orderStatuses = const [],
+    this.b2bRequestStatuses = const [],
+    this.paymentMethods = const [],
+    this.couriers = const [],
+    this.autoCloseDays = marketplaceDefaultAutoCloseDays,
   });
+
+  /// Product order statuses with their colours, in the order the chips show them.
+  final List<MarketplaceOption> orderStatuses;
+
+  /// B2B request statuses with their colours.
+  final List<MarketplaceOption> b2bRequestStatuses;
+
+  /// Cash on delivery and online pay, with the line under each.
+  final List<MarketplaceOption> paymentMethods;
+
+  /// The couriers the ship sheet offers, "Other" last.
+  final List<MarketplaceCourier> couriers;
+
+  /// A delivered order with no review closes by itself after this many days.
+  final int autoCloseDays;
 
   /// Photo slots per colour / size — `Marketplace:VariantImageSlots` on the server.
   final int variantImageSlots;

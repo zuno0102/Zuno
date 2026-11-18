@@ -14,19 +14,33 @@ import 'package:zuno/shared/widgets/app_messages.dart';
 ///
 /// Pops with the cropped square image (encoded by the cropper; re-encode before uploading), or
 /// with null if they back out.
+///
+/// With an [aspectRatio] other than 1 it frames a rectangle instead of a circle: a Marketplace
+/// advert's wide banner (3 : 1), the same pinch and drag.
 class AvatarCropScreen extends StatefulWidget {
-  const AvatarCropScreen({super.key, required this.image});
+  const AvatarCropScreen({
+    super.key,
+    required this.image,
+    this.aspectRatio = 1,
+  });
 
   /// The photo to frame. Must be a format Dart can decode (JPEG/PNG/WebP) — HEIC is not, so
   /// normalise it first.
   final Uint8List image;
 
+  /// Width over height of the frame; 1 is the round avatar.
+  final double aspectRatio;
+
+  bool get _isAvatar => aspectRatio == 1;
+
   /// The whole journey from a freshly picked photo to an upload-ready avatar: normalise it, let
   /// the person frame it, and re-encode the result. Returns null if they back out.
   static Future<Uint8List?> frame(
     BuildContext context,
-    Uint8List rawBytes,
-  ) async {
+    Uint8List rawBytes, {
+    double aspectRatio = 1,
+    int outputWidth = 512,
+  }) async {
     // Phone cameras commonly hand back HEIC, which neither the cropper nor the server can read,
     // so it goes through the platform's own decoder first. Capping it near screen size also
     // keeps the cropper — which works in Dart — quick on a 50MP original.
@@ -39,7 +53,7 @@ class AvatarCropScreen extends StatefulWidget {
     );
     if (!context.mounted) return null;
 
-    final cropped = await open(context, normalised);
+    final cropped = await open(context, normalised, aspectRatio: aspectRatio);
     if (cropped == null) return null;
 
     // Re-encoded once more as a JPEG. This is what holds the upload under the server's 5MB cap
@@ -49,17 +63,22 @@ class AvatarCropScreen extends StatefulWidget {
       cropped,
       format: CompressFormat.jpeg,
       quality: 85,
-      minWidth: 512,
-      minHeight: 512,
+      minWidth: outputWidth,
+      minHeight: (outputWidth / aspectRatio).round(),
     );
   }
 
   /// Opens the editor and returns the cropped bytes, or null if cancelled.
-  static Future<Uint8List?> open(BuildContext context, Uint8List image) {
+  static Future<Uint8List?> open(
+    BuildContext context,
+    Uint8List image, {
+    double aspectRatio = 1,
+  }) {
     return Navigator.of(context).push<Uint8List>(
       MaterialPageRoute(
         fullscreenDialog: true,
-        builder: (_) => AvatarCropScreen(image: image),
+        builder: (_) =>
+            AvatarCropScreen(image: image, aspectRatio: aspectRatio),
       ),
     );
   }
@@ -119,14 +138,14 @@ class _AvatarCropScreenState extends State<AvatarCropScreen> {
                     image: widget.image,
                     controller: _controller,
                     onCropped: _onCropped,
-                    withCircleUi: true,
+                    withCircleUi: widget._isAvatar,
                     // Pinch-to-zoom and drag on the photo itself, with the circle held still —
                     // the same feel as setting a picture in WhatsApp or Instagram.
                     interactive: true,
                     fixCropRect: true,
                     initialRectBuilder: InitialRectBuilder.withSizeAndRatio(
                       size: 0.85,
-                      aspectRatio: 1,
+                      aspectRatio: widget.aspectRatio,
                     ),
                     baseColor: AppColors.mediaBackdrop,
                     maskColor: AppColors.scrim.withValues(alpha: 0.6),
@@ -144,7 +163,9 @@ class _AvatarCropScreenState extends State<AvatarCropScreen> {
             Padding(
               padding: EdgeInsets.all(16),
               child: Text(
-                'Pinch to zoom and drag to position your face in the circle',
+                widget._isAvatar
+                    ? 'Pinch to zoom and drag to position your face in the circle'
+                    : 'Pinch to zoom and drag to frame the banner',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.onMediaMuted),
               ),

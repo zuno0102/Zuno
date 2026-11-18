@@ -315,6 +315,37 @@ MarketplaceOptionsModel _$MarketplaceOptionsModelFromJson(
           ?.map((e) => e as String)
           .toList() ??
       marketplaceDefaultWholesaleUnits,
+  orderStatuses:
+      (json['orderStatuses'] as List<dynamic>?)
+          ?.map(
+            (e) => MarketplaceOptionModel.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const [],
+  b2bRequestStatuses:
+      (json['b2bRequestStatuses'] as List<dynamic>?)
+          ?.map(
+            (e) => MarketplaceOptionModel.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const [],
+  paymentMethods:
+      (json['paymentMethods'] as List<dynamic>?)
+          ?.map(
+            (e) => MarketplaceOptionModel.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const [],
+  couriers:
+      (json['couriers'] as List<dynamic>?)
+          ?.map(
+            (e) => MarketplaceCourierModel.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const [],
+  autoCloseDays:
+      (json['autoCloseDays'] as num?)?.toInt() ??
+      marketplaceDefaultAutoCloseDays,
 );
 
 MarketplaceBusinessModel _$MarketplaceBusinessModelFromJson(

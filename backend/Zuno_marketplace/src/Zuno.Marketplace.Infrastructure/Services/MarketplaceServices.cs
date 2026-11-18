@@ -41,8 +41,19 @@ public partial class MarketplaceMediaStorage(IHostEnvironment hostEnvironment, I
 {
     private const string Folder = "marketplace";
 
-    public async Task<string> SaveImageAsync(
+    public Task<string> SaveImageAsync(
         Guid postId, int slot, Stream content, string fileExtension, CancellationToken cancellationToken, Guid? variantId = null)
+    {
+        // A colour / size's photos are named apart, so its slot 0 never replaces the cover.
+        var slotName = variantId is { } variant ? $"variant-{variant:N}-{slot}" : $"image-{slot}";
+        return SaveAsync(postId, slotName, content, fileExtension, cancellationToken);
+    }
+
+    // In a folder of the order's own id, beside the posts' folders: ids never collide.
+    public Task<string> SaveOrderReceiptAsync(Guid orderId, Stream content, string fileExtension, CancellationToken cancellationToken) =>
+        SaveAsync(orderId, "receipt-0", content, fileExtension, cancellationToken);
+
+    private async Task<string> SaveAsync(Guid ownerId, string slotName, Stream content, string fileExtension, CancellationToken cancellationToken)
     {
         var extension = fileExtension.ToLowerInvariant();
         if (!SafeExtension().IsMatch(extension))
@@ -50,11 +61,9 @@ public partial class MarketplaceMediaStorage(IHostEnvironment hostEnvironment, I
             throw new ArgumentException("Unsupported file extension.", nameof(fileExtension));
         }
 
-        var directory = PostDirectory(postId);
+        var directory = PostDirectory(ownerId);
         Directory.CreateDirectory(directory);
 
-        // A colour / size's photos are named apart, so its slot 0 never replaces the cover.
-        var slotName = variantId is { } variant ? $"variant-{variant:N}-{slot}" : $"image-{slot}";
         foreach (var earlier in Directory.EnumerateFiles(directory, $"{slotName}-*"))
         {
             File.Delete(earlier);
@@ -66,7 +75,7 @@ public partial class MarketplaceMediaStorage(IHostEnvironment hostEnvironment, I
             await content.CopyToAsync(file, cancellationToken);
         }
 
-        return $"{settings.Value.PublicPath}/{Folder}/{postId}/{fileName}";
+        return $"{settings.Value.PublicPath}/{Folder}/{ownerId}/{fileName}";
     }
 
     public void Delete(string publicUrl)
@@ -98,7 +107,8 @@ public partial class MarketplaceMediaStorage(IHostEnvironment hostEnvironment, I
     [GeneratedRegex(@"^\.[a-z0-9]{1,5}$")]
     private static partial Regex SafeExtension();
 
-    // The post's own photos ("image-0-…") and a colour / size's ("variant-{32 hex}-0-…"); nothing else.
-    [GeneratedRegex(@"^(image|variant-[a-f0-9]{32})-\d+-[a-f0-9]{12}\.[a-z0-9]{1,5}$")]
+    // The post's own photos ("image-0-…"), a colour / size's ("variant-{32 hex}-0-…") and an order's
+    // courier receipt ("receipt-0-…"); nothing else.
+    [GeneratedRegex(@"^(image|receipt|variant-[a-f0-9]{32})-\d+-[a-f0-9]{12}\.[a-z0-9]{1,5}$")]
     private static partial Regex SafeFileName();
 }

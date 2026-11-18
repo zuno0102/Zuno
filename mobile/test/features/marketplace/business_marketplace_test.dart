@@ -17,6 +17,7 @@ import 'package:zuno/features/catalog/domain/entities/location_state.dart';
 import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
 import 'package:zuno/features/marketplace/domain/entities/marketplace_post.dart';
 import 'package:zuno/features/marketplace/domain/marketplace_repository.dart';
+import 'package:zuno/features/marketplace/presentation/providers/marketplace_order_providers.dart';
 import 'package:zuno/features/marketplace/presentation/providers/marketplace_providers.dart';
 import 'package:zuno/features/marketplace/presentation/screens/admin_marketplace_categories_screen.dart';
 import 'package:zuno/features/marketplace/presentation/screens/business_marketplace_tab.dart';
@@ -30,6 +31,8 @@ import 'package:zuno/features/rental/presentation/screens/business_catalog_tab.d
 import 'package:zuno/shared/widgets/counted_tab_label.dart';
 import 'package:zuno/shared/widgets/stat_tile.dart';
 import 'package:zuno/shared/widgets/stock_figure_row.dart';
+
+import 'marketplace_order_fakes.dart';
 
 const _products = MarketplaceCategory(
   id: 'cat-products',
@@ -214,6 +217,10 @@ const _options = MarketplaceOptions(
   imageSlots: 3,
   maxFoodOfferHours: 24,
   maxAdDays: 60,
+  orderStatuses: testOrderStatuses,
+  b2bRequestStatuses: testB2BStatuses,
+  paymentMethods: testPaymentMethods,
+  couriers: testCouriers,
 );
 
 const _kanyakumari = District(
@@ -635,6 +642,7 @@ Future<_FakeMarketplaceRepository> _pump(
   WidgetTester tester,
   Widget child, {
   _FakeMarketplaceRepository? repository,
+  FakeMarketplaceOrderRepository? orders,
   BusinessProfile profile = _profile,
   District? businessDistrict = _kanyakumari,
   Future<District?> Function()? businessDistrictLookup,
@@ -648,6 +656,9 @@ Future<_FakeMarketplaceRepository> _pump(
     ProviderScope(
       overrides: [
         marketplaceRepositoryProvider.overrideWithValue(repo),
+        marketplaceOrderRepositoryProvider.overrideWithValue(
+          orders ?? FakeMarketplaceOrderRepository(),
+        ),
         businessServicesProvider.overrideWith(_NoServices.new),
         businessProfileProvider.overrideWith(() => _Profile(profile)),
         // Where the business is: Kanyakumari unless a test says its address cannot be placed.
@@ -1350,6 +1361,85 @@ void main() {
       expect(find.text('Must be less than the usual price.'), findsOneWidget);
       expect(find.text('Choose when it starts.'), findsOneWidget);
       expect(find.text('Required.'), findsOneWidget);
+    });
+
+    testWidgets(
+      'a food offer or advert has its own location; a product has none',
+      (tester) async {
+        await _pump(tester, const BusinessMarketplaceTab());
+        await _openFormFor(tester, _food);
+        expect(find.byKey(const ValueKey('marketplace-place')), findsOneWidget);
+        expect(
+          find.text('Your business address, unless you pin another place.'),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('marketplace-place-pin')),
+          findsOneWidget,
+        );
+        expect(find.textContaining('come to your shop'), findsOneWidget);
+        Navigator.of(
+          tester.element(find.byType(MarketplacePostFormSheet)),
+        ).pop();
+        await tester.pumpAndSettle();
+
+        await _openFormFor(tester, _ads);
+        expect(find.byKey(const ValueKey('marketplace-place')), findsOneWidget);
+        expect(find.textContaining('framed wide (3 : 1)'), findsOneWidget);
+        Navigator.of(
+          tester.element(find.byType(MarketplacePostFormSheet)),
+        ).pop();
+        await tester.pumpAndSettle();
+
+        await _openFormFor(tester, _products);
+        expect(find.byKey(const ValueKey('marketplace-place')), findsNothing);
+      },
+    );
+
+    testWidgets('the location typed on a food offer is saved as its place', (
+      tester,
+    ) async {
+      final now = DateTime.now();
+      final repo = await _pump(
+        tester,
+        const BusinessMarketplaceTab(),
+        repository: _FakeMarketplaceRepository(
+          posts: [
+            _post(
+              title: 'Veg biryani',
+              kind: MarketplacePostKind.foodOffer,
+              categoryId: _food.id,
+              categoryName: _food.name,
+              subCategoryId: 's-biryani',
+              subCategoryName: 'Biryani & meals',
+              price: 99,
+              originalPrice: 180,
+              quantity: 20,
+              startsAt: now.add(const Duration(hours: 1)),
+              endsAt: now.add(const Duration(hours: 3)),
+              attributes: const {'food_type': 'Veg'},
+            ),
+          ],
+        ),
+      );
+
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Edit'));
+      await tester.pumpAndSettle();
+      await _type(tester, 'marketplace-place', 'Anna Bus Stand, Nagercoil');
+      final save = find.byKey(const ValueKey('primary-button'));
+      await tester.ensureVisible(save);
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      final (_, input) = repo.updated.single;
+      expect(input.area, 'Anna Bus Stand, Nagercoil');
+      expect(
+        input.districtId,
+        _kanyakumari.id,
+        reason: 'no pin: where the business is',
+      );
     });
 
     testWidgets('an advertisement asks dates and a phone, not a price', (
@@ -3025,32 +3115,6 @@ void main() {
       expect(find.text('Edit'), findsNothing);
     });
 
-    testWidgets('Orders › Marketplace has a Sold chip from the status table', (
-      tester,
-    ) async {
-      await _pump(
-        tester,
-        const BusinessMarketplaceOrdersTab(),
-        repository: _FakeMarketplaceRepository(
-          posts: [
-            _post(
-              status: MarketplacePostStatus.sold,
-              condition: MarketplaceItemCondition.used,
-              actions: const [],
-            ),
-          ],
-        ),
-      );
-
-      final sold = find.byKey(const ValueKey('marketplace-orders-Sold'));
-      await tester.ensureVisible(sold);
-      await tester.pumpAndSettle();
-      expect(
-        find.descendant(of: sold, matching: find.text('Sold 1')),
-        findsOneWidget,
-      );
-    });
-
     testWidgets('the super admin turns stock on for a category', (
       tester,
     ) async {
@@ -3080,48 +3144,17 @@ void main() {
   });
 
   group('Orders › Marketplace', () {
-    testWidgets('posts by status, named from the server table, with counts', (
-      tester,
-    ) async {
-      await _pump(
-        tester,
-        const BusinessMarketplaceOrdersTab(),
-        repository: _FakeMarketplaceRepository(
-          posts: [
-            _post(title: 'Live one'),
-            _post(
-              id: 'p-2',
-              title: 'Held one',
-              status: 'Paused',
-              actions: const [],
-            ),
-          ],
-          plan: _plan(used: 1),
-        ),
-      );
-
-      expect(find.text('All 2'), findsOneWidget, reason: 'the status chip');
-      expect(find.text('Active 1'), findsOneWidget);
-      expect(find.text('On hold 1'), findsOneWidget);
-      expect(find.text('Live one'), findsOneWidget);
-      expect(find.text('Held one'), findsOneWidget);
-
-      await tester.tap(find.byKey(const ValueKey('marketplace-orders-Paused')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Held one'), findsOneWidget);
-      expect(find.text('Live one'), findsNothing);
-    });
+    Finder tab(String id) =>
+        find.byKey(ValueKey('marketplace-orders-category-$id'));
 
     testWidgets(
-      'main categories are sub-tabs, as on Service; each has its status chips',
+      'a tab per group: orders, B2B requests, then food and ads posts',
       (tester) async {
         await _pump(
           tester,
           const BusinessMarketplaceOrdersTab(),
           repository: _FakeMarketplaceRepository(
             posts: [
-              _post(title: 'Swift VXi 2019'),
               _post(
                 id: 'p-2',
                 title: 'Veg biryani',
@@ -3130,28 +3163,73 @@ void main() {
                 categoryName: _food.name,
                 subCategoryId: 's-biryani',
                 subCategoryName: 'Biryani & meals',
-                status: MarketplacePostStatus.paused,
-                actions: const [],
-              ),
-              _post(
-                id: 'p-3',
-                title: 'Chicken biryani',
-                kind: MarketplacePostKind.foodOffer,
-                categoryId: _food.id,
-                categoryName: _food.name,
-                subCategoryId: 's-biryani',
-                subCategoryName: 'Biryani & meals',
-                status: MarketplacePostStatus.closed,
-                actions: const [],
               ),
             ],
             plan: _plan(used: 1),
           ),
+          orders: FakeMarketplaceOrderRepository(
+            orders: [
+              testOrder(),
+              testOrder(
+                id: 'o-2',
+                status: 'Shipped',
+                courierName: 'DTDC',
+                trackingNumber: 'D451',
+              ),
+            ],
+            requests: [testRequest()],
+          ),
         );
-
-        Finder tab(String id) =>
-            find.byKey(ValueKey('marketplace-orders-category-$id'));
         int countOf(String id) => tester.widget<CountedTabLabel>(tab(id)).count;
+
+        // The same tab bar as Service's, short names from the category table, no "All".
+        expect(find.byType(ListTabBar), findsOneWidget);
+        expect(
+          [
+            for (final c in [_products, _b2b, _food, _ads]) countOf(c.id),
+          ],
+          [2, 1, 1, 0],
+          reason: 'orders, requests, then each group\'s posts',
+        );
+        expect(tab('all'), findsNothing);
+
+        // Products: the orders, with the next step on each card.
+        expect(find.text('2 × Silk saree · Red'), findsNWidgets(2));
+        expect(
+          find.byKey(const ValueKey('marketplace-order-action-o-1-Confirmed')),
+          findsOneWidget,
+        );
+        expect(find.text('DTDC · D451'), findsOneWidget);
+
+        // Food keeps its posts and their status chips.
+        await tester.tap(tab(_food.id));
+        await tester.pumpAndSettle();
+        expect(find.text('Veg biryani'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('marketplace-orders-Paused')),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'order chips are the server\'s statuses, counted across every order',
+      (tester) async {
+        await _pump(
+          tester,
+          const BusinessMarketplaceOrdersTab(),
+          orders: FakeMarketplaceOrderRepository(
+            orders: [
+              testOrder(),
+              testOrder(id: 'o-2'),
+              testOrder(
+                id: 'o-3',
+                status: 'Delivered',
+                closesAt: DateTime(2026, 11, 28),
+              ),
+            ],
+          ),
+        );
         String chipLabel(String key) => tester
             .widget<Text>(
               find.descendant(
@@ -3161,65 +3239,55 @@ void main() {
             )
             .data!;
 
-        // The same tab bar as Service's Bookings · Status management · Messages, short names
-        // from the category table, with each one's posts counted.
-        expect(find.byType(ListTabBar), findsOneWidget);
-        expect(
-          [
-            for (final c in [_products, _b2b, _food, _ads]) countOf(c.id),
-          ],
-          [1, 0, 2, 0],
+        expect(chipLabel('marketplace-order-chip-all'), 'All 3');
+        expect(chipLabel('marketplace-order-chip-Placed'), 'New 2');
+        expect(chipLabel('marketplace-order-chip-Delivered'), 'Delivered 1');
+
+        final delivered = find.byKey(
+          const ValueKey('marketplace-order-chip-Delivered'),
         );
-        expect(countOf('all'), 3);
+        await tester.ensureVisible(delivered);
+        await tester.tap(delivered);
+        await tester.pumpAndSettle();
         expect(
-          tester.getTopLeft(tab('all')).dy,
-          lessThan(
-            tester
-                .getTopLeft(
-                  find.byKey(const ValueKey('marketplace-orders-all')),
-                )
-                .dy,
+          find.byKey(const ValueKey('marketplace-order-o-3')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('marketplace-order-o-1')),
+          findsNothing,
+        );
+        expect(
+          find.textContaining(
+            "Waiting for the customer's review · closes on 28 Nov",
           ),
+          findsOneWidget,
         );
-
-        // Food: the list and the status counts narrow to food.
-        await tester.tap(tab(_food.id));
-        await tester.pumpAndSettle();
-        expect(find.text('Swift VXi 2019'), findsNothing);
-        expect(find.text('Veg biryani'), findsOneWidget);
-        expect(find.text('Chicken biryani'), findsOneWidget);
-        expect(chipLabel('marketplace-orders-all'), 'All 2');
-        expect(chipLabel('marketplace-orders-Active'), 'Active 0');
-        expect(chipLabel('marketplace-orders-Paused'), 'On hold 1');
-
-        // Food + On hold: one post.
-        await tester.tap(
-          find.byKey(const ValueKey('marketplace-orders-Paused')),
-        );
-        await tester.pumpAndSettle();
-        expect(find.text('Veg biryani'), findsOneWidget);
-        expect(find.text('Chicken biryani'), findsNothing);
-
-        // Products, nothing on hold: it says which.
-        await tester.tap(tab(_products.id));
-        await tester.pumpAndSettle();
-        await tester.tap(
-          find.byKey(const ValueKey('marketplace-orders-Paused')),
-        );
-        await tester.pumpAndSettle();
-        expect(find.text('No on hold posts in Products'), findsOneWidget);
       },
     );
 
-    testWidgets('an empty status says where posts come from', (tester) async {
+    testWidgets('no orders yet says where they come from', (tester) async {
       await _pump(tester, const BusinessMarketplaceOrdersTab());
+      expect(find.text('No orders yet'), findsOneWidget);
+      expect(
+        find.textContaining('When customers order your products'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('an empty food status says where posts come from', (
+      tester,
+    ) async {
+      await _pump(tester, const BusinessMarketplaceOrdersTab());
+      await tester.tap(tab(_food.id));
+      await tester.pumpAndSettle();
 
       final expired = find.byKey(const ValueKey('marketplace-orders-Expired'));
       await tester.ensureVisible(expired);
       await tester.tap(expired);
       await tester.pumpAndSettle();
 
-      expect(find.text('No expired posts'), findsOneWidget);
+      expect(find.text('No expired posts in Nearby food'), findsOneWidget);
       expect(find.textContaining('Services › Marketplace'), findsOneWidget);
     });
 

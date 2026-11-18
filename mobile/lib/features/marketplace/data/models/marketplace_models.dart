@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:zuno/features/marketplace/data/models/marketplace_order_models.dart';
 import 'package:zuno/features/marketplace/domain/entities/marketplace_post.dart';
 
 part 'marketplace_models.g.dart';
@@ -521,6 +522,11 @@ class MarketplaceOptionsModel {
     this.textLimits = const MarketplaceTextLimits(),
     this.variantImageSlots = marketplaceDefaultVariantImageSlots,
     this.wholesaleUnits = marketplaceDefaultWholesaleUnits,
+    this.orderStatuses = const [],
+    this.b2bRequestStatuses = const [],
+    this.paymentMethods = const [],
+    this.couriers = const [],
+    this.autoCloseDays = marketplaceDefaultAutoCloseDays,
   });
 
   factory MarketplaceOptionsModel.fromJson(Map<String, dynamic> json) =>
@@ -539,6 +545,11 @@ class MarketplaceOptionsModel {
   final MarketplaceTextLimits textLimits;
   final int variantImageSlots;
   final List<String> wholesaleUnits;
+  final List<MarketplaceOptionModel> orderStatuses;
+  final List<MarketplaceOptionModel> b2bRequestStatuses;
+  final List<MarketplaceOptionModel> paymentMethods;
+  final List<MarketplaceCourierModel> couriers;
+  final int autoCloseDays;
 
   MarketplaceOptions toEntity() => MarketplaceOptions(
     kinds: [for (final k in kinds) k.toEntity()],
@@ -556,6 +567,11 @@ class MarketplaceOptionsModel {
         ? marketplaceDefaultWholesaleUnits
         : wholesaleUnits,
     textLimits: textLimits,
+    orderStatuses: [for (final s in orderStatuses) s.toEntity()],
+    b2bRequestStatuses: [for (final s in b2bRequestStatuses) s.toEntity()],
+    paymentMethods: [for (final m in paymentMethods) m.toEntity()],
+    couriers: [for (final c in couriers) c.toEntity()],
+    autoCloseDays: autoCloseDays,
   );
 }
 

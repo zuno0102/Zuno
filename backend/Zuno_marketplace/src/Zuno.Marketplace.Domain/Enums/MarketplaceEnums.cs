@@ -9,7 +9,7 @@ public enum MarketplacePostKind : short
     /// <summary>A car, a plot, a saree, a load of bananas: shown with a price, customers call or enquire.</summary>
     Listing = 1,
 
-    /// <summary>Food sold off for a short time at a lower price; customers reserve portions and pay at the shop.</summary>
+    /// <summary>Food sold off for a short time at a lower price; shown like an advert with its place, customers come to the shop.</summary>
     FoodOffer = 2,
 
     /// <summary>A paid-for notice such as a sports tournament or an Aadi sale, shown for a run of dates.</summary>
@@ -75,4 +75,71 @@ public enum MarketplaceFieldType : short
 
     /// <summary>One of the field's options.</summary>
     Select = 3,
+}
+
+/// <summary>What a plan is for: posting as a business, or a B2B buyer seeing sellers' contacts.</summary>
+public enum MarketplacePlanPurpose : short
+{
+    /// <summary>How many posts a business may have live at once.</summary>
+    Posting = 1,
+
+    /// <summary>A buyer's monthly plan: with it, an accepted B2B request shows the seller's contact.</summary>
+    B2BBuyer = 2,
+}
+
+/// <summary>Where a product order stands. Stored, so append-only: never renumber.</summary>
+public enum MarketplaceOrderStatus : short
+{
+    /// <summary>Ordered to pay online; the stock is held for a short while until the payment goes through.</summary>
+    AwaitingPayment = 1,
+
+    /// <summary>Ordered with cash on delivery; waits for the business to confirm.</summary>
+    Placed = 2,
+
+    Confirmed = 3,
+
+    /// <summary>Handed to a courier, with its tracking number.</summary>
+    Shipped = 4,
+
+    OutForDelivery = 5,
+
+    /// <summary>With the customer; waits for their review, or closes by itself after some days.</summary>
+    Delivered = 6,
+
+    /// <summary>Reviewed, or the days after delivery have passed. Final.</summary>
+    Closed = 7,
+
+    /// <summary>Cancelled before it shipped, or not paid in time. Final; the stock went back.</summary>
+    Cancelled = 8,
+}
+
+/// <summary>How a customer pays for an order. Stored, append-only.</summary>
+public enum MarketplacePaymentMethod : short
+{
+    CashOnDelivery = 1,
+
+    /// <summary>Through the payment gateway, collected by Zuno.</summary>
+    Online = 2,
+}
+
+/// <summary>Who moved an order on.</summary>
+public enum MarketplaceOrderActor : short
+{
+    Business = 1,
+
+    Customer = 2,
+
+    /// <summary>The timed job: an unpaid order let go, a delivered one closed.</summary>
+    System = 3,
+}
+
+/// <summary>Where a B2B request stands. Stored, append-only.</summary>
+public enum MarketplaceB2BRequestStatus : short
+{
+    Requested = 1,
+
+    /// <summary>The seller said yes: each side may now see the other's contact.</summary>
+    Accepted = 2,
+
+    Declined = 3,
 }

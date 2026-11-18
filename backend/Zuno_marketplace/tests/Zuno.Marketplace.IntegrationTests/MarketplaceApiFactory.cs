@@ -88,14 +88,43 @@ public class MarketplaceApiFactory : WebApplicationFactory<Program>, IAsyncLifet
         }));
 
         // The Service API is not running here: its answers about the caller come from a stand-in.
-        builder.ConfigureTestServices(services => services.AddScoped<IServiceDirectory, StandInServiceDirectory>());
+        // No merchant account either: a stand-in gateway that takes no money.
+        builder.ConfigureTestServices(services =>
+        {
+            services.AddScoped<IServiceDirectory, StandInServiceDirectory>();
+            services.AddSingleton<IMarketplacePaymentGateway, StandInPaymentGateway>();
+        });
     }
 
-    /// <summary>Answers as the Service API would for any caller: a verified business.</summary>
+    /// <summary>Answers as the Service API would for any caller: a verified business, a person with a mobile.</summary>
     private sealed class StandInServiceDirectory : IServiceDirectory
     {
         public Task<ServiceBusiness?> GetCurrentBusinessAsync(CancellationToken cancellationToken) =>
             Task.FromResult<ServiceBusiness?>(new("Test Shop", null, IsVerified: true));
+
+        public Task<ServicePerson?> GetCurrentPersonAsync(CancellationToken cancellationToken) =>
+            Task.FromResult<ServicePerson?>(new("Test Person", "9876543210"));
+    }
+
+    /// <summary>A gateway that takes no money: the signature "good" proves a payment.</summary>
+    public sealed class StandInPaymentGateway : IMarketplacePaymentGateway
+    {
+        public bool IsReady => true;
+
+        public bool IsSimulated => false;
+
+        public string KeyId => "rzp_test_key";
+
+        public Task<string> CreateOrderAsync(decimal amount, string receipt, string description, CancellationToken cancellationToken) =>
+            Task.FromResult($"order_{receipt}");
+
+        public bool VerifySignature(string providerOrderId, string paymentId, string signature) => signature == "good";
+
+        public Task<string?> FindCapturedPaymentAsync(string providerOrderId, CancellationToken cancellationToken) =>
+            Task.FromResult<string?>(null);
+
+        public Task<string> RefundAsync(string paymentId, decimal amount, CancellationToken cancellationToken) =>
+            Task.FromResult($"rfnd_{paymentId}");
     }
 
     public async Task InitializeAsync()
