@@ -345,9 +345,12 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
     return MarketplaceSummary(
       active: plan.usedActivePosts,
       paused: posts.where((p) => p.status == 'Paused').length,
-      // Live, item by item as the server counts: each live post's colours / sizes on sale, or one.
+      // Products Live, item by item as the server counts: each live product's colours / sizes on
+      // sale, or one.
       liveItems: posts
-          .where((p) => p.status == MarketplacePostStatus.active)
+          .where(
+            (p) => p.status == MarketplacePostStatus.active && _isProduct(p),
+          )
           .fold<int>(0, (sum, p) {
             final onSale = p.variants.where((v) => v.isActive).length;
             return sum + (onSale == 0 ? 1 : onSale);
@@ -358,7 +361,7 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
         0,
         (sum, p) =>
             sum +
-            (p.status == MarketplacePostStatus.paused
+            (p.status == MarketplacePostStatus.paused && !p.isWholesale
                 ? (p.variants.isEmpty ? 1 : p.variants.length)
                 : p.status == MarketplacePostStatus.active
                 ? p.variants.where((v) => !v.isActive).length
@@ -367,6 +370,11 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
                 : 0),
       ),
       liveWholesale: _live.where((p) => p.isWholesale).length,
+      inactiveWholesale: posts
+          .where(
+            (p) => p.isWholesale && p.status == MarketplacePostStatus.paused,
+          )
+          .length,
       liveFood: _live
           .where((p) => p.kind == MarketplacePostKind.foodOffer)
           .length,
@@ -404,6 +412,9 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
   Iterable<MarketplacePost> get _live =>
       posts.where((p) => p.status == MarketplacePostStatus.active);
 
+  static bool _isProduct(MarketplacePost p) =>
+      p.kind == MarketplacePostKind.listing && !p.isWholesale;
+
   static bool _expiredFood(MarketplacePost p) =>
       p.kind == MarketplacePostKind.foodOffer &&
       p.status == MarketplacePostStatus.expired;
@@ -420,15 +431,17 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
     bool keepsStock = false,
     bool inactive = false,
     bool wholesale = false,
+    bool products = false,
   }) async {
     if (failList case final error?) throw error;
     return posts
         .where((p) => !wholesale || p.isWholesale)
         .where((p) => kind == null || p.kind == kind)
+        .where((p) => !products || _isProduct(p))
         .where(
           (p) =>
               !inactive ||
-              p.status == MarketplacePostStatus.paused ||
+              (p.status == MarketplacePostStatus.paused && !p.isWholesale) ||
               p.variants.any((v) => !v.isActive) ||
               _expiredFood(p),
         )
@@ -3322,6 +3335,13 @@ void main() {
               status: MarketplacePostStatus.expired,
             ),
             _post(id: 'p-2', status: 'Paused'),
+            _post(
+              id: 'b-paused',
+              title: 'Onion',
+              categoryId: _b2b.id,
+              tradeType: MarketplaceTradeType.wholesale,
+              status: MarketplacePostStatus.paused,
+            ),
           ],
           plan: _plan(max: 20, used: 6),
         ),
@@ -3330,13 +3350,14 @@ void main() {
       String valueOf(String key) => tester
           .widget<StatTile>(find.byKey(ValueKey('marketplace-tile-$key')))
           .value;
-      expect(valueOf('active'), '9', reason: '4 + 2 B2B + 2 food + 1 advert');
+      expect(valueOf('active'), '4', reason: 'the saree and its colours only');
       expect(
         valueOf('inactive'),
         '2',
         reason: 'the paused post and the expired food offer',
       );
       expect(valueOf('b2b-live'), '2');
+      expect(valueOf('b2b-inactive'), '1', reason: 'not in Products Inactive');
       expect(valueOf('food-live'), '2');
       expect(valueOf('food-left'), '25', reason: 'not the expired offer');
       expect(valueOf('ads-live'), '1');

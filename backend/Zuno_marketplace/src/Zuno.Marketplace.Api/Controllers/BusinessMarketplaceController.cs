@@ -29,12 +29,13 @@ public class BusinessMarketplaceController(
         [FromQuery] bool? keepsStock = null,
         [FromQuery] bool? inactive = null,
         [FromQuery] bool? wholesale = null,
+        [FromQuery] bool? products = null,
         CancellationToken cancellationToken = default) =>
         Ok(await mediator.Send(
             new GetMyMarketplacePostsQuery
             {
                 Page = page, PageSize = pageSize, Kind = kind, CategoryId = categoryId, Status = status,
-                KeepsStock = keepsStock, Inactive = inactive, Wholesale = wholesale,
+                KeepsStock = keepsStock, Inactive = inactive, Wholesale = wholesale, Products = products,
             },
             cancellationToken));
 

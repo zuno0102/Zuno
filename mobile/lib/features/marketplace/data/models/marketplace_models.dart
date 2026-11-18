@@ -401,6 +401,7 @@ class MarketplaceSummaryModel {
     this.inactive,
     this.liveItems,
     this.liveWholesale = 0,
+    this.inactiveWholesale = 0,
     this.liveFood = 0,
     this.liveAds = 0,
     this.foodPortionsLeft = 0,
@@ -420,6 +421,7 @@ class MarketplaceSummaryModel {
   final int? inactive;
   final int? liveItems;
   final int liveWholesale;
+  final int inactiveWholesale;
   final int liveFood;
   final int liveAds;
   final int foodPortionsLeft;
@@ -433,6 +435,7 @@ class MarketplaceSummaryModel {
     inactive: inactive,
     liveItems: liveItems,
     liveWholesale: liveWholesale,
+    inactiveWholesale: inactiveWholesale,
     liveFood: liveFood,
     liveAds: liveAds,
     foodPortionsLeft: foodPortionsLeft,

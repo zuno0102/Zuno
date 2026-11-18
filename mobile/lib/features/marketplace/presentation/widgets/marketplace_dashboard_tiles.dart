@@ -12,9 +12,9 @@ import 'package:zuno/shared/widgets/section_header.dart';
 import 'package:zuno/shared/widgets/stat_tile.dart';
 
 /// The Marketplace section of the business home screen, in four groups:
-/// - Products: Live posts (every item live across the Marketplace), Inactive (everything not on
-///   sale, expired food offers too) and Product stock.
-/// - B2B: Live and B2B stock.
+/// - Products: Live posts (live products, item by item), Inactive (everything not on
+///   sale, expired food offers too; not B2B) and Product stock.
+/// - B2B: Live, Inactive and B2B stock.
 /// - Food: Live and Food remaining (portions).
 /// - Ads: Live and Expired.
 ///
@@ -44,6 +44,7 @@ class MarketplaceDashboardTiles extends ConsumerWidget {
       String? status,
       String? kind,
       bool wholesale = false,
+      bool products = false,
       bool inactive = false,
     }) => pushScreen(
       context,
@@ -52,6 +53,7 @@ class MarketplaceDashboardTiles extends ConsumerWidget {
         status: status,
         kind: kind,
         wholesale: wholesale,
+        products: products,
         inactive: inactive,
       ),
     );
@@ -79,13 +81,16 @@ class MarketplaceDashboardTiles extends ConsumerWidget {
             StatTile(
               key: const ValueKey('marketplace-tile-active'),
               label: 'Live posts',
-              // Every item live across the Marketplace: a product's main colour / size and each
-              // other one on sale, and each B2B post, food offer and advert.
+              // Products only, item by item: a product's main colour / size and each other one
+              // on sale. B2B, food and ads count in their own groups.
               value: count((s) => s.liveCount),
               icon: Icons.storefront_outlined,
               tone: some(s?.liveCount, StatusTone.success),
-              onTap: () =>
-                  open('Live posts', status: MarketplacePostStatus.active),
+              onTap: () => open(
+                'Live products',
+                status: MarketplacePostStatus.active,
+                products: true,
+              ),
             ),
             // Paused posts, colours / sizes switched off, and food offers whose time is over.
             StatTile(
@@ -116,6 +121,19 @@ class MarketplaceDashboardTiles extends ConsumerWidget {
               onTap: () => open(
                 'B2B live',
                 status: MarketplacePostStatus.active,
+                wholesale: true,
+              ),
+            ),
+            // B2B posts switched off: counted here, not in the Products Inactive tile.
+            StatTile(
+              key: const ValueKey('marketplace-tile-b2b-inactive'),
+              label: 'Inactive',
+              value: count((s) => s.inactiveWholesale),
+              icon: Icons.pause_circle_outline,
+              tone: some(s?.inactiveWholesale, StatusTone.progress),
+              onTap: () => open(
+                'B2B inactive',
+                status: MarketplacePostStatus.paused,
                 wholesale: true,
               ),
             ),

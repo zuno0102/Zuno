@@ -30,6 +30,10 @@ internal static class MarketplaceQueries
         return post;
     }
 
+    /// <summary>The Products group: listings sold one by one — not B2B lots, food offers or adverts.</summary>
+    public static readonly System.Linq.Expressions.Expression<Func<MarketplacePost, bool>> IsProduct = p =>
+        p.Kind == MarketplacePostKind.Listing && p.TradeType != MarketplaceTradeType.Wholesale;
+
     /// <summary>The joins one post card needs. The context splits them into one query per list.</summary>
     public static IQueryable<MarketplacePost> WithCard(this IQueryable<MarketplacePost> posts) =>
         posts

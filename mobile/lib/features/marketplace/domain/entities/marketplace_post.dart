@@ -471,6 +471,7 @@ class MarketplaceSummary {
     this.inactive,
     this.liveItems,
     this.liveWholesale = 0,
+    this.inactiveWholesale = 0,
     this.liveFood = 0,
     this.liveAds = 0,
     this.foodPortionsLeft = 0,
@@ -482,12 +483,13 @@ class MarketplaceSummary {
   final int paused;
 
   /// The Inactive tile: paused posts, live products with a colour / size switched off, and food
-  /// offers whose time is over. Null from an older server, which counts the paused only.
+  /// offers whose time is over — not B2B, which has its own. Null from an older server, which
+  /// counts the paused only.
   final int? inactive;
 
   int get inactiveCount => inactive ?? paused;
 
-  /// The Live tile, item by item: each live product's main colour / size and every other one on
+  /// The Products Live tile, item by item: each live product's main colour / size and every one on
   /// sale (one for a post with none). Null from an older server, which counts the posts.
   final int? liveItems;
 
@@ -497,6 +499,9 @@ class MarketplaceSummary {
   final int liveWholesale;
   final int liveFood;
   final int liveAds;
+
+  /// The B2B Inactive tile: B2B posts switched off.
+  final int inactiveWholesale;
 
   /// The Food remaining tile: portions still offered in the food offers running now.
   final int foodPortionsLeft;

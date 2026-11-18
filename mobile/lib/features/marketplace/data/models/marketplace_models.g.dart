@@ -232,6 +232,7 @@ MarketplaceSummaryModel _$MarketplaceSummaryModelFromJson(
   inactive: (json['inactive'] as num?)?.toInt(),
   liveItems: (json['liveItems'] as num?)?.toInt(),
   liveWholesale: (json['liveWholesale'] as num?)?.toInt() ?? 0,
+  inactiveWholesale: (json['inactiveWholesale'] as num?)?.toInt() ?? 0,
   liveFood: (json['liveFood'] as num?)?.toInt() ?? 0,
   liveAds: (json['liveAds'] as num?)?.toInt() ?? 0,
   foodPortionsLeft: (json['foodPortionsLeft'] as num?)?.toInt() ?? 0,

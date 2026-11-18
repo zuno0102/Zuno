@@ -37,6 +37,7 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
     String? kind,
     bool keepsStock = false,
     bool wholesale = false,
+    bool products = false,
     bool inactive = false,
   }) async => [
     for (final p in (await _remote.getMyPosts(
@@ -45,6 +46,7 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
       kind: kind,
       keepsStock: keepsStock,
       wholesale: wholesale,
+      products: products,
       inactive: inactive,
       pageSize: listPageSize,
     )).items)

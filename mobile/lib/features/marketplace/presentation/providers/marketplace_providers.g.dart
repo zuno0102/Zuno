@@ -366,6 +366,7 @@ final class BusinessMarketplacePostsProvider
       String? status,
       String? kind,
       bool wholesale,
+      bool products,
       bool inactive,
     })
     super.argument,
@@ -402,6 +403,7 @@ final class BusinessMarketplacePostsProvider
               String? status,
               String? kind,
               bool wholesale,
+              bool products,
               bool inactive,
             });
     return businessMarketplacePosts(
@@ -410,6 +412,7 @@ final class BusinessMarketplacePostsProvider
       status: argument.status,
       kind: argument.kind,
       wholesale: argument.wholesale,
+      products: argument.products,
       inactive: argument.inactive,
     );
   }
@@ -427,7 +430,7 @@ final class BusinessMarketplacePostsProvider
 }
 
 String _$businessMarketplacePostsHash() =>
-    r'33463fbd1bc88e49536d3a60a584900de15caab9';
+    r'526b8566425618c857abcbe910866d4e0739b950';
 
 /// The business's posts; [categoryId] (a main category) and [status] narrow the list (null for all).
 ///
@@ -443,6 +446,7 @@ final class BusinessMarketplacePostsFamily extends $Family
             String? status,
             String? kind,
             bool wholesale,
+            bool products,
             bool inactive,
           })
         > {
@@ -465,6 +469,7 @@ final class BusinessMarketplacePostsFamily extends $Family
     String? status,
     String? kind,
     bool wholesale = false,
+    bool products = false,
     bool inactive = false,
   }) => BusinessMarketplacePostsProvider._(
     argument: (
@@ -472,6 +477,7 @@ final class BusinessMarketplacePostsFamily extends $Family
       status: status,
       kind: kind,
       wholesale: wholesale,
+      products: products,
       inactive: inactive,
     ),
     from: this,

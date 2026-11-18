@@ -161,13 +161,17 @@ public class MarketplaceSummaryDto
     public int Paused { get; set; }
 
     /// <summary>
-    /// The Live tile, item by item: each live product's main colour / size and every other one on
-    /// sale (one for a post with none). <see cref="Active"/> counts posts, as the plan does.
+    /// The Products group's Live tile, item by item: each live product's main colour / size and every
+    /// other one on sale (one for a product with none). <see cref="Active"/> counts every post, as the
+    /// plan does.
     /// </summary>
     public int LiveItems { get; set; }
 
     /// <summary>The B2B tile: live B2B posts.</summary>
     public int LiveWholesale { get; set; }
+
+    /// <summary>The B2B Inactive tile: B2B posts switched off (paused).</summary>
+    public int InactiveWholesale { get; set; }
 
     /// <summary>The Food tile: live food offers.</summary>
     public int LiveFood { get; set; }
@@ -186,7 +190,8 @@ public class MarketplaceSummaryDto
 
     /// <summary>
     /// The Inactive tile, item by item: every colour / size of a paused product (one for a post with
-    /// none), each one switched off on a live product, and each food offer whose time is over.
+    /// none), each one switched off on a live product, and each food offer whose time is over. Paused
+    /// B2B posts count in <see cref="InactiveWholesale"/>.
     /// </summary>
     public int Inactive { get; set; }
 

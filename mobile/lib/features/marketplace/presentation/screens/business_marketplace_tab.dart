@@ -38,6 +38,7 @@ class BusinessMarketplaceTab extends ConsumerStatefulWidget {
     this.status,
     this.kind,
     this.wholesale = false,
+    this.products = false,
     this.inactive = false,
     super.key,
   });
@@ -50,13 +51,16 @@ class BusinessMarketplaceTab extends ConsumerStatefulWidget {
   /// The B2B posts only: the B2B Live tile.
   final bool wholesale;
 
+  /// The products only (not B2B, food or ads): the Products Live tile.
+  final bool products;
+
   /// The Inactive tile's view: paused posts, live products with a colour / size switched off, and
   /// food offers whose time is over.
   final bool inactive;
 
   /// A home tile's list: it shows and changes posts, but adds from the Marketplace tab.
   bool get isFiltered =>
-      status != null || kind != null || wholesale || inactive;
+      status != null || kind != null || wholesale || products || inactive;
 
   /// The posts this list shows.
   BusinessMarketplacePostsProvider get posts =>
@@ -64,6 +68,7 @@ class BusinessMarketplaceTab extends ConsumerStatefulWidget {
         status: status,
         kind: kind,
         wholesale: wholesale,
+        products: products,
         inactive: inactive,
       );
 
@@ -406,6 +411,7 @@ class MarketplacePostListScreen extends StatelessWidget {
     this.status,
     this.kind,
     this.wholesale = false,
+    this.products = false,
     this.inactive = false,
     super.key,
   });
@@ -421,6 +427,9 @@ class MarketplacePostListScreen extends StatelessWidget {
   /// The B2B posts only.
   final bool wholesale;
 
+  /// The products only.
+  final bool products;
+
   /// The Inactive tile's posts.
   final bool inactive;
 
@@ -431,6 +440,7 @@ class MarketplacePostListScreen extends StatelessWidget {
       status: status,
       kind: kind,
       wholesale: wholesale,
+      products: products,
       inactive: inactive,
     ),
   );

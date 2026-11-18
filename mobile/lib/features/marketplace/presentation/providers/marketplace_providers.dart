@@ -173,6 +173,7 @@ Future<List<MarketplacePost>> businessMarketplacePosts(
   String? status,
   String? kind,
   bool wholesale = false,
+  bool products = false,
   bool inactive = false,
 }) {
   final repository = ref.watch(marketplaceRepositoryProvider);
@@ -180,6 +181,7 @@ Future<List<MarketplacePost>> businessMarketplacePosts(
       status == null &&
       kind == null &&
       !wholesale &&
+      !products &&
       !inactive) {
     unawaited(repository.syncProfile().then<void>((_) {}, onError: (_) {}));
   }
@@ -188,6 +190,7 @@ Future<List<MarketplacePost>> businessMarketplacePosts(
     status: status,
     kind: kind,
     wholesale: wholesale,
+    products: products,
     inactive: inactive,
   );
 }

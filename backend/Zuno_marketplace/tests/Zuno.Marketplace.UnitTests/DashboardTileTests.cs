@@ -7,13 +7,13 @@ using Zuno.Marketplace.Infrastructure.Persistence.Seed;
 namespace Zuno.Marketplace.UnitTests;
 
 /// <summary>
-/// The Marketplace home tiles in four groups: Products (Live posts across the Marketplace, Inactive,
+/// The Marketplace home tiles in four groups: Products (Live products item by item, Inactive,
 /// Product stock), B2B (Live, B2B stock), Food (Live, Food left) and Ads (Live, Expired).
 /// </summary>
 public class DashboardTileTests
 {
     [Fact]
-    public async Task TheTiles_CountEachGroup_AndLivePostsIsTheWholeMarketplace()
+    public async Task TheTiles_CountEachGroupOnItsOwn()
     {
         using var test = new TestMarketplace();
         var free = await test.Db.Plans.SingleAsync(p => p.IsDefault);
@@ -21,7 +21,7 @@ public class DashboardTileTests
         await test.Db.SaveChangesAsync();
 
         // A product with its main colour and three others: 4 items.
-        await test.SaveHandlers.Handle(new CreateMarketplacePostCommand
+        var saree = await test.SaveHandlers.Handle(new CreateMarketplacePostCommand
         {
             CategoryId = MarketplaceCatalogSeedData.Products,
             SubCategoryId = MarketplaceCatalogSeedData.SubId(3, 1),
@@ -67,7 +67,7 @@ public class DashboardTileTests
 
         var summary = await test.QueryHandlers.Handle(new GetMyMarketplaceSummaryQuery(), default);
 
-        summary.LiveItems.Should().Be(9, "the saree's 4, two B2B lots, two food offers and one advert");
+        summary.LiveItems.Should().Be(4, "the saree and its colours only; B2B, food and ads have their own groups");
         (summary.LiveWholesale, summary.LiveFood, summary.LiveAds).Should().Be((2, 2, 1));
         summary.FoodPortionsLeft.Should().Be(25, "20 + 5 portions in the offers running now, not the expired 7");
         (summary.ExpiredFood, summary.ExpiredAds).Should().Be((1, 1));
@@ -75,6 +75,38 @@ public class DashboardTileTests
 
         var inactive = await test.QueryHandlers.Handle(new GetMyMarketplacePostsQuery { Inactive = true }, default);
         inactive.Items.Select(p => p.Id).Should().Equal(expiredFood.Id);
+
+        // The Products Live tile opens the products only.
+        var products = await test.QueryHandlers.Handle(
+            new GetMyMarketplacePostsQuery { Products = true, Status = nameof(MarketplacePostStatus.Active) }, default);
+        products.Items.Select(p => p.Id).Should().Equal(saree.Id);
+    }
+
+    [Fact]
+    public async Task AnInactiveB2BPost_CountsInTheB2BTile_NotInProducts()
+    {
+        using var test = new TestMarketplace();
+        var paused = test.Seed(p =>
+        {
+            p.CategoryId = MarketplaceCatalogSeedData.B2BWholesale;
+            p.SubCategoryId = MarketplaceCatalogSeedData.SubId(4, 1);
+            p.Title = "Nendran banana";
+            p.TradeType = MarketplaceTradeType.Wholesale;
+            p.PriceUnit = "kg";
+            p.MinOrderQuantity = 100;
+            p.Quantity = 2000;
+            p.Status = MarketplacePostStatus.Paused;
+        });
+        var pausedProduct = test.Seed(p => p.Status = MarketplacePostStatus.Paused);
+
+        var summary = await test.QueryHandlers.Handle(new GetMyMarketplaceSummaryQuery(), default);
+
+        (summary.Inactive, summary.InactiveWholesale).Should().Be((1, 1), "each in its own group");
+        var products = await test.QueryHandlers.Handle(new GetMyMarketplacePostsQuery { Inactive = true }, default);
+        products.Items.Select(p => p.Id).Should().Equal(pausedProduct.Id);
+        var b2b = await test.QueryHandlers.Handle(
+            new GetMyMarketplacePostsQuery { Wholesale = true, Status = nameof(MarketplacePostStatus.Paused) }, default);
+        b2b.Items.Select(p => p.Id).Should().Equal(paused.Id);
     }
 
     [Fact]
@@ -85,7 +117,7 @@ public class DashboardTileTests
         var summary = await test.QueryHandlers.Handle(new GetMyMarketplaceSummaryQuery(), default);
 
         (summary.LiveItems, summary.LiveWholesale, summary.LiveFood, summary.LiveAds,
-            summary.FoodPortionsLeft, summary.ExpiredFood, summary.ExpiredAds, summary.Inactive)
-            .Should().Be((0, 0, 0, 0, 0, 0, 0, 0));
+            summary.FoodPortionsLeft, summary.ExpiredFood, summary.ExpiredAds, summary.Inactive, summary.InactiveWholesale)
+            .Should().Be((0, 0, 0, 0, 0, 0, 0, 0, 0));
     }
 }
