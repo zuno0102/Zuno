@@ -46,10 +46,17 @@ class _BusinessOwnerDashboardShellState
   /// hire post list instead of the crew list.
   int _workersSubTab = _crewSubTab;
 
+  /// Which sub-tab Services opens on: set by the Home Start card ("Add a rent item" opens Rent).
+  int _catalogSubTab = BusinessCatalogTab.serviceTab;
+
+  void _openCatalog(int subTab) => setState(() {
+    _index = _servicesTab;
+    _catalogSubTab = subTab;
+  });
+
   static const _homeTab = 0;
   static const _ordersTab = 1;
-  // Services is index 2. It has no constant because nothing navigates to it any more — the home
-  // screen's service tiles open their own list instead of switching tabs.
+  static const _servicesTab = 2;
   static const _workersTab = 3;
 
   static const _crewSubTab = 0;
@@ -143,10 +150,13 @@ class _BusinessOwnerDashboardShellState
     /// Four destinations, not five: the profile is reached from a card on the home tab, since it
     /// is set up once and rarely returned to — unlike these, which are worked in all day.
     final tabs = <Widget>[
-      const BusinessDashboardTab(),
+      BusinessDashboardTab(onOpenCatalog: _openCatalog),
       const BusinessOrdersHubTab(),
-      // Service | Rent. The Service tab inside is the services screen as it was.
-      const BusinessCatalogTab(),
+      // Service | Rent | Marketplace. Keyed by the sub-tab, so the Start card's choice opens.
+      BusinessCatalogTab(
+        key: ValueKey(_catalogSubTab),
+        initialIndex: _catalogSubTab,
+      ),
       BusinessWorkersTab(initialIndex: _workersSubTab),
     ];
 

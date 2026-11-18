@@ -22,11 +22,15 @@ import 'package:zuno/features/vacancy/presentation/screens/business_vacancies_ta
 import 'package:zuno/features/vacancy/presentation/screens/vacancy_applicants_screen.dart';
 import 'package:zuno/features/marketplace/domain/entities/marketplace_post.dart';
 import 'package:zuno/features/marketplace/presentation/providers/marketplace_providers.dart';
+import 'package:zuno/features/rental/domain/entities/rental_item.dart';
+import 'package:zuno/features/rental/presentation/providers/rental_providers.dart';
+import 'package:zuno/features/rental/presentation/screens/business_catalog_tab.dart';
 
 import 'features/vacancy/vacancy_fixtures.dart';
 
 const _summary = VacancySummary(
   activePosts: 21,
+  totalPosts: 26,
   newCount: 22,
   waitingCount: 23,
   shortlistedCount: 24,
@@ -125,6 +129,10 @@ void main() {
     WidgetTester tester,
     BusinessDashboard data, {
     BusinessProfile? profile,
+    VacancySummary vacancies = _summary,
+    RentalSummary? rent,
+    MarketplaceSummary? marketplace,
+    ValueChanged<int>? onOpenCatalog,
   }) async {
     // A narrow phone, where five tiles across would never have fitted. Tall enough that every
     // section is built: the list is lazy, and the Full-time jobs section pushed the last ones down.
@@ -138,7 +146,16 @@ void main() {
           if (profile != null)
             businessProfileProvider.overrideWith(() => _Profile(profile)),
           businessDashboardProvider.overrideWith((ref) async => data),
-          vacancySummaryProvider.overrideWith((ref) async => _summary),
+          vacancySummaryProvider.overrideWith((ref) async => vacancies),
+          // Rent and Marketplace are their own servers: answered here when a test gives them.
+          if (rent != null)
+            rentalSummaryProvider.overrideWith((ref) async => rent),
+          if (marketplace != null) ...[
+            marketplaceSummaryProvider.overrideWith((ref) async => marketplace),
+            marketplaceCategoriesProvider.overrideWith(
+              (ref) async => _categories,
+            ),
+          ],
           // A stage name that is not the live one: the row must show what the server sends.
           orderStagesProvider.overrideWith(
             (ref) async => const [
@@ -146,7 +163,11 @@ void main() {
             ],
           ),
         ],
-        child: const MaterialApp(home: Scaffold(body: BusinessDashboardTab())),
+        child: MaterialApp(
+          home: Scaffold(
+            body: BusinessDashboardTab(onOpenCatalog: onOpenCatalog),
+          ),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -349,11 +370,145 @@ void main() {
     expect(model.awaitingPayment.single.id, 'b-9');
   });
 
-  testWidgets('an empty dashboard still lays out', (tester) async {
-    await pump(tester, const BusinessDashboard());
+  group('Home shows only the areas in use', () {
+    // The section headers, top to bottom.
+    List<String> sections(WidgetTester tester) {
+      final headers = [
+        for (final code in ['Service', 'FullTime', 'Rent', 'Marketplace'])
+          if (find.byKey(ValueKey('home-section-$code')).evaluate().isNotEmpty)
+            code,
+      ];
+      headers.sort(
+        (a, b) => tester
+            .getTopLeft(find.byKey(ValueKey('home-section-$a')))
+            .dy
+            .compareTo(
+              tester.getTopLeft(find.byKey(ValueKey('home-section-$b'))).dy,
+            ),
+      );
+      return headers;
+    }
 
-    expect(tester.takeException(), isNull);
-    expect(find.text('Active workers'), findsOneWidget);
+    testWidgets('a new business gets the Start card, which opens Services', (
+      tester,
+    ) async {
+      final opened = <int>[];
+      await pump(
+        tester,
+        const BusinessDashboard(),
+        vacancies: _noVacancies,
+        rent: _noRent,
+        marketplace: _noPosts,
+        onOpenCatalog: opened.add,
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('What do you want to do?'), findsOneWidget);
+      expect(sections(tester), isEmpty);
+      expect(find.text('Customer activity'), findsNothing);
+
+      for (final key in [
+        'home-start-service',
+        'home-start-rent',
+        'home-start-marketplace',
+      ]) {
+        await tester.tap(find.byKey(ValueKey(key)));
+      }
+      expect(opened, [
+        BusinessCatalogTab.serviceTab,
+        BusinessCatalogTab.rentTab,
+        BusinessCatalogTab.marketplaceTab,
+      ]);
+    });
+
+    testWidgets('A · Service only: Service and Full-time jobs', (tester) async {
+      await pump(tester, dashboard, rent: _noRent, marketplace: _noPosts);
+
+      expect(sections(tester), ['Service', 'FullTime']);
+      expect(find.byKey(const ValueKey('home-start-card')), findsNothing);
+    });
+
+    testWidgets('no vacancy ever posted: no Full-time jobs part', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        dashboard,
+        vacancies: _noVacancies,
+        rent: _noRent,
+        marketplace: _noPosts,
+      );
+
+      expect(sections(tester), ['Service']);
+    });
+
+    testWidgets('B · Rent only: Rent, with the customer cards', (tester) async {
+      await pump(
+        tester,
+        const BusinessDashboard(),
+        vacancies: _noVacancies,
+        rent: _threeRentItems,
+        marketplace: _noPosts,
+      );
+
+      expect(sections(tester), ['Rent']);
+      expect(find.text('Customer activity'), findsOneWidget);
+    });
+
+    testWidgets('C · Marketplace only: its used groups, no customer cards', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        const BusinessDashboard(),
+        vacancies: _noVacancies,
+        rent: _noRent,
+        marketplace: _productsAndFood,
+      );
+
+      expect(sections(tester), ['Marketplace']);
+      expect(find.text('Customer activity'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('marketplace-tile-active')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('marketplace-tile-food-live')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('marketplace-tile-b2b-live')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey('marketplace-tile-ads-live')),
+        findsNothing,
+      );
+    });
+
+    testWidgets('all three: Service, Full-time, Rent, Marketplace in order', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        dashboard,
+        rent: _threeRentItems,
+        marketplace: _productsAndFood,
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(sections(tester), ['Service', 'FullTime', 'Rent', 'Marketplace']);
+    });
+
+    testWidgets('a server that cannot be reached keeps its section off Home', (
+      tester,
+    ) async {
+      // Rent and Marketplace are not answered here: their servers fail in a test.
+      await pump(tester, dashboard);
+
+      expect(sections(tester), ['Service', 'FullTime']);
+      expect(find.byKey(const ValueKey('home-start-card')), findsNothing);
+    });
   });
 
   group('the profile card', () {
@@ -498,4 +653,110 @@ const _marketplace = MarketplaceSummary(
     maxActivePosts: 1,
     usedActivePosts: 1,
   ),
+);
+
+MarketplaceCategory _category(String id, String kind, String tradeMode) =>
+    MarketplaceCategory(
+      id: id,
+      name: id,
+      shortName: id,
+      slug: id,
+      kind: kind,
+      tradeMode: tradeMode,
+      displayOrder: 1,
+      isActive: true,
+      subCategories: const [],
+      fields: const [],
+    );
+
+final _categories = [
+  _category(
+    'products',
+    MarketplacePostKind.listing,
+    MarketplaceTradeMode.retailOnly,
+  ),
+  _category(
+    'b2b',
+    MarketplacePostKind.listing,
+    MarketplaceTradeMode.wholesaleOnly,
+  ),
+  _category(
+    'food',
+    MarketplacePostKind.foodOffer,
+    MarketplaceTradeMode.retailOnly,
+  ),
+  _category(
+    'ads',
+    MarketplacePostKind.advertisement,
+    MarketplaceTradeMode.retailOnly,
+  ),
+];
+
+/// A business with posts in Products and Food only.
+const _productsAndFood = MarketplaceSummary(
+  active: 3,
+  paused: 0,
+  expired: 0,
+  closed: 0,
+  liveItems: 2,
+  liveFood: 1,
+  plan: MarketplacePlan(
+    code: 'free',
+    name: 'Free',
+    price: 0,
+    maxActivePosts: 5,
+    usedActivePosts: 3,
+  ),
+  categories: [
+    MarketplaceCategoryCount(
+      categoryId: 'products',
+      active: 2,
+      paused: 0,
+      expired: 0,
+      closed: 0,
+    ),
+    MarketplaceCategoryCount(
+      categoryId: 'food',
+      active: 1,
+      paused: 0,
+      expired: 0,
+      closed: 0,
+    ),
+  ],
+);
+
+const _noPosts = MarketplaceSummary(
+  active: 0,
+  paused: 0,
+  expired: 0,
+  closed: 0,
+  plan: MarketplacePlan(
+    code: 'free',
+    name: 'Free',
+    price: 0,
+    maxActivePosts: 1,
+    usedActivePosts: 0,
+  ),
+);
+
+const _noVacancies = VacancySummary(
+  activePosts: 0,
+  newCount: 0,
+  waitingCount: 0,
+  shortlistedCount: 0,
+  hiredCount: 0,
+);
+
+const _noRent = RentalSummary(
+  totalItems: 0,
+  availableItems: 0,
+  unavailableItems: 0,
+  unitsAvailable: 0,
+);
+
+const _threeRentItems = RentalSummary(
+  totalItems: 3,
+  availableItems: 2,
+  unavailableItems: 1,
+  unitsAvailable: 40,
 );

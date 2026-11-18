@@ -17,6 +17,9 @@ public class GetVacancySummaryQueryHandler(
     {
         var businessProfileId = await VacancyActor.BusinessProfileIdAsync(currentUserService, dbContext, cancellationToken);
 
+        var totalPosts = await dbContext.Vacancies
+            .CountAsync(v => v.BusinessOwnerProfileId == businessProfileId, cancellationToken);
+
         var activePosts = await dbContext.Vacancies
             .Where(v => v.BusinessOwnerProfileId == businessProfileId)
             .Where(Vacancy.LiveAt(dateTimeProvider.UtcNow))
@@ -32,6 +35,7 @@ public class GetVacancySummaryQueryHandler(
         return new VacancySummaryDto
         {
             ActivePosts = activePosts,
+            TotalPosts = totalPosts,
             NewCount = byStatus.GetValueOrDefault(VacancyApplicationStatus.Applied),
             WaitingCount = byStatus.GetValueOrDefault(VacancyApplicationStatus.Viewed),
             ShortlistedCount = byStatus.GetValueOrDefault(VacancyApplicationStatus.Shortlisted),

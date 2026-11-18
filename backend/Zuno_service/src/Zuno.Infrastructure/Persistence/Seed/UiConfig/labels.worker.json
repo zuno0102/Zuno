@@ -36,7 +36,13 @@
     },
     "Dashboard.Section": {
       "Service": { "label": "Service jobs", "icon": "handyman_outlined", "sort": 1 },
-      "FullTime": { "label": "Full-time jobs", "icon": "badge_outlined", "sort": 2 }
+      "FullTime": { "label": "Full-time jobs", "icon": "badge_outlined", "sort": 2 },
+      "Rent": { "label": "Rent", "icon": "inventory_2_outlined", "sort": 3 },
+      "Marketplace": { "label": "Marketplace", "icon": "storefront_outlined", "sort": 4 },
+      "Products": { "label": "Products", "icon": "shopping_bag_outlined", "sort": 5 },
+      "B2B": { "label": "B2B", "icon": "local_shipping_outlined", "sort": 6 },
+      "Food": { "label": "Food", "icon": "restaurant_outlined", "sort": 7 },
+      "Ads": { "label": "Ads", "icon": "campaign_outlined", "sort": 8 }
     },
     "Dashboard.WorkerTile": {
       "OnTheJob": { "label": "On the job", "detail": "Nothing under way right now.", "tone": "progress", "icon": "play_circle_outline", "sort": 1 },

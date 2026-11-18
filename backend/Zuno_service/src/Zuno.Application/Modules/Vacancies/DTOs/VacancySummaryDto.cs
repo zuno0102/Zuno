@@ -6,6 +6,9 @@ public class VacancySummaryDto
     /// <summary>Vacancies workers can see right now.</summary>
     public int ActivePosts { get; set; }
 
+    /// <summary>Every vacancy it has posted, closed ones too: whether Home shows Full-time jobs.</summary>
+    public int TotalPosts { get; set; }
+
     /// <summary>Applicants not opened yet, across every vacancy.</summary>
     public int NewCount { get; set; }
 

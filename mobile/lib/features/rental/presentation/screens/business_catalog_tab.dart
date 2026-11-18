@@ -9,12 +9,20 @@ import 'package:zuno/features/rental/presentation/screens/business_rentals_tab.d
 /// The Service tab is the existing services screen, unchanged; Rent and Marketplace are each their
 /// own module with their own server, signed in with the same account.
 class BusinessCatalogTab extends StatelessWidget {
-  const BusinessCatalogTab({super.key});
+  const BusinessCatalogTab({this.initialIndex = serviceTab, super.key});
+
+  static const serviceTab = 0;
+  static const rentTab = 1;
+  static const marketplaceTab = 2;
+
+  /// Which of the three opens first: Service, unless the Home Start card asked for another.
+  final int initialIndex;
 
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 3,
+      initialIndex: initialIndex,
       child: Column(
         children: [
           Material(

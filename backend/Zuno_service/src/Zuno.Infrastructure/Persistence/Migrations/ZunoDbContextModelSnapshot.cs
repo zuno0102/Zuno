@@ -3522,6 +3522,78 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                         },
                         new
                         {
+                            Id = new Guid("ba172388-24bf-ebe7-3188-f67fcbec175e"),
+                            Code = "Rent",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "Dashboard.Section",
+                            IconName = "inventory_2_outlined",
+                            IsDeleted = false,
+                            Label = "Rent",
+                            SortOrder = 3,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("8169c590-b604-1d91-00f9-6798f30efc5a"),
+                            Code = "Marketplace",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "Dashboard.Section",
+                            IconName = "storefront_outlined",
+                            IsDeleted = false,
+                            Label = "Marketplace",
+                            SortOrder = 4,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("0f704d77-f1f7-a94b-f79c-04bbbdcc4bfa"),
+                            Code = "Products",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "Dashboard.Section",
+                            IconName = "shopping_bag_outlined",
+                            IsDeleted = false,
+                            Label = "Products",
+                            SortOrder = 5,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c5f8ae2b-73c9-0bfb-18b0-34eba0cb0ab6"),
+                            Code = "B2B",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "Dashboard.Section",
+                            IconName = "local_shipping_outlined",
+                            IsDeleted = false,
+                            Label = "B2B",
+                            SortOrder = 6,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("a750770b-0413-39e7-9544-127f3b5b5037"),
+                            Code = "Food",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "Dashboard.Section",
+                            IconName = "restaurant_outlined",
+                            IsDeleted = false,
+                            Label = "Food",
+                            SortOrder = 7,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("1bc6f135-8d42-3617-70e1-d2cd577651e0"),
+                            Code = "Ads",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Group = "Dashboard.Section",
+                            IconName = "campaign_outlined",
+                            IsDeleted = false,
+                            Label = "Ads",
+                            SortOrder = 8,
+                            Status = (short)1
+                        },
+                        new
+                        {
                             Id = new Guid("e6bcb6a6-3a78-0c98-e505-6842add49dbd"),
                             Code = "OnTheJob",
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),

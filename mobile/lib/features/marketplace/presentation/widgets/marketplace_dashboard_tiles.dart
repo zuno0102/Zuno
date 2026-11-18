@@ -11,6 +11,16 @@ import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/section_header.dart';
 import 'package:zuno/shared/widgets/stat_tile.dart';
 
+/// The Home group a category's posts count in — its label code: Food and Ads by kind, B2B for a
+/// wholesale-only category, Products for the rest.
+String marketplaceDashboardGroup(MarketplaceCategory category) =>
+    switch (category.kind) {
+      MarketplacePostKind.foodOffer => 'Food',
+      MarketplacePostKind.advertisement => 'Ads',
+      _ when category.isWholesaleOnly => 'B2B',
+      _ => 'Products',
+    };
+
 /// The Marketplace section of the business home screen, in four groups, each counting only its own
 /// posts:
 /// - Products: Live posts and Inactive (item by item: a product's main colour / size and each
@@ -19,8 +29,8 @@ import 'package:zuno/shared/widgets/stat_tile.dart';
 /// - Food: Live, Inactive (switched off or its time over) and Food remaining (portions).
 /// - Ads: Live, Inactive and Expired.
 ///
-/// Each tile opens the posts behind its number. Counted by the Marketplace server, like the Rent
-/// tiles beside it.
+/// Only the groups the business has posted in show. Each tile opens the posts behind its number.
+/// Counted by the Marketplace server, like the Rent tiles beside it.
 class MarketplaceDashboardTiles extends ConsumerWidget {
   const MarketplaceDashboardTiles({super.key});
 
@@ -35,6 +45,16 @@ class MarketplaceDashboardTiles extends ConsumerWidget {
     }
 
     final s = summaryAsync.value;
+    final categories = ref.watch(marketplaceCategoriesProvider).value;
+    // Only the groups the business has posted in — by each category's kind and how it sells, from
+    // the category table. All four until the posts and the categories are known.
+    final used = s == null || categories == null
+        ? null
+        : {
+            for (final c in categories)
+              if (s.count(categoryId: c.id) > 0) marketplaceDashboardGroup(c),
+          };
+    bool shows(String group) => used == null || used.contains(group);
     // A dash while loading rather than a spinner, so the section keeps its shape.
     String count(int Function(MarketplaceSummary) of) =>
         s == null ? '–' : '${of(s)}';
@@ -98,140 +118,148 @@ class MarketplaceDashboardTiles extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        group('Products'),
-        StatTileGrid(
-          tiles: [
-            StatTile(
-              key: const ValueKey('marketplace-tile-active'),
-              label: 'Live posts',
-              // Products only, item by item: a product's main colour / size and each other one
-              // on sale. B2B, food and ads count in their own groups.
-              value: count((s) => s.liveCount),
-              icon: Icons.storefront_outlined,
-              tone: some(s?.liveCount, StatusTone.success),
-              onTap: () => open(
-                'Live products',
-                status: MarketplacePostStatus.active,
+        if (shows('Products')) ...[
+          group('Products'),
+          StatTileGrid(
+            tiles: [
+              StatTile(
+                key: const ValueKey('marketplace-tile-active'),
+                label: 'Live posts',
+                // Products only, item by item: a product's main colour / size and each other one
+                // on sale. B2B, food and ads count in their own groups.
+                value: count((s) => s.liveCount),
+                icon: Icons.storefront_outlined,
+                tone: some(s?.liveCount, StatusTone.success),
+                onTap: () => open(
+                  'Live products',
+                  status: MarketplacePostStatus.active,
+                  products: true,
+                ),
+              ),
+              // Paused products and colours / sizes switched off, item by item.
+              inactiveTile(
+                'marketplace-tile-inactive',
+                'Inactive products',
+                (s) => s.inactiveCount,
                 products: true,
               ),
-            ),
-            // Paused products and colours / sizes switched off, item by item.
-            inactiveTile(
-              'marketplace-tile-inactive',
-              'Inactive products',
-              (s) => s.inactiveCount,
-              products: true,
-            ),
-            stock(
-              'marketplace-tile-stock',
-              'Product stock',
-              Icons.inventory_outlined,
-              const MarketplaceStockScreen(),
-            ),
-          ],
-        ),
-        group('B2B'),
-        StatTileGrid(
-          tiles: [
-            StatTile(
-              key: const ValueKey('marketplace-tile-b2b-live'),
-              label: 'Live',
-              value: count((s) => s.liveWholesale),
-              icon: Icons.storefront_outlined,
-              tone: some(s?.liveWholesale, StatusTone.success),
-              onTap: () => open(
-                'B2B live',
-                status: MarketplacePostStatus.active,
+              stock(
+                'marketplace-tile-stock',
+                'Product stock',
+                Icons.inventory_outlined,
+                const MarketplaceStockScreen(),
+              ),
+            ],
+          ),
+        ],
+        if (shows('B2B')) ...[
+          group('B2B'),
+          StatTileGrid(
+            tiles: [
+              StatTile(
+                key: const ValueKey('marketplace-tile-b2b-live'),
+                label: 'Live',
+                value: count((s) => s.liveWholesale),
+                icon: Icons.storefront_outlined,
+                tone: some(s?.liveWholesale, StatusTone.success),
+                onTap: () => open(
+                  'B2B live',
+                  status: MarketplacePostStatus.active,
+                  wholesale: true,
+                ),
+              ),
+              inactiveTile(
+                'marketplace-tile-b2b-inactive',
+                'B2B inactive',
+                (s) => s.inactiveWholesale,
                 wholesale: true,
               ),
-            ),
-            inactiveTile(
-              'marketplace-tile-b2b-inactive',
-              'B2B inactive',
-              (s) => s.inactiveWholesale,
-              wholesale: true,
-            ),
-            stock(
-              'marketplace-tile-b2b-stock',
-              'B2B stock',
-              Icons.local_shipping_outlined,
-              const MarketplaceStockScreen(wholesale: true),
-            ),
-          ],
-        ),
-        group('Food'),
-        StatTileGrid(
-          tiles: [
-            StatTile(
-              key: const ValueKey('marketplace-tile-food-live'),
-              label: 'Live',
-              value: count((s) => s.liveFood),
-              icon: Icons.restaurant_outlined,
-              tone: some(s?.liveFood, StatusTone.success),
-              onTap: () => open(
-                'Food live',
-                status: MarketplacePostStatus.active,
+              stock(
+                'marketplace-tile-b2b-stock',
+                'B2B stock',
+                Icons.local_shipping_outlined,
+                const MarketplaceStockScreen(wholesale: true),
+              ),
+            ],
+          ),
+        ],
+        if (shows('Food')) ...[
+          group('Food'),
+          StatTileGrid(
+            tiles: [
+              StatTile(
+                key: const ValueKey('marketplace-tile-food-live'),
+                label: 'Live',
+                value: count((s) => s.liveFood),
+                icon: Icons.restaurant_outlined,
+                tone: some(s?.liveFood, StatusTone.success),
+                onTap: () => open(
+                  'Food live',
+                  status: MarketplacePostStatus.active,
+                  kind: MarketplacePostKind.foodOffer,
+                ),
+              ),
+              // Switched off, or its time is over.
+              inactiveTile(
+                'marketplace-tile-food-inactive',
+                'Food inactive',
+                (s) => s.inactiveFood,
                 kind: MarketplacePostKind.foodOffer,
               ),
-            ),
-            // Switched off, or its time is over.
-            inactiveTile(
-              'marketplace-tile-food-inactive',
-              'Food inactive',
-              (s) => s.inactiveFood,
-              kind: MarketplacePostKind.foodOffer,
-            ),
-            // Portions still offered in the food offers running now.
-            StatTile(
-              key: const ValueKey('marketplace-tile-food-left'),
-              label: 'Food remaining',
-              value: count((s) => s.foodPortionsLeft),
-              icon: Icons.lunch_dining_outlined,
-              tone: some(s?.foodPortionsLeft, StatusTone.progress),
-              onTap: () => open(
-                'Food remaining',
-                status: MarketplacePostStatus.active,
-                kind: MarketplacePostKind.foodOffer,
+              // Portions still offered in the food offers running now.
+              StatTile(
+                key: const ValueKey('marketplace-tile-food-left'),
+                label: 'Food remaining',
+                value: count((s) => s.foodPortionsLeft),
+                icon: Icons.lunch_dining_outlined,
+                tone: some(s?.foodPortionsLeft, StatusTone.progress),
+                onTap: () => open(
+                  'Food remaining',
+                  status: MarketplacePostStatus.active,
+                  kind: MarketplacePostKind.foodOffer,
+                ),
               ),
-            ),
-          ],
-        ),
-        group('Ads'),
-        StatTileGrid(
-          tiles: [
-            StatTile(
-              key: const ValueKey('marketplace-tile-ads-live'),
-              label: 'Live',
-              value: count((s) => s.liveAds),
-              icon: Icons.campaign_outlined,
-              tone: some(s?.liveAds, StatusTone.success),
-              onTap: () => open(
-                'Ads live',
-                status: MarketplacePostStatus.active,
+            ],
+          ),
+        ],
+        if (shows('Ads')) ...[
+          group('Ads'),
+          StatTileGrid(
+            tiles: [
+              StatTile(
+                key: const ValueKey('marketplace-tile-ads-live'),
+                label: 'Live',
+                value: count((s) => s.liveAds),
+                icon: Icons.campaign_outlined,
+                tone: some(s?.liveAds, StatusTone.success),
+                onTap: () => open(
+                  'Ads live',
+                  status: MarketplacePostStatus.active,
+                  kind: MarketplacePostKind.advertisement,
+                ),
+              ),
+              inactiveTile(
+                'marketplace-tile-ads-inactive',
+                'Ads inactive',
+                (s) => s.inactiveAds,
                 kind: MarketplacePostKind.advertisement,
               ),
-            ),
-            inactiveTile(
-              'marketplace-tile-ads-inactive',
-              'Ads inactive',
-              (s) => s.inactiveAds,
-              kind: MarketplacePostKind.advertisement,
-            ),
-            StatTile(
-              key: const ValueKey('marketplace-tile-ads-expired'),
-              label: 'Expired',
-              value: count((s) => s.expiredAds),
-              icon: Icons.timer_off_outlined,
-              // Asks for a look: an advert has run out and may want new dates.
-              tone: some(s?.expiredAds, StatusTone.danger),
-              onTap: () => open(
-                'Ads expired',
-                status: MarketplacePostStatus.expired,
-                kind: MarketplacePostKind.advertisement,
+              StatTile(
+                key: const ValueKey('marketplace-tile-ads-expired'),
+                label: 'Expired',
+                value: count((s) => s.expiredAds),
+                icon: Icons.timer_off_outlined,
+                // Asks for a look: an advert has run out and may want new dates.
+                tone: some(s?.expiredAds, StatusTone.danger),
+                onTap: () => open(
+                  'Ads expired',
+                  status: MarketplacePostStatus.expired,
+                  kind: MarketplacePostKind.advertisement,
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ],
     );
   }

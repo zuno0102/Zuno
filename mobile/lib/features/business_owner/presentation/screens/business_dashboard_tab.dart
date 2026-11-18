@@ -22,8 +22,11 @@ import 'package:zuno/features/vacancy/presentation/providers/vacancy_providers.d
 import 'package:zuno/features/vacancy/domain/entities/vacancy.dart';
 import 'package:zuno/features/vacancy/presentation/screens/business_vacancies_tab.dart';
 import 'package:zuno/features/vacancy/presentation/screens/vacancy_applicants_screen.dart';
+import 'package:zuno/features/rental/domain/entities/rental_item.dart';
 import 'package:zuno/features/rental/presentation/providers/rental_providers.dart';
+import 'package:zuno/features/rental/presentation/screens/business_catalog_tab.dart';
 import 'package:zuno/features/rental/presentation/widgets/rent_dashboard_tiles.dart';
+import 'package:zuno/features/marketplace/domain/entities/marketplace_post.dart';
 import 'package:zuno/features/marketplace/presentation/providers/marketplace_providers.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_dashboard_tiles.dart';
 
@@ -32,7 +35,11 @@ import 'package:zuno/features/marketplace/presentation/widgets/marketplace_dashb
 /// Leads with what the business has actually delivered, and lets that number open up: tap
 /// "orders finished" and it splits by category, then by the kind of work inside each one.
 class BusinessDashboardTab extends ConsumerWidget {
-  const BusinessDashboardTab({super.key});
+  const BusinessDashboardTab({this.onOpenCatalog, super.key});
+
+  /// Opens Services on one of its sub-tabs ([BusinessCatalogTab.serviceTab] and the rest): what
+  /// the Start card's buttons do.
+  final ValueChanged<int>? onOpenCatalog;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -54,65 +61,193 @@ class BusinessDashboardTab extends ConsumerWidget {
             ..invalidate(marketplaceSummaryProvider);
           return ref.refresh(businessDashboardProvider.future);
         },
-        child: _Body(dashboard: dashboard),
+        child: _Body(dashboard: dashboard, onOpenCatalog: onOpenCatalog),
       ),
     );
   }
 }
 
-class _Body extends StatelessWidget {
-  const _Body({required this.dashboard});
+/// Which areas the business works in, from what it has added: Home shows only those, always in
+/// the order Service, Full-time jobs, Rent, Marketplace. Null while that area's numbers load (or
+/// its server cannot be reached), so its section waits rather than flashing in and out.
+class BusinessAreasInUse {
+  const BusinessAreasInUse({
+    required this.service,
+    required this.fullTime,
+    required this.rent,
+    required this.marketplace,
+  });
+
+  /// A service added, a booking, or a crew of its own.
+  factory BusinessAreasInUse.from({
+    required BusinessDashboard dashboard,
+    VacancySummary? vacancies,
+    RentalSummary? rent,
+    MarketplaceSummary? marketplace,
+  }) => BusinessAreasInUse(
+    service:
+        dashboard.activeServices +
+            dashboard.inactiveServices +
+            dashboard.eventsCompleted +
+            dashboard.upcomingEvents +
+            dashboard.awaitingPaymentEvents +
+            dashboard.cancelledEvents +
+            dashboard.crewEventsCompleted +
+            dashboard.activeWorkers >
+        0,
+    fullTime: vacancies == null ? null : vacancies.totalPosts > 0,
+    rent: rent == null ? null : rent.totalItems > 0,
+    marketplace: marketplace == null ? null : marketplace.count() > 0,
+  );
+
+  final bool service;
+  final bool? fullTime;
+  final bool? rent;
+  final bool? marketplace;
+
+  /// Bookings and customer ratings come from Service and Rent work.
+  bool get hasCustomers => service || rent == true;
+
+  /// Nothing used yet, and every area has answered: the Start card.
+  bool get isNew =>
+      !service && fullTime == false && rent == false && marketplace == false;
+}
+
+class _Body extends ConsumerWidget {
+  const _Body({required this.dashboard, this.onOpenCatalog});
 
   final BusinessDashboard dashboard;
+  final ValueChanged<int>? onOpenCatalog;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final inUse = BusinessAreasInUse.from(
+      dashboard: dashboard,
+      vacancies: ref.watch(vacancySummaryProvider).value,
+      rent: ref.watch(rentalSummaryProvider).value,
+      marketplace: ref.watch(marketplaceSummaryProvider).value,
+    );
+    // In this order, each under its name from the label table (the worker home uses the same).
+    final sections = <(String, List<Widget>)>[
+      if (inUse.service)
+        (
+          'Service',
+          [
+            _CompletedCard(dashboard: dashboard),
+            const SizedBox(height: 12),
+            _QuickStats(dashboard: dashboard),
+          ],
+        ),
+      // Its own part right under Service, once the business has posted a vacancy.
+      if (inUse.fullTime == true) ('FullTime', const [_FullTimeJobsStats()]),
+      if (inUse.rent == true) ('Rent', const [RentDashboardTiles()]),
+      if (inUse.marketplace == true)
+        ('Marketplace', const [MarketplaceDashboardTiles()]),
+    ];
+
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
         const _FinishProfileBanner(),
-        // Named like the Full-time jobs section below, so each group of tiles says which kind of
-        // work it counts. The names come from the label table, the same ones the worker home uses.
-        SectionHeader(
-          title: UiConfig.current.label(dashboardSectionGroup, 'Service'),
-          padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
-        ),
-        _CompletedCard(dashboard: dashboard),
-        const SizedBox(height: 12),
-        _QuickStats(dashboard: dashboard),
-        SectionHeader(
-          title: UiConfig.current.label(dashboardSectionGroup, 'FullTime'),
-          padding: const EdgeInsets.fromLTRB(0, 18, 0, 8),
-        ),
-        const _FullTimeJobsStats(),
-        SectionHeader(
-          title: UiConfig.current.label(dashboardSectionGroup, 'Rent'),
-          padding: const EdgeInsets.fromLTRB(0, 18, 0, 8),
-        ),
-        const RentDashboardTiles(),
-        SectionHeader(
-          title: UiConfig.current.label(dashboardSectionGroup, 'Marketplace'),
-          padding: const EdgeInsets.fromLTRB(0, 18, 0, 8),
-        ),
-        const MarketplaceDashboardTiles(),
+        if (inUse.isNew) ...[
+          _StartCard(onOpenCatalog: onOpenCatalog),
+          const SizedBox(height: 12),
+        ],
+        for (final (i, (code, tiles)) in sections.indexed) ...[
+          SectionHeader(
+            key: ValueKey('home-section-$code'),
+            title: UiConfig.current.label(dashboardSectionGroup, code),
+            padding: EdgeInsets.fromLTRB(0, i == 0 ? 0 : 18, 0, 8),
+          ),
+          ...tiles,
+        ],
         const SizedBox(height: 12),
         const _ProfileCard(),
         const SizedBox(height: 4),
-
-        const SectionHeader(
-          title: 'Customer activity',
-          padding: EdgeInsets.fromLTRB(0, 18, 0, 8),
-        ),
-        _TrendChart(dashboard: dashboard),
-
-        const SectionHeader(
-          title: 'Your standing',
-          padding: EdgeInsets.fromLTRB(0, 22, 0, 8),
-        ),
-        CustomerTrustCard(trust: dashboard.trust.customers),
-        WorkerTrustCard(trust: dashboard.trust.workers),
+        if (inUse.hasCustomers) ...[
+          const SectionHeader(
+            title: 'Customer activity',
+            padding: EdgeInsets.fromLTRB(0, 18, 0, 8),
+          ),
+          _TrendChart(dashboard: dashboard),
+          const SectionHeader(
+            title: 'Your standing',
+            padding: EdgeInsets.fromLTRB(0, 22, 0, 8),
+          ),
+          CustomerTrustCard(trust: dashboard.trust.customers),
+          WorkerTrustCard(trust: dashboard.trust.workers),
+        ],
       ],
+    );
+  }
+}
+
+/// A new business's Home: one card that starts each area, opening Services on that sub-tab.
+class _StartCard extends StatelessWidget {
+  const _StartCard({this.onOpenCatalog});
+
+  final ValueChanged<int>? onOpenCatalog;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    Widget start(String key, String label, IconData icon, int subTab) =>
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: OutlinedButton.icon(
+            key: ValueKey(key),
+            onPressed: onOpenCatalog == null
+                ? null
+                : () => onOpenCatalog!(subTab),
+            icon: Icon(icon),
+            label: Text(label),
+          ),
+        );
+
+    return Card(
+      key: const ValueKey('home-start-card'),
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'What do you want to do?',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Start with one. Its tiles show here as soon as you add something.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 4),
+            start(
+              'home-start-service',
+              'Add a service',
+              Icons.handyman_outlined,
+              BusinessCatalogTab.serviceTab,
+            ),
+            start(
+              'home-start-rent',
+              'Add a rent item',
+              Icons.inventory_2_outlined,
+              BusinessCatalogTab.rentTab,
+            ),
+            start(
+              'home-start-marketplace',
+              'Post on Marketplace',
+              Icons.storefront_outlined,
+              BusinessCatalogTab.marketplaceTab,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

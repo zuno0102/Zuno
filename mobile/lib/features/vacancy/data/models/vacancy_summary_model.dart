@@ -7,6 +7,7 @@ part 'vacancy_summary_model.g.dart';
 class VacancySummaryModel {
   const VacancySummaryModel({
     this.activePosts = 0,
+    this.totalPosts = 0,
     this.newCount = 0,
     this.waitingCount = 0,
     this.shortlistedCount = 0,
@@ -17,6 +18,7 @@ class VacancySummaryModel {
       _$VacancySummaryModelFromJson(json);
 
   final int activePosts;
+  final int totalPosts;
   final int newCount;
   final int waitingCount;
   final int shortlistedCount;
@@ -24,6 +26,7 @@ class VacancySummaryModel {
 
   VacancySummary toEntity() => VacancySummary(
     activePosts: activePosts,
+    totalPosts: totalPosts,
     newCount: newCount,
     waitingCount: waitingCount,
     shortlistedCount: shortlistedCount,

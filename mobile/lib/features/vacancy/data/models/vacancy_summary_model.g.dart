@@ -9,6 +9,7 @@ part of 'vacancy_summary_model.dart';
 VacancySummaryModel _$VacancySummaryModelFromJson(Map<String, dynamic> json) =>
     VacancySummaryModel(
       activePosts: (json['activePosts'] as num?)?.toInt() ?? 0,
+      totalPosts: (json['totalPosts'] as num?)?.toInt() ?? 0,
       newCount: (json['newCount'] as num?)?.toInt() ?? 0,
       waitingCount: (json['waitingCount'] as num?)?.toInt() ?? 0,
       shortlistedCount: (json['shortlistedCount'] as num?)?.toInt() ?? 0,

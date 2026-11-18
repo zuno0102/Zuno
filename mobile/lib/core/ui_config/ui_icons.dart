@@ -31,6 +31,8 @@ abstract final class UiIcons {
     'hourglass_top': Icons.hourglass_top,
     'hourglass_top_outlined': Icons.hourglass_top_outlined,
     'how_to_reg_outlined': Icons.how_to_reg_outlined,
+    'inventory_2_outlined': Icons.inventory_2_outlined,
+    'local_shipping_outlined': Icons.local_shipping_outlined,
     'mark_email_read_outlined': Icons.mark_email_read_outlined,
     'mark_email_unread_outlined': Icons.mark_email_unread_outlined,
     'notifications_active_outlined': Icons.notifications_active_outlined,
