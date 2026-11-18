@@ -7,7 +7,7 @@ using Zuno.Marketplace.Infrastructure.Persistence.Seed;
 namespace Zuno.Marketplace.UnitTests;
 
 /// <summary>
-/// The Marketplace home tiles in four groups: Products (Live products item by item, Inactive,
+/// The Marketplace home tiles in four groups, each with its own Inactive: Products (Live products item by item, Inactive,
 /// Product stock), B2B (Live, B2B stock), Food (Live, Food left) and Ads (Live, Expired).
 /// </summary>
 public class DashboardTileTests
@@ -71,9 +71,11 @@ public class DashboardTileTests
         (summary.LiveWholesale, summary.LiveFood, summary.LiveAds).Should().Be((2, 2, 1));
         summary.FoodPortionsLeft.Should().Be(25, "20 + 5 portions in the offers running now, not the expired 7");
         (summary.ExpiredFood, summary.ExpiredAds).Should().Be((1, 1));
-        summary.Inactive.Should().Be(1, "the expired food offer; the expired advert has its own tile");
+        (summary.Inactive, summary.InactiveFood, summary.InactiveAds).Should().Be((0, 1, 0),
+            "the expired food offer is Food's; the expired advert has its own tile");
 
-        var inactive = await test.QueryHandlers.Handle(new GetMyMarketplacePostsQuery { Inactive = true }, default);
+        var inactive = await test.QueryHandlers.Handle(
+            new GetMyMarketplacePostsQuery { Inactive = true, Kind = nameof(MarketplacePostKind.FoodOffer) }, default);
         inactive.Items.Select(p => p.Id).Should().Equal(expiredFood.Id);
 
         // The Products Live tile opens the products only.
@@ -102,11 +104,51 @@ public class DashboardTileTests
         var summary = await test.QueryHandlers.Handle(new GetMyMarketplaceSummaryQuery(), default);
 
         (summary.Inactive, summary.InactiveWholesale).Should().Be((1, 1), "each in its own group");
-        var products = await test.QueryHandlers.Handle(new GetMyMarketplacePostsQuery { Inactive = true }, default);
+        var products = await test.QueryHandlers.Handle(
+            new GetMyMarketplacePostsQuery { Inactive = true, Products = true }, default);
         products.Items.Select(p => p.Id).Should().Equal(pausedProduct.Id);
         var b2b = await test.QueryHandlers.Handle(
-            new GetMyMarketplacePostsQuery { Wholesale = true, Status = nameof(MarketplacePostStatus.Paused) }, default);
+            new GetMyMarketplacePostsQuery { Inactive = true, Wholesale = true }, default);
         b2b.Items.Select(p => p.Id).Should().Equal(paused.Id);
+    }
+
+    [Fact]
+    public async Task SwitchedOffFoodAndAds_CountInTheirOwnInactiveTiles()
+    {
+        using var test = new TestMarketplace();
+        var food = test.Seed(p =>
+        {
+            p.CategoryId = MarketplaceCatalogSeedData.NearbyFood;
+            p.SubCategoryId = MarketplaceCatalogSeedData.SubId(5, 1);
+            p.Kind = MarketplacePostKind.FoodOffer;
+            p.Title = "Veg biryani";
+            p.Quantity = 10;
+            p.StartsAt = test.Now;
+            p.EndsAt = test.Now.AddHours(2);
+            p.Status = MarketplacePostStatus.Paused;
+        });
+        var ad = test.Seed(p =>
+        {
+            p.CategoryId = MarketplaceCatalogSeedData.Advertisements;
+            p.SubCategoryId = MarketplaceCatalogSeedData.SubId(6, 1);
+            p.Kind = MarketplacePostKind.Advertisement;
+            p.Title = "Aadi sale";
+            p.StartsAt = test.Now;
+            p.EndsAt = test.Now.AddDays(5);
+            p.Status = MarketplacePostStatus.Paused;
+        });
+
+        var summary = await test.QueryHandlers.Handle(new GetMyMarketplaceSummaryQuery(), default);
+
+        (summary.Inactive, summary.InactiveFood, summary.InactiveAds, summary.LiveFood, summary.LiveAds)
+            .Should().Be((0, 1, 1, 0, 0));
+        summary.FoodPortionsLeft.Should().Be(0, "a switched-off offer has nothing on offer");
+        var ads = await test.QueryHandlers.Handle(
+            new GetMyMarketplacePostsQuery { Inactive = true, Kind = nameof(MarketplacePostKind.Advertisement) }, default);
+        ads.Items.Select(p => p.Id).Should().Equal(ad.Id);
+        var foods = await test.QueryHandlers.Handle(
+            new GetMyMarketplacePostsQuery { Inactive = true, Kind = nameof(MarketplacePostKind.FoodOffer) }, default);
+        foods.Items.Select(p => p.Id).Should().Equal(food.Id);
     }
 
     [Fact]
@@ -117,7 +159,8 @@ public class DashboardTileTests
         var summary = await test.QueryHandlers.Handle(new GetMyMarketplaceSummaryQuery(), default);
 
         (summary.LiveItems, summary.LiveWholesale, summary.LiveFood, summary.LiveAds,
-            summary.FoodPortionsLeft, summary.ExpiredFood, summary.ExpiredAds, summary.Inactive, summary.InactiveWholesale)
-            .Should().Be((0, 0, 0, 0, 0, 0, 0, 0, 0));
+            summary.FoodPortionsLeft, summary.ExpiredFood, summary.ExpiredAds, summary.Inactive, summary.InactiveWholesale,
+            summary.InactiveFood, summary.InactiveAds)
+            .Should().Be((0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
     }
 }

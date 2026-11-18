@@ -3,31 +3,74 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/features/marketplace/domain/entities/marketplace_post.dart';
 import 'package:zuno/features/marketplace/presentation/providers/marketplace_providers.dart';
 import 'package:zuno/features/marketplace/presentation/screens/business_marketplace_tab.dart';
+import 'package:zuno/shared/widgets/counted_tab_label.dart';
 import 'package:zuno/shared/widgets/empty_state.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/filter_chip_bar.dart';
 
-/// Orders › Marketplace: the business's posts by main category — Products, B2B, Food, Ads — and by
-/// where they stand — Active, Paused, Expired, Closed — with the same cards and menu as
-/// Services › Marketplace, the way Status management sits beside the Service orders.
+/// Orders › Marketplace: the business's posts in sub-tabs by main category — All · Products · B2B ·
+/// Food · Ads — the same bar as Service's Bookings · Status management · Messages. Each tab has
+/// its status chips — Active, Paused, Expired, Closed, Sold — over the same cards and menu as
+/// Services › Marketplace.
 ///
-/// The two rows of chips combine: each count is for the other row's choice ("Food" chosen →
-/// "Paused 1" means paused food posts). Category and status names come from the server's tables;
-/// the counts from the Marketplace summary, so they cover every post, not one page of them.
-class BusinessMarketplaceOrdersTab extends ConsumerStatefulWidget {
+/// Category and status names come from the server's tables; the counts from the Marketplace
+/// summary, so they cover every post, not one page of them.
+class BusinessMarketplaceOrdersTab extends ConsumerWidget {
   const BusinessMarketplaceOrdersTab({super.key});
 
   @override
-  ConsumerState<BusinessMarketplaceOrdersTab> createState() =>
-      _BusinessMarketplaceOrdersTabState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final summary = ref.watch(marketplaceSummaryProvider).value;
+    final categories =
+        ref.watch(marketplaceCategoriesProvider).value ??
+        const <MarketplaceCategory>[];
+    final tabs = <MarketplaceCategory?>[null, ...categories];
+
+    return DefaultTabController(
+      // A new controller once the categories arrive: the tab count changes.
+      key: ValueKey(tabs.length),
+      length: tabs.length,
+      child: Column(
+        children: [
+          ListTabBar(
+            labels: [
+              for (final category in tabs)
+                CountedTabLabel(
+                  key: ValueKey(
+                    'marketplace-orders-category-${category?.id ?? 'all'}',
+                  ),
+                  label: category?.shortName ?? 'All',
+                  count: summary?.count(categoryId: category?.id) ?? 0,
+                ),
+            ],
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                for (final category in tabs) _CategoryPosts(category: category),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _BusinessMarketplaceOrdersTabState
-    extends ConsumerState<BusinessMarketplaceOrdersTab> {
-  /// The main category chosen on the top row; null for all.
-  String? _categoryId;
+/// One category tab: its posts, narrowed by a status chip.
+class _CategoryPosts extends ConsumerStatefulWidget {
+  const _CategoryPosts({required this.category});
 
-  /// The status chosen on the second row; null for all.
+  /// Null for every category.
+  final MarketplaceCategory? category;
+
+  @override
+  ConsumerState<_CategoryPosts> createState() => _CategoryPostsState();
+}
+
+class _CategoryPostsState extends ConsumerState<_CategoryPosts>
+    with AutomaticKeepAliveClientMixin {
+  /// The status chosen; null for all.
   String? _status;
 
   /// Until the status table has loaded; then its rows decide the chips and their order.
@@ -39,21 +82,21 @@ class _BusinessMarketplaceOrdersTabState
     MarketplacePostStatus.sold,
   ];
 
+  // Each tab keeps its chosen chip and scroll place while another is looked at.
+  @override
+  bool get wantKeepAlive => true;
+
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+    final category = widget.category;
     final summary = ref.watch(marketplaceSummaryProvider).value;
     final options = ref.watch(marketplaceOptionsProvider).value;
-    final categories =
-        ref.watch(marketplaceCategoriesProvider).value ??
-        const <MarketplaceCategory>[];
     final posts = businessMarketplacePostsProvider(
-      categoryId: _categoryId,
+      categoryId: category?.id,
       status: _status,
     );
     final postsAsync = ref.watch(posts);
-    final chosenCategory = categories
-        .where((c) => c.id == _categoryId)
-        .firstOrNull;
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -64,25 +107,6 @@ class _BusinessMarketplaceOrdersTabState
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(bottom: 32),
         children: [
-          if (categories.isNotEmpty)
-            FilterChipBar(
-              chips: [
-                for (final category in [null, ...categories])
-                  CountChip(
-                    key: ValueKey(
-                      'marketplace-orders-category-${category?.id ?? 'all'}',
-                    ),
-                    label: category?.shortName ?? 'All',
-                    count: summary?.count(
-                      categoryId: category?.id,
-                      status: _status,
-                    ),
-                    selected: _categoryId == category?.id,
-                    onSelected: () =>
-                        setState(() => _categoryId = category?.id),
-                  ),
-              ],
-            ),
           FilterChipBar(
             chips: [
               for (final status in [
@@ -96,7 +120,7 @@ class _BusinessMarketplaceOrdersTabState
                       ? 'All'
                       : options?.status(status)?.name ?? status,
                   count: summary?.count(
-                    categoryId: _categoryId,
+                    categoryId: category?.id,
                     status: status,
                   ),
                   selected: _status == status,
@@ -130,7 +154,7 @@ class _BusinessMarketplaceOrdersTabState
                 ? [
                     EmptyState(
                       icon: Icons.storefront_outlined,
-                      title: _emptyTitle(options, chosenCategory),
+                      title: _emptyTitle(options, category),
                       message:
                           'Add posts from Services › Marketplace. They show here by category and status.',
                     ),

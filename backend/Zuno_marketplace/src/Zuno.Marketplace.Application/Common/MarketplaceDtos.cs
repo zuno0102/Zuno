@@ -176,22 +176,28 @@ public class MarketplaceSummaryDto
     /// <summary>The Food tile: live food offers.</summary>
     public int LiveFood { get; set; }
 
+    /// <summary>The Food Inactive tile: food offers switched off, or whose time is over.</summary>
+    public int InactiveFood { get; set; }
+
     /// <summary>The Ads tile: live adverts.</summary>
     public int LiveAds { get; set; }
+
+    /// <summary>The Ads Inactive tile: adverts switched off (an advert whose dates are over is Expired).</summary>
+    public int InactiveAds { get; set; }
 
     /// <summary>Food left: the portions still offered in the food offers running now.</summary>
     public int FoodPortionsLeft { get; set; }
 
-    /// <summary>Food offers whose time is over (counted in Inactive too).</summary>
+    /// <summary>Food offers whose time is over (counted in <see cref="InactiveFood"/> too).</summary>
     public int ExpiredFood { get; set; }
 
     /// <summary>The Ads Expired tile: adverts whose dates are over.</summary>
     public int ExpiredAds { get; set; }
 
     /// <summary>
-    /// The Inactive tile, item by item: every colour / size of a paused product (one for a post with
-    /// none), each one switched off on a live product, and each food offer whose time is over. Paused
-    /// B2B posts count in <see cref="InactiveWholesale"/>.
+    /// The Products Inactive tile, item by item: every colour / size of a paused product (one for a
+    /// product with
+    /// none) and each one switched off on a live product. B2B, food and ads have their own tiles.
     /// </summary>
     public int Inactive { get; set; }
 

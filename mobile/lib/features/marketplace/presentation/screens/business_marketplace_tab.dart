@@ -197,15 +197,15 @@ class _BusinessMarketplaceTabState
   }
 }
 
-/// The status moves a post's menu offers. A product is edited, its colours and sizes managed, or
-/// removed — not paused or closed: one that runs out of stock hides itself. A paused one can still
-/// be put back up, and a used one marked sold.
+/// The status moves a post's menu offers. No post is closed from the menu: it is switched off
+/// (Edit › Active) or removed. A product or B2B post is not paused there either — one that runs out
+/// of stock hides itself; a food offer or advert can be. A paused one can still be put back up, and
+/// a used one marked sold.
 List<MarketplacePostAction> marketplaceMenuActions(MarketplacePost post) => [
   for (final action in post.actions)
-    // A product or a B2B post: Edit and Remove only — its Active switch (Edit) takes it down.
-    if ((post.condition == null && !post.isWholesale) ||
-        (action.toStatus != MarketplacePostStatus.paused &&
-            action.toStatus != MarketplacePostStatus.closed))
+    if (action.toStatus != MarketplacePostStatus.closed &&
+        (action.toStatus != MarketplacePostStatus.paused ||
+            (post.condition == null && !post.isWholesale)))
       action,
 ];
 
@@ -217,10 +217,10 @@ List<MarketplaceVariant> marketplaceActiveChildVariants(MarketplacePost post) =>
         if (v.isActive) v,
     ];
 
-/// "Your Free plan allows 1 active post. Pause, close or remove one to put up another."
+/// "Your Free plan allows 1 active post. Switch one off or remove one to put up another."
 String marketplacePlanFullMessage(MarketplacePlan plan) =>
     'Your ${plan.name} plan allows ${plan.maxActivePosts} active '
-    'post${plan.maxActivePosts == 1 ? '' : 's'}. Pause, close or remove one to put up another.';
+    'post${plan.maxActivePosts == 1 ? '' : 's'}. Switch one off or remove one to put up another.';
 
 /// The plan and how much of it is used, over the post list.
 class MarketplacePlanBanner extends StatelessWidget {
@@ -250,7 +250,7 @@ class MarketplacePlanBanner extends StatelessWidget {
         ),
         subtitle: Text(
           full
-              ? 'Pause, close or remove a post to put up a new one. More plans are coming soon.'
+              ? 'Switch off or remove a post to put up a new one. More plans are coming soon.'
               : 'Paused, closed and expired posts do not count.',
         ),
       ),

@@ -27,6 +27,7 @@ import 'package:zuno/features/marketplace/presentation/widgets/marketplace_dashb
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_post_form_sheet.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_post_lines.dart';
 import 'package:zuno/features/rental/presentation/screens/business_catalog_tab.dart';
+import 'package:zuno/shared/widgets/counted_tab_label.dart';
 import 'package:zuno/shared/widgets/stat_tile.dart';
 import 'package:zuno/shared/widgets/stock_figure_row.dart';
 
@@ -356,23 +357,37 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
             return sum + (onSale == 0 ? 1 : onSale);
           }),
       // Item by item, as the server counts: a paused product's every colour / size (one for a
-      // post with none), each one switched off on a live product, and each expired food offer.
+      // post with none) and each one switched off on a live product — products only.
       inactive: posts.fold<int>(
         0,
         (sum, p) =>
             sum +
-            (p.status == MarketplacePostStatus.paused && !p.isWholesale
+            (!_isProduct(p)
+                ? 0
+                : p.status == MarketplacePostStatus.paused
                 ? (p.variants.isEmpty ? 1 : p.variants.length)
                 : p.status == MarketplacePostStatus.active
                 ? p.variants.where((v) => !v.isActive).length
-                : _expiredFood(p)
-                ? 1
                 : 0),
       ),
       liveWholesale: _live.where((p) => p.isWholesale).length,
       inactiveWholesale: posts
           .where(
             (p) => p.isWholesale && p.status == MarketplacePostStatus.paused,
+          )
+          .length,
+      inactiveFood: posts
+          .where(
+            (p) =>
+                p.kind == MarketplacePostKind.foodOffer &&
+                (p.status == MarketplacePostStatus.paused || _expiredFood(p)),
+          )
+          .length,
+      inactiveAds: posts
+          .where(
+            (p) =>
+                p.kind == MarketplacePostKind.advertisement &&
+                p.status == MarketplacePostStatus.paused,
           )
           .length,
       liveFood: _live
@@ -392,7 +407,9 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
           )
           .length,
       expired: posts.where((p) => p.status == 'Expired').length,
-      closed: 0,
+      closed: posts
+          .where((p) => p.status == MarketplacePostStatus.closed)
+          .length,
       sold: posts.where((p) => p.status == MarketplacePostStatus.sold).length,
       plan: plan,
       categories: [
@@ -441,7 +458,7 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
         .where(
           (p) =>
               !inactive ||
-              (p.status == MarketplacePostStatus.paused && !p.isWholesale) ||
+              p.status == MarketplacePostStatus.paused ||
               p.variants.any((v) => !v.isActive) ||
               _expiredFood(p),
         )
@@ -899,7 +916,7 @@ void main() {
 
       expect(find.text('Free plan · 1 of 1 active post used'), findsOneWidget);
       expect(
-        find.textContaining('Pause, close or remove a post'),
+        find.textContaining('Switch off or remove a post'),
         findsOneWidget,
       );
     });
@@ -979,7 +996,7 @@ void main() {
       expect(find.byType(MarketplacePostFormSheet), findsNothing);
       expect(
         find.text(
-          'Your Free plan allows 1 active post. Pause, close or remove one to put up another.',
+          'Your Free plan allows 1 active post. Switch one off or remove one to put up another.',
         ),
         findsOneWidget,
       );
@@ -1037,7 +1054,7 @@ void main() {
       expect(find.byType(MarketplacePostFormSheet), findsNothing);
       expect(
         find.text(
-          'Your Free plan allows 1 active post. Pause, close or remove one to put up another.',
+          'Your Free plan allows 1 active post. Switch one off or remove one to put up another.',
         ),
         findsOneWidget,
       );
@@ -1058,8 +1075,10 @@ void main() {
       expect(repo.statusChanges, [('p-1', 'Paused')]);
     });
 
-    testWidgets('Close asks first; cancelling sends nothing', (tester) async {
-      final repo = await _pump(
+    testWidgets('no menu offers Close, though the server allows it', (
+      tester,
+    ) async {
+      await _pump(
         tester,
         const BusinessMarketplaceTab(),
         repository: _FakeMarketplaceRepository(posts: [_post()]),
@@ -1067,22 +1086,8 @@ void main() {
 
       await tester.tap(find.byType(PopupMenuButton<String>));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Close (sold / done)'));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('cannot be put up again'), findsOneWidget);
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
-      expect(repo.statusChanges, isEmpty);
-
-      await tester.tap(find.byType(PopupMenuButton<String>));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Close (sold / done)'));
-      await tester.pumpAndSettle();
-      await tester.tap(
-        find.widgetWithText(FilledButton, 'Close (sold / done)'),
-      );
-      await tester.pumpAndSettle();
-      expect(repo.statusChanges, [('p-1', 'Closed')]);
+      expect(find.text('Pause'), findsOneWidget);
+      expect(find.text('Close (sold / done)'), findsNothing);
     });
 
     testWidgets('Remove asks first, then takes the post off', (tester) async {
@@ -1451,7 +1456,7 @@ void main() {
     testWidgets('a refused save scrolls up to the reason', (tester) async {
       final repo = _FakeMarketplaceRepository()
         ..failCreate = const UnknownAppException(
-          'Your Free plan allows 1 active post. Pause, close or remove one to put up another.',
+          'Your Free plan allows 1 active post. Switch one off or remove one to put up another.',
         );
       await _pump(tester, const BusinessMarketplaceTab(), repository: repo);
       await _openFormFor(tester, _b2b);
@@ -2918,30 +2923,53 @@ void main() {
       );
     });
 
-    testWidgets('a post outside Products can still be paused and closed', (
-      tester,
-    ) async {
-      await _pump(
+    for (final (category, hint) in [
+      (_food, 'Inactive food offers are hidden from customers.'),
+      (_ads, 'Inactive adverts are hidden from customers.'),
+    ]) {
+      testWidgets('the ${category.name} form has an Active switch too', (
         tester,
-        const BusinessMarketplaceTab(),
-        repository: _FakeMarketplaceRepository(
-          posts: [
-            _post(
-              title: 'Biryani for two',
-              kind: MarketplacePostKind.foodOffer,
-              categoryId: 'cat-food',
-              categoryName: 'Nearby food',
-            ),
-          ],
-        ),
-      );
+      ) async {
+        await _pump(tester, const BusinessMarketplaceTab());
+        await _openFormFor(tester, category);
 
-      await tester.tap(find.byType(PopupMenuButton<String>));
-      await tester.pumpAndSettle();
+        final active = find.byKey(const ValueKey('marketplace-active'));
+        await tester.ensureVisible(active);
+        expect(tester.widget<SwitchListTile>(active).value, isTrue);
+        expect(find.text(hint), findsOneWidget);
+      });
+    }
 
-      expect(find.text('Pause'), findsOneWidget);
-      expect(find.text('Close (sold / done)'), findsOneWidget);
-    });
+    for (final (kind, category) in [
+      (MarketplacePostKind.foodOffer, _food),
+      (MarketplacePostKind.advertisement, _ads),
+    ]) {
+      testWidgets('a ${category.name} menu is Edit, Pause and Remove — no '
+          'Close', (tester) async {
+        await _pump(
+          tester,
+          const BusinessMarketplaceTab(),
+          repository: _FakeMarketplaceRepository(
+            posts: [
+              _post(
+                title: 'Biryani for two',
+                kind: kind,
+                categoryId: category.id,
+                categoryName: category.name,
+              ),
+            ],
+          ),
+        );
+
+        await tester.tap(find.byType(PopupMenuButton<String>));
+        await tester.pumpAndSettle();
+
+        for (final shown in ['Edit', 'Pause', 'Remove']) {
+          expect(find.text(shown), findsOneWidget, reason: shown);
+        }
+        expect(find.text('Close (sold / done)'), findsNothing);
+      });
+    }
 
     testWidgets('Mark as sold asks first, then moves the post to Sold', (
       tester,
@@ -3072,7 +3100,7 @@ void main() {
         ),
       );
 
-      expect(find.text('All 2'), findsNWidgets(2), reason: 'both rows');
+      expect(find.text('All 2'), findsOneWidget, reason: 'the status chip');
       expect(find.text('Active 1'), findsOneWidget);
       expect(find.text('On hold 1'), findsOneWidget);
       expect(find.text('Live one'), findsOneWidget);
@@ -3086,7 +3114,7 @@ void main() {
     });
 
     testWidgets(
-      'a row of main categories with counts sits above the statuses, and both combine',
+      'main categories are sub-tabs, as on Service; each has its status chips',
       (tester) async {
         await _pump(
           tester,
@@ -3121,59 +3149,63 @@ void main() {
           ),
         );
 
-        Finder chip(String key) => find.byKey(ValueKey(key));
-        String labelOf(String key) => tester
+        Finder tab(String id) =>
+            find.byKey(ValueKey('marketplace-orders-category-$id'));
+        int countOf(String id) => tester.widget<CountedTabLabel>(tab(id)).count;
+        String chipLabel(String key) => tester
             .widget<Text>(
-              find.descendant(of: chip(key), matching: find.byType(Text)),
+              find.descendant(
+                of: find.byKey(ValueKey(key)),
+                matching: find.byType(Text),
+              ),
             )
             .data!;
 
-        // Short names from the category table, above the status row.
+        // The same tab bar as Service's Bookings · Status management · Messages, short names
+        // from the category table, with each one's posts counted.
+        expect(find.byType(ListTabBar), findsOneWidget);
         expect(
-          labelOf('marketplace-orders-category-${_products.id}'),
-          'Products 1',
+          [
+            for (final c in [_products, _b2b, _food, _ads]) countOf(c.id),
+          ],
+          [1, 0, 2, 0],
         );
-        expect(labelOf('marketplace-orders-category-${_b2b.id}'), 'B2B 0');
-        expect(labelOf('marketplace-orders-category-${_food.id}'), 'Food 2');
-        expect(labelOf('marketplace-orders-category-${_ads.id}'), 'Ads 0');
+        expect(countOf('all'), 3);
         expect(
-          tester.getTopLeft(chip('marketplace-orders-category-all')).dy,
-          lessThan(tester.getTopLeft(chip('marketplace-orders-all')).dy),
+          tester.getTopLeft(tab('all')).dy,
+          lessThan(
+            tester
+                .getTopLeft(
+                  find.byKey(const ValueKey('marketplace-orders-all')),
+                )
+                .dy,
+          ),
         );
 
         // Food: the list and the status counts narrow to food.
-        await tester.ensureVisible(
-          chip('marketplace-orders-category-${_food.id}'),
-        );
-        await tester.pumpAndSettle();
-        await tester.tap(chip('marketplace-orders-category-${_food.id}'));
+        await tester.tap(tab(_food.id));
         await tester.pumpAndSettle();
         expect(find.text('Swift VXi 2019'), findsNothing);
         expect(find.text('Veg biryani'), findsOneWidget);
         expect(find.text('Chicken biryani'), findsOneWidget);
-        expect(labelOf('marketplace-orders-all'), 'All 2');
-        expect(labelOf('marketplace-orders-Active'), 'Active 0');
-        expect(labelOf('marketplace-orders-Paused'), 'On hold 1');
+        expect(chipLabel('marketplace-orders-all'), 'All 2');
+        expect(chipLabel('marketplace-orders-Active'), 'Active 0');
+        expect(chipLabel('marketplace-orders-Paused'), 'On hold 1');
 
-        // Food + On hold: one post, and the category counts follow the status.
-        await tester.ensureVisible(chip('marketplace-orders-Paused'));
-        await tester.pumpAndSettle();
-        await tester.tap(chip('marketplace-orders-Paused'));
+        // Food + On hold: one post.
+        await tester.tap(
+          find.byKey(const ValueKey('marketplace-orders-Paused')),
+        );
         await tester.pumpAndSettle();
         expect(find.text('Veg biryani'), findsOneWidget);
         expect(find.text('Chicken biryani'), findsNothing);
-        expect(labelOf('marketplace-orders-category-${_food.id}'), 'Food 1');
-        expect(
-          labelOf('marketplace-orders-category-${_products.id}'),
-          'Products 0',
-        );
 
-        // Products + On hold: nothing, and it says which.
-        await tester.ensureVisible(
-          chip('marketplace-orders-category-${_products.id}'),
-        );
+        // Products, nothing on hold: it says which.
+        await tester.tap(tab(_products.id));
         await tester.pumpAndSettle();
-        await tester.tap(chip('marketplace-orders-category-${_products.id}'));
+        await tester.tap(
+          find.byKey(const ValueKey('marketplace-orders-Paused')),
+        );
         await tester.pumpAndSettle();
         expect(find.text('No on hold posts in Products'), findsOneWidget);
       },
@@ -3353,11 +3385,17 @@ void main() {
       expect(valueOf('active'), '4', reason: 'the saree and its colours only');
       expect(
         valueOf('inactive'),
-        '2',
-        reason: 'the paused post and the expired food offer',
+        '1',
+        reason: 'the paused product; food counts in its own group',
       );
       expect(valueOf('b2b-live'), '2');
       expect(valueOf('b2b-inactive'), '1', reason: 'not in Products Inactive');
+      expect(valueOf('food-inactive'), '1', reason: 'the expired food offer');
+      expect(
+        valueOf('ads-inactive'),
+        '0',
+        reason: 'the expired advert has its own tile',
+      );
       expect(valueOf('food-live'), '2');
       expect(valueOf('food-left'), '25', reason: 'not the expired offer');
       expect(valueOf('ads-live'), '1');

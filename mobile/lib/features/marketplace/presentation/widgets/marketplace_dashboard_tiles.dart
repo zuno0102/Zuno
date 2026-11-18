@@ -11,12 +11,13 @@ import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/section_header.dart';
 import 'package:zuno/shared/widgets/stat_tile.dart';
 
-/// The Marketplace section of the business home screen, in four groups:
-/// - Products: Live posts (live products, item by item), Inactive (everything not on
-///   sale, expired food offers too; not B2B) and Product stock.
+/// The Marketplace section of the business home screen, in four groups, each counting only its own
+/// posts:
+/// - Products: Live posts and Inactive (item by item: a product's main colour / size and each
+///   other one), and Product stock.
 /// - B2B: Live, Inactive and B2B stock.
-/// - Food: Live and Food remaining (portions).
-/// - Ads: Live and Expired.
+/// - Food: Live, Inactive (switched off or its time over) and Food remaining (portions).
+/// - Ads: Live, Inactive and Expired.
 ///
 /// Each tile opens the posts behind its number. Counted by the Marketplace server, like the Rent
 /// tiles beside it.
@@ -61,6 +62,28 @@ class MarketplaceDashboardTiles extends ConsumerWidget {
       title: UiConfig.current.label(dashboardSectionGroup, name),
       padding: const EdgeInsets.fromLTRB(0, 10, 0, 6),
     );
+    // A group's Inactive tile: what is not on show in that group, opening those posts.
+    StatTile inactiveTile(
+      String key,
+      String title,
+      int Function(MarketplaceSummary) of, {
+      String? kind,
+      bool wholesale = false,
+      bool products = false,
+    }) => StatTile(
+      key: ValueKey(key),
+      label: 'Inactive',
+      value: count(of),
+      icon: Icons.pause_circle_outline,
+      tone: some(s == null ? null : of(s), StatusTone.progress),
+      onTap: () => open(
+        title,
+        kind: kind,
+        wholesale: wholesale,
+        products: products,
+        inactive: true,
+      ),
+    );
     // Stock tiles carry no number, as on Rent: the page they open has a tile per post.
     StatTile stock(String key, String label, IconData icon, Widget page) =>
         StatTile(
@@ -92,14 +115,12 @@ class MarketplaceDashboardTiles extends ConsumerWidget {
                 products: true,
               ),
             ),
-            // Paused posts, colours / sizes switched off, and food offers whose time is over.
-            StatTile(
-              key: const ValueKey('marketplace-tile-inactive'),
-              label: 'Inactive',
-              value: count((s) => s.inactiveCount),
-              icon: Icons.pause_circle_outline,
-              tone: some(s?.inactiveCount, StatusTone.progress),
-              onTap: () => open('Inactive', inactive: true),
+            // Paused products and colours / sizes switched off, item by item.
+            inactiveTile(
+              'marketplace-tile-inactive',
+              'Inactive products',
+              (s) => s.inactiveCount,
+              products: true,
             ),
             stock(
               'marketplace-tile-stock',
@@ -124,18 +145,11 @@ class MarketplaceDashboardTiles extends ConsumerWidget {
                 wholesale: true,
               ),
             ),
-            // B2B posts switched off: counted here, not in the Products Inactive tile.
-            StatTile(
-              key: const ValueKey('marketplace-tile-b2b-inactive'),
-              label: 'Inactive',
-              value: count((s) => s.inactiveWholesale),
-              icon: Icons.pause_circle_outline,
-              tone: some(s?.inactiveWholesale, StatusTone.progress),
-              onTap: () => open(
-                'B2B inactive',
-                status: MarketplacePostStatus.paused,
-                wholesale: true,
-              ),
+            inactiveTile(
+              'marketplace-tile-b2b-inactive',
+              'B2B inactive',
+              (s) => s.inactiveWholesale,
+              wholesale: true,
             ),
             stock(
               'marketplace-tile-b2b-stock',
@@ -159,6 +173,13 @@ class MarketplaceDashboardTiles extends ConsumerWidget {
                 status: MarketplacePostStatus.active,
                 kind: MarketplacePostKind.foodOffer,
               ),
+            ),
+            // Switched off, or its time is over.
+            inactiveTile(
+              'marketplace-tile-food-inactive',
+              'Food inactive',
+              (s) => s.inactiveFood,
+              kind: MarketplacePostKind.foodOffer,
             ),
             // Portions still offered in the food offers running now.
             StatTile(
@@ -189,6 +210,12 @@ class MarketplaceDashboardTiles extends ConsumerWidget {
                 status: MarketplacePostStatus.active,
                 kind: MarketplacePostKind.advertisement,
               ),
+            ),
+            inactiveTile(
+              'marketplace-tile-ads-inactive',
+              'Ads inactive',
+              (s) => s.inactiveAds,
+              kind: MarketplacePostKind.advertisement,
             ),
             StatTile(
               key: const ValueKey('marketplace-tile-ads-expired'),

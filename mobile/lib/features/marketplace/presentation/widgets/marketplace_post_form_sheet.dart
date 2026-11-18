@@ -115,7 +115,7 @@ class _MarketplacePostFormSheetState
     _old?.customDetails ?? const [],
   );
 
-  /// A product on sale (Active) or hidden from customers (Paused), as a service is Active or
+  /// A post on show (Active) or hidden from customers (Paused), as a service is Active or
   /// Inactive. Off also frees its place on the plan.
   late bool _isActive =
       _old == null || _old.status != MarketplacePostStatus.paused;
@@ -329,6 +329,17 @@ class _MarketplacePostFormSheetState
       (category.sellsEitherWay && _tradeType == MarketplaceTradeType.wholesale);
 
   /// A new item in a category that keeps stock: the form asks how many are in stock.
+  /// The line under the Active switch, by what is being posted.
+  String _inactiveHint(MarketplaceCategory category) => switch (category.kind) {
+    MarketplacePostKind.foodOffer =>
+      'Inactive food offers are hidden from customers.',
+    MarketplacePostKind.advertisement =>
+      'Inactive adverts are hidden from customers.',
+    _ when _sellsWholesale(category) =>
+      'Inactive B2B posts are hidden from buyers.',
+    _ => 'Inactive products are hidden from customers.',
+  };
+
   bool _keepsStock(MarketplaceCategory category) =>
       category.tracksStock && _condition == MarketplaceItemCondition.newItem;
 
@@ -581,11 +592,10 @@ class _MarketplacePostFormSheetState
           : await repository.update(old.id, input);
       final id = saved.id;
 
-      // Switched on or off: the post's status follows (a product is paused, not deleted).
+      // Switched on or off: the post's status follows (paused, not deleted).
       final wasActive =
           old == null || old.status != MarketplacePostStatus.paused;
-      if ((category.tracksStock || _sellsWholesale(category)) &&
-          _isActive != wasActive) {
+      if (_isActive != wasActive) {
         await repository.changeStatus(
           id,
           _isActive
@@ -869,19 +879,14 @@ class _MarketplacePostFormSheetState
                       const SizedBox(height: 14),
                     ],
                     ..._placeSection(category),
-                    // As on a service: off hides the whole product (its colours and sizes too)
-                    // or B2B lot — the way these are taken down, as their menu has no Pause.
-                    if (category != null &&
-                        (category.tracksStock || _sellsWholesale(category)))
+                    // As on a service: off hides the whole product (its colours and sizes too),
+                    // B2B lot, food offer or advert, and counts it in its group's Inactive tile.
+                    if (category != null)
                       SwitchListTile(
                         key: const ValueKey('marketplace-active'),
                         contentPadding: EdgeInsets.zero,
                         title: const Text('Active'),
-                        subtitle: Text(
-                          category.tracksStock
-                              ? 'Inactive products are hidden from customers.'
-                              : 'Inactive B2B posts are hidden from buyers.',
-                        ),
+                        subtitle: Text(_inactiveHint(category)),
                         value: _isActive,
                         onChanged: (value) => setState(() => _isActive = value),
                       ),

@@ -34,7 +34,7 @@ public class GetMyMarketplacePostsQuery : IRequest<MarketplacePostPageDto>
     /// <summary>True for the Products group's Live tile: listings sold one by one, not B2B lots.</summary>
     public bool? Products { get; set; }
 
-    /// <summary>True for the Inactive tile: paused posts, live products with a colour / size switched off, and expired food offers.</summary>
+    /// <summary>True for an Inactive tile: paused posts, live products with a colour / size switched off, and expired food offers.</summary>
     public bool? Inactive { get; set; }
 }
 
@@ -104,10 +104,11 @@ public class MarketplacePostQueryHandlers(
 
         if (request.Inactive == true)
         {
-            // Paused (B2B has its own Inactive tile), a live product with a colour / size switched off,
-            // or a food offer whose time is over.
+            // Not on show: switched off (paused), a live product with a colour / size switched off, or
+            // a food offer whose time is over. Each group's tile adds its own filter (Products,
+            // Wholesale, Kind).
             mine = mine.Where(p =>
-                (p.Status == MarketplacePostStatus.Paused && p.TradeType != MarketplaceTradeType.Wholesale)
+                p.Status == MarketplacePostStatus.Paused
                 || (p.Status == MarketplacePostStatus.Active && p.Variants.Any(v => !v.IsActive))
                 || (p.Status == MarketplacePostStatus.Active && p.Kind == MarketplacePostKind.FoodOffer
                     && p.EndsAt != null && p.EndsAt <= now));
@@ -159,19 +160,31 @@ public class MarketplacePostQueryHandlers(
             .ToListAsync(cancellationToken);
 
         var live = byCategory.Sum(c => c.Active);
-        // The Inactive tile counts what is not on sale, item by item: a paused product is its main
-        // colour / size and every other one (a post with none is one item); a live product adds each
-        // colour / size switched off. Main + 3 colours paused is 4.
+        // The Products Inactive tile counts the products not on sale, item by item: a paused product
+        // is its main colour / size and every other one (one with none is one item); a live product
+        // adds each colour / size switched off. Main + 3 colours paused is 4.
         var pausedItems = await dbContext.Posts
             .AsNoTracking()
-            .Where(p => p.OwnerUserId == ownerId && p.Status == MarketplacePostStatus.Paused
-                && p.TradeType != MarketplaceTradeType.Wholesale)
+            .Where(p => p.OwnerUserId == ownerId && p.Status == MarketplacePostStatus.Paused)
+            .Where(MarketplaceQueries.IsProduct)
             .SumAsync(p => p.Variants.Count() == 0 ? 1 : p.Variants.Count(), cancellationToken);
         var switchedOffItems = await dbContext.PostVariants
             .AsNoTracking()
             .CountAsync(
                 v => !v.IsActive && v.Post.OwnerUserId == ownerId && v.Post.Status == MarketplacePostStatus.Active,
                 cancellationToken);
+        // The B2B, Food and Ads Inactive tiles: their posts switched off (paused), in one aggregate.
+        var pausedByKind = await dbContext.Posts
+            .AsNoTracking()
+            .Where(p => p.OwnerUserId == ownerId && p.Status == MarketplacePostStatus.Paused)
+            .GroupBy(p => 1)
+            .Select(g => new
+            {
+                Wholesale = g.Count(p => p.TradeType == MarketplaceTradeType.Wholesale),
+                Food = g.Count(p => p.Kind == MarketplacePostKind.FoodOffer),
+                Ads = g.Count(p => p.Kind == MarketplacePostKind.Advertisement),
+            })
+            .FirstOrDefaultAsync(cancellationToken);
         // The Products group's Live tile, item by item: a live product counts its main colour / size
         // and each one on sale (main + 2 colours is 3); one with none is one item. B2B, food and
         // ads have their own groups. The plan counts posts.
@@ -199,28 +212,24 @@ public class MarketplacePostQueryHandlers(
                 ExpiredAds = g.Count(p => p.Kind == MarketplacePostKind.Advertisement && p.EndsAt != null && p.EndsAt <= now),
             })
             .FirstOrDefaultAsync(cancellationToken);
-        // The B2B Inactive tile: B2B posts switched off (paused). A B2B lot has no colours or sizes.
-        var inactiveWholesale = await dbContext.Posts
-            .AsNoTracking()
-            .CountAsync(
-                p => p.OwnerUserId == ownerId && p.Status == MarketplacePostStatus.Paused
-                    && p.TradeType == MarketplaceTradeType.Wholesale,
-                cancellationToken);
         var (plan, endsAt) = await dbContext.CurrentAsync(ownerId, now, cancellationToken);
         return new MarketplaceSummaryDto
         {
             Active = live,
             LiveItems = liveItems,
             LiveWholesale = byKind?.LiveWholesale ?? 0,
-            InactiveWholesale = inactiveWholesale,
+            InactiveWholesale = pausedByKind?.Wholesale ?? 0,
             LiveFood = byKind?.LiveFood ?? 0,
+            // Switched off, or its time is over.
+            InactiveFood = (pausedByKind?.Food ?? 0) + (byKind?.ExpiredFood ?? 0),
             LiveAds = byKind?.LiveAds ?? 0,
+            InactiveAds = pausedByKind?.Ads ?? 0,
             FoodPortionsLeft = byKind?.FoodPortionsLeft ?? 0,
             ExpiredFood = byKind?.ExpiredFood ?? 0,
             ExpiredAds = byKind?.ExpiredAds ?? 0,
             Paused = byCategory.Sum(c => c.Paused),
-            // Not on sale, item by item — expired food offers too; B2B counts in its own tile.
-            Inactive = pausedItems + switchedOffItems + (byKind?.ExpiredFood ?? 0),
+            // Products not on sale, item by item; B2B, food and ads count in their own groups.
+            Inactive = pausedItems + switchedOffItems,
             Expired = byCategory.Sum(c => c.Expired),
             Closed = byCategory.Sum(c => c.Closed),
             Sold = byCategory.Sum(c => c.Sold),
