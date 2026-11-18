@@ -1702,7 +1702,7 @@ void main() {
       expect(tileValue(tester, 'Available now'), '2');
       expect(tileValue(tester, 'Unavailable'), '1');
       expect(
-        tileValue(tester, 'Stock'),
+        tileValue(tester, 'Rent stock'),
         isEmpty,
         reason: 'Stock is a way in, not a count',
       );
@@ -1869,21 +1869,22 @@ void main() {
 
     final saveButton = find.widgetWithText(FilledButton, 'SAVE STOCK');
 
-    testWidgets('the home Stock tile has no number and opens the Stock page', (
-      tester,
-    ) async {
-      await _pump(tester, const RentDashboardTiles(), items: stock);
+    testWidgets(
+      'the home Rent stock tile has no number and opens the Stock page',
+      (tester) async {
+        await _pump(tester, const RentDashboardTiles(), items: stock);
 
-      final tile = tester.widget<StatTile>(
-        find.widgetWithText(StatTile, 'Stock'),
-      );
-      expect(tile.value, isEmpty);
-      expect(find.byIcon(Icons.chair_outlined), findsNothing);
+        final tile = tester.widget<StatTile>(
+          find.widgetWithText(StatTile, 'Rent stock'),
+        );
+        expect(tile.value, isEmpty);
+        expect(find.byIcon(Icons.chair_outlined), findsNothing);
 
-      await tester.tap(find.text('Stock'));
-      await tester.pumpAndSettle();
-      expect(find.widgetWithText(AppBar, 'Stock'), findsOneWidget);
-    });
+        await tester.tap(find.text('Rent stock'));
+        await tester.pumpAndSettle();
+        expect(find.widgetWithText(AppBar, 'Stock'), findsOneWidget);
+      },
+    );
 
     testWidgets('each item shows in stock, out and total', (tester) async {
       await pumpStock(tester);

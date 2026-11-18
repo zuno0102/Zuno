@@ -68,7 +68,7 @@ class RentDashboardTiles extends ConsumerWidget {
         // One tile for all stock, whatever the business rents, and no number on it: the Stock page
         // it opens has a tile per item with in, out and total.
         StatTile(
-          label: 'Stock',
+          label: 'Rent stock',
           value: '',
           icon: Icons.inventory_outlined,
           tone: StatusTone.progress,

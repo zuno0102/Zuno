@@ -57,7 +57,7 @@ public class SecurityTests(ZunoApiFactory factory) : IClassFixture<ZunoApiFactor
             new
             {
                 email = $"{Guid.NewGuid()}@example.com",
-                phoneNumber = (string?)null,
+                phoneNumber = TestPhone.Next(),
                 password = "Str0ng!Pass",
                 firstName = "Test",
                 lastName = "User",
@@ -331,7 +331,7 @@ public class SecurityTests(ZunoApiFactory factory) : IClassFixture<ZunoApiFactor
             new
             {
                 email,
-                phoneNumber = (string?)null,
+                phoneNumber = TestPhone.Next(),
                 password,
                 firstName = "Test",
                 lastName = "User",

@@ -27,6 +27,7 @@ public class RegisterUserCommandValidatorTests
     private static RegisterUserCommand ValidCommand() => new()
     {
         Email = "customer@example.com",
+        PhoneNumber = "9876543210",
         Password = "Str0ng!Pass",
         FirstName = "Asha",
         LastName = "Rao",
@@ -40,15 +41,41 @@ public class RegisterUserCommandValidatorTests
         result.ShouldNotHaveAnyValidationErrors();
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Should_Fail_When_Mobile_Number_Is_Missing(string? phoneNumber)
+    {
+        var command = ValidCommand();
+        command.PhoneNumber = phoneNumber;
+
+        var result = await _sut.TestValidateAsync(command);
+        result.ShouldHaveValidationErrorFor(x => x.PhoneNumber)
+            .WithErrorMessage("Mobile number is required.");
+        _userRepositoryMock.Verify(
+            r => r.ExistsByPhoneNumberAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     [Fact]
-    public async Task Should_Fail_When_Email_And_Phone_Are_Both_Missing()
+    public async Task Should_Pass_Without_Email_When_Mobile_Number_Is_Given()
     {
         var command = ValidCommand();
         command.Email = null;
-        command.PhoneNumber = null;
 
         var result = await _sut.TestValidateAsync(command);
-        result.Errors.Should().Contain(e => e.ErrorMessage.Contains("Email or PhoneNumber"));
+        result.ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Fact]
+    public async Task Should_Fail_When_Mobile_Number_Already_Exists()
+    {
+        _userRepositoryMock
+            .Setup(r => r.ExistsByPhoneNumberAsync("9876543210", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _sut.TestValidateAsync(ValidCommand());
+        result.ShouldHaveValidationErrorFor(x => x.PhoneNumber);
     }
 
     [Theory]

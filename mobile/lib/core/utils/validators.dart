@@ -21,16 +21,6 @@ class Validators {
     return null;
   }
 
-  static String? indianMobile(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return null;
-    }
-    if (!_indianMobilePattern.hasMatch(value.trim())) {
-      return 'Enter a valid 10-digit Indian mobile number.';
-    }
-    return null;
-  }
-
   /// The 10 digits of an Indian mobile number however it was typed — "98765 43210",
   /// "+91 98765 43210", "09876543210" — or null when it is not one. The Rent server reads it the same
   /// way (RentalPhone.Normalize).

@@ -7,7 +7,6 @@ import 'package:zuno/core/utils/ui_lookup.dart';
 import 'package:zuno/core/utils/validators.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:zuno/features/auth/presentation/widgets/auth_text_field.dart';
-import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/auth_backdrop.dart';
 import 'package:zuno/shared/widgets/auth_card.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
@@ -44,21 +43,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    if (_emailController.text.trim().isEmpty &&
-        _phoneController.text.trim().isEmpty) {
-      context.showFailureMessage('Provide either an email or a phone number.');
-      return;
-    }
-
     await ref
         .read(authProvider.notifier)
         .register(
           email: _emailController.text.trim().isEmpty
               ? null
               : _emailController.text.trim(),
-          phoneNumber: _phoneController.text.trim().isEmpty
-              ? null
-              : _phoneController.text.trim(),
+          phoneNumber: Validators.indianMobileDigits(_phoneController.text),
           password: _passwordController.text,
           firstName: _firstNameController.text.trim(),
           lastName: _lastNameController.text.trim(),
@@ -188,7 +179,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         keyboardType: TextInputType.phone,
                         textInputAction: TextInputAction.next,
                         prefixIcon: Icons.phone_outlined,
-                        validator: Validators.indianMobile,
+                        validator: (v) => Validators.requiredIndianMobile(
+                          v,
+                          missing: 'Mobile number is required.',
+                        ),
                       ),
                       const SizedBox(height: 12),
                       AuthTextField(

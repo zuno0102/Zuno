@@ -13,7 +13,7 @@ public class AuthEndpointsTests(ZunoApiFactory factory) : IClassFixture<ZunoApiF
     private static object RegisterPayload(string email) => new
     {
         email,
-        phoneNumber = (string?)null,
+        phoneNumber = TestPhone.Next(),
         password = "Str0ng!Pass",
         firstName = "Asha",
         lastName = "Rao",
@@ -126,7 +126,7 @@ public class AuthEndpointsTests(ZunoApiFactory factory) : IClassFixture<ZunoApiF
         var response = await _client.PostAsJsonAsync("/api/v1/auth/register", new
         {
             email,
-            phoneNumber = (string?)null,
+            phoneNumber = TestPhone.Next(),
             password = "weak",
             firstName = "Asha",
             lastName = "Rao",
@@ -134,5 +134,28 @@ public class AuthEndpointsTests(ZunoApiFactory factory) : IClassFixture<ZunoApiF
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public async Task Register_Without_Mobile_Number_Should_Return_BadRequest(string? phoneNumber)
+    {
+        // Twice: an empty number once got past validation and then crashed on the unique index.
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            var response = await _client.PostAsJsonAsync("/api/v1/auth/register", new
+            {
+                email = $"{Guid.NewGuid()}@example.com",
+                phoneNumber,
+                password = "Str0ng!Pass",
+                firstName = "Asha",
+                lastName = "Rao",
+                role = "Customer",
+            });
+
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            (await response.Content.ReadAsStringAsync()).Should().Contain("Mobile number is required.");
+        }
     }
 }

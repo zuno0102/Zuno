@@ -35,7 +35,7 @@ const person = (first, role, extra = {}) => ({
 (async () => {
   // ── Registration: what is refused ───────────────────────────────────────────────────────────
   const refusals = [
-    ["no email and no phone", { email: "", phoneNumber: "" }, "either email or phonenumber"],
+    ["no mobile number", { phoneNumber: "" }, "mobile number is required"],
     ["a malformed email", { email: "not-an-email" }, "valid email"],
     ["a phone that is not an Indian mobile", { phoneNumber: "12345" }, "10-digit"],
     ["a weak password", { password: "abc" }, ""],
