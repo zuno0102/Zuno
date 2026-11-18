@@ -400,6 +400,11 @@ class MarketplaceSummaryModel {
     this.sold = 0,
     this.inactive,
     this.liveItems,
+    this.liveWholesale = 0,
+    this.liveFood = 0,
+    this.liveAds = 0,
+    this.foodPortionsLeft = 0,
+    this.expiredAds = 0,
     required this.plan,
     this.categories = const [],
   });
@@ -414,6 +419,11 @@ class MarketplaceSummaryModel {
   final int sold;
   final int? inactive;
   final int? liveItems;
+  final int liveWholesale;
+  final int liveFood;
+  final int liveAds;
+  final int foodPortionsLeft;
+  final int expiredAds;
   final MarketplacePlanModel plan;
   final List<MarketplaceCategoryCountModel> categories;
 
@@ -422,6 +432,11 @@ class MarketplaceSummaryModel {
     paused: paused,
     inactive: inactive,
     liveItems: liveItems,
+    liveWholesale: liveWholesale,
+    liveFood: liveFood,
+    liveAds: liveAds,
+    foodPortionsLeft: foodPortionsLeft,
+    expiredAds: expiredAds,
     expired: expired,
     closed: closed,
     sold: sold,

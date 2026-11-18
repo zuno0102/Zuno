@@ -34,15 +34,38 @@ StatusPill marketplaceStatusPill(MarketplaceOptions? options, String status) {
 /// With [status] set it shows only the posts in that state: what a Marketplace tile on the home
 /// screen opens. That view lists and changes posts, but adds from the Marketplace tab.
 class BusinessMarketplaceTab extends ConsumerStatefulWidget {
-  const BusinessMarketplaceTab({this.status, this.inactive = false, super.key});
+  const BusinessMarketplaceTab({
+    this.status,
+    this.kind,
+    this.wholesale = false,
+    this.inactive = false,
+    super.key,
+  });
 
   final String? status;
 
-  /// The Inactive tile's view: paused posts, and live products with a colour / size switched off.
+  /// One kind of post: the Food and Ads tiles.
+  final String? kind;
+
+  /// The B2B posts only: the B2B Live tile.
+  final bool wholesale;
+
+  /// The Inactive tile's view: paused posts, live products with a colour / size switched off, and
+  /// food offers whose time is over.
   final bool inactive;
 
   /// A home tile's list: it shows and changes posts, but adds from the Marketplace tab.
-  bool get isFiltered => status != null || inactive;
+  bool get isFiltered =>
+      status != null || kind != null || wholesale || inactive;
+
+  /// The posts this list shows.
+  BusinessMarketplacePostsProvider get posts =>
+      businessMarketplacePostsProvider(
+        status: status,
+        kind: kind,
+        wholesale: wholesale,
+        inactive: inactive,
+      );
 
   @override
   ConsumerState<BusinessMarketplaceTab> createState() =>
@@ -53,13 +76,7 @@ class _BusinessMarketplaceTabState
     extends ConsumerState<BusinessMarketplaceTab> {
   @override
   Widget build(BuildContext context) {
-    final status = widget.status;
-    final postsAsync = ref.watch(
-      businessMarketplacePostsProvider(
-        status: status,
-        inactive: widget.inactive,
-      ),
-    );
+    final postsAsync = ref.watch(widget.posts);
     final summary = ref.watch(marketplaceSummaryProvider).value;
     final options = ref.watch(marketplaceOptionsProvider).value;
 
@@ -87,12 +104,7 @@ class _BusinessMarketplaceTabState
                 ErrorBanner(message: error.toString()),
                 const SizedBox(height: 12),
                 TextButton.icon(
-                  onPressed: () => ref.invalidate(
-                    businessMarketplacePostsProvider(
-                      status: status,
-                      inactive: widget.inactive,
-                    ),
-                  ),
+                  onPressed: () => ref.invalidate(widget.posts),
                   icon: const Icon(Icons.refresh),
                   label: const Text('Try again'),
                 ),
@@ -122,12 +134,7 @@ class _BusinessMarketplaceTabState
     return RefreshIndicator(
       onRefresh: () async {
         reloadMarketplace(ref);
-        await ref.read(
-          businessMarketplacePostsProvider(
-            status: widget.status,
-            inactive: widget.inactive,
-          ).future,
-        );
+        await ref.read(widget.posts.future);
       },
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -303,8 +310,10 @@ class MarketplacePostCard extends ConsumerWidget {
         if (post.status != MarketplacePostStatus.closed &&
             post.status != MarketplacePostStatus.sold)
           ('edit', 'Edit'),
-        // A new product's colours and sizes; its stock is counted on the Stock page.
-        if (post.canUpdateStock) ('variants', 'Manage variants'),
+        // A new product's colours and sizes; its stock is counted on the Stock page. B2B lots
+        // (bananas, cabbage) are sold by the unit and have none.
+        if (post.keepsStock && post.canUpdateStock)
+          ('variants', 'Manage variants'),
         for (final action in marketplaceMenuActions(post))
           ('status:${action.toStatus}', action.name),
         ('delete', 'Remove'),
@@ -395,6 +404,8 @@ class MarketplacePostListScreen extends StatelessWidget {
   const MarketplacePostListScreen({
     required this.title,
     this.status,
+    this.kind,
+    this.wholesale = false,
     this.inactive = false,
     super.key,
   });
@@ -404,12 +415,23 @@ class MarketplacePostListScreen extends StatelessWidget {
   /// Null for every post.
   final String? status;
 
+  /// One kind of post (food offers, adverts); null for every kind.
+  final String? kind;
+
+  /// The B2B posts only.
+  final bool wholesale;
+
   /// The Inactive tile's posts.
   final bool inactive;
 
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(title)),
-    body: BusinessMarketplaceTab(status: status, inactive: inactive),
+    body: BusinessMarketplaceTab(
+      status: status,
+      kind: kind,
+      wholesale: wholesale,
+      inactive: inactive,
+    ),
   );
 }

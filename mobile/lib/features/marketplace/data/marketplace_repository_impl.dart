@@ -34,6 +34,7 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
   Future<List<MarketplacePost>> getMyPosts({
     String? categoryId,
     String? status,
+    String? kind,
     bool keepsStock = false,
     bool wholesale = false,
     bool inactive = false,
@@ -41,6 +42,7 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
     for (final p in (await _remote.getMyPosts(
       categoryId: categoryId,
       status: status,
+      kind: kind,
       keepsStock: keepsStock,
       wholesale: wholesale,
       inactive: inactive,

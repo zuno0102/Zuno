@@ -231,6 +231,11 @@ MarketplaceSummaryModel _$MarketplaceSummaryModelFromJson(
   sold: (json['sold'] as num?)?.toInt() ?? 0,
   inactive: (json['inactive'] as num?)?.toInt(),
   liveItems: (json['liveItems'] as num?)?.toInt(),
+  liveWholesale: (json['liveWholesale'] as num?)?.toInt() ?? 0,
+  liveFood: (json['liveFood'] as num?)?.toInt() ?? 0,
+  liveAds: (json['liveAds'] as num?)?.toInt() ?? 0,
+  foodPortionsLeft: (json['foodPortionsLeft'] as num?)?.toInt() ?? 0,
+  expiredAds: (json['expiredAds'] as num?)?.toInt() ?? 0,
   plan: MarketplacePlanModel.fromJson(json['plan'] as Map<String, dynamic>),
   categories:
       (json['categories'] as List<dynamic>?)

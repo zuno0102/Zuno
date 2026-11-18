@@ -43,6 +43,7 @@ class MarketplaceRemoteDataSource {
   Future<MarketplacePostPageModel> getMyPosts({
     String? categoryId,
     String? status,
+    String? kind,
     bool keepsStock = false,
     bool wholesale = false,
     bool inactive = false,
@@ -53,6 +54,7 @@ class MarketplaceRemoteDataSource {
       queryParameters: {
         'categoryId': ?categoryId,
         'status': ?status,
+        'kind': ?kind,
         if (keepsStock) 'keepsStock': true,
         if (wholesale) 'wholesale': true,
         if (inactive) 'inactive': true,

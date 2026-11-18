@@ -470,14 +470,19 @@ class MarketplaceSummary {
     this.sold = 0,
     this.inactive,
     this.liveItems,
+    this.liveWholesale = 0,
+    this.liveFood = 0,
+    this.liveAds = 0,
+    this.foodPortionsLeft = 0,
+    this.expiredAds = 0,
     this.categories = const [],
   });
 
   final int active;
   final int paused;
 
-  /// The Inactive tile: paused posts, and live products with a colour / size switched off. Null
-  /// from an older server, which counts the paused only.
+  /// The Inactive tile: paused posts, live products with a colour / size switched off, and food
+  /// offers whose time is over. Null from an older server, which counts the paused only.
   final int? inactive;
 
   int get inactiveCount => inactive ?? paused;
@@ -487,6 +492,18 @@ class MarketplaceSummary {
   final int? liveItems;
 
   int get liveCount => liveItems ?? active;
+
+  /// The B2B, Food and Ads Live tiles: live posts of each.
+  final int liveWholesale;
+  final int liveFood;
+  final int liveAds;
+
+  /// The Food remaining tile: portions still offered in the food offers running now.
+  final int foodPortionsLeft;
+
+  /// The Ads Expired tile: adverts whose dates are over.
+  final int expiredAds;
+
   final int expired;
   final int closed;
   final int sold;

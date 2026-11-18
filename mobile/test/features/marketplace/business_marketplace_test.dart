@@ -345,8 +345,6 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
     return MarketplaceSummary(
       active: plan.usedActivePosts,
       paused: posts.where((p) => p.status == 'Paused').length,
-      // Item by item, as the server counts: a paused product's every colour / size (one for a
-      // post with none), and each one switched off on a live product.
       // Live, item by item as the server counts: each live post's colours / sizes on sale, or one.
       liveItems: posts
           .where((p) => p.status == MarketplacePostStatus.active)
@@ -354,6 +352,8 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
             final onSale = p.variants.where((v) => v.isActive).length;
             return sum + (onSale == 0 ? 1 : onSale);
           }),
+      // Item by item, as the server counts: a paused product's every colour / size (one for a
+      // post with none), each one switched off on a live product, and each expired food offer.
       inactive: posts.fold<int>(
         0,
         (sum, p) =>
@@ -362,8 +362,27 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
                 ? (p.variants.isEmpty ? 1 : p.variants.length)
                 : p.status == MarketplacePostStatus.active
                 ? p.variants.where((v) => !v.isActive).length
+                : _expiredFood(p)
+                ? 1
                 : 0),
       ),
+      liveWholesale: _live.where((p) => p.isWholesale).length,
+      liveFood: _live
+          .where((p) => p.kind == MarketplacePostKind.foodOffer)
+          .length,
+      liveAds: _live
+          .where((p) => p.kind == MarketplacePostKind.advertisement)
+          .length,
+      foodPortionsLeft: _live
+          .where((p) => p.kind == MarketplacePostKind.foodOffer)
+          .fold<int>(0, (sum, p) => sum + (p.quantity ?? 0)),
+      expiredAds: posts
+          .where(
+            (p) =>
+                p.kind == MarketplacePostKind.advertisement &&
+                p.status == MarketplacePostStatus.expired,
+          )
+          .length,
       expired: posts.where((p) => p.status == 'Expired').length,
       closed: 0,
       sold: posts.where((p) => p.status == MarketplacePostStatus.sold).length,
@@ -382,6 +401,13 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
     );
   }
 
+  Iterable<MarketplacePost> get _live =>
+      posts.where((p) => p.status == MarketplacePostStatus.active);
+
+  static bool _expiredFood(MarketplacePost p) =>
+      p.kind == MarketplacePostKind.foodOffer &&
+      p.status == MarketplacePostStatus.expired;
+
   int _countOf(String categoryId, String status) => posts
       .where((p) => p.categoryId == categoryId && p.status == status)
       .length;
@@ -390,6 +416,7 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
   Future<List<MarketplacePost>> getMyPosts({
     String? categoryId,
     String? status,
+    String? kind,
     bool keepsStock = false,
     bool inactive = false,
     bool wholesale = false,
@@ -397,11 +424,13 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
     if (failList case final error?) throw error;
     return posts
         .where((p) => !wholesale || p.isWholesale)
+        .where((p) => kind == null || p.kind == kind)
         .where(
           (p) =>
               !inactive ||
               p.status == MarketplacePostStatus.paused ||
-              p.variants.any((v) => !v.isActive),
+              p.variants.any((v) => !v.isActive) ||
+              _expiredFood(p),
         )
         .where((p) => !keepsStock || (p.keepsStock && p.canUpdateStock))
         .where((p) => categoryId == null || p.categoryId == categoryId)
@@ -2826,9 +2855,8 @@ void main() {
       expect(find.text('Pause'), findsNothing);
     });
 
-    testWidgets('a B2B post menu is Edit and Remove only — no Pause or Close', (
-      tester,
-    ) async {
+    testWidgets('a B2B post menu is Edit and Remove only — no variants, Pause or '
+        'Close', (tester) async {
       await _pump(
         tester,
         const BusinessMarketplaceTab(),
@@ -2845,6 +2873,8 @@ void main() {
               priceUnit: 'kg',
               minOrder: 100,
               quantity: 2000,
+              // The server offers B2B stock on its own page; still no colours / sizes.
+              canUpdateStock: true,
               attributes: const {},
             ),
           ],
@@ -2857,6 +2887,7 @@ void main() {
       expect(find.text('Remove'), findsOneWidget);
       expect(find.text('Pause'), findsNothing);
       expect(find.text('Close (sold / done)'), findsNothing);
+      expect(find.text('Manage variants'), findsNothing);
     });
 
     testWidgets('the B2B form has an Active switch, as a product does', (
@@ -3237,27 +3268,87 @@ void main() {
       expect(find.text('Silk saree'), findsOneWidget);
     });
 
-    testWidgets('show live, inactive, expired and Stock — no plan tile', (
+    testWidgets('show Products, B2B, Food and Ads groups — no plan tile', (
       tester,
     ) async {
+      const mainOnSale = MarketplaceVariant(id: 'v-1', colour: 'Red', stock: 5);
       await _pump(
         tester,
         const MarketplaceDashboardTiles(),
         repository: _FakeMarketplaceRepository(
           posts: [
-            _post(),
+            // A product, its main and 3 colours on sale: 4.
+            _post(
+              title: 'Silk saree',
+              condition: MarketplaceItemCondition.newItem,
+              canUpdateStock: true,
+              variants: [
+                mainOnSale,
+                for (final c in ['Green', 'Blue', 'Yellow'])
+                  MarketplaceVariant(id: 'v-$c', colour: c, stock: 2),
+              ],
+            ),
+            for (final name in ['Nendran banana', 'Cabbage'])
+              _post(
+                id: 'b-$name',
+                title: name,
+                categoryId: _b2b.id,
+                tradeType: MarketplaceTradeType.wholesale,
+                quantity: 500,
+              ),
+            for (final (i, left) in [(1, 20), (2, 5)])
+              _post(
+                id: 'f-$i',
+                kind: MarketplacePostKind.foodOffer,
+                categoryId: _food.id,
+                quantity: left,
+              ),
+            _post(
+              id: 'f-old',
+              kind: MarketplacePostKind.foodOffer,
+              categoryId: _food.id,
+              status: MarketplacePostStatus.expired,
+              quantity: 7,
+            ),
+            _post(
+              id: 'a-1',
+              kind: MarketplacePostKind.advertisement,
+              categoryId: _ads.id,
+            ),
+            _post(
+              id: 'a-old',
+              kind: MarketplacePostKind.advertisement,
+              categoryId: _ads.id,
+              status: MarketplacePostStatus.expired,
+            ),
             _post(id: 'p-2', status: 'Paused'),
           ],
-          plan: _plan(used: 1),
+          plan: _plan(max: 20, used: 6),
         ),
       );
 
       String valueOf(String key) => tester
           .widget<StatTile>(find.byKey(ValueKey('marketplace-tile-$key')))
           .value;
-      expect(valueOf('active'), '1');
-      expect(valueOf('inactive'), '1');
-      expect(valueOf('expired'), '0');
+      expect(valueOf('active'), '9', reason: '4 + 2 B2B + 2 food + 1 advert');
+      expect(
+        valueOf('inactive'),
+        '2',
+        reason: 'the paused post and the expired food offer',
+      );
+      expect(valueOf('b2b-live'), '2');
+      expect(valueOf('food-live'), '2');
+      expect(valueOf('food-left'), '25', reason: 'not the expired offer');
+      expect(valueOf('ads-live'), '1');
+      expect(valueOf('ads-expired'), '1');
+      for (final group in ['Products', 'B2B', 'Food', 'Ads']) {
+        expect(find.text(group), findsOneWidget, reason: group);
+      }
+      expect(find.text('Product stock'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('marketplace-tile-expired')),
+        findsNothing,
+      );
       expect(find.byKey(const ValueKey('marketplace-tile-plan')), findsNothing);
       expect(find.text('Free plan'), findsNothing);
       expect(

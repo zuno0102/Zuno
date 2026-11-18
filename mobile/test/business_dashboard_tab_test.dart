@@ -195,7 +195,14 @@ void main() {
     // The headline and the chart sit either side of the tiles, so if the viewport had failed
     // these would be the casualties.
     expect(find.text('ORDERS FINISHED'), findsOneWidget);
+    // Below the Marketplace groups, so scrolled to.
+    await tester.scrollUntilVisible(
+      find.text('Customer activity'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Customer activity'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('shows the seven stat tiles', (tester) async {

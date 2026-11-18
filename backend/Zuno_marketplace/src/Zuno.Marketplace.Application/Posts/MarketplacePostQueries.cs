@@ -31,7 +31,7 @@ public class GetMyMarketplacePostsQuery : IRequest<MarketplacePostPageDto>
     /// <summary>True for the B2B stock page: the business's B2B posts not closed or sold.</summary>
     public bool? Wholesale { get; set; }
 
-    /// <summary>True for the Inactive tile: paused posts, and live products with a colour / size switched off.</summary>
+    /// <summary>True for the Inactive tile: paused posts, live products with a colour / size switched off, and expired food offers.</summary>
     public bool? Inactive { get; set; }
 }
 
@@ -96,7 +96,12 @@ public class MarketplacePostQueryHandlers(
 
         if (request.Inactive == true)
         {
-            mine = mine.Where(MarketplaceQueries.IsInactive);
+            // Paused, a live product with a colour / size switched off, or a food offer whose time is over.
+            mine = mine.Where(p =>
+                p.Status == MarketplacePostStatus.Paused
+                || (p.Status == MarketplacePostStatus.Active && p.Variants.Any(v => !v.IsActive))
+                || (p.Status == MarketplacePostStatus.Active && p.Kind == MarketplacePostKind.FoodOffer
+                    && p.EndsAt != null && p.EndsAt <= now));
         }
 
         var totalCount = await mine.CountAsync(cancellationToken);
@@ -165,13 +170,37 @@ public class MarketplacePostQueryHandlers(
                 && p.Status == MarketplacePostStatus.Active
                 && (p.EndsAt == null || p.EndsAt > now))
             .SumAsync(p => p.Variants.Count(v => v.IsActive) == 0 ? 1 : p.Variants.Count(v => v.IsActive), cancellationToken);
+        // The B2B, Food and Ads tiles: live posts of each, food portions left on offer now, and the
+        // food offers and adverts whose time is over. One aggregate over the owner's active posts.
+        var byKind = await dbContext.Posts
+            .AsNoTracking()
+            .Where(p => p.OwnerUserId == ownerId && p.Status == MarketplacePostStatus.Active)
+            .GroupBy(p => 1)
+            .Select(g => new
+            {
+                LiveWholesale = g.Count(p => p.TradeType == MarketplaceTradeType.Wholesale && (p.EndsAt == null || p.EndsAt > now)),
+                LiveFood = g.Count(p => p.Kind == MarketplacePostKind.FoodOffer && (p.EndsAt == null || p.EndsAt > now)),
+                LiveAds = g.Count(p => p.Kind == MarketplacePostKind.Advertisement && (p.EndsAt == null || p.EndsAt > now)),
+                FoodPortionsLeft = g.Sum(p =>
+                    p.Kind == MarketplacePostKind.FoodOffer && (p.EndsAt == null || p.EndsAt > now) ? p.Quantity ?? 0 : 0),
+                ExpiredFood = g.Count(p => p.Kind == MarketplacePostKind.FoodOffer && p.EndsAt != null && p.EndsAt <= now),
+                ExpiredAds = g.Count(p => p.Kind == MarketplacePostKind.Advertisement && p.EndsAt != null && p.EndsAt <= now),
+            })
+            .FirstOrDefaultAsync(cancellationToken);
         var (plan, endsAt) = await dbContext.CurrentAsync(ownerId, now, cancellationToken);
         return new MarketplaceSummaryDto
         {
             Active = live,
             LiveItems = liveItems,
+            LiveWholesale = byKind?.LiveWholesale ?? 0,
+            LiveFood = byKind?.LiveFood ?? 0,
+            LiveAds = byKind?.LiveAds ?? 0,
+            FoodPortionsLeft = byKind?.FoodPortionsLeft ?? 0,
+            ExpiredFood = byKind?.ExpiredFood ?? 0,
+            ExpiredAds = byKind?.ExpiredAds ?? 0,
             Paused = byCategory.Sum(c => c.Paused),
-            Inactive = pausedItems + switchedOffItems,
+            // Not on sale, item by item, across the Marketplace — expired food offers too.
+            Inactive = pausedItems + switchedOffItems + (byKind?.ExpiredFood ?? 0),
             Expired = byCategory.Sum(c => c.Expired),
             Closed = byCategory.Sum(c => c.Closed),
             Sold = byCategory.Sum(c => c.Sold),

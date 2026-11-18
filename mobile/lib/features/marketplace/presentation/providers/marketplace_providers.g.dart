@@ -361,7 +361,13 @@ final class BusinessMarketplacePostsProvider
   /// background, so a slow or failed refresh never holds up the business's own list.
   BusinessMarketplacePostsProvider._({
     required BusinessMarketplacePostsFamily super.from,
-    required ({String? categoryId, String? status, bool inactive})
+    required ({
+      String? categoryId,
+      String? status,
+      String? kind,
+      bool wholesale,
+      bool inactive,
+    })
     super.argument,
   }) : super(
          retry: null,
@@ -390,11 +396,20 @@ final class BusinessMarketplacePostsProvider
   @override
   FutureOr<List<MarketplacePost>> create(Ref ref) {
     final argument =
-        this.argument as ({String? categoryId, String? status, bool inactive});
+        this.argument
+            as ({
+              String? categoryId,
+              String? status,
+              String? kind,
+              bool wholesale,
+              bool inactive,
+            });
     return businessMarketplacePosts(
       ref,
       categoryId: argument.categoryId,
       status: argument.status,
+      kind: argument.kind,
+      wholesale: argument.wholesale,
       inactive: argument.inactive,
     );
   }
@@ -412,7 +427,7 @@ final class BusinessMarketplacePostsProvider
 }
 
 String _$businessMarketplacePostsHash() =>
-    r'5aff59b0873b95c0b2697ac64d76d24a092ff54b';
+    r'33463fbd1bc88e49536d3a60a584900de15caab9';
 
 /// The business's posts; [categoryId] (a main category) and [status] narrow the list (null for all).
 ///
@@ -423,7 +438,13 @@ final class BusinessMarketplacePostsFamily extends $Family
     with
         $FunctionalFamilyOverride<
           FutureOr<List<MarketplacePost>>,
-          ({String? categoryId, String? status, bool inactive})
+          ({
+            String? categoryId,
+            String? status,
+            String? kind,
+            bool wholesale,
+            bool inactive,
+          })
         > {
   BusinessMarketplacePostsFamily._()
     : super(
@@ -442,9 +463,17 @@ final class BusinessMarketplacePostsFamily extends $Family
   BusinessMarketplacePostsProvider call({
     String? categoryId,
     String? status,
+    String? kind,
+    bool wholesale = false,
     bool inactive = false,
   }) => BusinessMarketplacePostsProvider._(
-    argument: (categoryId: categoryId, status: status, inactive: inactive),
+    argument: (
+      categoryId: categoryId,
+      status: status,
+      kind: kind,
+      wholesale: wholesale,
+      inactive: inactive,
+    ),
     from: this,
   );
 

@@ -166,9 +166,27 @@ public class MarketplaceSummaryDto
     /// </summary>
     public int LiveItems { get; set; }
 
+    /// <summary>The B2B tile: live B2B posts.</summary>
+    public int LiveWholesale { get; set; }
+
+    /// <summary>The Food tile: live food offers.</summary>
+    public int LiveFood { get; set; }
+
+    /// <summary>The Ads tile: live adverts.</summary>
+    public int LiveAds { get; set; }
+
+    /// <summary>Food left: the portions still offered in the food offers running now.</summary>
+    public int FoodPortionsLeft { get; set; }
+
+    /// <summary>Food offers whose time is over (counted in Inactive too).</summary>
+    public int ExpiredFood { get; set; }
+
+    /// <summary>The Ads Expired tile: adverts whose dates are over.</summary>
+    public int ExpiredAds { get; set; }
+
     /// <summary>
     /// The Inactive tile, item by item: every colour / size of a paused product (one for a post with
-    /// none), and each one switched off on a live product.
+    /// none), each one switched off on a live product, and each food offer whose time is over.
     /// </summary>
     public int Inactive { get; set; }
 

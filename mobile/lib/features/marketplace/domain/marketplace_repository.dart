@@ -14,10 +14,12 @@ abstract interface class MarketplaceRepository {
   /// The business's posts, newest first; [categoryId] (a main category) and [status] narrow the list,
   /// [keepsStock] keeps only the new products with a stock count — the Stock page — and [wholesale]
   /// only the B2B posts — the B2B stock page.
-  /// [inactive] keeps the paused posts and the live products with a colour / size switched off.
+  /// [kind] keeps one kind (food offers, adverts). [inactive] keeps the paused posts, the live
+  /// products with a colour / size switched off, and the food offers whose time is over.
   Future<List<MarketplacePost>> getMyPosts({
     String? categoryId,
     String? status,
+    String? kind,
     bool keepsStock = false,
     bool wholesale = false,
     bool inactive = false,

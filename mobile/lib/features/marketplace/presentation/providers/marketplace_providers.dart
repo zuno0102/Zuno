@@ -171,15 +171,23 @@ Future<List<MarketplacePost>> businessMarketplacePosts(
   Ref ref, {
   String? categoryId,
   String? status,
+  String? kind,
+  bool wholesale = false,
   bool inactive = false,
 }) {
   final repository = ref.watch(marketplaceRepositoryProvider);
-  if (categoryId == null && status == null && !inactive) {
+  if (categoryId == null &&
+      status == null &&
+      kind == null &&
+      !wholesale &&
+      !inactive) {
     unawaited(repository.syncProfile().then<void>((_) {}, onError: (_) {}));
   }
   return repository.getMyPosts(
     categoryId: categoryId,
     status: status,
+    kind: kind,
+    wholesale: wholesale,
     inactive: inactive,
   );
 }
