@@ -185,3 +185,49 @@ public class PricingAdminHandlers(IApplicationDbContext dbContext) :
         SortOrder = p.SortOrder,
     };
 }
+
+/// <summary>A plan the Super Admin gave a business, and until when it runs.</summary>
+public record GivenPlanDto(Guid BusinessId, string BusinessName, string PlanName, DateTimeOffset? EndsAt);
+
+/// <summary>
+/// The Super Admin gives <see cref="BusinessId"/> a plan for <see cref="Days"/> days, free: for test
+/// accounts, or a business being helped. It runs exactly like a bought plan — the same plan still
+/// running is extended, another one is replaced, and when it ends the extras are paused.
+/// </summary>
+public record GivePlanCommand(Guid BusinessId, Guid PlanId, int Days) : IRequest<GivenPlanDto>;
+
+public class GivePlanCommandValidator : AbstractValidator<GivePlanCommand>
+{
+    public GivePlanCommandValidator()
+    {
+        RuleFor(x => x.BusinessId).NotEmpty();
+        RuleFor(x => x.PlanId).NotEmpty();
+        RuleFor(x => x.Days).InclusiveBetween(1, 3660);
+    }
+}
+
+public class GivePlanCommandHandler(IApplicationDbContext dbContext, PlanReconciler reconciler, IDateTimeProvider clock)
+    : IRequestHandler<GivePlanCommand, GivenPlanDto>
+{
+    public async Task<GivenPlanDto> Handle(GivePlanCommand request, CancellationToken cancellationToken)
+    {
+        var business = await dbContext.BusinessOwnerProfiles.AsNoTracking()
+            .FirstOrDefaultAsync(b => b.Id == request.BusinessId, cancellationToken)
+            ?? throw new EntityNotFoundException(nameof(BusinessOwnerProfile), request.BusinessId);
+        var plan = await dbContext.SubscriptionPlans.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == request.PlanId, cancellationToken)
+            ?? throw new EntityNotFoundException(nameof(SubscriptionPlan), request.PlanId);
+        if (plan.IsDefault)
+        {
+            throw new DomainException("Every business is on Basic already. Pick a paid plan to give.");
+        }
+
+        // Free and for the days the Super Admin chose; the plan's own price and length are left alone.
+        var given = BusinessSubscription.Start(business.UserId, plan);
+        given.Amount = 0m;
+        given.DurationDays = request.Days;
+        dbContext.BusinessSubscriptions.Add(given);
+        await reconciler.StartAsync(given, null, clock.UtcNow, cancellationToken);
+        return new GivenPlanDto(business.Id, business.BusinessName, given.PlanName, given.EndsAt);
+    }
+}

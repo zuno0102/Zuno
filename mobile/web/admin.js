@@ -146,6 +146,8 @@
     const list = shown();
     $('all').checked = list.length > 0 && list.every((b) => selected.has(b.id));
     $('approve').disabled = $('reject').disabled = selected.size === 0;
+    $('give').disabled = selected.size === 0 || !$('give-plan').value;
+    $('give').textContent = `Give plan to selected (${selected.size})`;
     $('approve').textContent = `Approve selected (${selected.size})`;
     $('reject').textContent = `Reject selected (${selected.size})`;
   }
@@ -177,6 +179,29 @@
     say($('msg'), failed.length ? `${pastTense} ${done}. Not done: ${failed.join('; ')}` : `${pastTense} ${done}.`, !failed.length);
     load();
   }
+  $('give-plan').addEventListener('change', update);
+  $('give').addEventListener('click', async () => {
+    const ids = [...selected];
+    const days = Number($('give-days').value);
+    const planName = $('give-plan').selectedOptions[0]?.textContent ?? 'the plan';
+    if (!(days >= 1 && days <= 3660)) { say($('msg'), 'Days must be between 1 and 3660.', false); return; }
+    if (!confirm(`Give ${planName} for ${days} days, free, to ${ids.length} business${ids.length === 1 ? '' : 'es'}?`)) return;
+    $('give').disabled = true;
+    let done = 0;
+    const failed = [];
+    for (const id of ids) {
+      try {
+        await call(`${API.service}/api/v1/admin/pricing/give`, 'POST', { businessId: id, planId: $('give-plan').value, days });
+        done++;
+        say($('msg'), `Gave the plan to ${done} of ${ids.length}…`, true);
+      } catch (err) {
+        failed.push(`${businesses.find((b) => b.id === id)?.businessName ?? id}: ${err.message}`);
+      }
+    }
+    say($('msg'), failed.length ? `Gave ${done}. Not done: ${failed.join('; ')}` : `Gave ${planName} to ${done} for ${days} days.`, !failed.length);
+    update();
+  });
+
   $('approve').addEventListener('click', () => decide(true));
   $('reject').addEventListener('click', () => decide(false));
 
@@ -198,6 +223,14 @@
       const pricing = await call(`${API.service}/api/v1/admin/pricing`);
       renderPlans(pricing.plans);
       renderHiring(pricing.hiringPlans);
+      // The plans a business can be given: every paid one, on sale or not.
+      $('give-plan').replaceChildren(...pricing.plans.filter((p) => !p.isDefault).map((p) => {
+        const option = document.createElement('option');
+        option.value = p.id;
+        option.textContent = `${p.name} · ${p.period} (${areas(p)})`;
+        return option;
+      }));
+      update();
     } catch (err) {
       say($('price-msg'), err.message, false);
     }

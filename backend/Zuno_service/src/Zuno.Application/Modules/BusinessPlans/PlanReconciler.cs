@@ -17,6 +17,45 @@ public sealed class PlanReconciler(
     IAreaListings areaListings,
     ILogger<PlanReconciler> logger)
 {
+    /// <summary>
+    /// Runs a plan, bought or given. The same plan still running is extended from its end; a
+    /// different plan starts now and ends the running one, whose extra listings are then paused.
+    /// Paused listings in areas the new plan includes come back.
+    /// </summary>
+    public async Task StartAsync(BusinessSubscription plan, string? paymentId, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var running = await rules.RunningAsync(plan.OwnerUserId, now, cancellationToken);
+        var same = running.Where(s => s.PlanId == plan.PlanId).MaxBy(s => s.EndsAt);
+        var switched = false;
+        if (same is null)
+        {
+            foreach (var other in running)
+            {
+                other.EndsAt = now;
+                other.State = SubscriptionStatus.Ended;
+                switched = true;
+            }
+        }
+
+        plan.Activate(paymentId, now, same?.EndsAt ?? now);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            if (switched)
+            {
+                await PauseBeyondAllowanceAsync(plan.OwnerUserId, now, cancellationToken);
+            }
+
+            await ResumeCoveredAsync(plan.OwnerUserId, now, cancellationToken);
+        }
+        catch (AreaUnavailableException ex)
+        {
+            // Running regardless; the listings catch up on the next plan change.
+            logger.LogWarning(ex, "Listings of {Owner} wait: {Area} could not be reached.", plan.OwnerUserId, ex.Area);
+        }
+    }
+
     /// <summary>Brings back the listings a plan's end paused, in the areas a running plan now includes.</summary>
     public async Task ResumeCoveredAsync(Guid ownerUserId, DateTimeOffset now, CancellationToken cancellationToken)
     {
@@ -57,17 +96,31 @@ public sealed class PlanReconciler(
             .Skip(budget)
             .ToList();
 
+        // A listing paused by an earlier plan end and switched back on by the business still has its
+        // record: that record is kept and dated now, never doubled.
+        var recorded = await dbContext.PlanPausedListings
+            .Where(p => p.OwnerUserId == ownerUserId)
+            .ToListAsync(cancellationToken);
         foreach (var area in toPause.GroupBy(x => x.Area))
         {
             var ids = area.Select(x => x.Listing.Id).ToList();
             await SetLiveAsync(area.Key, ownerUserId, ids, live: false, cancellationToken);
-            dbContext.PlanPausedListings.AddRange(ids.Select(id => new PlanPausedListing
+            foreach (var id in ids)
             {
-                OwnerUserId = ownerUserId,
-                Area = area.Key,
-                ListingId = id,
-                PausedAt = now,
-            }));
+                if (recorded.FirstOrDefault(p => p.Area == area.Key && p.ListingId == id) is { } existing)
+                {
+                    existing.PausedAt = now;
+                    continue;
+                }
+
+                dbContext.PlanPausedListings.Add(new PlanPausedListing
+                {
+                    OwnerUserId = ownerUserId,
+                    Area = area.Key,
+                    ListingId = id,
+                    PausedAt = now,
+                });
+            }
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);

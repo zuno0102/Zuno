@@ -74,6 +74,12 @@
             <button id="reject" class="danger" disabled>Reject selected</button>
           </div>
         </div>
+        <div class="row" style="margin-top:10px">
+          <div><label for="give-plan">Give a plan to the ticked businesses, free</label>
+            <select id="give-plan"><option value="">Loading plans…</option></select></div>
+          <div style="flex:0 1 120px"><label for="give-days">Days</label><input id="give-days" type="number" min="1" max="3660" value="30"></div>
+          <div class="actions"><button id="give" class="ghost" disabled>Give plan to selected</button></div>
+        </div>
         <p id="msg"></p>
         <div class="table-wrap">
           <table>

@@ -70,6 +70,13 @@ public class AdminPricingController(ISender mediator) : ControllerBase
             new SaveHiringPlanCommand(id, request.Name, request.Amount, request.ListingDays, request.IsActive, request.SortOrder),
             cancellationToken));
 
+    /// <summary>Gives a business a plan for some days, free (test accounts, a business being helped).</summary>
+    [HttpPost("give")]
+    public async Task<IActionResult> GivePlan([FromBody] GivePlanRequest request, CancellationToken cancellationToken) =>
+        Ok(await mediator.Send(new GivePlanCommand(request.BusinessId, request.PlanId, request.Days), cancellationToken));
+
+    public record GivePlanRequest(Guid BusinessId, Guid PlanId, int Days);
+
     public record PlanRequest(string Name, decimal Price, int? DurationDays, int? MaxLiveListings, bool IsActive, short SortOrder);
 
     public record HiringPlanRequest(string Name, decimal Amount, int ListingDays, bool IsActive, short SortOrder);

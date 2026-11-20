@@ -82,7 +82,7 @@ public class BusinessPlanHandlers(
 
         if (purchase.Amount == 0m)
         {
-            await ActivateAsync(purchase, null, cancellationToken);
+            await reconciler.StartAsync(purchase, null, clock.UtcNow, cancellationToken);
             result.NothingToCollect = true;
             return result;
         }
@@ -133,7 +133,7 @@ public class BusinessPlanHandlers(
                 throw new DomainException("This payment could not be verified with Razorpay. Your plan is not active yet; try paying again.");
         }
 
-        await ActivateAsync(purchase, request.ProviderPaymentId, cancellationToken);
+        await reconciler.StartAsync(purchase, request.ProviderPaymentId, clock.UtcNow, cancellationToken);
         return await ReadAsync(owner, clock.UtcNow, cancellationToken);
     }
 
@@ -147,45 +147,6 @@ public class BusinessPlanHandlers(
         catch (AreaUnavailableException)
         {
             throw new DomainException("We couldn't check your plan just now. Try again in a minute.");
-        }
-    }
-
-    /// <summary>
-    /// Runs a paid plan. The same plan still running is extended from its end; a different plan
-    /// starts now and ends the running one, whose extra listings are then paused. Paused listings in
-    /// areas the new plan includes come back.
-    /// </summary>
-    private async Task ActivateAsync(BusinessSubscription purchase, string? paymentId, CancellationToken cancellationToken)
-    {
-        var now = clock.UtcNow;
-        var running = await rules.RunningAsync(purchase.OwnerUserId, now, cancellationToken);
-        var same = running.Where(s => s.PlanId == purchase.PlanId).MaxBy(s => s.EndsAt);
-        var switched = false;
-        if (same is null)
-        {
-            foreach (var other in running)
-            {
-                other.EndsAt = now;
-                other.State = SubscriptionStatus.Ended;
-                switched = true;
-            }
-        }
-
-        purchase.Activate(paymentId, now, same?.EndsAt ?? now);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        try
-        {
-            if (switched)
-            {
-                await reconciler.PauseBeyondAllowanceAsync(purchase.OwnerUserId, now, cancellationToken);
-            }
-
-            await reconciler.ResumeCoveredAsync(purchase.OwnerUserId, now, cancellationToken);
-        }
-        catch (AreaUnavailableException)
-        {
-            // Paid and running regardless; the listings catch up when the business next opens its plan.
         }
     }
 

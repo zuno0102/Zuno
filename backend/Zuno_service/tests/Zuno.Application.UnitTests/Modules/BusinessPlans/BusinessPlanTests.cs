@@ -314,6 +314,21 @@ public class BusinessPlanTests
     }
 
     [Fact]
+    public async Task A_listing_paused_before_and_switched_back_on_is_not_recorded_twice()
+    {
+        var plan = Running("all3-monthly");
+        plan.EndsAt = Now.AddMinutes(-5);
+        LiveService("AC service", minutesAgo: 900);
+        var tent = Guid.NewGuid();
+        _areas.Live[ListingArea.Rent] = [new AreaListing(tent, Now.AddMinutes(-100))];
+        _paused.Add(new PlanPausedListing { OwnerUserId = Owner, Area = ListingArea.Rent, ListingId = tent, PausedAt = Now.AddDays(-40) });
+
+        await Reconciler.EndDuePlansAsync(Now, CancellationToken.None);
+
+        _paused.Should().ContainSingle(p => p.ListingId == tent).Which.PausedAt.Should().Be(Now);
+    }
+
+    [Fact]
     public async Task A_plan_end_that_cannot_reach_an_area_waits_for_the_next_run()
     {
         var plan = Running("all3-monthly");
@@ -340,6 +355,53 @@ public class BusinessPlanTests
         _areas.Resumed.Should().Equal((ListingArea.Rent, tent));
         _paused.Should().BeEmpty();
         plan.PausedCount.Should().Be(0);
+    }
+
+    // ---- Super Admin gives a plan ----
+
+    private GivePlanCommandHandler Give()
+    {
+        var clock = new Mock<IDateTimeProvider>();
+        clock.Setup(c => c.UtcNow).Returns(() => _now);
+        return new GivePlanCommandHandler(_db.Object, Reconciler, clock.Object);
+    }
+
+    private BusinessOwnerProfile Business()
+    {
+        var business = new BusinessOwnerProfile { UserId = Owner, BusinessName = "Test Store" };
+        _db.Setup(d => d.BusinessOwnerProfiles).Returns(TestDbSet.From(business));
+        return business;
+    }
+
+    [Fact]
+    public async Task A_given_plan_is_free_runs_the_days_chosen_and_opens_its_areas()
+    {
+        var business = Business();
+        LiveService("AC service");
+
+        var given = await Give().Handle(new GivePlanCommand(business.Id, Plan("all3-monthly").Id, 90), default);
+
+        given.PlanName.Should().Be("All 3");
+        given.EndsAt.Should().Be(Now.AddDays(90));
+        _subscriptions.Single().Amount.Should().Be(0m);
+        _subscriptions.Single().PaymentId.Should().BeNull();
+        (await CheckAsync(ListingArea.Rent, liveHere: 0)).Allowed.Should().BeTrue();
+        _payments.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Giving_the_same_plan_again_adds_the_days_and_Basic_cannot_be_given()
+    {
+        var business = Business();
+        await Give().Handle(new GivePlanCommand(business.Id, Plan("all3-monthly").Id, 30), default);
+
+        var again = await Give().Handle(new GivePlanCommand(business.Id, Plan("all3-monthly").Id, 30), default);
+        again.EndsAt.Should().Be(Now.AddDays(60));
+
+        var basic = () => Give().Handle(new GivePlanCommand(business.Id, Plan("basic").Id, 30), default);
+        await basic.Should().ThrowAsync<DomainException>().WithMessage("Every business is on Basic already*");
+        new GivePlanCommandValidator().TestValidate(new GivePlanCommand(business.Id, Plan("all3-monthly").Id, 0))
+            .ShouldHaveValidationErrorFor(x => x.Days);
     }
 
     // ---- Super Admin prices ----
