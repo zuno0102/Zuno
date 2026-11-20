@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zuno/features/business_plan/domain/business_plan.dart';
+import 'package:zuno/features/business_plan/presentation/business_plan_providers.dart';
+import 'package:zuno/features/business_plan/presentation/plan_lock.dart';
 import 'package:zuno/core/router/push_screen.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/ui_config/ui_icons.dart';
@@ -92,11 +95,16 @@ class _BusinessMarketplaceTabState
           ? null
           : FloatingActionButton.extended(
               key: const ValueKey('marketplace-add-post'),
-              onPressed: () => _addPost(summary),
+              onPressed: _addPost,
               icon: Icon(
-                summary == null || summary.plan.canAddActivePost
-                    ? Icons.add
-                    : Icons.lock_outline,
+                ref
+                            .watch(businessPlanProvider)
+                            .value
+                            ?.usage(ListingArea.marketplace)
+                            ?.canAdd ==
+                        false
+                    ? Icons.lock_outline
+                    : Icons.add,
               ),
               label: const Text('Add post'),
             ),
@@ -147,11 +155,6 @@ class _BusinessMarketplaceTabState
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(bottom: 96),
         children: [
-          if (!widget.isFiltered && summary != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: MarketplacePlanBanner(plan: summary.plan),
-            ),
           // How customers may pay for the business's products: opens the payment choices.
           if (!widget.isFiltered)
             Padding(
@@ -186,7 +189,7 @@ class _BusinessMarketplaceTabState
                   ),
               ],
               selected: null,
-              onChanged: (id) => _addPost(summary, categoryId: id),
+              onChanged: (id) => _addPost(categoryId: id),
             ),
           if (posts.isEmpty)
             EmptyState(
@@ -207,16 +210,14 @@ class _BusinessMarketplaceTabState
     );
   }
 
-  /// Opens the form, in [categoryId] when a square was tapped — unless the plan has no room, when
-  /// it says why instead.
-  void _addPost(MarketplaceSummary? summary, {String? categoryId}) {
-    final plan = summary?.plan;
-    if (plan != null && !plan.canAddActivePost) {
-      AppMessenger.of(context).showInfo(marketplacePlanFullMessage(plan));
-      return;
-    }
-    showMarketplacePostFormSheet(context, categoryId: categoryId);
-  }
+  /// Opens the form, in [categoryId] when a square was tapped — unless the business's plan has no
+  /// room for another live listing, when the lock says why and offers the plans.
+  void _addPost({String? categoryId}) => openIfPlanAllows(
+    context,
+    ref,
+    ListingArea.marketplace,
+    () => showMarketplacePostFormSheet(context, categoryId: categoryId),
+  );
 }
 
 /// The status moves a post's menu offers. No post is closed from the menu: it is switched off
@@ -238,47 +239,6 @@ List<MarketplaceVariant> marketplaceActiveChildVariants(MarketplacePost post) =>
       for (final v in post.variants.skip(1))
         if (v.isActive) v,
     ];
-
-/// "Your Free plan allows 1 active post. Switch one off or remove one to put up another."
-String marketplacePlanFullMessage(MarketplacePlan plan) =>
-    'Your ${plan.name} plan allows ${plan.maxActivePosts} active '
-    'post${plan.maxActivePosts == 1 ? '' : 's'}. Switch one off or remove one to put up another.';
-
-/// The plan and how much of it is used, over the post list.
-class MarketplacePlanBanner extends StatelessWidget {
-  const MarketplacePlanBanner({required this.plan, super.key});
-
-  final MarketplacePlan plan;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final full = !plan.canAddActivePost;
-    return Card(
-      key: const ValueKey('marketplace-plan-banner'),
-      margin: EdgeInsets.zero,
-      child: ListTile(
-        leading: Icon(
-          Icons.workspace_premium_outlined,
-          color: AppColors.status(
-            full ? StatusTone.progress : StatusTone.success,
-            theme.brightness,
-          ),
-        ),
-        title: Text(
-          '${plan.name} plan · ${plan.usedActivePosts} of ${plan.maxActivePosts} '
-          'active post${plan.maxActivePosts == 1 ? '' : 's'} used',
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          full
-              ? 'Switch off or remove a post to put up a new one. More plans are coming soon.'
-              : 'Paused, closed and expired posts do not count.',
-        ),
-      ),
-    );
-  }
-}
 
 /// One post in the business's list: photo, title, the lines its kind needs, and a menu of the
 /// moves the server allows from its status.

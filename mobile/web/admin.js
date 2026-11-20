@@ -71,6 +71,7 @@
     $('app').hidden = false;
     $('who').textContent = `Signed in: ${store.name}`;
     load();
+    loadPrices();
   }
 
   // ---- Businesses ----
@@ -178,6 +179,86 @@
   }
   $('approve').addEventListener('click', () => decide(true));
   $('reject').addEventListener('click', () => decide(false));
+
+  // ---- Prices ----
+  const input = (value, type = 'number', label = '') => {
+    const el = document.createElement('input');
+    el.type = type;
+    el.value = value ?? '';
+    el.setAttribute('aria-label', label);
+    if (type === 'number') { el.min = '0'; el.style.width = '90px'; }
+    return el;
+  };
+  const check = (on, label) => { const el = input(null, 'checkbox', label); el.checked = on; el.style.width = 'auto'; return el; };
+  const td = (child) => { const c = document.createElement('td'); c.append(child); return c; };
+  const areas = (p) => [p.includesService && 'Service', p.includesRent && 'Rent', p.includesMarketplace && 'Marketplace'].filter(Boolean).join(' + ');
+
+  async function loadPrices() {
+    try {
+      const pricing = await call(`${API.service}/api/v1/admin/pricing`);
+      renderPlans(pricing.plans);
+      renderHiring(pricing.hiringPlans);
+    } catch (err) {
+      say($('price-msg'), err.message, false);
+    }
+  }
+
+  function renderPlans(plans) {
+    $('plan-rows').replaceChildren(...plans.map((p) => {
+      const tr = document.createElement('tr');
+      const name = input(p.name, 'text', 'Name'); name.style.width = '160px';
+      const price = input(p.price, 'number', 'Price');
+      const days = input(p.durationDays, 'number', 'Days');
+      const limit = input(p.maxLiveListings, 'number', 'Basic limit');
+      const onSale = check(p.isActive, 'On sale');
+      if (p.isDefault) { price.disabled = days.disabled = onSale.disabled = true; } else { limit.disabled = true; }
+      const save = document.createElement('button');
+      save.textContent = 'Save';
+      save.addEventListener('click', async () => {
+        try {
+          await call(`${API.service}/api/v1/admin/pricing/plans/${p.id}`, 'PUT', {
+            name: name.value.trim(), price: Number(price.value || 0),
+            durationDays: p.isDefault ? null : Number(days.value),
+            maxLiveListings: p.isDefault ? Number(limit.value) : null,
+            isActive: onSale.checked, sortOrder: p.sortOrder,
+          });
+          say($('price-msg'), `Saved ${name.value.trim()} (${p.period}).`, true);
+        } catch (err) { say($('price-msg'), err.message, false); }
+      });
+      const period = document.createElement('span');
+      period.textContent = p.isDefault ? 'Free' : p.period;
+      tr.append(td(name), td(document.createTextNode(p.isDefault ? 'Any one area' : areas(p))), td(period), td(price), td(days), td(limit), td(onSale), td(save));
+      return tr;
+    }));
+  }
+
+  function hiringRow(h) {
+    const tr = document.createElement('tr');
+    const name = input(h.name, 'text', 'Name'); name.style.width = '140px';
+    const amount = input(h.amount, 'number', 'Price');
+    const days = input(h.listingDays, 'number', 'Days');
+    const onSale = check(h.isActive ?? true, 'On sale');
+    const save = document.createElement('button');
+    save.textContent = h.id ? 'Save' : 'Add';
+    save.addEventListener('click', async () => {
+      const body = { name: name.value.trim(), amount: Number(amount.value || 0), listingDays: Number(days.value), isActive: onSale.checked, sortOrder: h.sortOrder ?? 9 };
+      try {
+        await call(h.id ? `${API.service}/api/v1/admin/pricing/hiring-plans/${h.id}` : `${API.service}/api/v1/admin/pricing/hiring-plans`, h.id ? 'PUT' : 'POST', body);
+        say($('price-msg'), `Saved hiring plan ${body.name}.`, true);
+        loadPrices();
+      } catch (err) { say($('price-msg'), err.message, false); }
+    });
+    tr.append(td(name), td(amount), td(days), td(onSale), td(save));
+    return tr;
+  }
+
+  function renderHiring(plans) {
+    $('hiring-rows').replaceChildren(...plans.map(hiringRow));
+  }
+
+  $('add-hiring').addEventListener('click', () => {
+    $('hiring-rows').append(hiringRow({ name: '', amount: '', listingDays: 30, isActive: true, sortOrder: $('hiring-rows').children.length + 1 }));
+  });
 
   // ---- Paid banner ----
   $('banner-form').addEventListener('submit', async (e) => {

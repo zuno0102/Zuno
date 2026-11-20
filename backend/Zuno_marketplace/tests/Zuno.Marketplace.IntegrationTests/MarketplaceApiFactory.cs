@@ -88,6 +88,9 @@ public class MarketplaceApiFactory : WebApplicationFactory<Program>, IAsyncLifet
 
             // Tests read the home straight after changing posts: no kept rankings.
             ["Marketplace:HomeCacheSeconds"] = "0",
+
+            // The key the Service API sends to the internal endpoints.
+            ["InternalApi:Key"] = InternalKey,
         }));
 
         // The Service API is not running here: its answers about the caller come from a stand-in.
@@ -95,8 +98,22 @@ public class MarketplaceApiFactory : WebApplicationFactory<Program>, IAsyncLifet
         builder.ConfigureTestServices(services =>
         {
             services.AddScoped<IServiceDirectory, StandInServiceDirectory>();
+            services.AddScoped<IServicePlanGate, StandInPlanGate>();
             services.AddSingleton<IMarketplacePaymentGateway, StandInPaymentGateway>();
         });
+    }
+
+    public const string InternalKey = "test-internal-key";
+
+    /// <summary>The Service API's plan check, standing in: allows, unless the request says the plan is full.</summary>
+    private sealed class StandInPlanGate(Microsoft.AspNetCore.Http.IHttpContextAccessor http) : Zuno.Marketplace.Application.Common.IServicePlanGate
+    {
+        public const string FullHeader = "X-Test-Plan-Full";
+
+        public Task EnsureCanAddAsync(int liveHere, CancellationToken cancellationToken) =>
+            http.HttpContext?.Request.Headers.ContainsKey(FullHeader) == true
+                ? throw new Zuno.Marketplace.Domain.Exceptions.PlanLimitException("The Basic plan allows 1 live listing in total.")
+                : Task.CompletedTask;
     }
 
     /// <summary>Answers as the Service API would for any caller: a verified business, a person with a mobile.</summary>

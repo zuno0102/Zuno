@@ -34,13 +34,17 @@ public class UpdateRentalStockCommandValidator : AbstractValidator<UpdateRentalS
     }
 }
 
-public class UpdateRentalStockCommandHandler(ICurrentUser currentUser, IRentDbContext dbContext)
+public class UpdateRentalStockCommandHandler(ICurrentUser currentUser, IRentDbContext dbContext, IServicePlanGate planGate)
     : IRequestHandler<UpdateRentalStockCommand, RentalItemDto>
 {
     public async Task<RentalItemDto> Handle(UpdateRentalStockCommand request, CancellationToken cancellationToken)
     {
         // Refused before anything changes unless the item is the caller's.
         var item = await dbContext.OwnedItemAsync(request.Id, currentUser.OwnerId(), cancellationToken);
+        if (!item.IsAvailable && request.IsAvailable)
+        {
+            await dbContext.EnsurePlanRoomAsync(planGate, item.OwnerUserId, item.Id, cancellationToken);
+        }
 
         // Only these two: the rate, category and questions stay exactly as saved.
         item.SetQuantityOwned(

@@ -37,6 +37,9 @@ public static class DependencyInjection
         // Names and verification come from the Service API, asked with the caller's own login.
         services.AddHttpClient<IServiceDirectory, ServiceDirectory>();
 
+        // The plan over all three areas lives in the Service API; it is asked before a listing goes live.
+        services.AddHttpClient<IServicePlanGate, ServicePlanGate>();
+
         // Online pay for orders. Simulated collection takes no money, so it is refused outside Development.
         services.AddOptions<MarketplacePaymentSettings>()
             .Bind(configuration.GetSection(MarketplacePaymentSettings.SectionName))

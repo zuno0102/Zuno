@@ -88,6 +88,27 @@
       </section>
 
       <section class="card">
+        <h2>Prices</h2>
+        <p class="muted">Business plans and full-time hiring posts. A new price applies to new purchases only; plans already paid keep their price and end date.</p>
+        <h3 style="font-size:15px;margin:14px 0 6px">Business plans</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Plan</th><th>Areas</th><th>Period</th><th>Price ₹</th><th>Days</th><th>Basic limit</th><th>On sale</th><th></th></tr></thead>
+            <tbody id="plan-rows"><tr><td colspan="8" class="muted">Loading…</td></tr></tbody>
+          </table>
+        </div>
+        <h3 style="font-size:15px;margin:18px 0 6px">Full-time hiring posts</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Name</th><th>Price ₹</th><th>Days</th><th>On sale</th><th></th></tr></thead>
+            <tbody id="hiring-rows"></tbody>
+          </table>
+        </div>
+        <p><button class="ghost" id="add-hiring">+ Add hiring plan</button></p>
+        <p id="price-msg"></p>
+      </section>
+
+      <section class="card">
         <h2>Paid banner</h2>
         <p class="muted">Puts a listing in the customers' top banner until the date; leave the date empty to end it. Marketplace: adverts only.</p>
         <form id="banner-form" class="row">

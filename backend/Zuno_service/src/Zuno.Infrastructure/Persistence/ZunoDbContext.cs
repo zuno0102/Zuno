@@ -85,6 +85,12 @@ public class ZunoDbContext(
 
     public DbSet<VacancyFeePlan> VacancyFeePlans => Set<VacancyFeePlan>();
 
+    public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
+
+    public DbSet<BusinessSubscription> BusinessSubscriptions => Set<BusinessSubscription>();
+
+    public DbSet<PlanPausedListing> PlanPausedListings => Set<PlanPausedListing>();
+
     public DbSet<Vacancy> Vacancies => Set<Vacancy>();
 
     public DbSet<VacancyRequirement> VacancyRequirements => Set<VacancyRequirement>();

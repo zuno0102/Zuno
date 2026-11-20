@@ -184,7 +184,7 @@ public class B2BRequestTests
     }
 
     [Fact]
-    public async Task A_B2B_Buyer_Plan_Never_Changes_A_Businesses_Posting_Plan()
+    public async Task A_Running_B2B_Buyer_Plan_Is_Found()
     {
         using var scene = new Scene();
         scene.Test.Db.BusinessPlans.Add(new MarketplaceBusinessPlan
@@ -195,10 +195,8 @@ public class B2BRequestTests
         });
         scene.Test.Db.SaveChanges();
 
-        var (plan, _) = await scene.Test.Db.CurrentAsync(TestMarketplace.OwnerA, scene.Test.Now, CancellationToken.None);
-        plan.Code.Should().Be("free");
-        plan.MaxActivePosts.Should().Be(1);
         (await scene.Test.Db.HasB2BBuyerPlanAsync(TestMarketplace.OwnerA, scene.Test.Now, CancellationToken.None)).Should().BeTrue();
+        (await scene.Test.Db.HasB2BBuyerPlanAsync(TestMarketplace.OwnerB, scene.Test.Now, CancellationToken.None)).Should().BeFalse();
     }
 
     [Fact]

@@ -12,7 +12,9 @@ public class UpdateBusinessServiceCommandHandler(
     ICurrentUserService currentUserService,
     IBusinessOwnerProfileRepository businessOwnerProfileRepository,
     IBusinessServiceRepository businessServiceRepository,
-    IApplicationDbContext dbContext) : IRequestHandler<UpdateBusinessServiceCommand, BusinessServiceDto>
+    IApplicationDbContext dbContext,
+    BusinessPlans.BusinessPlanRules planRules,
+    IDateTimeProvider clock) : IRequestHandler<UpdateBusinessServiceCommand, BusinessServiceDto>
 {
     public async Task<BusinessServiceDto> Handle(UpdateBusinessServiceCommand request, CancellationToken cancellationToken)
     {
@@ -62,6 +64,12 @@ public class UpdateBusinessServiceCommandHandler(
         service.Price = request.Price;
         service.EstimatedDurationMinutes = request.EstimatedDurationMinutes;
         service.RequiredWorkerCount = request.RequiredWorkerCount;
+        // Switching a service back on puts one more listing live: the plan must allow it.
+        if (!service.IsActive && request.IsActive)
+        {
+            await planRules.EnsureCanAddAsync(userId, ListingArea.Service, null, clock.UtcNow, cancellationToken);
+        }
+
         service.IsActive = request.IsActive;
 
         var requestedDistrictIds = request.DistrictIds.ToHashSet();

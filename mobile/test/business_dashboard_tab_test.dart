@@ -646,13 +646,6 @@ const _marketplace = MarketplaceSummary(
   paused: 0,
   expired: 0,
   closed: 0,
-  plan: MarketplacePlan(
-    code: 'free',
-    name: 'Free',
-    price: 0,
-    maxActivePosts: 1,
-    usedActivePosts: 1,
-  ),
 );
 
 MarketplaceCategory _category(String id, String kind, String tradeMode) =>
@@ -700,13 +693,6 @@ const _productsAndFood = MarketplaceSummary(
   closed: 0,
   liveItems: 2,
   liveFood: 1,
-  plan: MarketplacePlan(
-    code: 'free',
-    name: 'Free',
-    price: 0,
-    maxActivePosts: 5,
-    usedActivePosts: 3,
-  ),
   categories: [
     MarketplaceCategoryCount(
       categoryId: 'products',
@@ -730,13 +716,6 @@ const _noPosts = MarketplaceSummary(
   paused: 0,
   expired: 0,
   closed: 0,
-  plan: MarketplacePlan(
-    code: 'free',
-    name: 'Free',
-    price: 0,
-    maxActivePosts: 1,
-    usedActivePosts: 0,
-  ),
 );
 
 const _noVacancies = VacancySummary(

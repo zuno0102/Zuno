@@ -161,7 +161,6 @@ public class ProductStockTests
         sold.Actions.Should().BeEmpty();
         var summary = await test.QueryHandlers.Handle(new GetMyMarketplaceSummaryQuery(), default);
         summary.Should().BeEquivalentTo(new { Active = 0, Sold = 1 }, o => o.ExcludingMissingMembers());
-        summary.Plan.CanAddActivePost.Should().BeTrue();
 
         var edit = new UpdateMarketplacePostCommand { Id = car.Id };
         var act = () => test.SaveHandlers.Handle(edit, default);

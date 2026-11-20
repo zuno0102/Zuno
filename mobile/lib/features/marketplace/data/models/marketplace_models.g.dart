@@ -208,19 +208,6 @@ MarketplaceSubCategoryModel _$MarketplaceSubCategoryModelFromJson(
   iconName: json['iconName'] as String?,
 );
 
-MarketplacePlanModel _$MarketplacePlanModelFromJson(
-  Map<String, dynamic> json,
-) => MarketplacePlanModel(
-  code: json['code'] as String,
-  name: json['name'] as String,
-  price: (json['price'] as num).toDouble(),
-  maxActivePosts: (json['maxActivePosts'] as num).toInt(),
-  usedActivePosts: (json['usedActivePosts'] as num).toInt(),
-  endsAt: json['endsAt'] == null
-      ? null
-      : DateTime.parse(json['endsAt'] as String),
-);
-
 MarketplaceSummaryModel _$MarketplaceSummaryModelFromJson(
   Map<String, dynamic> json,
 ) => MarketplaceSummaryModel(
@@ -239,7 +226,6 @@ MarketplaceSummaryModel _$MarketplaceSummaryModelFromJson(
   liveAds: (json['liveAds'] as num?)?.toInt() ?? 0,
   foodPortionsLeft: (json['foodPortionsLeft'] as num?)?.toInt() ?? 0,
   expiredAds: (json['expiredAds'] as num?)?.toInt() ?? 0,
-  plan: MarketplacePlanModel.fromJson(json['plan'] as Map<String, dynamic>),
   categories:
       (json['categories'] as List<dynamic>?)
           ?.map(

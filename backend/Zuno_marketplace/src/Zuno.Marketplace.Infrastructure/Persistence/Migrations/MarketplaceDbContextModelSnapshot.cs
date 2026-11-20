@@ -2035,20 +2035,6 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                     b.HasData(
                         new
                         {
-                            Id = new Guid("e5555555-0000-0000-0000-000000000001"),
-                            Code = "free",
-                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DisplayOrder = (short)1,
-                            IsActive = true,
-                            IsDefault = true,
-                            IsDeleted = false,
-                            MaxActivePosts = 1,
-                            Name = "Free",
-                            Price = 0m,
-                            Purpose = (short)1
-                        },
-                        new
-                        {
                             Id = new Guid("e5555555-0000-0000-0000-000000000002"),
                             Code = "b2b-buyer",
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),

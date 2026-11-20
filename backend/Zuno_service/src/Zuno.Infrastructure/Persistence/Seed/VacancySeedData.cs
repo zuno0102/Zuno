@@ -20,17 +20,21 @@ public static class VacancySeedData
 
     public static VacancyFeePlan[] FeePlans =>
     [
-        new()
-        {
-            Id = new Guid("c5555555-0000-0000-0000-000000000001"),
-            Name = "Standard listing",
-            Amount = 49m,
-            ListingDays = 30,
-            SortOrder = 1,
-            IsActive = true,
-            CreatedDate = SeedDate,
-        },
+        FeePlan("c5555555-0000-0000-0000-000000000001", "1 month", 99m, 30, 1),
+        FeePlan("c5555555-0000-0000-0000-000000000002", "2 months", 149m, 60, 2),
+        FeePlan("c5555555-0000-0000-0000-000000000003", "6 months", 249m, 180, 3),
     ];
+
+    private static VacancyFeePlan FeePlan(string id, string name, decimal amount, int days, short sortOrder) => new()
+    {
+        Id = new Guid(id),
+        Name = name,
+        Amount = amount,
+        ListingDays = days,
+        SortOrder = sortOrder,
+        IsActive = true,
+        CreatedDate = SeedDate,
+    };
 
     private static VacancyJobType JobType(string id, string name, bool hasFixedLength, short sortOrder) => new()
     {

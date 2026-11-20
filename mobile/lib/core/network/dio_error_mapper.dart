@@ -36,6 +36,7 @@ AppException mapDioExceptionToAppException(DioException error) {
 
   return switch (resolvedStatusCode) {
     401 => UnauthorizedAppException(message),
+    402 => PlanLimitAppException(message),
     404 => NotFoundAppException(message),
     429 => const RateLimitedAppException(
       'Too many attempts. Please wait a moment and try again.',

@@ -48,6 +48,11 @@ class RateLimitedAppException extends AppException {
   const RateLimitedAppException(super.message);
 }
 
+/// The business's plan does not allow another live listing there (HTTP 402): the app offers the plans.
+class PlanLimitAppException extends AppException {
+  const PlanLimitAppException(super.message);
+}
+
 class UnknownAppException extends AppException {
   const UnknownAppException(super.message);
 }

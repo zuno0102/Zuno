@@ -17,14 +17,13 @@ namespace Zuno.Marketplace.UnitTests;
 public class QueryAndCatalogTests
 {
     [Fact]
-    public async Task Summary_NoPosts_IsZeroWithTheFreePlan()
+    public async Task Summary_NoPosts_IsZero()
     {
         using var test = new TestMarketplace();
 
         var summary = await test.QueryHandlers.Handle(new GetMyMarketplaceSummaryQuery(), default);
 
         summary.Should().BeEquivalentTo(new { Active = 0, Paused = 0, Expired = 0, Closed = 0 });
-        summary.Plan.Should().BeEquivalentTo(new { Code = "free", Name = "Free", MaxActivePosts = 1, UsedActivePosts = 0, CanAddActivePost = true, EndsAt = (DateTimeOffset?)null });
     }
 
     [Fact]
@@ -41,8 +40,6 @@ public class QueryAndCatalogTests
         var summary = await test.QueryHandlers.Handle(new GetMyMarketplaceSummaryQuery(), default);
 
         summary.Should().BeEquivalentTo(new { Active = 1, Paused = 2, Expired = 1, Closed = 1 });
-        summary.Plan.UsedActivePosts.Should().Be(1);
-        summary.Plan.CanAddActivePost.Should().BeFalse();
     }
 
     [Fact]
@@ -362,10 +359,9 @@ public class QueryAndCatalogTests
         MarketplaceCategoryAdminHandlers.Slug(text, separator).Should().Be(expected);
 
     [Fact]
-    public void Seed_HasOneDefaultFreePlanWithOnePost()
+    public void Seed_HasNoPostingPlan_TheBusinessPlanLivesInTheServiceApi()
     {
-        MarketplaceCatalogSeedData.Plans.Should().ContainSingle(p => p.IsDefault)
-            .Which.Should().BeEquivalentTo(new { Code = "free", Price = 0m, MaxActivePosts = 1, DurationDays = (int?)null });
+        MarketplaceCatalogSeedData.Plans.Should().OnlyContain(p => p.Purpose == MarketplacePlanPurpose.B2BBuyer);
     }
 
     [Fact]

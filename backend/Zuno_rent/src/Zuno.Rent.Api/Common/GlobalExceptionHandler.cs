@@ -46,6 +46,9 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
 
             UnauthorizedAccessException unauthorized => (StatusCodes.Status401Unauthorized, unauthorized.Message, null),
 
+            // Before DomainException, which it extends: a plan limit is "pay to add", not a bad request.
+            PlanLimitException planLimit => (StatusCodes.Status402PaymentRequired, planLimit.Message, null),
+
             DomainException domain => (StatusCodes.Status400BadRequest, domain.Message, null),
 
             _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred. Please try again later.", null),

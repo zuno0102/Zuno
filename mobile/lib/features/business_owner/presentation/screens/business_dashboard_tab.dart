@@ -1,6 +1,7 @@
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zuno/features/business_plan/presentation/plan_lock.dart';
 import 'package:zuno/core/constants/api_constants.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/ui_config/ui_config.dart';
@@ -150,6 +151,7 @@ class _Body extends ConsumerWidget {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
         const _FinishProfileBanner(),
+        const Align(alignment: Alignment.centerLeft, child: BusinessPlanChip()),
         if (inUse.isNew) ...[
           _StartCard(onOpenCatalog: onOpenCatalog),
           const SizedBox(height: 12),
@@ -164,6 +166,8 @@ class _Body extends ConsumerWidget {
         ],
         const SizedBox(height: 12),
         const _ProfileCard(),
+        const SizedBox(height: 10),
+        const BusinessPlanCard(),
         const SizedBox(height: 4),
         if (inUse.hasCustomers) ...[
           const SectionHeader(

@@ -24,7 +24,6 @@ public static class MarketplaceCatalogSeedData
     public static readonly Guid NearbyFood = new("d4444444-0000-0000-0000-000000000005");
     public static readonly Guid Advertisements = new("d4444444-0000-0000-0000-000000000006");
 
-    public static readonly Guid FreePlan = new("e5555555-0000-0000-0000-000000000001");
 
     public static readonly Guid B2BBuyerPlan = new("e5555555-0000-0000-0000-000000000002");
 
@@ -97,20 +96,6 @@ public static class MarketplaceCatalogSeedData
 
     public static MarketplacePlan[] Plans =>
     [
-        new()
-        {
-            Id = FreePlan,
-            Code = "free",
-            Name = "Free",
-            Price = 0m,
-            MaxActivePosts = 1,
-            DurationDays = null,
-            IsDefault = true,
-            IsActive = true,
-            DisplayOrder = 1,
-            CreatedDate = SeedDate,
-        },
-
         // A buyer's monthly plan: an accepted B2B request shows the seller's contact while it runs.
         new()
         {

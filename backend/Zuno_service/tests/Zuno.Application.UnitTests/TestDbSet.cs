@@ -17,10 +17,33 @@ namespace Zuno.Application.UnitTests;
 public static class TestDbSet
 {
     public static DbSet<T> From<T>(params T[] items)
+        where T : class =>
+        Over(items.AsQueryable(), new Mock<DbSet<T>>());
+
+    /// <summary>
+    /// A set over <paramref name="rows"/> that also takes <c>Add</c>, <c>AddRange</c>, <c>Remove</c> and
+    /// <c>RemoveRange</c>, so a test sees what a handler wrote by reading the list.
+    /// </summary>
+    public static DbSet<T> Over<T>(List<T> rows)
         where T : class
     {
-        var data = items.AsQueryable();
         var mock = new Mock<DbSet<T>>();
+        mock.Setup(m => m.Add(It.IsAny<T>())).Callback<T>(rows.Add);
+        mock.Setup(m => m.AddRange(It.IsAny<IEnumerable<T>>())).Callback<IEnumerable<T>>(added => rows.AddRange(added.ToList()));
+        mock.Setup(m => m.Remove(It.IsAny<T>())).Callback<T>(item => rows.Remove(item));
+        mock.Setup(m => m.RemoveRange(It.IsAny<IEnumerable<T>>())).Callback<IEnumerable<T>>(removed =>
+        {
+            foreach (var item in removed.ToList())
+            {
+                rows.Remove(item);
+            }
+        });
+        return Over(rows.AsQueryable(), mock);
+    }
+
+    private static DbSet<T> Over<T>(IQueryable<T> data, Mock<DbSet<T>> mock)
+        where T : class
+    {
 
         mock.As<IAsyncEnumerable<T>>()
             .Setup(m => m.GetAsyncEnumerator(It.IsAny<CancellationToken>()))

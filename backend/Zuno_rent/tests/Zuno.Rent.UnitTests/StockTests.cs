@@ -13,7 +13,7 @@ public class StockTests : IDisposable
 
     public void Dispose() => _rent.Dispose();
 
-    private UpdateRentalStockCommandHandler Handler => new(_rent.User, _rent.Db);
+    private UpdateRentalStockCommandHandler Handler => new(_rent.User, _rent.Db, _rent.PlanGate);
 
     private async Task<RentalItemDto> ChairsAsync()
     {

@@ -94,14 +94,21 @@ public class UpdateRentalItemCommandValidator : AbstractValidator<UpdateRentalIt
     }
 }
 
-public class SaveRentalItemHandlers(ICurrentUser currentUser, IRentDbContext dbContext, IOptions<RentSettings> settings) :
+public class SaveRentalItemHandlers(
+    ICurrentUser currentUser, IRentDbContext dbContext, IOptions<RentSettings> settings, IServicePlanGate planGate) :
     IRequestHandler<CreateRentalItemCommand, RentalItemDto>,
     IRequestHandler<UpdateRentalItemCommand, RentalItemDto>
 {
     public async Task<RentalItemDto> Handle(CreateRentalItemCommand request, CancellationToken cancellationToken)
     {
         // The owner is whoever is signed in — never an id the app sends.
-        var item = new RentalItem { OwnerUserId = currentUser.OwnerId() };
+        var owner = currentUser.OwnerId();
+        if (request.IsAvailable)
+        {
+            await dbContext.EnsurePlanRoomAsync(planGate, owner, null, cancellationToken);
+        }
+
+        var item = new RentalItem { OwnerUserId = owner };
         dbContext.RentalItems.Add(item);
 
         await RentalItemWriter.ApplyAsync(item, request, dbContext, settings.Value, cancellationToken);
@@ -113,6 +120,10 @@ public class SaveRentalItemHandlers(ICurrentUser currentUser, IRentDbContext dbC
     public async Task<RentalItemDto> Handle(UpdateRentalItemCommand request, CancellationToken cancellationToken)
     {
         var item = await dbContext.OwnedItemAsync(request.Id, currentUser.OwnerId(), cancellationToken);
+        if (!item.IsAvailable && request.IsAvailable)
+        {
+            await dbContext.EnsurePlanRoomAsync(planGate, item.OwnerUserId, item.Id, cancellationToken);
+        }
 
         await RentalItemWriter.ApplyAsync(item, request, dbContext, settings.Value, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);

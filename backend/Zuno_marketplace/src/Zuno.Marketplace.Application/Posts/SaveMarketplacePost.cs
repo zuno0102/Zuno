@@ -194,14 +194,15 @@ public class UpdateMarketplacePostCommandValidator : MarketplacePostFieldsValida
         : base(settings) => RuleFor(x => x.Id).NotEmpty();
 }
 
-/// <summary>Creates and edits posts, checking the category's rules, the district, ownership and the plan's limit.</summary>
+/// <summary>Creates and edits posts, checking the category's rules, the district, ownership and the business's plan.</summary>
 public class SaveMarketplacePostHandlers(
     ICurrentUser currentUser,
     IMarketplaceDbContext dbContext,
     MarketplaceReference reference,
     TimeProvider clock,
     IOptions<MarketplaceSettings> settings,
-    IMarketplaceMediaStorage storage) :
+    IMarketplaceMediaStorage storage,
+    IServicePlanGate planGate) :
     IRequestHandler<CreateMarketplacePostCommand, MarketplacePostDto>,
     IRequestHandler<UpdateMarketplacePostCommand, MarketplacePostDto>
 {
@@ -220,7 +221,7 @@ public class SaveMarketplacePostHandlers(
         {
             if (!post.HasEnded(now))
             {
-                await dbContext.EnsureRoomAsync(ownerId, null, now, cancellationToken);
+                await dbContext.EnsurePlanRoomAsync(planGate, ownerId, null, now, cancellationToken);
             }
 
             dbContext.Posts.Add(post);
@@ -240,15 +241,17 @@ public class SaveMarketplacePostHandlers(
         }
 
         var category = await CheckedCategoryAsync(request, now, cancellationToken);
+        var wasLive = post.Status == MarketplacePostStatus.Active && !post.HasEnded(now);
         Apply(post, request, category);
         var removedPhotos = ApplyVariants(post, request, category);
 
         return await dbContext.WithOwnerLockAsync(ownerId, async () =>
         {
-            // An edit can bring an ended post back (a new end time): then it needs a slot again.
-            if (post.Status == MarketplacePostStatus.Active && !post.HasEnded(now))
+            // An edit can bring an ended post back (a new end time): then it goes live again and the
+            // plan must allow it. Editing a post that is already live never asks.
+            if (!wasLive && post.Status == MarketplacePostStatus.Active && !post.HasEnded(now))
             {
-                await dbContext.EnsureRoomAsync(ownerId, post.Id, now, cancellationToken);
+                await dbContext.EnsurePlanRoomAsync(planGate, ownerId, post.Id, now, cancellationToken);
             }
 
             await dbContext.SaveChangesAsync(cancellationToken);

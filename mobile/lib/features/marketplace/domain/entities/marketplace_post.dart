@@ -440,27 +440,6 @@ class MarketplacePostInput {
   };
 }
 
-/// The business's plan, and how much of it is used — the banner over the post list.
-class MarketplacePlan {
-  const MarketplacePlan({
-    required this.code,
-    required this.name,
-    required this.price,
-    required this.maxActivePosts,
-    required this.usedActivePosts,
-    this.endsAt,
-  });
-
-  final String code;
-  final String name;
-  final double price;
-  final int maxActivePosts;
-  final int usedActivePosts;
-  final DateTime? endsAt;
-
-  bool get canAddActivePost => usedActivePosts < maxActivePosts;
-}
-
 /// The counts behind the Marketplace tiles on the business home screen.
 class MarketplaceSummary {
   const MarketplaceSummary({
@@ -468,7 +447,6 @@ class MarketplaceSummary {
     required this.paused,
     required this.expired,
     required this.closed,
-    required this.plan,
     this.sold = 0,
     this.inactive,
     this.liveItems,
@@ -522,7 +500,6 @@ class MarketplaceSummary {
   final int expired;
   final int closed;
   final int sold;
-  final MarketplacePlan plan;
 
   /// The same counts per main category posted in; a category with no posts is not listed.
   final List<MarketplaceCategoryCount> categories;

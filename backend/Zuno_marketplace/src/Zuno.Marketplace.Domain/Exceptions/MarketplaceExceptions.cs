@@ -12,3 +12,9 @@ public class EntityNotFoundException(string entityName, object key)
 /// for an expired session and logs the user out.
 /// </summary>
 public class ForbiddenException(string message) : Exception(message);
+
+/// <summary>
+/// The business's plan does not allow another live listing here. Answered as 402 Payment Required,
+/// so the app shows the plans instead of a plain error.
+/// </summary>
+public class PlanLimitException(string message) : DomainException(message);

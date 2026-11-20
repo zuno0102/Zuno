@@ -72,7 +72,7 @@ final class NotificationSurfacerProvider
 }
 
 String _$notificationSurfacerHash() =>
-    r'258f62b3df6bffb12bd35d27bbc204448f4d6d8a';
+    r'e1eebd9b2276dd748f30e7b1d8223a41e921320d';
 
 /// Decides which notifications are worth interrupting somebody with, and draws those.
 ///

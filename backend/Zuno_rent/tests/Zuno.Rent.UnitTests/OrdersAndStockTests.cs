@@ -93,7 +93,7 @@ public class OrdersAndStockTests : IDisposable
         var chairs = await ChairsAsync();
         await OrderAsync(chairs, 300, RentalOrderStatus.OnRent);
 
-        var quick = () => new UpdateRentalStockCommandHandler(_rent.User, _rent.Db)
+        var quick = () => new UpdateRentalStockCommandHandler(_rent.User, _rent.Db, _rent.PlanGate)
             .Handle(new UpdateRentalStockCommand { Id = chairs, QuantityOwned = 299, IsAvailable = true }, default);
         await quick.Should().ThrowAsync<DomainException>().WithMessage("300 are out*");
         _rent.Db.ChangeTracker.Clear();
@@ -103,7 +103,7 @@ public class OrdersAndStockTests : IDisposable
         await full.Should().ThrowAsync<DomainException>();
         _rent.Db.ChangeTracker.Clear();
 
-        var ok = await new UpdateRentalStockCommandHandler(_rent.User, _rent.Db)
+        var ok = await new UpdateRentalStockCommandHandler(_rent.User, _rent.Db, _rent.PlanGate)
             .Handle(new UpdateRentalStockCommand { Id = chairs, QuantityOwned = 300, IsAvailable = true }, default);
         ok.QuantityOwned.Should().Be(300, "exactly what is out is allowed");
     }

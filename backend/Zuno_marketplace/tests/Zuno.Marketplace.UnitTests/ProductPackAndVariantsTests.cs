@@ -277,9 +277,6 @@ public class ProductPackAndVariantsTests
     public async Task TheInactiveTile_CountsPausedPosts_AndLiveProductsWithAColourSwitchedOff()
     {
         using var test = new TestMarketplace();
-        var free = await test.Db.Plans.SingleAsync(p => p.IsDefault);
-        free.MaxActivePosts = 5;
-        await test.Db.SaveChangesAsync();
         var partly = await test.SaveHandlers.Handle(Saree(c => c.Variants =
         [
             new() { Colour = "Red", Price = 2_400m, Stock = 10 },
@@ -306,9 +303,6 @@ public class ProductPackAndVariantsTests
     public async Task TheLiveTile_CountsItems_AMainAndTwoColoursIsThree()
     {
         using var test = new TestMarketplace();
-        var free = await test.Db.Plans.SingleAsync(p => p.IsDefault);
-        free.MaxActivePosts = 5;
-        await test.Db.SaveChangesAsync();
         await test.SaveHandlers.Handle(Saree(c => c.Variants =
         [
             new() { Colour = "Red", Price = 2_400m, Stock = 10 },
@@ -328,9 +322,6 @@ public class ProductPackAndVariantsTests
     public async Task TheInactiveTile_CountsItems_AMainAndItsThreeColoursPausedIsFour()
     {
         using var test = new TestMarketplace();
-        var free = await test.Db.Plans.SingleAsync(p => p.IsDefault);
-        free.MaxActivePosts = 5;
-        await test.Db.SaveChangesAsync();
         var saree = await test.SaveHandlers.Handle(Saree(c => c.Variants =
         [
             new() { Colour = "Red", Price = 2_400m, Stock = 10 },

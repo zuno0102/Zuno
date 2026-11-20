@@ -157,7 +157,7 @@ final class MarketplaceFeedNotifierProvider
 }
 
 String _$marketplaceFeedNotifierHash() =>
-    r'3a73f60a6cd0a0b88223ccc2366112456e17a274';
+    r'135821ec055e6e4bb47c967a653e1c89c7860a13';
 
 /// "All products" at the foot of the home — products and B2B lots from everywhere, food in the
 /// customer's district — a page of [pageSize] at a time as they scroll.

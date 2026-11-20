@@ -1,6 +1,9 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zuno/features/business_plan/domain/business_plan.dart';
+import 'package:zuno/features/business_plan/presentation/business_plan_providers.dart';
+import 'package:zuno/features/business_plan/presentation/plan_lock.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/rental/data/rental_api.dart';
 import 'package:zuno/features/rental/domain/entities/rental_item.dart';
@@ -54,8 +57,22 @@ class BusinessRentalsTab extends ConsumerWidget {
       floatingActionButton: filter != null
           ? null
           : FloatingActionButton.extended(
-              onPressed: () => showRentalItemFormSheet(context),
-              icon: const Icon(Icons.add),
+              onPressed: () => openIfPlanAllows(
+                context,
+                ref,
+                ListingArea.rent,
+                () => showRentalItemFormSheet(context),
+              ),
+              icon: Icon(
+                ref
+                            .watch(businessPlanProvider)
+                            .value
+                            ?.usage(ListingArea.rent)
+                            ?.canAdd ==
+                        false
+                    ? Icons.lock_outline
+                    : Icons.add,
+              ),
               label: const Text('Add rent item'),
             ),
       body: itemsAsync.when(

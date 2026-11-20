@@ -361,37 +361,6 @@ class MarketplaceSubCategoryModel {
 }
 
 @JsonSerializable(createToJson: false)
-class MarketplacePlanModel {
-  const MarketplacePlanModel({
-    required this.code,
-    required this.name,
-    required this.price,
-    required this.maxActivePosts,
-    required this.usedActivePosts,
-    this.endsAt,
-  });
-
-  factory MarketplacePlanModel.fromJson(Map<String, dynamic> json) =>
-      _$MarketplacePlanModelFromJson(json);
-
-  final String code;
-  final String name;
-  final double price;
-  final int maxActivePosts;
-  final int usedActivePosts;
-  final DateTime? endsAt;
-
-  MarketplacePlan toEntity() => MarketplacePlan(
-    code: code,
-    name: name,
-    price: price,
-    maxActivePosts: maxActivePosts,
-    usedActivePosts: usedActivePosts,
-    endsAt: endsAt?.toLocal(),
-  );
-}
-
-@JsonSerializable(createToJson: false)
 class MarketplaceSummaryModel {
   const MarketplaceSummaryModel({
     required this.active,
@@ -409,7 +378,6 @@ class MarketplaceSummaryModel {
     this.liveAds = 0,
     this.foodPortionsLeft = 0,
     this.expiredAds = 0,
-    required this.plan,
     this.categories = const [],
   });
 
@@ -431,7 +399,6 @@ class MarketplaceSummaryModel {
   final int liveAds;
   final int foodPortionsLeft;
   final int expiredAds;
-  final MarketplacePlanModel plan;
   final List<MarketplaceCategoryCountModel> categories;
 
   MarketplaceSummary toEntity() => MarketplaceSummary(
@@ -450,7 +417,6 @@ class MarketplaceSummaryModel {
     expired: expired,
     closed: closed,
     sold: sold,
-    plan: plan.toEntity(),
     categories: [for (final c in categories) c.toEntity()],
   );
 }

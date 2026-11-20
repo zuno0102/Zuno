@@ -48,117 +48,57 @@ public class PostHandlerTests
     }
 
     [Fact]
-    public async Task Create_SecondLivePostOnFreePlan_IsRefusedAndNothingSaved()
+    public async Task Create_AsksThePlanWithTheBusinessesOtherLivePosts()
     {
         using var test = new TestMarketplace();
         await test.SaveHandlers.Handle(TestMarketplace.Car(), default);
+        test.Seed(p => p.Status = MarketplacePostStatus.Paused);
+        test.Seed(p => p.OwnerUserId = TestMarketplace.OwnerB);
 
-        var act = () => test.SaveHandlers.Handle(test.Biryani(), default);
+        await test.SaveHandlers.Handle(test.Biryani(), default);
 
-        (await act.Should().ThrowAsync<DomainException>()).WithMessage("Your Free plan allows 1 active post.*");
-        (await test.NewContext().Posts.CountAsync()).Should().Be(1);
+        test.PlanGate.Asked.Should().Equal([0, 1], "paused posts and other businesses' posts are not live for this business");
     }
 
     [Fact]
-    public async Task Create_WhenOtherPostPaused_IsAllowed()
+    public async Task Create_RefusedByThePlan_IsNotSaved()
     {
         using var test = new TestMarketplace();
-        test.Seed(p => p.Status = MarketplacePostStatus.Paused);
+        test.PlanGate.RefuseWith = "The Basic plan allows 1 live listing in total. Get a plan with Marketplace to add more.";
 
-        var dto = await test.SaveHandlers.Handle(test.Biryani(), default);
+        var act = () => test.SaveHandlers.Handle(TestMarketplace.Car(), default);
 
-        dto.Status.Should().Be("Active");
+        (await act.Should().ThrowAsync<PlanLimitException>()).WithMessage("The Basic plan allows 1*");
+        (await test.NewContext().Posts.CountAsync()).Should().Be(0);
     }
 
     [Theory]
     [InlineData(MarketplacePostStatus.Closed)]
-    [InlineData(MarketplacePostStatus.Expired)]
-    public async Task Create_WhenOtherPostClosedOrEnded_IsAllowed(MarketplacePostStatus other)
+    [InlineData(MarketplacePostStatus.Sold)]
+    public async Task Create_ClosedOrSoldPosts_AreNotLive(MarketplacePostStatus other)
     {
         using var test = new TestMarketplace();
-        test.Seed(p =>
-        {
-            p.Status = other == MarketplacePostStatus.Closed ? MarketplacePostStatus.Closed : MarketplacePostStatus.Active;
-            p.EndsAt = other == MarketplacePostStatus.Expired ? test.Now.AddMinutes(-1) : null;
-        });
+        test.Seed(p => p.Status = other);
+        test.Seed(p => p.EndsAt = test.Now.AddMinutes(-1));
 
-        (await test.SaveHandlers.Handle(TestMarketplace.Car(), default)).Status.Should().Be("Active");
-    }
-
-    [Fact]
-    public async Task Create_OtherBusinessesPosts_DoNotUseMySlot()
-    {
-        using var test = new TestMarketplace();
-        test.Seed(p => p.OwnerUserId = TestMarketplace.OwnerB);
-
-        (await test.SaveHandlers.Handle(TestMarketplace.Car(), default)).Status.Should().Be("Active");
-    }
-
-    [Fact]
-    public async Task Create_DeletedPost_DoesNotUseASlot()
-    {
-        using var test = new TestMarketplace();
-        var post = await test.SaveHandlers.Handle(TestMarketplace.Car(), default);
-        await test.ManageHandlers.Handle(new DeleteMarketplacePostCommand { Id = post.Id }, default);
-
-        (await test.SaveHandlers.Handle(test.Biryani(), default)).Status.Should().Be("Active");
-    }
-
-    [Fact]
-    public async Task Create_OnTakenPlanWithMoreSlots_AllowsMore()
-    {
-        using var test = new TestMarketplace();
-        var gold = new MarketplacePlan { Code = "gold", Name = "Gold", Price = 499, MaxActivePosts = 3, DurationDays = 30 };
-        test.Db.Plans.Add(gold);
-        test.Db.BusinessPlans.Add(new MarketplaceBusinessPlan
-        {
-            OwnerUserId = TestMarketplace.OwnerA,
-            PlanId = gold.Id,
-            StartsAt = test.Now.AddDays(-1),
-            EndsAt = test.Now.AddDays(29),
-        });
-        await test.Db.SaveChangesAsync();
-
-        await test.SaveHandlers.Handle(TestMarketplace.Car(), default);
         await test.SaveHandlers.Handle(test.Biryani(), default);
-        await test.SaveHandlers.Handle(test.AadiSale(), default);
-        var fourth = () => test.SaveHandlers.Handle(TestMarketplace.Bananas(), default);
 
-        (await fourth.Should().ThrowAsync<DomainException>()).WithMessage("Your Gold plan allows 3 active posts.*");
+        test.PlanGate.Asked.Should().Equal(0);
     }
 
     [Fact]
-    public async Task Create_TakenPlanHasEnded_FallsBackToFree()
+    public async Task Update_OfALivePost_NeverAsksThePlan()
     {
         using var test = new TestMarketplace();
-        var gold = new MarketplacePlan { Code = "gold", Name = "Gold", Price = 499, MaxActivePosts = 3, DurationDays = 30 };
-        test.Db.Plans.Add(gold);
-        test.Db.BusinessPlans.Add(new MarketplaceBusinessPlan
-        {
-            OwnerUserId = TestMarketplace.OwnerA,
-            PlanId = gold.Id,
-            StartsAt = test.Now.AddDays(-31),
-            EndsAt = test.Now.AddDays(-1),
-        });
-        await test.Db.SaveChangesAsync();
-        await test.SaveHandlers.Handle(TestMarketplace.Car(), default);
+        var car = await test.SaveHandlers.Handle(TestMarketplace.Car(), default);
+        test.PlanGate.Asked.Clear();
+        test.PlanGate.RefuseWith = "No room";
 
-        var second = () => test.SaveHandlers.Handle(test.Biryani(), default);
+        var edit = new UpdateMarketplacePostCommand { Id = car.Id };
+        CopyCar(edit, c => c.Title = "Swift VXi 2019, one owner");
+        (await test.SaveHandlers.Handle(edit, default)).Title.Should().Be("Swift VXi 2019, one owner");
 
-        await second.Should().ThrowAsync<DomainException>().WithMessage("Your Free plan*");
-    }
-
-    [Fact]
-    public async Task Create_FreePlanLimitRaisedInTable_AllowsMore()
-    {
-        using var test = new TestMarketplace();
-        var free = await test.Db.Plans.SingleAsync(p => p.IsDefault);
-        free.MaxActivePosts = 2;
-        await test.Db.SaveChangesAsync();
-
-        await test.SaveHandlers.Handle(TestMarketplace.Car(), default);
-
-        (await test.SaveHandlers.Handle(test.Biryani(), default)).Status.Should().Be("Active");
+        test.PlanGate.Asked.Should().BeEmpty("a business over the Basic limit keeps editing what is already up");
     }
 
     [Fact]
@@ -252,7 +192,7 @@ public class PostHandlerTests
     }
 
     [Fact]
-    public async Task Update_EndedFoodOfferGivenNewTimes_NeedsAFreeSlot()
+    public async Task Update_EndedFoodOfferGivenNewTimes_AsksThePlanAgain()
     {
         using var test = new TestMarketplace();
         var food = await test.SaveHandlers.Handle(test.Biryani(), default);
@@ -260,10 +200,13 @@ public class PostHandlerTests
         await test.SaveHandlers.Handle(TestMarketplace.Car(), default);
         var revive = new UpdateMarketplacePostCommand { Id = food.Id };
         CopyFood(revive, test);
+        test.PlanGate.Asked.Clear();
+        test.PlanGate.RefuseWith = "The Basic plan allows 1 live listing in total.";
 
         var act = () => test.SaveHandlers.Handle(revive, default);
 
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*allows 1 active post*");
+        await act.Should().ThrowAsync<PlanLimitException>();
+        test.PlanGate.Asked.Should().Equal([1], "it ended, so new times put it live again next to the car");
     }
 
     [Fact]
@@ -279,15 +222,17 @@ public class PostHandlerTests
     }
 
     [Fact]
-    public async Task Status_PutUpAgainWhenSlotTaken_IsRefused()
+    public async Task Status_PutUpAgainRefusedByThePlan_StaysPaused()
     {
         using var test = new TestMarketplace();
         var paused = test.Seed(p => p.Status = MarketplacePostStatus.Paused);
         await test.SaveHandlers.Handle(test.Biryani(), default);
+        test.PlanGate.RefuseWith = "The Basic plan allows 1 live listing in total.";
 
         var act = () => test.ManageHandlers.Handle(Move(paused.Id, MarketplacePostStatus.Active), default);
 
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*allows 1 active post*");
+        await act.Should().ThrowAsync<PlanLimitException>();
+        test.PlanGate.Asked.Should().Equal([0, 1], "putting it up again counts the biryani, not the post itself");
         (await test.NewContext().Posts.FindAsync(paused.Id))!.Status.Should().Be(MarketplacePostStatus.Paused);
     }
 

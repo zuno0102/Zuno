@@ -210,7 +210,28 @@ public class MarketplaceSummaryDto
     /// <summary>The same counts per main category the business has posted in.</summary>
     public List<MarketplaceCategoryCountDto> Categories { get; set; } = [];
 
-    public MarketplacePlanDto Plan { get; set; } = new();
+    /// <summary>
+    /// Only for apps before 1.23, which read a Marketplace-only plan here and fail without it. The
+    /// plan now lives in the Service API over all three areas and is enforced there; this always
+    /// leaves room, so an old app never blocks and the server alone decides.
+    /// </summary>
+    public LegacyMarketplacePlanDto Plan { get; set; } = new();
+}
+
+/// <summary>The shape apps before 1.23 expect; see <see cref="MarketplaceSummaryDto.Plan"/>.</summary>
+public class LegacyMarketplacePlanDto
+{
+    public string Code { get; set; } = "basic";
+
+    public string Name { get; set; } = "Basic";
+
+    public decimal Price { get; set; }
+
+    public int MaxActivePosts { get; set; }
+
+    public int UsedActivePosts { get; set; }
+
+    public DateTimeOffset? EndsAt { get; set; }
 }
 
 /// <summary>A main category's posts by shown status, for the Orders › Marketplace chips.</summary>
@@ -229,24 +250,6 @@ public class MarketplaceCategoryCountDto
     public int Sold { get; set; }
 }
 
-/// <summary>The business's plan and how much of it is used.</summary>
-public class MarketplacePlanDto
-{
-    public string Code { get; set; } = string.Empty;
-
-    public string Name { get; set; } = string.Empty;
-
-    public decimal Price { get; set; }
-
-    public int MaxActivePosts { get; set; }
-
-    public int UsedActivePosts { get; set; }
-
-    /// <summary>Null for the default plan, which never ends.</summary>
-    public DateTimeOffset? EndsAt { get; set; }
-
-    public bool CanAddActivePost => UsedActivePosts < MaxActivePosts;
-}
 
 public class MarketplaceCategoryDto
 {

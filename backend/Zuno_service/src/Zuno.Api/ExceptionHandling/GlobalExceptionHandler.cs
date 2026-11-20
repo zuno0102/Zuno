@@ -55,6 +55,12 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
                 unauthorizedException.Message,
                 null),
 
+            // Before DomainException, which it extends: a plan limit is "pay to add", not a bad request.
+            PlanLimitException planLimit => (
+                StatusCodes.Status402PaymentRequired,
+                planLimit.Message,
+                null),
+
             DomainException domainException => (
                 StatusCodes.Status400BadRequest,
                 domainException.Message,

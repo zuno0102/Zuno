@@ -2,6 +2,8 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zuno/features/business_plan/domain/business_plan.dart';
+import 'package:zuno/features/business_plan/presentation/plan_lock.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/service_area_picker.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/service_form_message_banner.dart';
@@ -272,6 +274,8 @@ class _RentalItemFormSheetState extends ConsumerState<RentalItemFormSheet> {
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) setState(() => _errorMessage = e.toString());
+      // Refused by the plan: the lock offers the plans over the form.
+      if (mounted) showLockIfPlanLimit(context, e, ListingArea.rent);
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

@@ -161,6 +161,39 @@ public static class DependencyInjection
             .ValidateOnStart();
         services.AddScoped<IBusinessReputationSync, BusinessReputationSync>();
         services.AddHostedService<ReputationSyncService>();
+
+        // The listings a business has in Rent and Marketplace, for the plan over all three areas.
+        // Keyed calls between the APIs; the key is never sent to an app.
+        services.AddOptions<MarketplaceApiSettings>()
+            .Bind(configuration.GetSection(MarketplaceApiSettings.SectionName))
+            .ValidateDataAnnotations()
+            .Validate(
+                s => !s.IsConfigured || Uri.TryCreate(s.BaseUrl, UriKind.Absolute, out _),
+                "MarketplaceApi:BaseUrl must be an absolute URL, or empty to leave Marketplace out.")
+            .ValidateOnStart();
+        services.Configure<InternalApiSettings>(configuration.GetSection(InternalApiSettings.SectionName));
+        services.AddHttpClient(AreaListingsClient.RentClient, (sp, client) =>
+        {
+            var api = sp.GetRequiredService<IOptions<RentApiSettings>>().Value;
+            if (api.IsConfigured)
+            {
+                client.BaseAddress = new Uri(api.BaseUrl.TrimEnd('/') + "/");
+            }
+
+            client.Timeout = TimeSpan.FromSeconds(api.TimeoutSeconds);
+        });
+        services.AddHttpClient(AreaListingsClient.MarketplaceClient, (sp, client) =>
+        {
+            var api = sp.GetRequiredService<IOptions<MarketplaceApiSettings>>().Value;
+            if (api.IsConfigured)
+            {
+                client.BaseAddress = new Uri(api.BaseUrl.TrimEnd('/') + "/");
+            }
+
+            client.Timeout = TimeSpan.FromSeconds(api.TimeoutSeconds);
+        });
+        services.AddScoped<IAreaListings, AreaListingsClient>();
+        services.AddHostedService<PlanExpiryService>();
         services.AddScoped<IBusinessTrustService, BusinessTrustService>();
         services.AddScoped<IBookingWageService, BookingWageService>();
         services.AddScoped<IWorkerEarningsService, WorkerEarningsService>();

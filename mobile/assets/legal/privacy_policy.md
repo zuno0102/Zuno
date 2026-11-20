@@ -54,6 +54,7 @@ We collect only what the app needs to do its job. We do not sell your data, we d
 - Payment records: the amount, the method (online, UPI QR, cash or cash on delivery), the payment
   reference, the status, and any refund.
 - A B2B buyer plan you take, and until when it runs.
+- If you run a business: the plan you are on (free Basic or a paid plan), each plan you buy with its price, dates and Razorpay payment reference, how many listings you have live in Service, Rent and Marketplace, and which listings were paused when a plan ended.
 - The Marketplace posts you save to your wishlist, and when you saved each. Only you see your
   wishlist; the business is not told.
 - Card, net-banking and UPI app payments made online go through our payment partner, Razorpay. We never see or store your card number, CVV or bank login.

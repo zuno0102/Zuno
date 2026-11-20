@@ -82,6 +82,10 @@ Online payments usually show within a minute. For a UPI QR or cash payment, ask 
 
 Complete your business profile. We check it and verify the business. You will see the status on your profile.
 
+### Plans and prices
+
+The free Basic plan lets you put up one live listing: one service, one rent item or one Marketplace post. To add more, open Plans from your Home and buy a plan for the areas you need, monthly or yearly. When a paid plan ends, your oldest listing stays live and the rest are paused until you renew.
+
 ### Where do customers pay me by UPI?
 
 Add your UPI ID on your business profile. Your orders then show a QR code for the exact amount, which any UPI app can scan.

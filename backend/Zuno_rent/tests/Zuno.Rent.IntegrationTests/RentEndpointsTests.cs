@@ -277,6 +277,47 @@ public class RentEndpointsTests(RentApiFactory factory) : IClassFixture<RentApiF
         (await factory.CreateClient().GetAsync(url)).StatusCode.Should().NotBe(HttpStatusCode.OK, "the file is deleted");
     }
 
+    [Fact]
+    public async Task A_Full_Plan_Is_Answered_402_And_Nothing_Is_Listed()
+    {
+        var owner = Guid.NewGuid();
+        var client = factory.ClientFor(owner);
+        client.DefaultRequestHeaders.Add("X-Test-Plan-Full", "1");
+
+        var refused = await client.PostAsJsonAsync(Items, Machine());
+
+        refused.StatusCode.Should().Be(HttpStatusCode.PaymentRequired);
+        (await refused.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString().Should().StartWith("The Basic plan allows 1");
+        var internalClient = factory.CreateClient();
+        internalClient.DefaultRequestHeaders.Add("X-Zuno-Internal-Key", RentApiFactory.InternalKey);
+        (await Data(await internalClient.GetAsync($"/api/v1/internal/owners/{owner}/live-listings"))).GetArrayLength().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Internal_Endpoints_Need_The_Key_And_Pause_And_Resume_The_Owners_Listings()
+    {
+        var owner = Guid.NewGuid();
+        var business = factory.ClientFor(owner);
+        var id = (await Data(await business.PostAsJsonAsync(Items, Machine()))).GetProperty("id").GetGuid();
+        var live = $"/api/v1/internal/owners/{owner}/live-listings";
+
+        (await factory.CreateClient().GetAsync(live)).StatusCode.Should().Be(HttpStatusCode.NotFound, "no key: the endpoint does not exist");
+        (await business.GetAsync(live)).StatusCode.Should().Be(HttpStatusCode.NotFound, "a business's own sign-in is not the key");
+        var wrong = factory.CreateClient();
+        wrong.DefaultRequestHeaders.Add("X-Zuno-Internal-Key", "wrong-key");
+        (await wrong.GetAsync(live)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var service = factory.CreateClient();
+        service.DefaultRequestHeaders.Add("X-Zuno-Internal-Key", RentApiFactory.InternalKey);
+        (await Data(await service.GetAsync(live))).EnumerateArray().Select(l => l.GetProperty("id").GetGuid()).Should().Equal(id);
+
+        (await service.PostAsJsonAsync($"/api/v1/internal/owners/{owner}/pause", new { ids = new[] { id } })).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await Data(await service.GetAsync(live))).GetArrayLength().Should().Be(0);
+
+        (await service.PostAsJsonAsync($"/api/v1/internal/owners/{owner}/resume", new { ids = new[] { id } })).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await Data(await service.GetAsync(live))).GetArrayLength().Should().Be(1);
+    }
+
     private static MultipartFormDataContent File(byte[] bytes, string contentType)
     {
         var file = new ByteArrayContent(bytes);

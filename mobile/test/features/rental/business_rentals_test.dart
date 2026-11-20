@@ -40,6 +40,8 @@ import 'package:zuno/shared/widgets/filter_chip_bar.dart';
 import 'package:zuno/shared/widgets/status_with_actions.dart';
 import 'package:zuno/shared/widgets/stock_figure_row.dart';
 
+import '../business_plan/business_plan_fakes.dart';
+
 const _tools = RentalCategory(
   id: 'cat-tools',
   name: 'Tools & machines',
@@ -884,6 +886,7 @@ Future<_FakeRentalRepository> _pump(
     ProviderScope(
       overrides: [
         rentalRepositoryProvider.overrideWithValue(repository),
+        businessPlanOverride(),
         businessServicesProvider.overrideWith(_NoServices.new),
         currentAppOptionsProvider.overrideWithValue(AppOptions.defaults),
       ],
@@ -967,7 +970,10 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [rentalRepositoryProvider.overrideWithValue(repository)],
+          overrides: [
+            rentalRepositoryProvider.overrideWithValue(repository),
+            businessPlanOverride(),
+          ],
           child: const MaterialApp(home: Scaffold(body: BusinessRentalsTab())),
         ),
       );

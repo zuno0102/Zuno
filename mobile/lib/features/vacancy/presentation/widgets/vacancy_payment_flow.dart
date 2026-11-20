@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/payments/razorpay_checkout.dart';
 import 'package:zuno/core/utils/formatting.dart';
+import 'package:zuno/core/router/push_screen.dart';
 import 'package:zuno/features/vacancy/domain/entities/vacancy.dart';
+import 'package:zuno/features/vacancy/domain/entities/vacancy_options.dart';
 import 'package:zuno/features/vacancy/presentation/providers/business_vacancies_notifier.dart';
+import 'package:zuno/features/vacancy/presentation/providers/vacancy_providers.dart';
+import 'package:zuno/shared/widgets/sheet_drag_handle.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/confirm_dialog.dart';
 
@@ -21,7 +25,22 @@ Future<bool> payVacancyFee(
   final messenger = AppMessenger.of(context);
 
   try {
-    final payment = await notifier.openPayment(vacancy.id);
+    // How long it stays up: the Super Admin's options (1, 2 or 6 months…). One option needs no question.
+    final plans = (await ref.read(
+      vacancyOptionsProvider(asWorker: false).future,
+    )).feePlans;
+    String? feePlanId;
+    if (plans.length > 1) {
+      if (!context.mounted) return false;
+      final chosen = await _pickFeePlan(context, plans);
+      if (chosen == null) return false;
+      feePlanId = chosen.id;
+    }
+
+    final payment = await notifier.openPayment(
+      vacancy.id,
+      feePlanId: feePlanId,
+    );
 
     // A free plan settled on the server already.
     if (payment.vacancy case final paid?) {
@@ -85,5 +104,61 @@ Future<bool> payVacancyFee(
   } catch (e) {
     messenger.showFailure(e.toString());
     return false;
+  }
+}
+
+/// Asks how long the job should stay up, each option with its price; null when closed.
+Future<VacancyFeePlan?> _pickFeePlan(
+  BuildContext context,
+  List<VacancyFeePlan> plans,
+) => pushSheet<VacancyFeePlan>(context, _FeePlanSheet(plans: plans));
+
+class _FeePlanSheet extends StatelessWidget {
+  const _FeePlanSheet({required this.plans});
+
+  final List<VacancyFeePlan> plans;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: Column(
+          key: const ValueKey('vacancy-fee-plans'),
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SheetDragHandle(onDismiss: () => Navigator.of(context).maybePop()),
+            Text(
+              'How long should it stay up?',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 8),
+            for (final plan in plans)
+              Card(
+                margin: const EdgeInsets.only(top: 8),
+                child: ListTile(
+                  key: ValueKey('vacancy-fee-plan-${plan.id}'),
+                  title: Text(
+                    plan.name,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: Text('${plan.listingDays} days'),
+                  trailing: Text(
+                    rupees(plan.amount),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  onTap: () => Navigator.of(context).pop(plan),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }

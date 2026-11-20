@@ -2,6 +2,8 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:zuno/features/catalog/presentation/providers/catalog_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zuno/features/business_plan/domain/business_plan.dart';
+import 'package:zuno/features/business_plan/presentation/plan_lock.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/features/business_owner/domain/entities/business_service.dart';
@@ -337,6 +339,8 @@ class _BusinessServiceFormSheetState
       return;
     } catch (e) {
       setState(() => _errorMessage = e.toString());
+      // Refused by the plan: the lock offers the plans over the form.
+      if (mounted) showLockIfPlanLimit(context, e, ListingArea.service);
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);

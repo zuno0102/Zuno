@@ -72,9 +72,6 @@ public class VariantPhotoTests
     public async Task AColourOfAnotherPost_IsNotFound_AndNoFileIsWritten()
     {
         using var test = new TestMarketplace();
-        var free = await test.Db.Plans.SingleAsync(p => p.IsDefault);
-        free.MaxActivePosts = 2;
-        await test.Db.SaveChangesAsync();
         var mine = await test.SaveHandlers.Handle(Saree(), default);
         var other = await test.SaveHandlers.Handle(Saree(), default);
         var othersGreen = other.Variants.Single(v => v.Colour == "Green");

@@ -71,6 +71,9 @@ builder.Services.AddCors(options => options.AddPolicy(WebClientCorsPolicy, polic
 }));
 
 // Behind Render's proxy the caller's real address is in X-Forwarded-For; the rate limits need it.
+// The key the three Zuno APIs share for their calls to each other.
+builder.Services.Configure<InternalApiSettings>(builder.Configuration.GetSection(InternalApiSettings.SectionName));
+
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;

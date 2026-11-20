@@ -52,9 +52,12 @@ internal sealed class TestMarketplace : IDisposable
 
     public IMemoryCache Cache => _cache;
 
-    public SaveMarketplacePostHandlers SaveHandlers => new(User, Db, Reference, Clock, Settings, Storage);
+    /// <summary>The plan check the Service API makes; allows by default.</summary>
+    public FakePlanGate PlanGate { get; } = new();
 
-    public ManageMarketplacePostHandlers ManageHandlers => new(User, Db, Storage, Reference, Clock);
+    public SaveMarketplacePostHandlers SaveHandlers => new(User, Db, Reference, Clock, Settings, Storage, PlanGate);
+
+    public ManageMarketplacePostHandlers ManageHandlers => new(User, Db, PlanGate, Storage, Reference, Clock);
 
     public UpdateMarketplacePostStockHandler StockHandler => new(User, Db, Reference, Clock);
 
@@ -261,5 +264,21 @@ internal sealed class FakePaymentGateway : IMarketplacePaymentGateway
 
         Refunded.Add(paymentId);
         return Task.FromResult($"rfnd_{paymentId}");
+    }
+}
+
+/// <summary>Stands in for the Service API plan check: records each live count it was asked with, refuses when told to.</summary>
+internal sealed class FakePlanGate : IServicePlanGate
+{
+    public List<int> Asked { get; } = [];
+
+    public string? RefuseWith { get; set; }
+
+    public Task EnsureCanAddAsync(int liveHere, CancellationToken cancellationToken)
+    {
+        Asked.Add(liveHere);
+        return RefuseWith is { } reason
+            ? throw new Zuno.Marketplace.Domain.Exceptions.PlanLimitException(reason)
+            : Task.CompletedTask;
     }
 }

@@ -1213,6 +1213,123 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                     b.ToTable("business_service_variants", (string)null);
                 });
 
+            modelBuilder.Entity("Zuno.Domain.Entities.BusinessSubscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
+
+                    b.Property<int>("DurationDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("duration_days");
+
+                    b.Property<DateTimeOffset?>("EndsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ends_at");
+
+                    b.Property<bool>("IncludesMarketplace")
+                        .HasColumnType("boolean")
+                        .HasColumnName("includes_marketplace");
+
+                    b.Property<bool>("IncludesRent")
+                        .HasColumnType("boolean")
+                        .HasColumnName("includes_rent");
+
+                    b.Property<bool>("IncludesService")
+                        .HasColumnType("boolean")
+                        .HasColumnName("includes_service");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_date");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_user_id");
+
+                    b.Property<DateTimeOffset?>("PaidAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("paid_at");
+
+                    b.Property<string>("PaymentId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("payment_id");
+
+                    b.Property<string>("PendingOrderId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("pending_order_id");
+
+                    b.Property<Guid>("PlanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("plan_id");
+
+                    b.Property<string>("PlanName")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("plan_name");
+
+                    b.Property<DateTimeOffset?>("StartsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("starts_at");
+
+                    b.Property<short>("State")
+                        .HasColumnType("smallint")
+                        .HasColumnName("state");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_business_subscriptions");
+
+                    b.HasIndex("PaymentId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_business_subscriptions_payment_id")
+                        .HasFilter("payment_id IS NOT NULL");
+
+                    b.HasIndex("PlanId")
+                        .HasDatabaseName("ix_business_subscriptions_plan_id");
+
+                    b.HasIndex("State", "EndsAt")
+                        .HasDatabaseName("ix_business_subscriptions_state_ends");
+
+                    b.HasIndex("OwnerUserId", "State", "EndsAt")
+                        .HasDatabaseName("ix_business_subscriptions_owner_state_ends");
+
+                    b.ToTable("business_subscriptions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_business_subscriptions_amount", "amount >= 0");
+
+                            t.HasCheckConstraint("ck_business_subscriptions_state", "state BETWEEN 1 AND 3");
+                        });
+                });
+
             modelBuilder.Entity("Zuno.Domain.Entities.BusinessWorker", b =>
                 {
                     b.Property<Guid>("Id")
@@ -11847,6 +11964,63 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                     b.ToTable("payout_batch_items", (string)null);
                 });
 
+            modelBuilder.Entity("Zuno.Domain.Entities.PlanPausedListing", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<short>("Area")
+                        .HasColumnType("smallint")
+                        .HasColumnName("area");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid>("ListingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("listing_id");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_date");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_user_id");
+
+                    b.Property<DateTimeOffset>("PausedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("paused_at");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_plan_paused_listings");
+
+                    b.HasIndex("OwnerUserId", "Area", "ListingId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_plan_paused_listings_owner_area_listing");
+
+                    b.ToTable("plan_paused_listings", (string)null);
+                });
+
             modelBuilder.Entity("Zuno.Domain.Entities.PlatformSetting", b =>
                 {
                     b.Property<Guid>("Id")
@@ -13785,6 +13959,384 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Zuno.Domain.Entities.SubscriptionPlan", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("code");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
+
+                    b.Property<int?>("DurationDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("duration_days");
+
+                    b.Property<bool>("IncludesMarketplace")
+                        .HasColumnType("boolean")
+                        .HasColumnName("includes_marketplace");
+
+                    b.Property<bool>("IncludesRent")
+                        .HasColumnType("boolean")
+                        .HasColumnName("includes_rent");
+
+                    b.Property<bool>("IncludesService")
+                        .HasColumnType("boolean")
+                        .HasColumnName("includes_service");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_default");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<int?>("MaxLiveListings")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_live_listings");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by");
+
+                    b.Property<DateTimeOffset?>("ModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_date");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("name");
+
+                    b.Property<short>("Period")
+                        .HasColumnType("smallint")
+                        .HasColumnName("period");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("price");
+
+                    b.Property<short>("SortOrder")
+                        .HasColumnType("smallint")
+                        .HasColumnName("sort_order");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_subscription_plans");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("ux_subscription_plans_code");
+
+                    b.HasIndex("IsDefault")
+                        .IsUnique()
+                        .HasDatabaseName("ux_subscription_plans_default")
+                        .HasFilter("is_default = true");
+
+                    b.ToTable("subscription_plans", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_subscription_plans_duration_days", "duration_days IS NULL OR duration_days > 0");
+
+                            t.HasCheckConstraint("ck_subscription_plans_max_live_listings", "max_live_listings IS NULL OR max_live_listings >= 0");
+
+                            t.HasCheckConstraint("ck_subscription_plans_price", "price >= 0");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("c6666666-0000-0000-0000-000000000001"),
+                            Code = "basic",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IncludesMarketplace = true,
+                            IncludesRent = true,
+                            IncludesService = true,
+                            IsActive = true,
+                            IsDefault = true,
+                            IsDeleted = false,
+                            MaxLiveListings = 1,
+                            Name = "Basic",
+                            Period = (short)0,
+                            Price = 0m,
+                            SortOrder = (short)1,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c6666666-0000-0000-0000-000000000002"),
+                            Code = "service-monthly",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DurationDays = 30,
+                            IncludesMarketplace = false,
+                            IncludesRent = false,
+                            IncludesService = true,
+                            IsActive = true,
+                            IsDefault = false,
+                            IsDeleted = false,
+                            Name = "Service",
+                            Period = (short)1,
+                            Price = 199m,
+                            SortOrder = (short)2,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c6666666-0000-0000-0000-000000000003"),
+                            Code = "service-annual",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DurationDays = 365,
+                            IncludesMarketplace = false,
+                            IncludesRent = false,
+                            IncludesService = true,
+                            IsActive = true,
+                            IsDefault = false,
+                            IsDeleted = false,
+                            Name = "Service",
+                            Period = (short)2,
+                            Price = 1999m,
+                            SortOrder = (short)3,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c6666666-0000-0000-0000-000000000004"),
+                            Code = "rent-monthly",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DurationDays = 30,
+                            IncludesMarketplace = false,
+                            IncludesRent = true,
+                            IncludesService = false,
+                            IsActive = true,
+                            IsDefault = false,
+                            IsDeleted = false,
+                            Name = "Rent",
+                            Period = (short)1,
+                            Price = 199m,
+                            SortOrder = (short)4,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c6666666-0000-0000-0000-000000000005"),
+                            Code = "rent-annual",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DurationDays = 365,
+                            IncludesMarketplace = false,
+                            IncludesRent = true,
+                            IncludesService = false,
+                            IsActive = true,
+                            IsDefault = false,
+                            IsDeleted = false,
+                            Name = "Rent",
+                            Period = (short)2,
+                            Price = 1999m,
+                            SortOrder = (short)5,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c6666666-0000-0000-0000-000000000006"),
+                            Code = "marketplace-monthly",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DurationDays = 30,
+                            IncludesMarketplace = true,
+                            IncludesRent = false,
+                            IncludesService = false,
+                            IsActive = true,
+                            IsDefault = false,
+                            IsDeleted = false,
+                            Name = "Marketplace",
+                            Period = (short)1,
+                            Price = 399m,
+                            SortOrder = (short)6,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c6666666-0000-0000-0000-000000000007"),
+                            Code = "marketplace-annual",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DurationDays = 365,
+                            IncludesMarketplace = true,
+                            IncludesRent = false,
+                            IncludesService = false,
+                            IsActive = true,
+                            IsDefault = false,
+                            IsDeleted = false,
+                            Name = "Marketplace",
+                            Period = (short)2,
+                            Price = 3999m,
+                            SortOrder = (short)7,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c6666666-0000-0000-0000-000000000008"),
+                            Code = "service-rent-monthly",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DurationDays = 30,
+                            IncludesMarketplace = false,
+                            IncludesRent = true,
+                            IncludesService = true,
+                            IsActive = true,
+                            IsDefault = false,
+                            IsDeleted = false,
+                            Name = "Service + Rent",
+                            Period = (short)1,
+                            Price = 349m,
+                            SortOrder = (short)8,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c6666666-0000-0000-0000-000000000009"),
+                            Code = "service-rent-annual",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DurationDays = 365,
+                            IncludesMarketplace = false,
+                            IncludesRent = true,
+                            IncludesService = true,
+                            IsActive = true,
+                            IsDefault = false,
+                            IsDeleted = false,
+                            Name = "Service + Rent",
+                            Period = (short)2,
+                            Price = 3499m,
+                            SortOrder = (short)9,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c6666666-0000-0000-0000-000000000010"),
+                            Code = "service-marketplace-monthly",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DurationDays = 30,
+                            IncludesMarketplace = true,
+                            IncludesRent = false,
+                            IncludesService = true,
+                            IsActive = true,
+                            IsDefault = false,
+                            IsDeleted = false,
+                            Name = "Service + Marketplace",
+                            Period = (short)1,
+                            Price = 499m,
+                            SortOrder = (short)10,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c6666666-0000-0000-0000-000000000011"),
+                            Code = "service-marketplace-annual",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DurationDays = 365,
+                            IncludesMarketplace = true,
+                            IncludesRent = false,
+                            IncludesService = true,
+                            IsActive = true,
+                            IsDefault = false,
+                            IsDeleted = false,
+                            Name = "Service + Marketplace",
+                            Period = (short)2,
+                            Price = 4999m,
+                            SortOrder = (short)11,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c6666666-0000-0000-0000-000000000012"),
+                            Code = "rent-marketplace-monthly",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DurationDays = 30,
+                            IncludesMarketplace = true,
+                            IncludesRent = true,
+                            IncludesService = false,
+                            IsActive = true,
+                            IsDefault = false,
+                            IsDeleted = false,
+                            Name = "Rent + Marketplace",
+                            Period = (short)1,
+                            Price = 549m,
+                            SortOrder = (short)12,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c6666666-0000-0000-0000-000000000013"),
+                            Code = "rent-marketplace-annual",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DurationDays = 365,
+                            IncludesMarketplace = true,
+                            IncludesRent = true,
+                            IncludesService = false,
+                            IsActive = true,
+                            IsDefault = false,
+                            IsDeleted = false,
+                            Name = "Rent + Marketplace",
+                            Period = (short)2,
+                            Price = 5499m,
+                            SortOrder = (short)13,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c6666666-0000-0000-0000-000000000014"),
+                            Code = "all3-monthly",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DurationDays = 30,
+                            IncludesMarketplace = true,
+                            IncludesRent = true,
+                            IncludesService = true,
+                            IsActive = true,
+                            IsDefault = false,
+                            IsDeleted = false,
+                            Name = "All 3",
+                            Period = (short)1,
+                            Price = 699m,
+                            SortOrder = (short)14,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c6666666-0000-0000-0000-000000000015"),
+                            Code = "all3-annual",
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 21, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DurationDays = 365,
+                            IncludesMarketplace = true,
+                            IncludesRent = true,
+                            IncludesService = true,
+                            IsActive = true,
+                            IsDefault = false,
+                            IsDeleted = false,
+                            Name = "All 3",
+                            Period = (short)2,
+                            Price = 6999m,
+                            SortOrder = (short)15,
+                            Status = (short)1
+                        });
+                });
+
             modelBuilder.Entity("Zuno.Domain.Entities.ThemeColor", b =>
                 {
                     b.Property<Guid>("Id")
@@ -14709,13 +15261,37 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = new Guid("c5555555-0000-0000-0000-000000000001"),
-                            Amount = 49m,
+                            Amount = 99m,
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 27, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             IsActive = true,
                             IsDeleted = false,
                             ListingDays = 30,
-                            Name = "Standard listing",
+                            Name = "1 month",
                             SortOrder = (short)1,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c5555555-0000-0000-0000-000000000002"),
+                            Amount = 149m,
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 27, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDeleted = false,
+                            ListingDays = 60,
+                            Name = "2 months",
+                            SortOrder = (short)2,
+                            Status = (short)1
+                        },
+                        new
+                        {
+                            Id = new Guid("c5555555-0000-0000-0000-000000000003"),
+                            Amount = 249m,
+                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 27, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            IsDeleted = false,
+                            ListingDays = 180,
+                            Name = "6 months",
+                            SortOrder = (short)3,
                             Status = (short)1
                         });
                 });
@@ -15390,6 +15966,18 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                     b.Navigation("BusinessService");
 
                     b.Navigation("ServiceSubCategory");
+                });
+
+            modelBuilder.Entity("Zuno.Domain.Entities.BusinessSubscription", b =>
+                {
+                    b.HasOne("Zuno.Domain.Entities.SubscriptionPlan", "Plan")
+                        .WithMany()
+                        .HasForeignKey("PlanId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_business_subscriptions_subscription_plans_plan_id");
+
+                    b.Navigation("Plan");
                 });
 
             modelBuilder.Entity("Zuno.Domain.Entities.BusinessWorker", b =>

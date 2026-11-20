@@ -12,7 +12,9 @@ public class CreateBusinessServiceCommandHandler(
     ICurrentUserService currentUserService,
     IBusinessOwnerProfileRepository businessOwnerProfileRepository,
     IBusinessServiceRepository businessServiceRepository,
-    IApplicationDbContext dbContext) : IRequestHandler<CreateBusinessServiceCommand, BusinessServiceDto>
+    IApplicationDbContext dbContext,
+    BusinessPlans.BusinessPlanRules planRules,
+    IDateTimeProvider clock) : IRequestHandler<CreateBusinessServiceCommand, BusinessServiceDto>
 {
     public async Task<BusinessServiceDto> Handle(CreateBusinessServiceCommand request, CancellationToken cancellationToken)
     {
@@ -21,6 +23,9 @@ public class CreateBusinessServiceCommandHandler(
 
         var businessProfile = await businessOwnerProfileRepository.GetByUserIdAsync(userId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(BusinessOwnerProfile), userId);
+
+        // A new service goes live at once, so the plan must allow one more live listing.
+        await planRules.EnsureCanAddAsync(userId, ListingArea.Service, null, clock.UtcNow, cancellationToken);
 
         var category = await dbContext.ServiceCategories
             .FirstOrDefaultAsync(c => c.Id == request.ServiceCategoryId, cancellationToken)

@@ -212,7 +212,6 @@ public class MarketplacePostQueryHandlers(
                 ExpiredAds = g.Count(p => p.Kind == MarketplacePostKind.Advertisement && p.EndsAt != null && p.EndsAt <= now),
             })
             .FirstOrDefaultAsync(cancellationToken);
-        var (plan, endsAt) = await dbContext.CurrentAsync(ownerId, now, cancellationToken);
         return new MarketplaceSummaryDto
         {
             Active = live,
@@ -234,15 +233,7 @@ public class MarketplacePostQueryHandlers(
             Closed = byCategory.Sum(c => c.Closed),
             Sold = byCategory.Sum(c => c.Sold),
             Categories = byCategory,
-            Plan = new MarketplacePlanDto
-            {
-                Code = plan.Code,
-                Name = plan.Name,
-                Price = plan.Price,
-                MaxActivePosts = plan.MaxActivePosts,
-                UsedActivePosts = live,
-                EndsAt = endsAt,
-            },
+            Plan = new LegacyMarketplacePlanDto { UsedActivePosts = live, MaxActivePosts = live + 1 },
         };
     }
 }

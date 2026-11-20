@@ -104,6 +104,9 @@ public class RentApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             // otherwise throttle itself. The limiter still runs.
             ["RateLimiting:GlobalPermitLimit"] = "100000",
             ["RateLimiting:UploadPermitLimit"] = "100000",
+
+            // The key the Service API sends to the internal endpoints.
+            ["InternalApi:Key"] = InternalKey,
         }));
 
         // The Service API is not running here: its answers about the caller come from a stand-in.
@@ -111,6 +114,7 @@ public class RentApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.ConfigureTestServices(services =>
         {
             services.AddScoped<Zuno.Rent.Application.Common.IServiceDirectory, StandInServiceDirectory>();
+            services.AddScoped<Zuno.Rent.Application.Common.IServicePlanGate, StandInPlanGate>();
             services.AddSingleton<Zuno.Rent.Application.Common.IRentPaymentGateway, StandInPaymentGateway>();
         });
     }
@@ -144,6 +148,19 @@ public class RentApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
         public Task<Zuno.Rent.Application.Common.ServiceBusiness?> GetCurrentBusinessAsync(CancellationToken cancellationToken) =>
             Task.FromResult<Zuno.Rent.Application.Common.ServiceBusiness?>(new("Test Rentals", null, IsVerified: true));
+    }
+
+    public const string InternalKey = "test-internal-key";
+
+    /// <summary>The Service API's plan check, standing in: allows, unless the request says the plan is full.</summary>
+    private sealed class StandInPlanGate(Microsoft.AspNetCore.Http.IHttpContextAccessor http) : Zuno.Rent.Application.Common.IServicePlanGate
+    {
+        public const string FullHeader = "X-Test-Plan-Full";
+
+        public Task EnsureCanAddAsync(int liveHere, CancellationToken cancellationToken) =>
+            http.HttpContext?.Request.Headers.ContainsKey(FullHeader) == true
+                ? throw new Zuno.Rent.Domain.Exceptions.PlanLimitException("The Basic plan allows 1 live listing in total.")
+                : Task.CompletedTask;
     }
 
     public async Task InitializeAsync()

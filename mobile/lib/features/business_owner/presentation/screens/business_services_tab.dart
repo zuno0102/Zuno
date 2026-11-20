@@ -8,6 +8,9 @@ import 'package:zuno/features/business_owner/domain/entities/business_service.da
 import 'package:zuno/features/business_owner/presentation/providers/business_services_notifier.dart';
 import 'package:zuno/features/business_owner/presentation/screens/manage_service_variants_screen.dart';
 import 'package:zuno/features/business_owner/presentation/widgets/business_service_form_sheet.dart';
+import 'package:zuno/features/business_plan/domain/business_plan.dart';
+import 'package:zuno/features/business_plan/presentation/business_plan_providers.dart';
+import 'package:zuno/features/business_plan/presentation/plan_lock.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/core/router/push_screen.dart';
 import 'package:zuno/shared/widgets/confirm_dialog.dart';
@@ -21,8 +24,22 @@ class BusinessServicesTab extends ConsumerWidget {
 
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => showBusinessServiceFormSheet(context),
-        icon: const Icon(Icons.add),
+        onPressed: () => openIfPlanAllows(
+          context,
+          ref,
+          ListingArea.service,
+          () => showBusinessServiceFormSheet(context),
+        ),
+        icon: Icon(
+          ref
+                      .watch(businessPlanProvider)
+                      .value
+                      ?.usage(ListingArea.service)
+                      ?.canAdd ==
+                  false
+              ? Icons.lock_outline
+              : Icons.add,
+        ),
         label: const Text('Add service'),
       ),
       body: servicesAsync.when(

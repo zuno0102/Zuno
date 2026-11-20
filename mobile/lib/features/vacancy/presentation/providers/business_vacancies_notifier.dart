@@ -42,8 +42,10 @@ class BusinessVacanciesNotifier extends _$BusinessVacanciesNotifier {
     await ref.read(vacancyRepositoryProvider).setHiring(id, hiring: hiring),
   );
 
-  Future<VacancyPayment> openPayment(String id) =>
-      ref.read(vacancyRepositoryProvider).createPayment(id);
+  /// Opens the payment for [id] on [feePlanId] (how long it stays up), or its own plan when null.
+  Future<VacancyPayment> openPayment(String id, {String? feePlanId}) => ref
+      .read(vacancyRepositoryProvider)
+      .createPayment(id, feePlanId: feePlanId);
 
   Future<Vacancy> confirmPayment(
     String id, {

@@ -142,7 +142,6 @@ public class MarketplaceEndpointsTests(MarketplaceApiFactory factory) : IClassFi
 
         var summary = await Data(await client.GetAsync($"{Posts}/summary"));
         summary.GetProperty("sold").GetInt32().Should().Be(1);
-        summary.GetProperty("plan").GetProperty("canAddActivePost").GetBoolean().Should().BeTrue();
     }
 
     [Fact]
@@ -187,7 +186,7 @@ public class MarketplaceEndpointsTests(MarketplaceApiFactory factory) : IClassFi
     }
 
     [Fact]
-    public async Task FreePlan_OneLivePost_ThenPauseFreesTheSlot()
+    public async Task LiveAndPausedPosts_ShowInTheSummary_ByCategory()
     {
         var client = factory.ClientFor(Guid.NewGuid());
 
@@ -195,17 +194,12 @@ public class MarketplaceEndpointsTests(MarketplaceApiFactory factory) : IClassFi
         car.StatusCode.Should().Be(HttpStatusCode.Created);
         var carId = (await Data(car)).GetProperty("id").GetString();
 
-        var second = await client.PostAsJsonAsync(Posts, Biryani());
-        second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await Body(second)).GetProperty("message").GetString().Should().StartWith("Your Free plan allows 1 active post.");
-
         (await client.PatchAsJsonAsync($"{Posts}/{carId}/status", new { status = "Paused" })).StatusCode.Should().Be(HttpStatusCode.OK);
         (await client.PostAsJsonAsync(Posts, Biryani())).StatusCode.Should().Be(HttpStatusCode.Created);
 
         var summary = await Data(await client.GetAsync($"{Posts}/summary"));
         summary.GetProperty("active").GetInt32().Should().Be(1);
         summary.GetProperty("paused").GetInt32().Should().Be(1);
-        summary.GetProperty("plan").GetProperty("canAddActivePost").GetBoolean().Should().BeFalse();
 
         // Per main category, for the Orders › Marketplace chips: the car paused, the biryani live.
         var byCategory = summary.GetProperty("categories").EnumerateArray()
@@ -216,14 +210,14 @@ public class MarketplaceEndpointsTests(MarketplaceApiFactory factory) : IClassFi
     }
 
     [Fact]
-    public async Task ConcurrentCreates_OnlyOneWinsTheFreeSlot()
+    public async Task ConcurrentCreates_EachAsksThePlan_AndAFullPlanRefusesAll()
     {
         var client = factory.ClientFor(Guid.NewGuid());
+        client.DefaultRequestHeaders.Add("X-Test-Plan-Full", "1");
 
         var results = await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => client.PostAsJsonAsync(Posts, Car())));
 
-        results.Count(r => r.StatusCode == HttpStatusCode.Created).Should().Be(1);
-        results.Count(r => r.StatusCode == HttpStatusCode.BadRequest).Should().Be(4);
+        results.Should().OnlyContain(r => r.StatusCode == HttpStatusCode.PaymentRequired);
     }
 
     [Fact]
@@ -344,6 +338,47 @@ public class MarketplaceEndpointsTests(MarketplaceApiFactory factory) : IClassFi
 
         data.GetProperty("isVerified").GetBoolean().Should().BeTrue();
         data.GetProperty("name").GetString().Should().Be("Test Shop");
+    }
+
+    [Fact]
+    public async Task A_Full_Plan_Is_Answered_402_And_Nothing_Is_Listed()
+    {
+        var owner = Guid.NewGuid();
+        var client = factory.ClientFor(owner);
+        client.DefaultRequestHeaders.Add("X-Test-Plan-Full", "1");
+
+        var refused = await client.PostAsJsonAsync(Posts, Car());
+
+        refused.StatusCode.Should().Be(HttpStatusCode.PaymentRequired);
+        (await refused.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString().Should().StartWith("The Basic plan allows 1");
+        var internalClient = factory.CreateClient();
+        internalClient.DefaultRequestHeaders.Add("X-Zuno-Internal-Key", MarketplaceApiFactory.InternalKey);
+        (await Data(await internalClient.GetAsync($"/api/v1/internal/owners/{owner}/live-listings"))).GetArrayLength().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Internal_Endpoints_Need_The_Key_And_Pause_And_Resume_The_Owners_Listings()
+    {
+        var owner = Guid.NewGuid();
+        var business = factory.ClientFor(owner);
+        var id = (await Data(await business.PostAsJsonAsync(Posts, Car()))).GetProperty("id").GetGuid();
+        var live = $"/api/v1/internal/owners/{owner}/live-listings";
+
+        (await factory.CreateClient().GetAsync(live)).StatusCode.Should().Be(HttpStatusCode.NotFound, "no key: the endpoint does not exist");
+        (await business.GetAsync(live)).StatusCode.Should().Be(HttpStatusCode.NotFound, "a business's own sign-in is not the key");
+        var wrong = factory.CreateClient();
+        wrong.DefaultRequestHeaders.Add("X-Zuno-Internal-Key", "wrong-key");
+        (await wrong.GetAsync(live)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var service = factory.CreateClient();
+        service.DefaultRequestHeaders.Add("X-Zuno-Internal-Key", MarketplaceApiFactory.InternalKey);
+        (await Data(await service.GetAsync(live))).EnumerateArray().Select(l => l.GetProperty("id").GetGuid()).Should().Equal(id);
+
+        (await service.PostAsJsonAsync($"/api/v1/internal/owners/{owner}/pause", new { ids = new[] { id } })).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await Data(await service.GetAsync(live))).GetArrayLength().Should().Be(0);
+
+        (await service.PostAsJsonAsync($"/api/v1/internal/owners/{owner}/resume", new { ids = new[] { id } })).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await Data(await service.GetAsync(live))).GetArrayLength().Should().Be(1);
     }
 
     private static MultipartFormDataContent File(byte[] bytes, string contentType)

@@ -32,6 +32,9 @@ import 'package:zuno/shared/widgets/counted_tab_label.dart';
 import 'package:zuno/shared/widgets/stat_tile.dart';
 import 'package:zuno/shared/widgets/stock_figure_row.dart';
 
+import 'package:zuno/features/business_plan/domain/business_plan.dart';
+
+import '../business_plan/business_plan_fakes.dart';
 import 'marketplace_order_fakes.dart';
 
 const _products = MarketplaceCategory(
@@ -230,14 +233,6 @@ const _kanyakumari = District(
   stateName: 'Tamil Nadu',
 );
 
-MarketplacePlan _plan({int used = 0, int max = 1}) => MarketplacePlan(
-  code: 'free',
-  name: 'Free',
-  price: 0,
-  maxActivePosts: max,
-  usedActivePosts: used,
-);
-
 MarketplacePost _post({
   String id = 'p-1',
   String title = 'Swift VXi 2019',
@@ -313,12 +308,10 @@ MarketplacePost _post({
 class _FakeMarketplaceRepository implements MarketplaceRepository {
   _FakeMarketplaceRepository({
     this.posts = const [],
-    MarketplacePlan? plan,
     this.categories = const [_products, _b2b, _food, _ads],
-  }) : plan = plan ?? _plan(used: posts.length > 1 ? 1 : posts.length);
+  });
 
   List<MarketplacePost> posts;
-  MarketplacePlan plan;
   List<MarketplaceCategory> categories;
   Object? failList;
   Object? failSummary;
@@ -351,7 +344,9 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
   Future<MarketplaceSummary> getSummary() async {
     if (failSummary case final error?) throw error;
     return MarketplaceSummary(
-      active: plan.usedActivePosts,
+      active: posts
+          .where((p) => p.status == MarketplacePostStatus.active)
+          .length,
       paused: posts.where((p) => p.status == 'Paused').length,
       // Products Live, item by item as the server counts: each live product's colours / sizes on
       // sale, or one.
@@ -418,7 +413,6 @@ class _FakeMarketplaceRepository implements MarketplaceRepository {
           .where((p) => p.status == MarketplacePostStatus.closed)
           .length,
       sold: posts.where((p) => p.status == MarketplacePostStatus.sold).length,
-      plan: plan,
       categories: [
         for (final id in {for (final p in posts) p.categoryId})
           MarketplaceCategoryCount(
@@ -646,6 +640,7 @@ Future<_FakeMarketplaceRepository> _pump(
   BusinessProfile profile = _profile,
   District? businessDistrict = _kanyakumari,
   Future<District?> Function()? businessDistrictLookup,
+  BusinessPlan? businessPlan,
 }) async {
   // A tall phone, so a long form needs no scrolling to reach a field.
   tester.view.physicalSize = const Size(1080, 4000);
@@ -656,6 +651,7 @@ Future<_FakeMarketplaceRepository> _pump(
     ProviderScope(
       overrides: [
         marketplaceRepositoryProvider.overrideWithValue(repo),
+        businessPlanOverride(businessPlan),
         marketplaceOrderRepositoryProvider.overrideWithValue(
           orders ?? FakeMarketplaceOrderRepository(),
         ),
@@ -915,23 +911,6 @@ void main() {
       expect(find.text('Swift VXi 2019'), findsOneWidget);
     });
 
-    testWidgets('the plan banner says how much is used', (tester) async {
-      await _pump(
-        tester,
-        const BusinessMarketplaceTab(),
-        repository: _FakeMarketplaceRepository(
-          posts: [_post()],
-          plan: _plan(used: 1),
-        ),
-      );
-
-      expect(find.text('Free plan · 1 of 1 active post used'), findsOneWidget);
-      expect(
-        find.textContaining('Switch off or remove a post'),
-        findsOneWidget,
-      );
-    });
-
     testWidgets(
       'a square per main category, without counts, starts a post in it',
       (tester) async {
@@ -939,10 +918,7 @@ void main() {
         await _pump(
           tester,
           const BusinessMarketplaceTab(),
-          repository: _FakeMarketplaceRepository(
-            posts: [_post()],
-            plan: _plan(max: 2, used: 1),
-          ),
+          repository: _FakeMarketplaceRepository(posts: [_post()]),
         );
 
         // Names only: counting and filtering live on Orders › Marketplace.
@@ -989,15 +965,16 @@ void main() {
       expect(repo.created.single.tradeType, MarketplaceTradeType.wholesale);
     });
 
-    testWidgets('a full plan: a square explains instead of opening the form', (
+    testWidgets('a locked plan: a square shows the lock instead of the form', (
       tester,
     ) async {
       await _pump(
         tester,
         const BusinessMarketplaceTab(),
-        repository: _FakeMarketplaceRepository(
-          posts: [_post()],
-          plan: _plan(used: 1),
+        repository: _FakeMarketplaceRepository(posts: [_post()]),
+        businessPlan: testBusinessPlan(
+          live: {ListingArea.marketplace: 1},
+          locked: ListingArea.values.toSet(),
         ),
       );
 
@@ -1005,12 +982,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(MarketplacePostFormSheet), findsNothing);
-      expect(
-        find.text(
-          'Your Free plan allows 1 active post. Switch one off or remove one to put up another.',
-        ),
-        findsOneWidget,
-      );
+      expect(find.byKey(const ValueKey('plan-lock-sheet')), findsOneWidget);
+      expect(find.text('Marketplace is locked'), findsOneWidget);
     });
 
     testWidgets('a home tile list has no squares — it does not add', (
@@ -1047,29 +1020,39 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('a full plan explains instead of opening the form', (
-      tester,
-    ) async {
-      await _pump(
-        tester,
-        const BusinessMarketplaceTab(),
-        repository: _FakeMarketplaceRepository(
-          posts: [_post()],
-          plan: _plan(used: 1),
-        ),
-      );
+    testWidgets(
+      'a locked plan: Add post shows the lock, its reason and the cheapest plan',
+      (tester) async {
+        await _pump(
+          tester,
+          const BusinessMarketplaceTab(),
+          repository: _FakeMarketplaceRepository(posts: [_post()]),
+          businessPlan: testBusinessPlan(
+            live: {ListingArea.service: 1},
+            locked: ListingArea.values.toSet(),
+          ),
+        );
 
-      await tester.tap(find.byKey(const ValueKey('marketplace-add-post')));
-      await tester.pumpAndSettle();
+        expect(find.byIcon(Icons.lock_outline), findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey('marketplace-add-post')));
+        await tester.pumpAndSettle();
 
-      expect(find.byType(MarketplacePostFormSheet), findsNothing);
-      expect(
-        find.text(
-          'Your Free plan allows 1 active post. Switch one off or remove one to put up another.',
-        ),
-        findsOneWidget,
-      );
-    });
+        expect(find.byType(MarketplacePostFormSheet), findsNothing);
+        expect(
+          find.textContaining('The Basic plan allows 1 live listing'),
+          findsOneWidget,
+        );
+        expect(
+          find.text('All 3'),
+          findsOneWidget,
+          reason: 'the cheapest monthly plan with Marketplace',
+        );
+        expect(
+          find.byKey(const ValueKey('plan-lock-see-plans')),
+          findsOneWidget,
+        );
+      },
+    );
 
     testWidgets('Pause is sent straight away', (tester) async {
       final repo = await _pump(
@@ -2378,7 +2361,6 @@ void main() {
               condition: MarketplaceItemCondition.used,
             ),
           ],
-          plan: _plan(max: 3, used: 3),
         ),
       );
 
@@ -3165,7 +3147,6 @@ void main() {
                 subCategoryName: 'Biryani & meals',
               ),
             ],
-            plan: _plan(used: 1),
           ),
           orders: FakeMarketplaceOrderRepository(
             orders: [
@@ -3327,7 +3308,6 @@ void main() {
               canUpdateStock: true,
             ),
           ],
-          plan: _plan(max: 3, used: 2),
         ),
       );
 
@@ -3443,7 +3423,6 @@ void main() {
               status: MarketplacePostStatus.paused,
             ),
           ],
-          plan: _plan(max: 20, used: 6),
         ),
       );
 
@@ -3539,7 +3518,6 @@ void main() {
               ],
             ),
           ],
-          plan: _plan(used: 0),
         ),
       );
 
@@ -3579,7 +3557,6 @@ void main() {
             _post(id: 'p-2', title: 'Held one', status: 'Paused'),
             _post(id: 'p-3', title: 'All on'),
           ],
-          plan: _plan(max: 3, used: 2),
         ),
       );
 

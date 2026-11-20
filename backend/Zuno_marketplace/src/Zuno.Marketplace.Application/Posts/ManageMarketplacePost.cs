@@ -92,6 +92,7 @@ public class RemoveMarketplacePostImageCommandValidator : AbstractValidator<Remo
 public class ManageMarketplacePostHandlers(
     ICurrentUser currentUser,
     IMarketplaceDbContext dbContext,
+    IServicePlanGate planGate,
     IMarketplaceMediaStorage storage,
     MarketplaceReference reference,
     TimeProvider clock) :
@@ -132,7 +133,7 @@ public class ManageMarketplacePostHandlers(
         {
             if (target == MarketplacePostStatus.Active)
             {
-                await dbContext.EnsureRoomAsync(ownerId, post.Id, now, cancellationToken);
+                await dbContext.EnsurePlanRoomAsync(planGate, ownerId, post.Id, now, cancellationToken);
             }
 
             post.Status = target;

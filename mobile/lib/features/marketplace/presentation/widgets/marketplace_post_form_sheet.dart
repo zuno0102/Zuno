@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zuno/features/business_plan/domain/business_plan.dart';
+import 'package:zuno/features/business_plan/presentation/plan_lock.dart';
 import 'package:zuno/core/router/push_screen.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/utils/formatting.dart';
@@ -672,6 +674,8 @@ class _MarketplacePostFormSheetState
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) _showError(e.toString());
+      // Refused by the plan: the lock offers the plans over the form.
+      if (mounted) showLockIfPlanLimit(context, e, ListingArea.marketplace);
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

@@ -74,6 +74,12 @@ class ApiConstants {
 
   static const String businessProfilePath = '/api/$apiVersion/business/profile';
 
+  /// The business's plan over Service, Rent and Marketplace, and buying one.
+  static const String businessPlanPath = '/api/$apiVersion/business/plan';
+  static const String businessPlanPurchasePath = '$businessPlanPath/purchase';
+  static String businessPlanConfirmPath(String subscriptionId) =>
+      '$businessPlanPurchasePath/$subscriptionId/confirm';
+
   /// The business's profile picture: POST to set it, DELETE to remove it.
   static const String businessProfileLogoPath = '$businessProfilePath/logo';
   static const String businessProfileUpiIdPath = '$businessProfilePath/upi-id';

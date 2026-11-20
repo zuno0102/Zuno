@@ -21,6 +21,8 @@ These terms apply when you use the {{appName}} app or website, run by {{companyN
 - Describe your services, rent items, prices, advances and cancellation charges honestly. What a customer agreed to when booking is what applies to that booking.
 - Provide what was booked, on time and as described.
 - Treat the information you see about customers, workers and applicants as private. Use it only for that booking, order or application.
+- The free Basic plan allows one live listing in total: one service, one rent item or one Marketplace post. More listings, in the areas a paid plan includes, need a paid plan. Plans and their prices are shown in the app before you pay, and may change for future purchases.
+- When a paid plan ends and is not renewed, your oldest live listing stays live and the others are paused: they stay saved but are hidden from customers until you renew. Renewing brings them back.
 
 ## 4. Workers
 
@@ -37,6 +39,7 @@ These terms apply when you use the {{appName}} app or website, run by {{companyN
 - Online payments go through Razorpay. Payments made by UPI QR or cash are paid directly to the business and recorded in the app.
 - An item may ask for an advance. The total, the advance and the balance are shown before you book.
 - Cancellation charges and refunds follow the business's rules shown when you booked or rented. A business must mark a rented order fully paid before it is returned.
+- A business plan or a full-time job listing fee is paid in advance for the days shown and is not refunded, in full or in part, once paid.
 
 ## 7. Reviews and messages
 

@@ -43,7 +43,10 @@ internal sealed class TestRent : IDisposable
 
     public IOptions<RentSettings> Settings { get; } = Options.Create(new RentSettings());
 
-    public SaveRentalItemHandlers SaveHandlers => new(User, Db, Settings);
+    /// <summary>The plan check the Service API makes; allows by default.</summary>
+    public FakePlanGate PlanGate { get; } = new();
+
+    public SaveRentalItemHandlers SaveHandlers => new(User, Db, Settings, PlanGate);
 
     public RentalItemMediaHandlers MediaHandlers => new(User, Db, Storage);
 
@@ -111,6 +114,20 @@ internal sealed class TestRent : IDisposable
     }
 
     public void Dispose() => Db.Dispose();
+}
+
+/// <summary>Stands in for the Service API plan check: records each count it was asked with, refuses when told to.</summary>
+internal sealed class FakePlanGate : IServicePlanGate
+{
+    public List<int> Asked { get; } = [];
+
+    public string? RefuseWith { get; set; }
+
+    public Task EnsureCanAddAsync(int liveHere, CancellationToken cancellationToken)
+    {
+        Asked.Add(liveHere);
+        return RefuseWith is { } reason ? throw new Zuno.Rent.Domain.Exceptions.PlanLimitException(reason) : Task.CompletedTask;
+    }
 }
 
 internal sealed class FakeCurrentUser : ICurrentUser

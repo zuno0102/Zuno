@@ -28,6 +28,8 @@ public static class DependencyInjection
         services.AddScoped<RefreshTokenFactory>();
         services.AddScoped<IBusinessVerificationCheck, Modules.Business.Common.BusinessVerificationCheck>();
         services.AddScoped<Modules.Business.Common.BusinessApproval>();
+        services.AddScoped<Modules.BusinessPlans.BusinessPlanRules>();
+        services.AddScoped<Modules.BusinessPlans.PlanReconciler>();
         services.AddScoped<IPayoutDestinationCheck, Modules.Worker.Common.PayoutDestinationCheck>();
         services.AddScoped<IWorkerScheduleService, WorkerScheduleService>();
 

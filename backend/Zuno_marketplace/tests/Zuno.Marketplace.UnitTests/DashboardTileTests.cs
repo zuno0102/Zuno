@@ -16,9 +16,6 @@ public class DashboardTileTests
     public async Task TheTiles_CountEachGroupOnItsOwn()
     {
         using var test = new TestMarketplace();
-        var free = await test.Db.Plans.SingleAsync(p => p.IsDefault);
-        free.MaxActivePosts = 20;
-        await test.Db.SaveChangesAsync();
 
         // A product with its main colour and three others: 4 items.
         var saree = await test.SaveHandlers.Handle(new CreateMarketplacePostCommand

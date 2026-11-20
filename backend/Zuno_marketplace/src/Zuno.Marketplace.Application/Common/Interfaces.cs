@@ -73,6 +73,17 @@ public interface IMarketplaceDbContext
 /// The Service API, asked with the caller's own login: the business's name and verification. The
 /// token carries only an id, so names come from where accounts live — never from what the app sends.
 /// </summary>
+/// <summary>
+/// Asks the Service API, which holds the business's plan over all three areas, whether one more
+/// listing may go live here. <c>liveHere</c> is this area's live count, so Service need not ask back.
+/// Throws <c>PlanLimitException</c> when the plan does not allow it, <c>DomainException</c> when it
+/// cannot be checked.
+/// </summary>
+public interface IServicePlanGate
+{
+    Task EnsureCanAddAsync(int liveHere, CancellationToken cancellationToken);
+}
+
 public interface IServiceDirectory
 {
     /// <summary>The signed-in business's profile; null when there is none or the API cannot be reached.</summary>

@@ -80,6 +80,12 @@ public interface IApplicationDbContext
 
     public DbSet<VacancyFeePlan> VacancyFeePlans { get; }
 
+    public DbSet<SubscriptionPlan> SubscriptionPlans { get; }
+
+    public DbSet<BusinessSubscription> BusinessSubscriptions { get; }
+
+    public DbSet<PlanPausedListing> PlanPausedListings { get; }
+
     public DbSet<Vacancy> Vacancies { get; }
 
     public DbSet<VacancyRequirement> VacancyRequirements { get; }
