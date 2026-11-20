@@ -17,11 +17,10 @@ namespace Zuno.Application.Modules.Customer.Queries.GetDailyBanners;
 /// eligible service has had its turn. Random picking would show some businesses twice in a week and
 /// others never, which is the thing a rotating banner exists to avoid.
 ///
-/// Eligibility is deliberately narrow: active, from a verified business, and carrying a picture. A
-/// banner is mostly photograph, and a service with none would be a grey rectangle with a name on it.
-///
-/// When promoted listings arrive this is the one place that changes — a <c>Where</c> on the paid flag
-/// and a different ordering. Everything downstream, on the server and in the app, stays as it is.
+/// Eligibility is deliberately narrow: a banner paid for and still running, active, from a verified
+/// business, and carrying a picture. A banner is mostly photograph, and a service with none would be
+/// a grey rectangle with a name on it. With no paid banner anywhere the list is empty and the app
+/// shows no banner at all.
 /// </remarks>
 public class GetDailyBannersQueryHandler(
     IApplicationDbContext dbContext,
@@ -36,8 +35,11 @@ public class GetDailyBannersQueryHandler(
         GetDailyBannersQuery request,
         CancellationToken cancellationToken)
     {
+        var now = dateTimeProvider.UtcNow;
         var eligible = dbContext.BusinessServices
             .Where(s => s.IsActive)
+            // Paid for: a banner is sold, never given. None paid, no banner.
+            .Where(s => s.BannerPaidUntil != null && s.BannerPaidUntil > now)
             .Where(s => s.BusinessOwnerProfile.VerificationStatus == VerificationStatus.Verified)
             // A banner is a picture. Without one there is nothing to put on it.
             .Where(s => s.Media.Any());
@@ -63,7 +65,7 @@ public class GetDailyBannersQueryHandler(
             return [];
         }
 
-        var todaysIds = Window(ids, dateTimeProvider.UtcNow, BannerCount);
+        var todaysIds = Window(ids, now, BannerCount);
 
         var prior = platformSettings.Current.RatingPrior;
         var listings = await dbContext.BusinessServices

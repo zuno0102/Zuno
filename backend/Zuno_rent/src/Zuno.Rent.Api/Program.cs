@@ -49,6 +49,7 @@ builder.Services
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy(RentPolicies.BusinessOwner, policy => policy.RequireClaim(ClaimTypes.Role, "BusinessOwner"))
     .AddPolicy(RentPolicies.Customer, policy => policy.RequireClaim(ClaimTypes.Role, "Customer"))
+    .AddPolicy(RentPolicies.SuperAdmin, policy => policy.RequireClaim(ClaimTypes.Role, "SuperAdmin"))
     // Shut by default: an endpoint that forgets [Authorize] is closed, not open.
     .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 

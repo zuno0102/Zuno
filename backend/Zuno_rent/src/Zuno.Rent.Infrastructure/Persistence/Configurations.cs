@@ -79,6 +79,9 @@ public class RentalItemConfiguration : IEntityTypeConfiguration<RentalItem>
         builder.HasIndex(i => i.RentalCategoryId);
         builder.HasIndex(i => i.RentalSubCategoryId);
 
+        // The banner reads only the few items with a paid banner.
+        builder.HasIndex(i => i.BannerPaidUntil).HasFilter("banner_paid_until IS NOT NULL");
+
         builder.HasOne(i => i.RentalCategory)
             .WithMany()
             .HasForeignKey(i => i.RentalCategoryId)

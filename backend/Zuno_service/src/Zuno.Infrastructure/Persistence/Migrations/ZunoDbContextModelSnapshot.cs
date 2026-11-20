@@ -852,6 +852,10 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<DateTimeOffset?>("BannerPaidUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("banner_paid_until");
+
                     b.Property<Guid>("BusinessOwnerProfileId")
                         .HasColumnType("uuid")
                         .HasColumnName("business_owner_profile_id");
@@ -936,6 +940,10 @@ namespace Zuno.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_business_services");
+
+                    b.HasIndex("BannerPaidUntil")
+                        .HasDatabaseName("ix_business_services_banner_paid_until")
+                        .HasFilter("banner_paid_until IS NOT NULL");
 
                     b.HasIndex("BusinessOwnerProfileId")
                         .HasDatabaseName("ix_business_services_business_owner_profile_id");

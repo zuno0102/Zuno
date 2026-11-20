@@ -350,9 +350,10 @@ public class MigrationUpgradeTests(MarketplaceApiFactory factory) : IClassFixtur
             await command.ExecuteNonQueryAsync();
         }
 
+        // Only the column read here: the rolled-back table lacks the columns later migrations add.
         await migrator.MigrateAsync(VariantPhotos);
-        (await db.Posts.IgnoreQueryFilters().AsNoTracking().SingleAsync(p => p.Id == bananas))
-            .SubCategoryId.Should().Be(MarketplaceCatalogSeedData.SubId(4, 9));
+        (await db.Posts.IgnoreQueryFilters().AsNoTracking().Where(p => p.Id == bananas).Select(p => p.SubCategoryId).SingleAsync())
+            .Should().Be(MarketplaceCatalogSeedData.SubId(4, 9));
         await migrator.MigrateAsync();
     }
 

@@ -79,6 +79,12 @@ public class MarketplacePost : BaseEntity
 
     public double? Longitude { get; set; }
 
+    /// <summary>
+    /// Until when this advert is in the customers' top banner, paid for; null or past is not in it.
+    /// Set by a Super Admin today, by the business's banner payment once that is built.
+    /// </summary>
+    public DateTimeOffset? BannerPaidUntil { get; set; }
+
     /// <summary>The category's own details (year, km, fuel …), keyed by the field's key.</summary>
     public List<MarketplacePostAttribute> Attributes { get; set; } = [];
 

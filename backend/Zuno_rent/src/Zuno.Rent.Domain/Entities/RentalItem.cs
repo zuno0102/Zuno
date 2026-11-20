@@ -45,6 +45,12 @@ public class RentalItem : BaseEntity
     /// <summary>Off while the item cannot be rented, e.g. under repair.</summary>
     public bool IsAvailable { get; set; } = true;
 
+    /// <summary>
+    /// Until when this item is in the customers' top banner, paid for; null or past is not in it.
+    /// Set by a Super Admin today, by the business's banner payment once that is built.
+    /// </summary>
+    public DateTimeOffset? BannerPaidUntil { get; set; }
+
     public ICollection<RentalItemMedia> Media { get; set; } = new List<RentalItemMedia>();
 
     public ICollection<RentalItemDistrict> Districts { get; set; } = new List<RentalItemDistrict>();

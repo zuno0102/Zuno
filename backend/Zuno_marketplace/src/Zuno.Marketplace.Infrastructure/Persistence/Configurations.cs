@@ -129,6 +129,9 @@ public class MarketplacePostConfiguration : IEntityTypeConfiguration<Marketplace
         builder.HasIndex(p => new { p.Kind, p.Status, p.DistrictId, p.EndsAt });
         builder.HasIndex(p => new { p.CategoryId, p.SubCategoryId });
 
+        // The banner reads only the few adverts with a paid banner.
+        builder.HasIndex(p => p.BannerPaidUntil).HasFilter("banner_paid_until IS NOT NULL");
+
         builder.HasOne(p => p.Category).WithMany().HasForeignKey(p => p.CategoryId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(p => p.SubCategory).WithMany().HasForeignKey(p => p.SubCategoryId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(p => p.District).WithMany().HasForeignKey(p => p.DistrictId).OnDelete(DeleteBehavior.Restrict);

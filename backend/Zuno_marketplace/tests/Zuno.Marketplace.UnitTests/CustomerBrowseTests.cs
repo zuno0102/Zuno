@@ -1,6 +1,7 @@
 using FluentAssertions;
 using FluentValidation.TestHelper;
 using Microsoft.EntityFrameworkCore;
+using Zuno.Marketplace.Application.Admin;
 using Zuno.Marketplace.Application.Customer;
 using Zuno.Marketplace.Domain.Entities;
 using Zuno.Marketplace.Domain.Enums;
@@ -71,9 +72,11 @@ public class CustomerBrowseTests
                 change?.Invoke(p);
             });
 
-        public MarketplacePost Ad(bool withBanner = true) =>
+        /// <summary>An advert; <paramref name="paid"/> gives it a banner paid for a week.</summary>
+        public MarketplacePost Ad(bool withBanner = true, bool paid = true) =>
             Test.Seed(p =>
             {
+                p.BannerPaidUntil = paid ? Test.Now.AddDays(7) : null;
                 p.Title = "Aadi sale";
                 p.Kind = MarketplacePostKind.Advertisement;
                 p.CategoryId = MarketplaceCatalogSeedData.Advertisements;
@@ -216,6 +219,56 @@ public class CustomerBrowseTests
         var home = await scene.HomeAsync();
 
         home.Sections.Select(s => s.Code).Should().Equal(["all"], "an empty section is left out, and an advert with no banner photo has nothing to slide");
+    }
+
+    [Fact]
+    public async Task Home_Banner_Shows_Only_Adverts_Whose_Paid_Banner_Is_Running()
+    {
+        using var scene = new Scene();
+        var paid = scene.Ad();
+        scene.Ad(paid: false);
+        var ended = scene.Ad();
+        var row = scene.Test.Db.Posts.Single(p => p.Id == ended.Id);
+        row.BannerPaidUntil = scene.Test.Now.AddMinutes(-1);
+        scene.Test.Db.SaveChanges();
+
+        Ids(await scene.HomeAsync(), "banners").Should().Equal(paid.Id);
+    }
+
+    [Fact]
+    public async Task Home_With_No_Paid_Banner_Has_No_Banner_Section()
+    {
+        using var scene = new Scene();
+        scene.Ad(paid: false);
+        scene.Product();
+
+        (await scene.HomeAsync()).Sections.Should().NotContain(s => s.Code == "banners");
+    }
+
+    [Fact]
+    public async Task Admin_Records_A_Paid_Banner_On_An_Advert_Only_And_Can_End_It()
+    {
+        using var scene = new Scene();
+        var ad = scene.Ad(paid: false);
+        var saree = scene.Product();
+        var admin = new SetMarketplaceBannerCommandHandler(scene.Test.Db);
+
+        var set = await admin.Handle(new SetMarketplaceBannerCommand { Id = ad.Id, PaidUntil = scene.Test.Now.AddDays(30) }, default);
+        set.BannerPaidUntil.Should().Be(scene.Test.Now.AddDays(30));
+        Ids(await scene.HomeAsync(), "banners").Should().Equal(ad.Id);
+
+        await admin.Handle(new SetMarketplaceBannerCommand { Id = ad.Id, PaidUntil = null }, default);
+        (await scene.HomeAsync()).Sections.Should().NotContain(s => s.Code == "banners");
+
+        var product = () => admin.Handle(new SetMarketplaceBannerCommand { Id = saree.Id, PaidUntil = scene.Test.Now.AddDays(1) }, default);
+        await product.Should().ThrowAsync<DomainException>().WithMessage("Only an advert*");
+
+        var validator = new SetMarketplaceBannerCommandValidator(scene.Test.Clock);
+        validator.TestValidate(new SetMarketplaceBannerCommand { Id = ad.Id, PaidUntil = scene.Test.Now.AddDays(-1) })
+            .ShouldHaveValidationErrorFor(x => x.PaidUntil);
+        validator.TestValidate(new SetMarketplaceBannerCommand { Id = ad.Id, PaidUntil = scene.Test.Now.AddDays(400) })
+            .ShouldHaveValidationErrorFor(x => x.PaidUntil);
+        validator.TestValidate(new SetMarketplaceBannerCommand { Id = ad.Id, PaidUntil = null }).ShouldNotHaveAnyValidationErrors();
     }
 
     [Fact]

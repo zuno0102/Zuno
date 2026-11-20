@@ -237,11 +237,15 @@ public class MarketplaceHomeHandler(
             cancellationToken);
     }
 
-    /// <summary>Adverts with their banner photo in the customer's districts, newest first.</summary>
+    /// <summary>
+    /// Adverts with a paid banner running and their banner photo, in the customer's districts, newest
+    /// first. A banner is sold, never given: none paid, no banner section.
+    /// </summary>
     private Task<List<MarketplaceCardDto>> BannersAsync(int count, HomeContext context, CancellationToken cancellationToken) =>
         dbContext.CardsAsync(
             Visible(context.Now)
                 .Where(p => p.Kind == MarketplacePostKind.Advertisement && p.Media.Any(m => m.VariantId == null))
+                .Where(p => p.BannerPaidUntil != null && p.BannerPaidUntil > context.Now)
                 .InDistricts(context.Request.DistrictIds)
                 .OrderByDescending(p => p.CreatedDate)
                 .Take(count),

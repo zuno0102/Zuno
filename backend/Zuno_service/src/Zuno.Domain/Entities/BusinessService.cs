@@ -42,6 +42,12 @@ public class BusinessService : BaseEntity
 
     public bool IsActive { get; set; } = true;
 
+    /// <summary>
+    /// Until when this service is in the customers' top banner, paid for; null or past is not in it.
+    /// Set by a Super Admin today, by the business's banner payment once that is built.
+    /// </summary>
+    public DateTimeOffset? BannerPaidUntil { get; set; }
+
     public int RequiredWorkerCount { get; set; } = 1;
 
     /// <summary>All the stars customers gave orders for this service, added together.</summary>

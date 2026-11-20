@@ -83,6 +83,49 @@ public class CustomerRentalTests : IDisposable
     }
 
     [Fact]
+    public async Task Only_items_with_a_running_paid_banner_are_in_the_banner()
+    {
+        await VerifyAsync(TestRent.OwnerA);
+        var paid = await ItemAsync("Paid tent");
+        var ended = await ItemAsync("Ended tent");
+        var free = await ItemAsync("Free tent");
+        foreach (var id in new[] { paid, ended, free })
+        {
+            _rent.Db.Add(new RentalItemMedia { RentalItemId = id, MediaType = Domain.Enums.RentalMediaType.Image, Url = "/uploads/tent.jpg" });
+        }
+
+        await _rent.Db.SaveChangesAsync();
+        _rent.Db.ChangeTracker.Clear();
+        var admin = new Application.Items.SetRentalBannerCommandHandler(_rent.Db);
+        await admin.Handle(new Application.Items.SetRentalBannerCommand { Id = paid, PaidUntil = DateTimeOffset.UtcNow.AddDays(7) }, default);
+        await admin.Handle(new Application.Items.SetRentalBannerCommand { Id = ended, PaidUntil = DateTimeOffset.UtcNow.AddDays(7) }, default);
+        await admin.Handle(new Application.Items.SetRentalBannerCommand { Id = ended, PaidUntil = null }, default);
+        AsCustomer();
+
+        var banners = await Browse.Handle(new GetRentalBannersQuery(), default);
+
+        banners.Select(c => c.Id).Should().Equal([paid], "a banner is paid for; an ended or unpaid one is not shown");
+    }
+
+    [Fact]
+    public async Task With_no_paid_banner_there_is_no_banner_and_a_bad_date_is_refused()
+    {
+        await VerifyAsync(TestRent.OwnerA);
+        await ItemAsync("Free tent");
+        AsCustomer();
+
+        (await Browse.Handle(new GetRentalBannersQuery(), default)).Should().BeEmpty();
+
+        var validator = new Application.Items.SetRentalBannerCommandValidator(TimeProvider.System);
+        validator.Validate(new Application.Items.SetRentalBannerCommand { Id = Guid.NewGuid(), PaidUntil = DateTimeOffset.UtcNow.AddDays(-1) }).IsValid.Should().BeFalse();
+        validator.Validate(new Application.Items.SetRentalBannerCommand { Id = Guid.NewGuid(), PaidUntil = DateTimeOffset.UtcNow.AddDays(500) }).IsValid.Should().BeFalse();
+        validator.Validate(new Application.Items.SetRentalBannerCommand { Id = Guid.NewGuid(), PaidUntil = DateTimeOffset.UtcNow.AddDays(30) }).IsValid.Should().BeTrue();
+        var unknown = () => new Application.Items.SetRentalBannerCommandHandler(_rent.Db)
+            .Handle(new Application.Items.SetRentalBannerCommand { Id = Guid.NewGuid(), PaidUntil = null }, default);
+        await unknown.Should().ThrowAsync<EntityNotFoundException>();
+    }
+
+    [Fact]
     public async Task A_hidden_item_does_not_exist_to_customers()
     {
         await VerifyAsync(TestRent.OwnerA);

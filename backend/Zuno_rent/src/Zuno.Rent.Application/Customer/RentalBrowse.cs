@@ -115,7 +115,7 @@ public class SearchRentalsQuery : IRequest<List<RentalCardDto>>
     public List<Guid> DistrictIds { get; set; } = [];
 }
 
-/// <summary>A few featured items with photos, changing daily.</summary>
+/// <summary>A few items with a paid banner running and a photo, changing daily; none paid, none shown.</summary>
 public class GetRentalBannersQuery : IRequest<List<RentalCardDto>>
 {
     public List<Guid> DistrictIds { get; set; } = [];
@@ -296,8 +296,11 @@ public class RentalBrowseHandlers(IRentDbContext dbContext, IOptions<RentSetting
 
     public async Task<List<RentalCardDto>> Handle(GetRentalBannersQuery request, CancellationToken cancellationToken)
     {
+        var now = clock.GetUtcNow();
         var withPhotos = await dbContext.VisibleToCustomers()
             .InDistricts(request.DistrictIds)
+            // Paid for: a banner is sold, never given. None paid, no banner.
+            .Where(i => i.BannerPaidUntil != null && i.BannerPaidUntil > now)
             .Where(i => i.Media.Any(m => m.MediaType == RentalMediaType.Image))
             .OrderByDescending(i => i.CreatedDate)
             .Take(settings.Value.HomePoolSize)
@@ -305,7 +308,7 @@ public class RentalBrowseHandlers(IRentDbContext dbContext, IOptions<RentSetting
             .ToListAsync(cancellationToken);
 
         // The same featured items all day, different tomorrow.
-        var random = new Random(clock.GetUtcNow().UtcDateTime.DayNumber());
+        var random = new Random(now.UtcDateTime.DayNumber());
         var featured = withPhotos.OrderBy(_ => random.Next()).Take(settings.Value.BannerCount).ToList();
         var cards = (await dbContext.CardsAsync(
                 dbContext.RentalItems.Where(i => featured.Contains(i.Id)), request.DistrictIds, cancellationToken))

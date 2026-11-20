@@ -5244,6 +5244,10 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
                         .HasColumnType("smallint")
                         .HasColumnName("advance_type");
 
+                    b.Property<DateTimeOffset?>("BannerPaidUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("banner_paid_until");
+
                     b.Property<short>("CancelChargeType")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("smallint")
@@ -5317,6 +5321,10 @@ namespace Zuno.Rent.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_rental_items");
+
+                    b.HasIndex("BannerPaidUntil")
+                        .HasDatabaseName("ix_rental_items_banner_paid_until")
+                        .HasFilter("banner_paid_until IS NOT NULL");
 
                     b.HasIndex("RentalCategoryId")
                         .HasDatabaseName("ix_rental_items_rental_category_id");

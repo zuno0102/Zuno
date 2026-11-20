@@ -2076,6 +2076,10 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(120)")
                         .HasColumnName("area");
 
+                    b.Property<DateTimeOffset?>("BannerPaidUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("banner_paid_until");
+
                     b.Property<Guid>("CategoryId")
                         .HasColumnType("uuid")
                         .HasColumnName("category_id");
@@ -2208,6 +2212,10 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_marketplace_posts");
+
+                    b.HasIndex("BannerPaidUntil")
+                        .HasDatabaseName("ix_marketplace_posts_banner_paid_until")
+                        .HasFilter("banner_paid_until IS NOT NULL");
 
                     b.HasIndex("DeliveryStateId")
                         .HasDatabaseName("ix_marketplace_posts_delivery_state_id");

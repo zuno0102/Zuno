@@ -19,6 +19,11 @@ public class BusinessServiceConfiguration : IEntityTypeConfiguration<BusinessSer
         builder.HasIndex(s => s.BusinessOwnerProfileId).HasDatabaseName("ix_business_services_business_owner_profile_id");
         builder.HasIndex(s => s.ServiceCategoryId).HasDatabaseName("ix_business_services_service_category_id");
 
+        // The banner reads only the few services with a paid banner.
+        builder.HasIndex(s => s.BannerPaidUntil)
+            .HasDatabaseName("ix_business_services_banner_paid_until")
+            .HasFilter("banner_paid_until IS NOT NULL");
+
         builder.HasOne(s => s.BusinessOwnerProfile)
             .WithMany(bp => bp.Services)
             .HasForeignKey(s => s.BusinessOwnerProfileId)

@@ -79,3 +79,18 @@ public class AdminMarketplaceCategoriesController(ISender mediator) : Controller
         return Ok(await mediator.Send(command, cancellationToken));
     }
 }
+
+/// <summary>Paid banners: which adverts are in the customers' top banner, and until when.</summary>
+[ApiController]
+[Route("api/v1/admin/marketplace/banners")]
+[Authorize(Policy = MarketplacePolicies.SuperAdmin)]
+public class AdminMarketplaceBannersController(ISender mediator) : ControllerBase
+{
+    /// <summary>Records a paid banner for an advert until <c>paidUntil</c>; an empty date ends it.</summary>
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Set(Guid id, [FromBody] SetMarketplaceBannerCommand command, CancellationToken cancellationToken)
+    {
+        command.Id = id;
+        return Ok(await mediator.Send(command, cancellationToken));
+    }
+}
