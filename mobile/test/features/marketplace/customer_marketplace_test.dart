@@ -23,7 +23,7 @@ import 'package:zuno/features/marketplace/presentation/screens/marketplace_wishl
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_account_tiles.dart';
 import 'package:zuno/features/rental/presentation/providers/rental_customer_providers.dart';
 import 'package:zuno/features/rental/presentation/screens/customer_app_shell.dart';
-import 'package:zuno/shared/legal/legal_document.dart';
+import 'package:zuno/shared/legal/help_screen.dart';
 import 'package:zuno/shared/widgets/network_photo.dart';
 import 'package:zuno/shared/widgets/primary_button.dart';
 import 'package:zuno/shared/widgets/step_progress_bar.dart';
@@ -1220,12 +1220,7 @@ void main() {
 
       await tester.tap(find.text('Help Center'));
       await tester.pumpAndSettle();
-      expect(
-        tester
-            .widget<LegalDocumentScreen>(find.byType(LegalDocumentScreen))
-            .doc,
-        LegalDoc.help,
-      );
+      expect(find.byType(HelpScreen), findsOneWidget);
     });
   });
 

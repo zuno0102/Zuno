@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/features/customer/presentation/screens/customer_profile_tab.dart';
 import 'package:zuno/features/marketplace/presentation/screens/customer_marketplace_home_tab.dart';
 import 'package:zuno/features/marketplace/presentation/screens/customer_marketplace_orders_tab.dart';
@@ -30,6 +31,7 @@ class _CustomerMarketplaceShellState
       CustomerMarketplaceHomeTab(
         // The app's one bell. Its notifications lead into the Service side, where they belong.
         notificationBell: NotificationBell(
+          color: AppColors.onMedia,
           onOpen: (_) => ref
               .read(customerPanelChoiceProvider.notifier)
               .choose(CustomerPanel.service),

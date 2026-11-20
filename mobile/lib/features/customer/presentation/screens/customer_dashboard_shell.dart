@@ -155,7 +155,10 @@ class _CustomerDashboardShellState
 
     final tabs = <Widget>[
       CustomerSearchTab(
-        notificationBell: NotificationBell(onOpen: _openNotification),
+        notificationBell: NotificationBell(
+          onOpen: _openNotification,
+          color: AppColors.onMedia,
+        ),
       ),
       CustomerBookingsHub(initialTab: _bookingsSection),
       const CustomerProfileTab(),

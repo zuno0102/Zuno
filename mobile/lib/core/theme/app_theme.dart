@@ -28,15 +28,20 @@ class AppTheme {
   /// The bundled typeface (see `pubspec.yaml`).
   static const fontFamily = 'Figtree';
 
-  static ThemeData light = forRole(ZunoRole.business, Brightness.light);
-  static ThemeData dark = forRole(ZunoRole.business, Brightness.dark);
+  /// Before anyone signs in (sign-in, sign-up, reset): the brand's own teal, matching the band
+  /// across the top of those screens, rather than any one role's colour.
+  static ThemeData light = _build(AppColors.primary, Brightness.light);
+  static ThemeData dark = _build(AppColors.primary, Brightness.dark);
 
-  static ThemeData forRole(ZunoRole role, Brightness brightness) {
+  static ThemeData forRole(ZunoRole role, Brightness brightness) =>
+      _build(AppColors.seedFor(role), brightness);
+
+  static ThemeData _build(Color seed, Brightness brightness) {
     // The default (tonal) variant, not "fidelity": fidelity makes the container colours as deep
     // as the seed, and chips, the navigation indicator and highlighted rows are written for a
     // pale container with dark text on it.
     final scheme = ColorScheme.fromSeed(
-      seedColor: AppColors.seedFor(role),
+      seedColor: seed,
       brightness: brightness,
     );
 

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/theme/app_colors.dart';
+import 'package:zuno/core/theme/app_theme.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_state.dart';
 import 'package:zuno/features/customer/presentation/providers/customer_location_sync.dart';
@@ -48,15 +49,15 @@ class CustomerAppShell extends ConsumerWidget {
           color: Theme.of(context).colorScheme.surface,
           child: Column(
             children: [
-              // The switch sits in a band of the theme's own colour that runs up under the status
-              // bar, so the two doors read as the top of the app rather than floating above it.
+              // The switch sits on the customer's deep teal, running up under the status bar; the
+              // home header below carries the same colour on, so the two read as one header.
               ColoredBox(
                 key: const ValueKey('customer-panel-band'),
-                color: Theme.of(context).colorScheme.primaryContainer,
+                color: AppColors.gradientFor(ZunoRole.customer).$1,
                 child: SafeArea(
                   bottom: false,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
                     child: CustomerPanelSwitch(
                       value: panel,
                       onChanged: (p) => ref
@@ -98,8 +99,9 @@ bool shouldAskCustomerLocation(
     check.value == CustomerLocationOpen.needsChoice &&
     auth is AuthAuthenticated;
 
-/// The two business lines as two cards side by side with a gap between — the chosen one filled in
-/// the theme's colour, the other a plain card — so the switch reads as a pair of big doors.
+/// The three business lines as one segmented control on the teal band: the chosen side a white
+/// segment with teal writing, the others white writing on the band. Plain upright type and the
+/// same shape for all three, so the switch reads as one control, not three buttons.
 class CustomerPanelSwitch extends StatelessWidget {
   const CustomerPanelSwitch({
     required this.value,
@@ -110,7 +112,7 @@ class CustomerPanelSwitch extends StatelessWidget {
   final CustomerPanel value;
   final ValueChanged<CustomerPanel> onChanged;
 
-  /// Each door with its share of the width: a longer name gets more, so all three read at one size.
+  /// Each side with its share of the width: a longer name gets more, so all three read at one size.
   static const _panels = [
     (CustomerPanel.service, Icons.handyman_rounded, 'Service', 5),
     (CustomerPanel.rent, Icons.chair_alt_rounded, 'Rent', 4),
@@ -119,29 +121,34 @@ class CustomerPanelSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Container(
       key: const ValueKey('customer-panel-switch'),
-      children: [
-        for (final (i, (panel, icon, label, share)) in _panels.indexed) ...[
-          if (i > 0) const SizedBox(width: 8),
-          Expanded(
-            flex: share,
-            child: _PanelCard(
-              key: ValueKey('customer-panel-${panel.name}'),
-              icon: icon,
-              label: label,
-              selected: panel == value,
-              onTap: () => onChanged(panel),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.onMedia.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      child: Row(
+        children: [
+          for (final (panel, icon, label, share) in _panels)
+            Expanded(
+              flex: share,
+              child: _PanelSegment(
+                key: ValueKey('customer-panel-${panel.name}'),
+                icon: icon,
+                label: label,
+                selected: panel == value,
+                onTap: () => onChanged(panel),
+              ),
             ),
-          ),
         ],
-      ],
+      ),
     );
   }
 }
 
-class _PanelCard extends StatelessWidget {
-  const _PanelCard({
+class _PanelSegment extends StatelessWidget {
+  const _PanelSegment({
     required this.icon,
     required this.label,
     required this.selected,
@@ -156,20 +163,19 @@ class _PanelCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final foreground = selected ? scheme.onPrimary : scheme.onSurface;
-    final radius = BorderRadius.circular(14);
+    final deep = AppColors.gradientFor(ZunoRole.customer).$1;
+    final foreground = selected ? deep : AppColors.onMedia;
+    final radius = BorderRadius.circular(AppRadius.md);
 
-    // Flat cards on the band, the chosen one filled — no shadow, which made them look lifted
-    // off the page. The colours are the theme's, so light and dark mode both read.
     return Semantics(
       button: true,
       selected: selected,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        height: 46,
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        height: 44,
         decoration: BoxDecoration(
-          color: selected ? scheme.primary : scheme.surface,
+          color: selected ? AppColors.onMedia : Colors.transparent,
           borderRadius: radius,
         ),
         child: Material(
@@ -177,40 +183,27 @@ class _PanelCard extends StatelessWidget {
           child: InkWell(
             borderRadius: radius,
             onTap: selected ? null : onTap,
-            // Room inside the edge, so a name that just fits never touches the card's side.
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircleAvatar(
-                    radius: 11,
-                    backgroundColor: selected
-                        ? scheme.onPrimary.withValues(alpha: 0.18)
-                        : scheme.primaryContainer,
-                    child: Icon(
-                      icon,
-                      size: 14,
-                      color: selected ? scheme.onPrimary : scheme.primary,
-                    ),
+                  ExcludeSemantics(
+                    child: Icon(icon, size: 18, color: foreground),
                   ),
                   const SizedBox(width: 6),
-                  // Three doors share a narrow phone: a long name shrinks to fit, never wraps. The
-                  // small right pad keeps the italic's last letter from being cut.
+                  // Three sides share a narrow phone: a long name shrinks to fit, never wraps.
                   Flexible(
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 2),
-                        child: Text(
-                          label,
-                          maxLines: 1,
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                fontStyle: FontStyle.italic,
-                                color: foreground,
-                              ),
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          fontWeight: selected
+                              ? FontWeight.w800
+                              : FontWeight.w600,
+                          color: foreground,
                         ),
                       ),
                     ),
@@ -247,6 +240,7 @@ class _CustomerRentShellState extends ConsumerState<CustomerRentShell> {
       RentalHomeTab(
         // The app's one bell. Its notifications lead into the Service side, where they belong.
         notificationBell: NotificationBell(
+          color: AppColors.onMedia,
           onOpen: (_) => ref
               .read(customerPanelChoiceProvider.notifier)
               .choose(CustomerPanel.service),

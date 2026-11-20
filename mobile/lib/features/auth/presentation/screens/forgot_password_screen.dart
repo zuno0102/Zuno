@@ -89,19 +89,15 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                             Row(
                               children: [
                                 IconButton(
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
                                   onPressed: () => context.pop(),
-                                  icon: const Icon(Icons.arrow_back, size: 20),
+                                  tooltip: 'Back to sign in',
+                                  icon: const Icon(Icons.arrow_back),
                                 ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Reset password',
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    'Reset password',
+                                    style: theme.textTheme.headlineSmall,
                                   ),
                                 ),
                               ],

@@ -58,7 +58,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       body: AuthBackdrop(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
               child: AuthCard(
@@ -69,13 +69,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Sign in',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
+                        'Welcome back',
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Sign in with your email or mobile number.',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 22),
                       if (errorMessage != null) ...[
                         ErrorBanner(message: errorMessage),
                         const SizedBox(height: 16),
@@ -99,42 +103,46 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ? 'Password is required.'
                             : null,
                       ),
-                      const SizedBox(height: 22),
-                      PrimaryButton(
-                        label: 'Sign in',
-                        onPressed: _submit,
-                        isLoading: isLoading,
-                      ),
-                      const SizedBox(height: 16),
-                      Center(
+                      // Beside the password it is about, not under the button.
+                      Align(
+                        alignment: Alignment.centerRight,
                         child: TextButton(
                           onPressed: () => context.push('/forgot-password'),
                           child: const Text('Forgot password?'),
                         ),
                       ),
-                      Center(
-                        child: Wrap(
-                          alignment: WrapAlignment.center,
-                          children: [
-                            Text(
+                      const SizedBox(height: 8),
+                      PrimaryButton(
+                        label: 'Sign in',
+                        onPressed: _submit,
+                        isLoading: isLoading,
+                      ),
+                      const SizedBox(height: 22),
+                      Row(
+                        children: [
+                          const Expanded(child: Divider()),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
                               "Don't have an account? ",
-                              style: TextStyle(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
                             ),
-                            GestureDetector(
-                              onTap: () => context.push('/register'),
-                              child: Text(
-                                'Sign up',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
+                          const Expanded(child: Divider()),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          key: const ValueKey('go-register'),
+                          onPressed: () => context.push('/register'),
+                          child: const Text('Create an account'),
                         ),
                       ),
                     ],

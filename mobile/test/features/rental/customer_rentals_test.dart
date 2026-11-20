@@ -1307,7 +1307,7 @@ void main() {
 
   group('Service | Rent choice', () {
     testWidgets(
-      'shows two cards side by side; tapping the other one chooses it',
+      'shows the sides as one segmented switch; tapping another chooses it',
       (tester) async {
         tester.view.physicalSize = const Size(360, 640);
         tester.view.devicePixelRatio = 1;
@@ -1328,11 +1328,12 @@ void main() {
         final rent = find.byKey(const ValueKey('customer-panel-rent'));
         expect(find.text('Service'), findsOneWidget);
         expect(find.text('Rent'), findsOneWidget);
-        // Two separate cards with a gap between them, not one joined pill.
+        // Segments of one control: side by side on one line, never overlapping.
         expect(
           tester.getTopLeft(rent).dx - tester.getTopRight(service).dx,
-          greaterThan(0),
+          greaterThanOrEqualTo(0),
         );
+        expect(tester.getCenter(rent).dy, tester.getCenter(service).dy);
 
         await tester.tap(service);
         await tester.tap(rent);

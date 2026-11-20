@@ -68,7 +68,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       body: AuthBackdrop(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
               child: AuthCard(
@@ -80,58 +80,62 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       Row(
                         children: [
                           IconButton(
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
                             onPressed: () => context.pop(),
-                            icon: const Icon(Icons.arrow_back, size: 20),
+                            tooltip: 'Back to sign in',
+                            icon: const Icon(Icons.arrow_back),
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Sign up',
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.primary,
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              'Create your account',
+                              style: theme.textTheme.headlineSmall,
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Pick how you will use Zuno, then fill in your details.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
                       const SizedBox(height: 18),
                       if (errorMessage != null) ...[
                         ErrorBanner(message: errorMessage),
                         const SizedBox(height: 16),
                       ],
-                      Text('I am a...', style: theme.textTheme.labelMedium),
+                      Text(
+                        'I am joining as',
+                        style: theme.textTheme.labelLarge,
+                      ),
                       const SizedBox(height: 8),
                       // No tick on the chosen role: the fill already says which one it is, and
                       // the tick took enough room to break "Business" over two lines on a phone.
-                      SegmentedButton<String>(
-                        showSelectedIcon: false,
-                        segments: AppConstants.selfRegistrableRoles
-                            .map(
-                              (role) => ButtonSegment(
-                                value: role,
-                                label: Text(
-                                  UiConfig.current
-                                          .own('RegisterRole', role)
-                                          ?.label ??
-                                      role,
-                                  maxLines: 1,
-                                  softWrap: false,
-                                  overflow: TextOverflow.fade,
+                      // Full width, like the fields below it.
+                      SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<String>(
+                          showSelectedIcon: false,
+                          segments: AppConstants.selfRegistrableRoles
+                              .map(
+                                (role) => ButtonSegment(
+                                  value: role,
+                                  label: Text(
+                                    UiConfig.current
+                                            .own('RegisterRole', role)
+                                            ?.label ??
+                                        role,
+                                    maxLines: 1,
+                                    softWrap: false,
+                                    overflow: TextOverflow.fade,
+                                  ),
                                 ),
-                              ),
-                            )
-                            .toList(),
-                        selected: {_role},
-                        onSelectionChanged: (selection) =>
-                            setState(() => _role = selection.first),
-                        style: ButtonStyle(
-                          visualDensity: VisualDensity.compact,
-                          shape: WidgetStatePropertyAll(
-                            RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
+                              )
+                              .toList(),
+                          selected: {_role},
+                          onSelectionChanged: (selection) =>
+                              setState(() => _role = selection.first),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -200,24 +204,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ),
                       const SizedBox(height: 16),
                       Center(
+                        // A real button, so the tap target is finger-sized, not just the word.
                         child: Wrap(
                           alignment: WrapAlignment.center,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             Text(
                               'Already have an account? ',
-                              style: TextStyle(
+                              style: theme.textTheme.bodyMedium?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),
                             ),
-                            GestureDetector(
-                              onTap: () => context.pop(),
-                              child: Text(
-                                'Sign in',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                              ),
+                            TextButton(
+                              onPressed: () => context.pop(),
+                              child: const Text('Sign in'),
                             ),
                           ],
                         ),

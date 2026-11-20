@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:zuno/shared/legal/help_screen.dart';
 import 'package:zuno/core/router/push_screen.dart';
 import 'package:zuno/features/marketplace/presentation/screens/marketplace_wishlist_screen.dart';
-import 'package:zuno/shared/legal/legal_document.dart';
 import 'package:zuno/shared/widgets/empty_state.dart';
 
 /// The Marketplace account's shortcuts, two by two: Orders, Wishlist, Coupons, Help Center.
@@ -28,8 +28,7 @@ class MarketplaceAccountTiles extends StatelessWidget {
       (
         Icons.headset_mic_outlined,
         'Help Center',
-        () =>
-            pushScreen(context, const LegalDocumentScreen(doc: LegalDoc.help)),
+        () => pushScreen(context, const HelpScreen()),
       ),
     ];
 

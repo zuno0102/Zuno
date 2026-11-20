@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:zuno/core/router/push_screen.dart';
+import 'package:zuno/shared/legal/help_screen.dart';
 import 'package:zuno/shared/legal/legal_document.dart';
 
 /// One way into Help, the Privacy policy, the Terms of use and the open-source licences.
@@ -16,7 +17,12 @@ final List<HelpAndLegalLink> helpAndLegalLinks = [
     (
       icon: doc.icon,
       title: doc.title,
-      open: (context) => pushScreen(context, LegalDocumentScreen(doc: doc)),
+      open: (context) => pushScreen(
+        context,
+        doc == LegalDoc.help
+            ? const HelpScreen()
+            : LegalDocumentScreen(doc: doc),
+      ),
     ),
   (
     icon: Icons.code_rounded,
