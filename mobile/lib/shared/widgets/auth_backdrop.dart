@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 
-/// Full-screen backdrop of overlapping decorative circles (top-right and bottom-left)
-/// behind a centered scrollable card — the shared visual frame for auth screens.
+/// The frame of the sign-in, sign-up and reset screens: a band of the brand's deep teal across
+/// the top of the page, with the form's card standing over its lower edge.
+///
+/// Flat colour blocking rather than decoration: the band is the brand, and the card overlapping it
+/// is what makes the form the one thing on the screen.
 class AuthBackdrop extends StatelessWidget {
   const AuthBackdrop({required this.child, super.key});
 
@@ -12,57 +15,21 @@ class AuthBackdrop extends StatelessWidget {
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
 
-    return Container(
-      // Follows the theme, as does the pale circle below. The navy one is left alone: it reads
-      // against both a light and a dark page, which is what made it the brand mark here.
+    return ColoredBox(
       color: AppColors.authBackdrop(brightness),
       child: Stack(
         children: [
           Positioned(
-            top: -90,
-            right: -70,
-            child: _Circle(
-              diameter: 260,
-              color: AppColors.circleFaint(brightness).withValues(alpha: 0.7),
-            ),
-          ),
-          Positioned(
-            top: -40,
-            right: -100,
-            child: _Circle(diameter: 200, color: AppColors.circleDark),
-          ),
-          Positioned(
-            bottom: -80,
-            left: -90,
-            child: _Circle(diameter: 220, color: AppColors.circleDark),
-          ),
-          Positioned(
-            bottom: -120,
-            left: -60,
-            child: _Circle(
-              diameter: 260,
-              color: AppColors.circleFaint(brightness).withValues(alpha: 0.7),
-            ),
+            top: 0,
+            left: 0,
+            right: 0,
+            // Down past the middle of the page, so the centred card always stands across its edge.
+            height: MediaQuery.sizeOf(context).height * 0.42,
+            child: ColoredBox(color: AppColors.circleDark),
           ),
           SafeArea(child: child),
         ],
       ),
-    );
-  }
-}
-
-class _Circle extends StatelessWidget {
-  const _Circle({required this.diameter, required this.color});
-
-  final double diameter;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: diameter,
-      height: diameter,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: color),
     );
   }
 }

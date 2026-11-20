@@ -120,7 +120,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Reported from a phone: this one card opened by itself while the rest stayed closed.
-    expect(find.text('NEEDS YOU'), findsOneWidget);
+    expect(find.text('Needs you'), findsOneWidget);
     expect(find.text('grape grape'), findsNothing);
 
     await tester.tap(find.text('Crew'));

@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:zuno/core/theme/app_theme.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 
 /// One entry in a business's own list of things it offers — a rent item, a Marketplace post: a
@@ -47,7 +48,7 @@ class MediaListCard extends StatelessWidget {
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
           child: Stack(
             children: [
               url != null

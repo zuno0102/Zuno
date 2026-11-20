@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.22.1+82
+version: 1.23.0+83
 
 environment:
   sdk: ^3.12.2
@@ -122,6 +122,24 @@ flutter:
     # Help, Privacy policy and Terms of use — the one copy the app shows and the website
     # publishes. PRIVACY_AND_LEGAL.md says when they must change.
     - assets/legal/
+    # The font's licence (SIL OFL 1.1), shown with the others under Help › Licences.
+    - assets/fonts/figtree/OFL.txt
+
+  # The app's one typeface, bundled so it never waits on a font server. Static weights rather than
+  # the variable file: each weight the theme names maps to its own file.
+  fonts:
+    - family: Figtree
+      fonts:
+        - asset: assets/fonts/figtree/Figtree-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/figtree/Figtree-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/figtree/Figtree-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/figtree/Figtree-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/figtree/Figtree-ExtraBold.ttf
+          weight: 800
 
   # To add assets to your application, add an assets section, like this:
   # assets:

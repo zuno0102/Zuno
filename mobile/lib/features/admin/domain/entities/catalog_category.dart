@@ -53,6 +53,4 @@ class CatalogCategory {
   final List<CatalogSubCategory> subCategories;
 
   bool get isInUse => serviceCount > 0;
-
-  int get visibleSubCategoryCount => subCategories.where((s) => s.isActive).length;
 }

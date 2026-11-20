@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:zuno/core/theme/app_theme.dart';
 import 'package:zuno/core/utils/formatting.dart';
 
 /// A form field for a date, or a date and a time, that looks like the text boxes beside it —
@@ -68,7 +69,7 @@ class DateTimeField extends FormField<DateTime> {
              value: value == null ? null : _text(value, withTime),
              child: InkWell(
                onTap: open,
-               borderRadius: BorderRadius.circular(12),
+               borderRadius: BorderRadius.circular(AppRadius.md),
                child: InputDecorator(
                  isEmpty: value == null,
                  decoration: InputDecoration(

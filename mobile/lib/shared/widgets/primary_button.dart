@@ -32,6 +32,8 @@ class ButtonSpinner extends StatelessWidget {
   );
 }
 
+/// The one main action of a form, full width. Its shape and type come from the theme's filled
+/// button; the label is written as the action reads ("Sign in", "Save changes"), not in capitals.
 class PrimaryButton extends StatelessWidget {
   const PrimaryButton({
     required this.label,
@@ -46,22 +48,13 @@ class PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shape = FilledButton.styleFrom(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-      textStyle: const TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 1.1,
-      ),
-    );
     return SizedBox(
       width: double.infinity,
-      height: 50,
       child: FilledButton(
         key: const ValueKey('primary-button'),
-        style: isLoading ? shape.merge(busyFilledButtonStyle(context)) : shape,
+        style: isLoading ? busyFilledButtonStyle(context) : null,
         onPressed: isLoading ? null : onPressed,
-        child: isLoading ? const ButtonSpinner() : Text(label.toUpperCase()),
+        child: isLoading ? const ButtonSpinner() : Text(label),
       ),
     );
   }

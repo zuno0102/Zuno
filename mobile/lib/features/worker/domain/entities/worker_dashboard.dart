@@ -54,10 +54,6 @@ class WorkerDashboard {
       ? 0
       : trend.map((m) => m.jobsCompleted).reduce((a, b) => a > b ? a : b);
 
-  double get mostEarnedInAMonth => trend.isEmpty
-      ? 0
-      : trend.map((m) => m.earned).reduce((a, b) => a > b ? a : b);
-
   /// Nothing has been earned and nothing done, so a first-job message beats a row of ₹0.
   bool get hasWorkRecord =>
       (profile?.jobsCompleted ?? 0) > 0 || (profile?.totalEarned ?? 0) > 0;
@@ -113,9 +109,6 @@ class WorkerJobSummary {
   /// on a hiring post, which is taken on alone.
   final String? myRole;
 
-  bool get isFromBooking => source == 'Booking';
-  bool get hasStarted => workStartedAt != null;
-
   /// "₹800 per event", or null when there is no wage to state.
   ///
   /// The unit is never dropped: ₹800 an hour and ₹800 for a whole event differ by a factor of
@@ -159,12 +152,6 @@ class WorkerPendingPayment {
       UiConfig.current.tone(_payoutGroup, paymentStatus);
 
   static const _payoutGroup = 'WorkerPayout';
-
-  /// The one state the worker can act on, rather than only wait through.
-  bool get needsMyConfirmation => paymentStatus == 'AwaitingWorkerConfirmation';
-
-  /// Worth flagging: the money was attempted and bounced, which usually means payout details.
-  bool get hasFailed => paymentStatus == 'Failed';
 }
 
 /// One month of a worker's history.

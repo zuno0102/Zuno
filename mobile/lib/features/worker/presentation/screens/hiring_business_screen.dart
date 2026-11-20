@@ -310,9 +310,8 @@ class _PayHero extends StatelessWidget {
         child: Column(
           children: [
             Text(
-              'WHAT THIS BUSINESS PAYS',
+              'What this business pays',
               style: theme.textTheme.labelSmall?.copyWith(
-                letterSpacing: 0.8,
                 fontWeight: FontWeight.w700,
                 color: theme.colorScheme.onSurfaceVariant,
               ),

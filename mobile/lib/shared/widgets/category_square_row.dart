@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:zuno/core/theme/app_theme.dart';
 
 /// One square in a [CategorySquareRow]: an icon, a short name and how many it holds.
 class CategorySquare<T> {
@@ -148,7 +149,7 @@ class _Square<T> extends StatelessWidget {
           key: ValueKey('category-square-${square.value}'),
           color: isSelected ? scheme.primary : scheme.surfaceContainerLow,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppRadius.lg),
             side: BorderSide(
               color: isSelected ? scheme.primary : scheme.outlineVariant,
             ),
@@ -222,7 +223,7 @@ class _CountBubble extends StatelessWidget {
             : count == 0
             ? scheme.surfaceContainerHighest
             : scheme.primaryContainer,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppRadius.md),
       ),
       child: Text(
         '$count',

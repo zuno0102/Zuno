@@ -34,10 +34,4 @@ class BookingTermsProposal {
   bool get isOpen => proposalStatus == 'Open';
   bool get isAccepted => proposalStatus == 'Accepted';
   bool get isFromBusiness => proposedByRole == 'Business';
-
-  /// Whether the side currently looking at this may accept or counter it.
-  ///
-  /// You can never take up your own offer — that would let one side settle the price alone.
-  bool canBeAnsweredBy({required bool viewerIsBusiness}) =>
-      isOpen && isFromBusiness != viewerIsBusiness;
 }

@@ -157,9 +157,8 @@ class _JobDetailsSheetState extends ConsumerState<_JobDetailsSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'WHAT YOU GET PAID',
+                        'What you get paid',
                         style: theme.textTheme.labelSmall?.copyWith(
-                          letterSpacing: 0.8,
                           fontWeight: FontWeight.w700,
                           color: theme.colorScheme.onSurfaceVariant,
                         ),

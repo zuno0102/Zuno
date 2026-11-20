@@ -9,8 +9,6 @@ public static partial class UiConfigRules
     public static readonly IReadOnlySet<string> Tones =
         new HashSet<string>(StringComparer.Ordinal) { "success", "progress", "waiting", "danger" };
 
-    public const string FallbackCode = "*";
-
     public static bool IsColor(string? value) => value is not null && ColorPattern().IsMatch(value);
 
     public static bool IsTone(string? tone) => tone is null || Tones.Contains(tone);

@@ -399,14 +399,10 @@ class Booking {
 
   bool get isFullyStaffed => activeCrewCount >= requiredWorkerCount;
 
-  bool get isCrewDone => crewStatus == 'Done';
-
   /// "2 of 5 · Part staffed".
   String get crewStatusLabel =>
       UiConfig.current.own('BookingCrewStatus', crewStatus)?.label ??
       crewStatus;
-
-  String get crewCountLabel => '$activeCrewCount of $requiredWorkerCount';
 
   bool get myAssignmentAwaitingResponse => myAssignmentStatus == 'Assigned';
   bool get myAssignmentIsAccepted => myAssignmentStatus == 'Accepted';
@@ -448,22 +444,6 @@ class Booking {
 
   /// A wage is recorded against this worker's own row on this order.
   bool get hasMyWage => (myWageAmount ?? 0) > 0;
-
-  /// My own wage is set and has not reached me.
-  ///
-  /// Requires an amount as well as a status: a mirror assignment from a hiring post sits at `Unpaid`
-  /// for ever because it carries no money at all, and reading that as an outstanding wage is exactly
-  /// how a paid job came to be labelled unpaid.
-  bool get myWageIsOutstanding =>
-      hasMyWage &&
-      const {
-        'Unpaid',
-        'Processing',
-        'Failed',
-        'AwaitingWorkerConfirmation',
-      }.contains(myPaymentStatus);
-
-  bool get myWageIsPaid => myPaymentStatus == 'Paid';
 
   String get wageStatusLabel =>
       UiConfig.current.own('BookingWageStatus', wageStatus)?.label ?? '';

@@ -465,26 +465,3 @@ String matchingSectionTitle({
   final subject = hasSearchTerms ? 'Matching services' : 'Services';
   return hasLocation ? '$subject near you' : subject;
 }
-
-/// What the line under the greeting says about where results are drawn from.
-///
-/// The place, not a tally. It used to read "4 district(s)", which tells a customer how many places
-/// they picked — something they already know — and names none of them. This names their first choice
-/// and counts the rest, so the line stays one line however many they pick, and the search still runs
-/// on every district behind it.
-///
-/// Null means everywhere, which the header renders in its own words.
-String? locationSummary({
-  required String? primaryName,
-  required int districtCount,
-}) {
-  if (districtCount <= 0) return null;
-
-  // Falls back to the count only when the name could not be resolved — better than an empty line.
-  final primary =
-      primaryName ??
-      '$districtCount ${districtCount == 1 ? 'district' : 'districts'}';
-  final rest = districtCount - 1;
-
-  return rest > 0 ? '$primary +$rest' : primary;
-}

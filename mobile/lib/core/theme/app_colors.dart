@@ -36,6 +36,14 @@ class AppColors {
   static Color scaffold(Brightness brightness) =>
       _for('surface.scaffold', brightness);
 
+  /// What stands on the page — cards, sheets, dialogs, the bottom bar: white on the off-white page
+  /// in light mode, one step lighter than the page in dark mode. From the theme's own scheme, so
+  /// it carries the role's faint tint.
+  static Color raised(ColorScheme scheme, Brightness brightness) =>
+      brightness == Brightness.light
+      ? scheme.surfaceContainerLowest
+      : scheme.surfaceContainerLow;
+
   /// The inside of a text field.
   static Color fieldFill(Brightness brightness) =>
       _for('surface.fieldFill', brightness);
@@ -49,12 +57,8 @@ class AppColors {
   static Color authBackdrop(Brightness brightness) =>
       _for('surface.authBackdrop', brightness);
 
-  /// The deep decorative circle behind the auth screens.
+  /// The deep brand band across the top of the auth screens.
   static Color get circleDark => _light('decor.circle');
-
-  /// The pale decorative circle on that page; dark mode gets its own barely-there tint.
-  static Color circleFaint(Brightness brightness) =>
-      _for('decor.circleFaint', brightness);
 
   // ---- Marks on top of other things ----------------------------------------------------
 

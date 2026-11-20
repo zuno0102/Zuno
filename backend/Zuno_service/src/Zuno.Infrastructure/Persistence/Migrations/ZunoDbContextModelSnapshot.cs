@@ -13849,30 +13849,30 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                         {
                             Id = new Guid("3fbd1e81-9a50-0d60-870b-5669841a752a"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DarkValue = "#FF4B3FB8",
+                            DarkValue = "#FF0B5F5A",
                             IsDeleted = false,
                             Key = "brand.primary",
-                            LightValue = "#FF4B3FB8",
+                            LightValue = "#FF0B5F5A",
                             Status = (short)1
                         },
                         new
                         {
                             Id = new Guid("2633e5dd-68ce-718b-91ef-464971e38543"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DarkValue = "#FF2E2578",
+                            DarkValue = "#FF073F3C",
                             IsDeleted = false,
                             Key = "brand.primaryDark",
-                            LightValue = "#FF2E2578",
+                            LightValue = "#FF073F3C",
                             Status = (short)1
                         },
                         new
                         {
                             Id = new Guid("d0e4704c-d7d1-f76b-d7a3-a80c22e21684"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DarkValue = "#FFF2A93B",
+                            DarkValue = "#FFE0A63A",
                             IsDeleted = false,
                             Key = "brand.secondary",
-                            LightValue = "#FFF2A93B",
+                            LightValue = "#FFB07809",
                             Status = (short)1
                         },
                         new
@@ -13889,7 +13889,7 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                         {
                             Id = new Guid("5194323f-481c-f047-faf8-7c2d1e5e37e7"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DarkValue = "#FF121212",
+                            DarkValue = "#FF161B1A",
                             IsDeleted = false,
                             Key = "surface.auth",
                             LightValue = "#FFFFFFFF",
@@ -13899,60 +13899,50 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                         {
                             Id = new Guid("9cf86360-01f7-2a8e-f198-2dd32b8b7d37"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DarkValue = "#FF1A1A1A",
+                            DarkValue = "#FF0F1312",
                             IsDeleted = false,
                             Key = "surface.authBackdrop",
-                            LightValue = "#FFF4F4F7",
+                            LightValue = "#FFF4F5F2",
                             Status = (short)1
                         },
                         new
                         {
                             Id = new Guid("c60e8009-7b82-d962-1943-53379e921f55"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DarkValue = "#FF121218",
+                            DarkValue = "#FF0F1312",
                             IsDeleted = false,
                             Key = "surface.scaffold",
-                            LightValue = "#FFF5F5F9",
+                            LightValue = "#FFF4F5F2",
                             Status = (short)1
                         },
                         new
                         {
                             Id = new Guid("b667a121-2b94-0cff-c251-1fe2cc8ec62f"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DarkValue = "#FF1D1D25",
+                            DarkValue = "#FF1D2321",
                             IsDeleted = false,
                             Key = "surface.fieldFill",
-                            LightValue = "#FFF2F2F6",
+                            LightValue = "#FFEAEDE9",
                             Status = (short)1
                         },
                         new
                         {
                             Id = new Guid("bd27786a-4750-c004-8197-20494a071cd2"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DarkValue = "#FF2E3568",
+                            DarkValue = "#FF0A4F4B",
                             IsDeleted = false,
                             Key = "decor.circle",
-                            LightValue = "#FF2E3568",
-                            Status = (short)1
-                        },
-                        new
-                        {
-                            Id = new Guid("752f296f-4338-6b00-8a36-6482f4e3c8a5"),
-                            CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DarkValue = "#FF262633",
-                            IsDeleted = false,
-                            Key = "decor.circleFaint",
-                            LightValue = "#FFD4D5E3",
+                            LightValue = "#FF0A4F4B",
                             Status = (short)1
                         },
                         new
                         {
                             Id = new Guid("96d3115c-341e-8fe3-b1ea-bc7fd96e601c"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DarkValue = "#FFF2A93B",
+                            DarkValue = "#FFE0A63A",
                             IsDeleted = false,
                             Key = "mark.ratingStar",
-                            LightValue = "#FFF2A93B",
+                            LightValue = "#FFB07809",
                             Status = (short)1
                         },
                         new
@@ -14019,10 +14009,10 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                         {
                             Id = new Guid("91748003-4fd4-44a9-2dac-61af752e795e"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DarkValue = "#B3FFFFFF",
+                            DarkValue = "#C7FFFFFF",
                             IsDeleted = false,
                             Key = "media.onMediaMuted",
-                            LightValue = "#B3FFFFFF",
+                            LightValue = "#C7FFFFFF",
                             Status = (short)1
                         },
                         new
@@ -14039,120 +14029,120 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                         {
                             Id = new Guid("e19c9fd4-b83f-606c-e325-c7653b4d51ac"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DarkValue = "#FF7B1FA2",
+                            DarkValue = "#FF7B2453",
                             IsDeleted = false,
                             Key = "role.business.seed",
-                            LightValue = "#FF7B1FA2",
+                            LightValue = "#FF7B2453",
                             Status = (short)1
                         },
                         new
                         {
                             Id = new Guid("fb236b42-af61-3772-6bf8-31b26f336075"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DarkValue = "#FF4A0D6B",
+                            DarkValue = "#FF5A1A3D",
                             IsDeleted = false,
                             Key = "role.business.gradientStart",
-                            LightValue = "#FF4A0D6B",
+                            LightValue = "#FF5A1A3D",
                             Status = (short)1
                         },
                         new
                         {
                             Id = new Guid("5b288cd1-c39e-7872-0928-e5dd4bde9e63"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DarkValue = "#FF9C27B0",
+                            DarkValue = "#FF9A3468",
                             IsDeleted = false,
                             Key = "role.business.gradientEnd",
-                            LightValue = "#FF9C27B0",
+                            LightValue = "#FF9A3468",
                             Status = (short)1
                         },
                         new
                         {
                             Id = new Guid("4aedad13-4906-77b1-1814-8c7a3d4d608e"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DarkValue = "#FF0E8F5B",
+                            DarkValue = "#FF8A5A00",
                             IsDeleted = false,
                             Key = "role.worker.seed",
-                            LightValue = "#FF0E8F5B",
+                            LightValue = "#FF8A5A00",
                             Status = (short)1
                         },
                         new
                         {
                             Id = new Guid("b0d7ec05-946f-f15b-e643-294b63cbe81e"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DarkValue = "#FF066B43",
+                            DarkValue = "#FF5E3F00",
                             IsDeleted = false,
                             Key = "role.worker.gradientStart",
-                            LightValue = "#FF066B43",
+                            LightValue = "#FF5E3F00",
                             Status = (short)1
                         },
                         new
                         {
                             Id = new Guid("e93f472f-ad36-7499-7b2f-de79c088f2d6"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DarkValue = "#FF17A96C",
+                            DarkValue = "#FF9A6A0C",
                             IsDeleted = false,
                             Key = "role.worker.gradientEnd",
-                            LightValue = "#FF17A96C",
+                            LightValue = "#FF9A6A0C",
                             Status = (short)1
                         },
                         new
                         {
                             Id = new Guid("e36b91a1-5a71-2c08-ab83-68ef67b974c4"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DarkValue = "#FF3949AB",
+                            DarkValue = "#FF0B6E69",
                             IsDeleted = false,
                             Key = "role.customer.seed",
-                            LightValue = "#FF3949AB",
+                            LightValue = "#FF0B6E69",
                             Status = (short)1
                         },
                         new
                         {
                             Id = new Guid("fd0561fc-3730-1bad-63b5-5cc79228772a"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DarkValue = "#FF1A237E",
+                            DarkValue = "#FF0A4F4B",
                             IsDeleted = false,
                             Key = "role.customer.gradientStart",
-                            LightValue = "#FF1A237E",
+                            LightValue = "#FF0A4F4B",
                             Status = (short)1
                         },
                         new
                         {
                             Id = new Guid("77af0160-979e-2cb5-d97e-25c1c8826f52"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DarkValue = "#FF5C6BC0",
+                            DarkValue = "#FF0E7A73",
                             IsDeleted = false,
                             Key = "role.customer.gradientEnd",
-                            LightValue = "#FF5C6BC0",
+                            LightValue = "#FF0E7A73",
                             Status = (short)1
                         },
                         new
                         {
                             Id = new Guid("80af8198-42ed-37c5-7ab2-49393ab0f7e3"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DarkValue = "#FFC2185B",
+                            DarkValue = "#FF23446E",
                             IsDeleted = false,
                             Key = "role.admin.seed",
-                            LightValue = "#FFC2185B",
+                            LightValue = "#FF23446E",
                             Status = (short)1
                         },
                         new
                         {
                             Id = new Guid("fb74dc9e-63b1-2fa1-678e-c0ff0a0f2b19"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DarkValue = "#FF6E0B33",
+                            DarkValue = "#FF172E4D",
                             IsDeleted = false,
                             Key = "role.admin.gradientStart",
-                            LightValue = "#FF6E0B33",
+                            LightValue = "#FF172E4D",
                             Status = (short)1
                         },
                         new
                         {
                             Id = new Guid("3f6e728a-5ce4-f212-3372-9f0b5c59dcca"),
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
-                            DarkValue = "#FFD81B60",
+                            DarkValue = "#FF2D5686",
                             IsDeleted = false,
                             Key = "role.admin.gradientEnd",
-                            LightValue = "#FFD81B60",
+                            LightValue = "#FF2D5686",
                             Status = (short)1
                         },
                         new
@@ -14172,7 +14162,7 @@ namespace Zuno.Infrastructure.Persistence.Migrations
                             DarkValue = "#FFE8B168",
                             IsDeleted = false,
                             Key = "status.progress",
-                            LightValue = "#FF97590A",
+                            LightValue = "#FF8A5A00",
                             Status = (short)1
                         },
                         new

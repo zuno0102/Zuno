@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:zuno/core/theme/app_theme.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/shared/widgets/network_photo.dart';
 
@@ -170,7 +171,7 @@ class _Slide extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         child: Material(
           child: InkWell(
             onTap: slide.onTap,

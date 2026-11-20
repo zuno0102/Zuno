@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:zuno/shared/widgets/primary_button.dart';
 import 'package:zuno/core/payments/razorpay_checkout.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/auth/domain/entities/user.dart';
@@ -792,9 +793,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Only 300 available'), findsOneWidget);
-      final book = find.widgetWithText(FilledButton, 'BOOK');
+      final book = find.widgetWithText(PrimaryButton, 'Book');
       await tester.ensureVisible(book);
-      expect(tester.widget<FilledButton>(book).onPressed, isNull);
+      expect(tester.widget<PrimaryButton>(book).onPressed, isNull);
       expect(repository.booked, isNull);
     });
 
@@ -811,7 +812,7 @@ void main() {
         'Kakkanad',
       );
 
-      final book = find.widgetWithText(FilledButton, 'BOOK');
+      final book = find.widgetWithText(PrimaryButton, 'Book');
       await tester.ensureVisible(book);
       await tester.tap(book);
       await tester.pumpAndSettle();
@@ -840,7 +841,7 @@ void main() {
         'Sunday, St. Mary\'s',
       );
       await tester.pumpAndSettle();
-      final book = find.widgetWithText(FilledButton, 'BOOK');
+      final book = find.widgetWithText(PrimaryButton, 'Book');
       await tester.ensureVisible(book);
       await tester.tap(book);
       await tester.pumpAndSettle();
@@ -880,7 +881,7 @@ void main() {
           find.byKey(const ValueKey('booking-answer-q1')),
           'Sunday',
         );
-        final book = find.widgetWithText(FilledButton, 'BOOK');
+        final book = find.widgetWithText(PrimaryButton, 'Book');
         await tester.ensureVisible(book);
         await tester.tap(book);
         await tester.pumpAndSettle();
@@ -909,7 +910,7 @@ void main() {
       );
 
       // No number: Book says so, and nothing is booked.
-      final book = find.widgetWithText(FilledButton, 'BOOK');
+      final book = find.widgetWithText(PrimaryButton, 'Book');
       await tester.ensureVisible(book);
       await tester.tap(book);
       await tester.pumpAndSettle();
@@ -1011,7 +1012,7 @@ void main() {
       );
       await openBooking(tester);
 
-      final book = find.widgetWithText(FilledButton, 'BOOK');
+      final book = find.widgetWithText(PrimaryButton, 'Book');
       await tester.ensureVisible(book);
       await tester.tap(book);
       await tester.pumpAndSettle();
@@ -1143,7 +1144,7 @@ void main() {
 
     final payButton = find.widgetWithText(
       FilledButton,
-      'BOOK & PAY ${rupees(600)}'.toUpperCase(),
+      'Book & pay ${rupees(600)}',
     );
 
     testWidgets('the sheet shows the total and the advance paid now', (
@@ -1177,7 +1178,7 @@ void main() {
         find.text('Paid to Joy Rentals before the return'),
         findsOneWidget,
       );
-      expect(find.widgetWithText(FilledButton, 'BOOK'), findsOneWidget);
+      expect(find.widgetWithText(PrimaryButton, 'Book'), findsOneWidget);
     });
 
     testWidgets('booking opens the payment window and the server confirms it', (

@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:zuno/core/constants/api_constants.dart';
 import 'package:flutter/material.dart';
+import 'package:zuno/core/theme/app_theme.dart';
 
 /// One tile in the category picker.
 class CategoryTile {
@@ -113,11 +114,17 @@ class CategoryGrid extends StatelessWidget {
     if (n.contains('appliance')) return Icons.kitchen;
     // Before the transport rule, and this order is the whole point: "car" is a substring of
     // "carpentry", so Carpentry was being given a lorry.
-    if (n.contains('carpent') || n.contains('wood') || n.contains('furniture')) {
+    if (n.contains('carpent') ||
+        n.contains('wood') ||
+        n.contains('furniture')) {
       return Icons.carpenter;
     }
-    if (n.contains('home') || n.contains('house')) return Icons.home_repair_service;
-    if (n.contains('transport') || n.contains('car')) return Icons.local_shipping;
+    if (n.contains('home') || n.contains('house')) {
+      return Icons.home_repair_service;
+    }
+    if (n.contains('transport') || n.contains('car')) {
+      return Icons.local_shipping;
+    }
     return Icons.handyman;
   }
 
@@ -332,11 +339,13 @@ class _Tile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final tint = selected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant;
+    final tint = selected
+        ? theme.colorScheme.primary
+        : theme.colorScheme.onSurfaceVariant;
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AppRadius.lg),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -346,8 +355,10 @@ class _Tile extends StatelessWidget {
             decoration: BoxDecoration(
               color: selected
                   ? theme.colorScheme.primaryContainer
-                  : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(14),
+                  : theme.colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.7,
+                    ),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
               border: selected
                   ? Border.all(color: theme.colorScheme.primary, width: 1.5)
                   : null,
@@ -362,7 +373,8 @@ class _Tile extends StatelessWidget {
                       imageUrl: '${ApiConstants.baseUrl}$iconUrl',
                       fit: BoxFit.contain,
                       // A category that has an image but cannot load it still has a usable tile.
-                      errorWidget: (_, _, _) => Icon(icon, size: 20, color: tint),
+                      errorWidget: (_, _, _) =>
+                          Icon(icon, size: 20, color: tint),
                     ),
                   ),
           ),

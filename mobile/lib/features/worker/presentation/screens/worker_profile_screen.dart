@@ -140,9 +140,8 @@ class _DetailsCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'YOUR DETAILS',
+              'Your details',
               style: theme.textTheme.labelSmall?.copyWith(
-                letterSpacing: 0.9,
                 fontWeight: FontWeight.w700,
                 color: theme.colorScheme.onSurfaceVariant,
               ),

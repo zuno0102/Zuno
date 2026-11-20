@@ -187,7 +187,6 @@ class HiringPost {
   /// The business has approved this worker and is waiting on their answer.
   bool get hasPendingOffer => myApplicationStatus == 'Confirmed';
   bool get myOfferAccepted => myApplicationStatus == 'Accepted';
-  bool get myOfferDeclined => myApplicationStatus == 'Declined';
   bool get isFullyStaffed => filledCount >= workersNeeded;
 
   /// Whether another worker can still be sent to this job. Only accepted workers count —

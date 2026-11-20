@@ -5,15 +5,15 @@ import 'package:zuno/core/theme/app_theme.dart';
 
 /// Each side of the marketplace gets its own colour so a glance at a screen says which app it is.
 ///
-/// That only works if the colours can actually be told apart, and for a while they could not:
-/// business 245°, customer 222° and admin 213° were three shades of the same desaturated
-/// blue-violet, because Material's seeding pulls chroma in hard and the three seeds started close.
-/// The customer seed moved to teal. These tests are what stops a future seed drifting back.
+/// That only works if the colours can actually be told apart. Business, customer and admin were once
+/// three shades of the same blue-violet, because Material's seeding pulls chroma in hard and the
+/// seeds started close. The palette is now the region's own: backwater teal for the customer,
+/// turmeric for the worker, kokum plum for the business, ink blue for admin. These tests are what
+/// stop a future seed drifting back into a neighbour, or into the error red.
 void main() {
-  double hueOf(ZunoRole role, Brightness brightness) =>
-      HSLColor.fromColor(
-        AppTheme.forRole(role, brightness).colorScheme.primary,
-      ).hue;
+  double hueOf(ZunoRole role, Brightness brightness) => HSLColor.fromColor(
+    AppTheme.forRole(role, brightness).colorScheme.primary,
+  ).hue;
 
   /// The shorter way round the wheel, so 350° and 10° read as 20° apart rather than 340°.
   double separation(double a, double b) {
@@ -42,19 +42,13 @@ void main() {
         }
       });
 
-      test('the customer is indigo, which is what that trade wears', () {
-        // A customer is paying a stranger to come into their home. The apps in that trade settle on
-        // the blue end for it, and two other hues were tried first: teal read clinical, magenta
-        // read retail.
+      test('the customer is backwater teal', () {
         final customer = hueOf(ZunoRole.customer, brightness);
-        expect(customer, greaterThan(220));
-        expect(customer, lessThan(250));
+        expect(customer, greaterThan(160));
+        expect(customer, lessThan(195));
       });
 
-      test('and the business is clear of it, which cost business its old hue', () {
-        // Indigo is the most crowded corner of this wheel. The business violet sat thirteen degrees
-        // away, close enough that the two apps read as one — so business moved to purple. If a
-        // future seed walks business back toward indigo, this is what notices.
+      test('and the business is well clear of it', () {
         expect(
           separation(
             hueOf(ZunoRole.customer, brightness),
@@ -73,8 +67,14 @@ void main() {
         final dangerSaturation = HSLColor.fromColor(danger).saturation;
 
         for (final role in ZunoRole.values) {
-          final primary = AppTheme.forRole(role, brightness).colorScheme.primary;
-          final hueApart = separation(HSLColor.fromColor(primary).hue, dangerHue);
+          final primary = AppTheme.forRole(
+            role,
+            brightness,
+          ).colorScheme.primary;
+          final hueApart = separation(
+            HSLColor.fromColor(primary).hue,
+            dangerHue,
+          );
           final saturationApart =
               (HSLColor.fromColor(primary).saturation - dangerSaturation).abs();
 
@@ -88,10 +88,10 @@ void main() {
         }
       });
 
-      test('the worker stays green', () {
+      test('the worker is turmeric', () {
         final worker = hueOf(ZunoRole.worker, brightness);
-        expect(worker, greaterThan(120));
-        expect(worker, lessThan(160));
+        expect(worker, greaterThan(25));
+        expect(worker, lessThan(55));
       });
 
       test('writing on a role colour is legible', () {
@@ -103,7 +103,11 @@ void main() {
                   .abs();
           // Messages, buttons and headers all put onPrimary on primary, so a seed that narrowed
           // this would make text on a role colour hard to read everywhere at once.
-          expect(gap, greaterThan(0.4), reason: '${role.name} in ${brightness.name}');
+          expect(
+            gap,
+            greaterThan(0.4),
+            reason: '${role.name} in ${brightness.name}',
+          );
         }
       });
     });

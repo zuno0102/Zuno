@@ -135,9 +135,6 @@ class DashboardEvent {
   final String? cancellationReason;
   final String? city;
 
-  /// Days until it happens; negative once it has passed.
-  int get daysAway => scheduledDate.difference(DateTime.now()).inDays;
-
   /// Shares the wording with every other relative date in the app, so a booking and a worker's
   /// next job are not described two different ways on the same screen.
   String get whenLabel => relativeDayLabel(scheduledDate);

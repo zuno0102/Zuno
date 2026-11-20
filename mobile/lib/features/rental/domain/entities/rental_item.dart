@@ -138,8 +138,6 @@ class RentalItem {
   /// How customers rated this item.
   final StarRating rating;
 
-  bool get asksAdvance => advanceType != 'None' && (advanceAmount ?? 0) > 0;
-
   /// "Tools & machines › Cutting machine", or just the category.
   String get categoryLine => rentalSubCategoryName == null
       ? rentalCategoryName

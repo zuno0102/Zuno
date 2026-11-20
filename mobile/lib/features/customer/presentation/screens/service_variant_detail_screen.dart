@@ -57,11 +57,9 @@ class ServiceVariantDetailScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    (variant.serviceSubCategoryName ??
-                            service.serviceCategoryName)
-                        .toUpperCase(),
+                    variant.serviceSubCategoryName ??
+                        service.serviceCategoryName,
                     style: theme.textTheme.labelSmall?.copyWith(
-                      letterSpacing: 0.8,
                       fontWeight: FontWeight.w700,
                       color: theme.colorScheme.primary,
                     ),

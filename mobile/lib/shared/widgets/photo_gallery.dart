@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:zuno/core/theme/app_theme.dart';
 import 'package:zuno/shared/widgets/network_photo.dart';
 
 /// An item's photos at the top of its page, swiped sideways, with "2 / 5" in the corner. Empty, it
@@ -48,7 +49,7 @@ class _PhotoGalleryState extends State<PhotoGallery> {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surface.withValues(alpha: 0.9),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(

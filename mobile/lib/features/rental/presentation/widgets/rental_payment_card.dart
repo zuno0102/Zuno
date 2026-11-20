@@ -69,7 +69,7 @@ class RentalPaymentCard extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Expanded(child: Text('PAYMENT', style: muted)),
+                Expanded(child: Text('Payment', style: muted)),
                 if (order.paymentStatusName case final name?)
                   StatusPill(
                     label: name,

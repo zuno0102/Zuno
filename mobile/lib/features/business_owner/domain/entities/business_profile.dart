@@ -68,8 +68,6 @@ class BusinessProfile {
   String get successfulJobsLabel =>
       '$successfulJobs successful ${successfulJobs == 1 ? 'job' : 'jobs'}';
 
-  bool get hasAddress => addressLine1 != null && addressLine1!.isNotEmpty;
-
   /// Whether every required detail is filled in.
   bool get isComplete => missingDetails.isEmpty;
 }

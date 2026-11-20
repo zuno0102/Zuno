@@ -89,9 +89,6 @@ class WorkerFacingTrust {
     return '${(hours / 24).round()} days';
   }
 
-  /// Only worth a badge when there is enough history to mean something.
-  bool get keepsItsWord => totalHires >= 3 && paidPostedRateCount == totalHires;
-
   /// Nobody goes back to someone who did not pay them.
   bool get hasRepeatCrew => repeatHires > 0;
 }

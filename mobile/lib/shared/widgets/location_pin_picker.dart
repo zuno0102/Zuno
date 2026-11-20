@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:zuno/core/theme/app_theme.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
@@ -509,7 +510,7 @@ class _LocationPinPickerScreenState
                     children: [
                       Material(
                         elevation: 3,
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
                         child: TextField(
                           key: const Key('pinPickerSearch'),
                           controller: _searchController,
@@ -536,7 +537,7 @@ class _LocationPinPickerScreenState
                                   )
                                 : null,
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(AppRadius.lg),
                               borderSide: BorderSide.none,
                             ),
                           ),
@@ -547,7 +548,7 @@ class _LocationPinPickerScreenState
                           padding: const EdgeInsets.only(top: 6),
                           child: Material(
                             elevation: 3,
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(AppRadius.lg),
                             clipBehavior: Clip.antiAlias,
                             child: ConstrainedBox(
                               constraints: const BoxConstraints(maxHeight: 260),
@@ -640,7 +641,7 @@ class _LocationPinPickerScreenState
                   bottom: 16,
                   child: Material(
                     elevation: 3,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(AppRadius.xl),
                     color: theme.colorScheme.surface,
                     child: SegmentedButton<MapStyle>(
                       key: const Key('pinPickerMapStyle'),

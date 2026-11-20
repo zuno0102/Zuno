@@ -161,7 +161,7 @@ void main() {
         find.text('Two coats, walls and ceiling, paint included.'),
         findsOneWidget,
       );
-      expect(find.text('INTERIOR PAINTING'), findsOneWidget);
+      expect(find.text('Interior painting'), findsOneWidget);
       // Which service it belongs to, so somebody two taps deep still knows where they are.
       expect(
         find.text('Part of Painting · Kerala Painters'),

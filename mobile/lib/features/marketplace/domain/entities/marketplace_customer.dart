@@ -70,8 +70,6 @@ class MarketplaceCard {
 
   bool get isAd => kind == 'Advertisement';
 
-  bool get hasPlace => latitude != null && longitude != null;
-
   /// Whole percent below the usual price, e.g. 40; null when there is no saving.
   int? get percentOff {
     final was = originalPrice;

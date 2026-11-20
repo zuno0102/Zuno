@@ -65,7 +65,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('SIGN IN'), findsAtLeastNWidgets(1));
+    expect(find.text('Sign in'), findsAtLeastNWidgets(1));
     expect(find.text("Don't have an account? "), findsOneWidget);
   });
 }

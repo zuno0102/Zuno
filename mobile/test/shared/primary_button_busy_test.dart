@@ -58,9 +58,16 @@ void main() {
       ),
     );
     final button = tester.widget<FilledButton>(find.byType(FilledButton));
-    final background = button.style!.backgroundColor?.resolve({
-      WidgetState.disabled,
-    });
+    // What it is painted with: its own style if it has one, else the theme's, else the defaults.
+    final context = tester.element(find.byType(FilledButton));
+    final background =
+        button.style?.backgroundColor?.resolve({WidgetState.disabled}) ??
+        Theme.of(context).filledButtonTheme.style?.backgroundColor?.resolve({
+          WidgetState.disabled,
+        }) ??
+        button.defaultStyleOf(context).backgroundColor?.resolve({
+          WidgetState.disabled,
+        });
     expect(background, isNot(AppTheme.dark.colorScheme.primary));
   });
 }

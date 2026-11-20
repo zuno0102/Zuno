@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:zuno/core/theme/app_theme.dart';
 
 /// The bar of sub-tabs under Orders — Bookings · Status management · Messages — the same on the
 /// Service and Rent sides, so the two read as one screen.
@@ -116,7 +117,7 @@ class CountPill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(9),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
       child: Text(
         // Capped, so the pill stays a pill. Past this is "a lot", and the list is where the real

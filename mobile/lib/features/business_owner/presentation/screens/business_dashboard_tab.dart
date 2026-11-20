@@ -284,9 +284,8 @@ class _CompletedCard extends StatelessWidget {
                     Text(
                       // The one place Finished is shown: event, crew, work and payment all done.
                       // Done but still owing a wage counts under Awaiting payment instead.
-                      'ORDERS FINISHED',
+                      'Orders finished',
                       style: theme.textTheme.labelSmall?.copyWith(
-                        letterSpacing: 0.9,
                         fontWeight: FontWeight.w700,
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -422,9 +421,8 @@ class _ProfileCard extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'YOUR BUSINESS',
+                      'Business details',
                       style: theme.textTheme.labelSmall?.copyWith(
-                        letterSpacing: 0.9,
                         fontWeight: FontWeight.w700,
                         color: theme.colorScheme.onSurfaceVariant,
                       ),

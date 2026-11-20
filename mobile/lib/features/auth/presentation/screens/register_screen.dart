@@ -87,11 +87,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'SIGN UP',
+                            'Sign up',
                             style: theme.textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: Theme.of(context).colorScheme.primary,
-                              letterSpacing: 0.5,
                             ),
                           ),
                         ],
@@ -213,7 +212,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             GestureDetector(
                               onTap: () => context.pop(),
                               child: Text(
-                                'SIGN IN',
+                                'Sign in',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: Theme.of(context).colorScheme.primary,

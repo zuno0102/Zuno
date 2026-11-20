@@ -116,9 +116,8 @@ class ZunoQuote extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'ZUNO',
+            'Zuno',
             style: theme.textTheme.labelSmall?.copyWith(
-              letterSpacing: 3,
               fontWeight: FontWeight.w700,
               color: theme.colorScheme.primary.withValues(alpha: 0.6),
             ),

@@ -190,12 +190,11 @@ class _BannerCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    service.serviceCategoryName.toUpperCase(),
+                    service.serviceCategoryName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: AppColors.onMedia.withValues(alpha: 0.85),
-                      letterSpacing: 0.8,
                       fontWeight: FontWeight.w700,
                     ),
                   ),

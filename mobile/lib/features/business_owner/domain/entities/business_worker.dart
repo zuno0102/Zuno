@@ -22,7 +22,6 @@ class BusinessWorker {
   final String availabilityStatus;
 
   bool get isActive => status == 'Active';
-  bool get isInvited => status == 'Invited';
 
   bool get isAtWork => availabilityStatus == 'AtWork';
   bool get isBooked => availabilityStatus == 'Booked';

@@ -62,7 +62,6 @@ class HiringPostApplication {
 
   bool get isAccepted => status == 'Accepted';
   bool get isRejected => status == 'Rejected';
-  bool get isDeclined => status == 'Declined';
 
   /// Whether the business may phone this worker about the job.
   ///

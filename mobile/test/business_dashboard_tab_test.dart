@@ -215,7 +215,7 @@ void main() {
 
     // The headline and the chart sit either side of the tiles, so if the viewport had failed
     // these would be the casualties.
-    expect(find.text('ORDERS FINISHED'), findsOneWidget);
+    expect(find.text('Orders finished'), findsOneWidget);
     // Below the Marketplace groups, so scrolled to.
     await tester.scrollUntilVisible(
       find.text('Customer activity'),
@@ -251,7 +251,7 @@ void main() {
   ) async {
     await pump(tester, dashboard);
 
-    expect(find.text('ORDERS FINISHED'), findsOneWidget);
+    expect(find.text('Orders finished'), findsOneWidget);
     expect(find.text('Finished'), findsNothing);
   });
 
@@ -260,7 +260,7 @@ void main() {
   ) async {
     await pump(tester, dashboard);
 
-    await tester.tap(find.text('ORDERS FINISHED'));
+    await tester.tap(find.text('Orders finished'));
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
@@ -517,13 +517,13 @@ void main() {
     ) async {
       await pump(tester, dashboard);
 
-      expect(find.text('YOUR BUSINESS'), findsOneWidget);
+      expect(find.text('Business details'), findsOneWidget);
     });
 
     testWidgets('opens the profile page when tapped', (tester) async {
       await pump(tester, dashboard);
 
-      await tester.tap(find.text('YOUR BUSINESS'));
+      await tester.tap(find.text('Business details'));
       // Pumped by hand rather than settled: the page lands on its loading spinner, which never
       // stops animating here, so pumpAndSettle would wait for it forever.
       await tester.pump();

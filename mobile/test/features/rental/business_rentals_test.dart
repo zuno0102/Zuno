@@ -1030,7 +1030,7 @@ void main() {
     }
 
     Future<void> save(WidgetTester tester, String label) async {
-      final button = find.widgetWithText(FilledButton, label.toUpperCase());
+      final button = find.widgetWithText(FilledButton, label);
       // The keyboard closed first, as a person does: a focused box keeps pulling itself into view.
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pumpAndSettle();
@@ -1867,7 +1867,7 @@ void main() {
         .controller!
         .text;
 
-    final saveButton = find.widgetWithText(FilledButton, 'SAVE STOCK');
+    final saveButton = find.widgetWithText(FilledButton, 'Save stock');
 
     testWidgets(
       'the home Rent stock tile has no number and opens the Stock page',
@@ -2479,7 +2479,7 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    final bookButton = find.widgetWithText(FilledButton, 'BOOK');
+    final bookButton = find.widgetWithText(FilledButton, 'Book');
 
     Future<void> tapBook(WidgetTester tester) async {
       await tester.ensureVisible(bookButton);
@@ -2699,7 +2699,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.textContaining('300 available'), findsOneWidget);
 
-      await tester.tap(find.widgetWithText(FilledButton, 'ADD PIECES'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Add pieces'));
       await tester.pumpAndSettle();
 
       expect(repository.calls, ['add-pieces:b:200']);
@@ -2740,7 +2740,7 @@ void main() {
       expect(
         tester
             .widget<FilledButton>(
-              find.widgetWithText(FilledButton, 'ADD PIECES'),
+              find.widgetWithText(FilledButton, 'Add pieces'),
             )
             .onPressed,
         isNull,
@@ -2777,7 +2777,7 @@ void main() {
           '200',
         );
         await tester.pumpAndSettle();
-        await tester.tap(find.widgetWithText(FilledButton, 'ADD PIECES'));
+        await tester.tap(find.widgetWithText(FilledButton, 'Add pieces'));
         await tester.pumpAndSettle();
 
         await tester.scrollUntilVisible(
@@ -3008,8 +3008,7 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    Finder primary(String label) =>
-        find.widgetWithText(FilledButton, label.toUpperCase());
+    Finder primary(String label) => find.widgetWithText(FilledButton, label);
 
     testWidgets('the order card says what is paid and what is due', (
       tester,
@@ -3961,6 +3960,8 @@ void main() {
           find.widgetWithText(TextFormField, 'Where it goes'),
           'Town Hall',
         );
+        // Done typing, so the selection handle does not lie over the button.
+        FocusManager.instance.primaryFocus?.unfocus();
         await tester.pumpAndSettle();
         final book = primary('Book');
         await tester.ensureVisible(book);
@@ -4091,6 +4092,10 @@ void main() {
 
     /// Taps Book and, when asked whether the advance is in hand, answers [received].
     Future<void> book(WidgetTester tester, {bool received = true}) async {
+      // Done typing: the keyboard and the field's selection handle go, so neither lies over the
+      // button.
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
       final button = primary('Book');
       await tester.ensureVisible(button);
       await tester.tap(button);

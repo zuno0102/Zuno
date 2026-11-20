@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:zuno/core/theme/app_theme.dart';
 
 /// "Finish your profile: add your UPI ID" — shown until every required detail is filled in.
 ///
@@ -26,7 +27,7 @@ class ProfileIncompleteBanner extends StatelessWidget {
       key: const ValueKey('profile-incomplete'),
       color: danger.withValues(alpha: 0.09),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         side: BorderSide(color: danger.withValues(alpha: 0.32)),
       ),
       clipBehavior: Clip.antiAlias,

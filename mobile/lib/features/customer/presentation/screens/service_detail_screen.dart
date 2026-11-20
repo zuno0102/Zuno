@@ -104,9 +104,8 @@ class _ServiceDetailBody extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    service.serviceCategoryName.toUpperCase(),
+                    service.serviceCategoryName,
                     style: theme.textTheme.labelSmall?.copyWith(
-                      letterSpacing: 0.8,
                       fontWeight: FontWeight.w700,
                       color: theme.colorScheme.primary,
                     ),
@@ -409,10 +408,9 @@ class _VariantCard extends StatelessWidget {
                   children: [
                     if (variant.serviceSubCategoryName case final subCategory?)
                       Text(
-                        subCategory.toUpperCase(),
+                        subCategory,
                         style: theme.textTheme.labelSmall?.copyWith(
                           fontSize: 10,
-                          letterSpacing: 0.6,
                           fontWeight: FontWeight.w700,
                           color: theme.colorScheme.primary,
                         ),

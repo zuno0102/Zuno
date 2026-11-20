@@ -22,7 +22,6 @@ class PayoutBatchItem {
 
   bool get isPaid => paymentStatus == 'Paid';
   bool get isFailed => paymentStatus == 'Failed';
-  bool get isDisputed => paymentStatus == 'Disputed';
 }
 
 /// A pay run: one amount the business pays, split across the crew.

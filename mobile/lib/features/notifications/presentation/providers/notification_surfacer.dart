@@ -132,15 +132,4 @@ class NotificationSurfacer extends _$NotificationSurfacer {
       _surfaced = _surfaced.skip(_surfaced.length - _remember).toSet();
     }
   }
-
-  /// Clears the shade and forgets what was shown.
-  ///
-  /// For sign-out: the next person to pick up the phone must not find the last one's wages and
-  /// bookings sitting in their notifications.
-  Future<void> forgetEverything() async {
-    await SystemNotifications.instance.clearAll();
-    _surfaced = const {};
-    _loaded = true;
-    await _save();
-  }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:zuno/core/theme/app_theme.dart';
 
 /// One choice in a [SelectField].
 class SelectOption<T> {
@@ -62,7 +63,7 @@ class SelectField<T> extends FormField<T> {
              value: chosen?.label,
              child: InkWell(
                onTap: change == null ? null : open,
-               borderRadius: BorderRadius.circular(12),
+               borderRadius: BorderRadius.circular(AppRadius.md),
                // Nothing chosen: the label alone sits in the box, as on an empty text field, and
                // moves up once a choice is made. A "Choose" placeholder drawn there as well landed
                // on top of the label — "Job type" and "Choose" printed over each other.
@@ -167,7 +168,7 @@ Future<SelectPick<T>?> showSelectSheet<T>(
                     child: ListTile(
                       key: ValueKey('select-option-${o.value}'),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
                       selected: o.value == selected,
                       selectedTileColor: scheme.primaryContainer,

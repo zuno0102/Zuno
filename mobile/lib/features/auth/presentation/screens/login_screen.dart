@@ -69,11 +69,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'SIGN IN',
+                        'Sign in',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).colorScheme.primary,
-                          letterSpacing: 0.5,
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -110,7 +109,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       Center(
                         child: TextButton(
                           onPressed: () => context.push('/forgot-password'),
-                          child: const Text('Forgot Password?'),
+                          child: const Text('Forgot password?'),
                         ),
                       ),
                       Center(
@@ -128,7 +127,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             GestureDetector(
                               onTap: () => context.push('/register'),
                               child: Text(
-                                'SIGN UP',
+                                'Sign up',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: Theme.of(context).colorScheme.primary,

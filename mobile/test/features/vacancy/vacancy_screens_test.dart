@@ -173,7 +173,7 @@ void main() {
       expect(find.text('Do you have a two-wheeler?'), findsOneWidget);
       expect(find.widgetWithText(ChoiceChip, 'Yes'), findsOneWidget);
       expect(find.text('Years of experience (optional)'), findsOneWidget);
-      expect(find.text('SEND APPLICATION'), findsOneWidget);
+      expect(find.text('Send application'), findsOneWidget);
     });
 
     testWidgets('sending without a required file or Yes/No is stopped here', (
@@ -189,7 +189,7 @@ void main() {
         find.widgetWithText(TextFormField, 'Do you know Tally?'),
         'Yes',
       );
-      await tester.tap(find.text('SEND APPLICATION'));
+      await tester.tap(find.text('Send application'));
       await tester.pumpAndSettle();
 
       expect(
@@ -213,7 +213,7 @@ void main() {
 
         expect(find.text('Shortlisted'), findsOneWidget);
         expect(find.text('Withdraw application'), findsOneWidget);
-        expect(find.text('SEND APPLICATION'), findsNothing);
+        expect(find.text('Send application'), findsNothing);
       },
     );
 
@@ -272,7 +272,7 @@ void main() {
           find.widgetWithText(TextFormField, 'Your area'),
           'Nagercoil',
         );
-        await tester.tap(find.text('SEND APPLICATION'));
+        await tester.tap(find.text('Send application'));
         await tester.pumpAndSettle();
 
         expect(repo.applied.single.single.text, 'Nagercoil');

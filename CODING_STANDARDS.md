@@ -9,8 +9,8 @@ app (`mobile/`), the launcher (`launcher/`) and the PostgreSQL database. A chang
 | Layer | Technology |
 |---|---|
 | API | ASP.NET Core, versioned controllers (`Asp.Versioning`), JWT Bearer auth |
-| Application | MediatR (CQRS), FluentValidation, Mapster |
-| Data | EF Core + Npgsql (PostgreSQL on Neon), snake_case naming, Redis cache |
+| Application | MediatR (CQRS), FluentValidation; DTOs mapped by hand-written `ToDto()` extension methods (no mapping library) |
+| Data | EF Core + Npgsql (PostgreSQL on Neon), snake_case naming; in-memory cache (`IMemoryCache`) now, Redis when the API runs as more than one instance |
 | Resilience / logs | Polly, Serilog |
 | Mobile | Flutter, Riverpod (code-gen), go_router, Dio, flutter_secure_storage, freezed |
 
@@ -46,7 +46,7 @@ Where each kind of value belongs:
 
 | Kind of value | Where it lives | Example |
 |---|---|---|
-| Business data that admins change (service types, fees, cities, service areas, cancellation windows) | **Database table**, cached in Redis | `service_categories`, `platform_settings` |
+| Business data that admins change (service types, fees, cities, service areas, cancellation windows) | **Database table**, cached (in memory now, Redis once scaled out) | `service_categories`, `platform_settings` |
 | Environment-specific settings (connection strings, base URLs, CORS origins) | `appsettings.{Environment}.json` + environment variables | `ConnectionStrings:Default` |
 | Secrets (JWT key, DB password, Razorpay keys) | Environment variables / secret store **only** | `Jwt__SigningKey` |
 | Fixed technical constants (route names, header names) | One constants class per area | `ApiConstants`, `ClaimNames` |
@@ -154,8 +154,9 @@ Where to look first:
   SQL in development logs.
 - **Pagination is mandatory** for every list endpoint (keyset/cursor paging preferred for large or
   feed-style lists; a hard maximum page size from config).
-- **Cache** read-heavy, rarely-changing data (settings, categories, service areas) in Redis with
-  an expiry and explicit invalidation on update.
+- **Cache** read-heavy, rarely-changing data (settings, categories, service areas) in
+  `IMemoryCache`, with an expiry and explicit invalidation on update. Move to Redis when the API
+  runs as more than one instance.
 - **Response compression** and **output caching** for public, cacheable GETs.
 - **External calls** (maps/Nominatim, payments, push) go through typed `HttpClient`s with Polly
   timeout, retry with back-off and circuit breaker. Never block a request on a slow third party
@@ -235,7 +236,7 @@ Where to look first:
 Zuno.Domain          Entities, value objects, enums, domain rules. No framework references.
 Zuno.Application     Use cases: Modules/<Feature>/Commands|Queries/<UseCase>/
                      (Command/Query, Handler, Validator, DTOs), interfaces in Common/Interfaces.
-Zuno.Infrastructure  EF Core DbContext, configurations, migrations, Redis, HTTP clients,
+Zuno.Infrastructure  EF Core DbContext, configurations, migrations, caching, HTTP clients,
                      external services (maps, payments, push).
 Zuno.Api             Thin controllers, middleware, auth, versioning, DI composition.
 tests/               Mirrors the src structure, one test class per use case.
@@ -350,8 +351,9 @@ flutter test
 
 Code must be written so the system can scale **horizontally** — add more servers, not bigger ones.
 
-- **Stateless API.** No user state in server memory or local disk; sessions live in tokens,
-  Redis or the database. Any instance can serve any request.
+- **Stateless API.** No user state in server memory or local disk; sessions live in tokens
+  or the database. Any instance can serve any request. Caches only hold copies of database data,
+  so each instance rebuilds its own; they move to Redis when more than one instance runs.
 - **Database is protected:** every query is indexed and paginated; connection pooling is
   configured; read-heavy endpoints use cache; consider read replicas for reporting.
 - **Cache first** for hot, shared data, with sensible TTLs and cache-stampede protection.

@@ -1,5 +1,6 @@
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:flutter/material.dart';
+import 'package:zuno/core/theme/app_theme.dart';
 import 'package:zuno/shared/domain/business_trust.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/shared/widgets/rating_line.dart';
@@ -37,9 +38,8 @@ class TrustCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              title.toUpperCase(),
+              title,
               style: theme.textTheme.labelSmall?.copyWith(
-                letterSpacing: 0.7,
                 fontWeight: FontWeight.w700,
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -269,7 +269,7 @@ extension on TrustCard {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: danger.withValues(alpha: 0.09),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadius.md),
             border: Border.all(color: danger.withValues(alpha: 0.32)),
           ),
           child: Row(

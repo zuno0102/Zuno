@@ -282,7 +282,7 @@ class _TotalCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(order.isAddOn ? 'EXTRA PIECES' : 'TOTAL', style: muted),
+            Text(order.isAddOn ? 'Extra pieces' : 'Total', style: muted),
             Row(
               crossAxisAlignment: CrossAxisAlignment.baseline,
               textBaseline: TextBaseline.alphabetic,

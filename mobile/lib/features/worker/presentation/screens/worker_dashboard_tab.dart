@@ -194,10 +194,9 @@ class _AwaitingPaymentCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'AWAITING PAYMENT',
+                      'Awaiting payment',
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
-                        letterSpacing: 0.8,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -256,10 +255,9 @@ class _EarningsCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'EARNED THROUGH ZUNO',
+              'Earned through Zuno',
               style: theme.textTheme.labelSmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
-                letterSpacing: 0.8,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -480,9 +478,8 @@ class _ProfileCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'YOUR PROFILE',
+                      'Your profile',
                       style: theme.textTheme.labelSmall?.copyWith(
-                        letterSpacing: 0.9,
                         fontWeight: FontWeight.w700,
                         color: theme.colorScheme.onSurfaceVariant,
                       ),

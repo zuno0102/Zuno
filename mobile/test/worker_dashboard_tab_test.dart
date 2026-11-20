@@ -116,8 +116,8 @@ void main() {
     );
 
     expect(tester.takeException(), isNull);
-    expect(find.text('AWAITING PAYMENT'), findsOneWidget);
-    expect(find.text('EARNED THROUGH ZUNO'), findsOneWidget);
+    expect(find.text('Awaiting payment'), findsOneWidget);
+    expect(find.text('Earned through Zuno'), findsOneWidget);
     expect(find.text('Ravi Kumar'), findsOneWidget);
   });
 
@@ -152,8 +152,8 @@ void main() {
         ),
       );
 
-      final owed = tester.getTopLeft(find.text('AWAITING PAYMENT')).dy;
-      final earned = tester.getTopLeft(find.text('EARNED THROUGH ZUNO')).dy;
+      final owed = tester.getTopLeft(find.text('Awaiting payment')).dy;
+      final earned = tester.getTopLeft(find.text('Earned through Zuno')).dy;
       expect(
         owed,
         lessThan(earned),
@@ -190,7 +190,7 @@ void main() {
       // instead of by a card that only exists on the days the answer is bad.
       await pump(tester, WorkerDashboard(profile: profile()));
 
-      expect(find.text('AWAITING PAYMENT'), findsOneWidget);
+      expect(find.text('Awaiting payment'), findsOneWidget);
       expect(find.text('Nothing waiting'), findsOneWidget);
       // And no ₹0 dressed up as a figure.
       expect(find.text('₹0'), findsNothing);
@@ -209,7 +209,7 @@ void main() {
         ),
       );
 
-      await tester.tap(find.text('AWAITING PAYMENT'));
+      await tester.tap(find.text('Awaiting payment'));
       await tester.pumpAndSettle();
 
       expect(find.text('Awaiting payment'), findsOneWidget);
@@ -283,7 +283,7 @@ void main() {
       // tap: the picture, the name and the level.
       await pump(tester, WorkerDashboard(profile: profile()));
 
-      expect(find.text('YOUR PROFILE'), findsOneWidget);
+      expect(find.text('Your profile'), findsOneWidget);
       expect(find.text('Ravi Kumar'), findsOneWidget);
       expect(find.text('Tap to view and edit your details'), findsOneWidget);
 
@@ -307,13 +307,13 @@ void main() {
     ) async {
       await pump(tester, WorkerDashboard(profile: profile(phoneNumber: null)));
 
-      await tester.ensureVisible(find.text('YOUR PROFILE'));
+      await tester.ensureVisible(find.text('Your profile'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('YOUR PROFILE'));
+      await tester.tap(find.text('Your profile'));
       await tester.pumpAndSettle();
 
       expect(find.text('Your profile'), findsOneWidget);
-      expect(find.text('YOUR DETAILS'), findsOneWidget);
+      expect(find.text('Your details'), findsOneWidget);
       // Around a worker in ten, and they are the only person who can fix it.
       expect(find.textContaining('businesses cannot call you'), findsOneWidget);
       expect(find.text('Edit Profile'), findsOneWidget);

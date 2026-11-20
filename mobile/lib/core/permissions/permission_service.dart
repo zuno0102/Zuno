@@ -78,8 +78,6 @@ class PermissionOutcome {
   /// Refused with "don't ask again". Only the settings screen can undo it, so the words on screen
   /// have to change.
   final bool cameraPermanentlyDenied;
-
-  bool get allGranted => cameraGranted && photosGranted;
 }
 
 class PermissionHandlerService implements PermissionService {

@@ -381,13 +381,13 @@ class _PostCardState extends ConsumerState<_PostCard> {
                 if (settled)
                   const StatusPill(
                     icon: Icons.workspace_premium_outlined,
-                    label: 'SUCCESSFULLY COMPLETED',
+                    label: 'Successfully completed',
                     tone: StatusTone.success,
                   )
                 else if (lapsed)
                   const StatusPill(
                     icon: Icons.event_busy_outlined,
-                    label: 'NOT FILLED',
+                    label: 'Not filled',
                     tone: StatusTone.waiting,
                     detail: 'the date passed',
                   )
@@ -578,7 +578,7 @@ class _CrewSection extends StatelessWidget {
             if (_needsAttention) ...[
               const SizedBox(width: 8),
               const StatusPill(
-                label: 'NEEDS YOU',
+                label: 'Needs you',
                 tone: StatusTone.progress,
                 compact: true,
               ),

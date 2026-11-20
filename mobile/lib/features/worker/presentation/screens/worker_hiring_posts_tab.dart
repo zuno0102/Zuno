@@ -314,7 +314,7 @@ class _PostCardState extends ConsumerState<_PostCard> {
                         const SizedBox(height: 4),
                         StatusPill(
                           icon: Icons.bolt,
-                          label: 'NEEDED NOW',
+                          label: 'Needed now',
                           tone: StatusTone.progress,
                           detail: 'ends ${formatTime(post.eventEndDate)}',
                           compact: true,

@@ -132,7 +132,7 @@ void main() {
       await tester.tap(find.text('Varkala cliff catering'));
       await tester.pumpAndSettle();
 
-      expect(find.text('WHAT YOU GET PAID'), findsOneWidget);
+      expect(find.text('What you get paid'), findsOneWidget);
       expect(find.text('Crew wanted'), findsOneWidget);
 
       // Not the business. Somebody who picked this worker by name is not a stranger to check out,

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,6 +24,13 @@ Future<void> main() async {
   // In the phone's browser, the keyboard shrinks the page instead of sliding it up — otherwise a
   // form slides off the top and leaves an empty strip above the keyboard.
   useKeyboardResizesContent();
+
+  // The bundled typeface's licence, listed with the packages' own.
+  LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks(const [
+      'Figtree',
+    ], await rootBundle.loadString('assets/fonts/figtree/OFL.txt'));
+  });
 
   // Set up before the first frame, so a notification tapped from a cold start — where the tap is
   // what launched the app — is already recorded by the time a screen exists to act on it.

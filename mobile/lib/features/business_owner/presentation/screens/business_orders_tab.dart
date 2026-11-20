@@ -409,9 +409,8 @@ class _StatusManagementTabState extends ConsumerState<_StatusManagementTab> {
           Padding(
             padding: const EdgeInsets.only(bottom: 8, left: 2),
             child: Text(
-              'YOUR OWN EVENTS',
+              'Your own events',
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                letterSpacing: 0.8,
                 fontWeight: FontWeight.w700,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),

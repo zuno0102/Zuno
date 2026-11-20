@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:zuno/core/theme/app_theme.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/ui_config/ui_config.dart';
 
@@ -50,9 +51,8 @@ class StatusPill extends StatelessWidget {
         vertical: compact ? 4 : 6,
       ),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
       // Both texts yield rather than overflow. The pill keeps its natural width wherever there
       // is room -- mainAxisSize.min still governs that -- but inside a Flexible on a narrow
