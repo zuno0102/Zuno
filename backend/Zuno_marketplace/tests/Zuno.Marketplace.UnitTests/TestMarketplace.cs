@@ -50,6 +50,8 @@ internal sealed class TestMarketplace : IDisposable
 
     public MarketplaceReference Reference => new(Db, _cache, Settings);
 
+    public IMemoryCache Cache => _cache;
+
     public SaveMarketplacePostHandlers SaveHandlers => new(User, Db, Reference, Clock, Settings, Storage);
 
     public ManageMarketplacePostHandlers ManageHandlers => new(User, Db, Storage, Reference, Clock);

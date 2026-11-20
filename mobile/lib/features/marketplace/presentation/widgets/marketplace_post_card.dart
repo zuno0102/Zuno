@@ -44,6 +44,10 @@ class MarketplacePostCard extends StatelessWidget {
       imageUrl: marketplacePhotoUrl(card.imageUrl),
       price: marketplacePrice(card),
       wasPrice: was == null ? null : rupees(was),
+      saving: switch (card.percentOff) {
+        final off? when off > 0 => '$off% off',
+        _ => null,
+      },
       title: card.title,
       placeLine: b2b
           ? 'B2B · smallest order ${card.minOrderQuantity}${card.priceUnit == null ? '' : ' ${card.priceUnit}'}'

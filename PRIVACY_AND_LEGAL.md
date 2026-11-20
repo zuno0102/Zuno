@@ -80,11 +80,11 @@ The test cannot see new database fields or new sharing rules. Those depend on th
 | Photos and videos | Yes | No | Profile, services, rent items, Marketplace posts, courier receipts | Yes |
 | Files and documents | Yes | No | Job applications | Yes |
 | Messages in the app | Yes | No | Talking about a booking | Yes |
-| Purchase history | Yes | No | Bookings, rent and Marketplace orders, refunds, B2B buyer plan | No |
+| Purchase history | Yes | No | Bookings, rent and Marketplace orders, refunds, B2B buyer plan; personalisation: the customer's own "Recommended for you" | No |
 | Financial info: UPI ID, bank account | Yes | No | Paying businesses and workers | Yes |
 | Payment card details | No: Razorpay handles them | Razorpay (as processor) | Online payment | — |
 | Other user content: reviews | Yes | No | Ratings | Yes |
-| App activity: Marketplace wishlist | Yes | No | Saved posts, shown only to the customer | Yes |
+| App activity: Marketplace wishlist | Yes | No | Saved posts, shown only to the customer; personalisation: their "Recommended for you" | Yes |
 
 - Data is **encrypted in transit** (HTTPS): yes.
 - Users can **request deletion**: yes, by email now; in the app once section 5 is built.

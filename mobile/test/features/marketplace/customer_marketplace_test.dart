@@ -181,6 +181,9 @@ class _FakeRepo implements MarketplaceCustomerRepository {
   MarketplaceHome home = const MarketplaceHome();
   final Map<String, MarketplacePostDetail> posts = {};
   List<MarketplaceCard> results = const [];
+  List<MarketplaceCard> feed = const [];
+  final feedPages = <int>[];
+  int? feedFailsFromPage;
   List<MarketplaceCard> wishlist = const [];
   final Map<String, MarketplaceOrder> orders = {};
   List<MarketplaceStatusCount> counts = const [];
@@ -206,8 +209,21 @@ class _FakeRepo implements MarketplaceCustomerRepository {
     String? categoryId,
     String? keyword,
     List<String>? districtIds,
+    bool feed = false,
     int page = 1,
+    int? pageSize,
   }) async {
+    if (feed) {
+      feedPages.add(page);
+      if (feedFailsFromPage case final from? when page >= from) {
+        throw Exception('No connection.');
+      }
+      final size = pageSize ?? 20;
+      return MarketplaceCardPage(
+        items: this.feed.skip((page - 1) * size).take(size).toList(),
+        totalCount: this.feed.length,
+      );
+    }
     searched.add(keyword);
     searchedCategories.add(categoryId);
     return MarketplaceCardPage(items: results, totalCount: results.length);
@@ -362,36 +378,217 @@ Future<void> _tapVisible(WidgetTester tester, Key key) async {
   await tester.tap(find.byKey(key));
 }
 
+/// A home of one product grid, "Just in".
+MarketplaceHome _homeWith(List<MarketplaceCard> products) => MarketplaceHome(
+  sections: [
+    MarketplaceHomeSection(
+      code: 'just_in',
+      title: 'Just in',
+      layout: MarketplaceHomeLayout.grid,
+      items: products,
+    ),
+  ],
+);
+
+/// Scrolls the home page itself — not the sideways strips and banners inside it.
+Future<void> _scrollTo(WidgetTester tester, Finder finder) => tester
+    .scrollUntilVisible(finder, 300, scrollable: find.byType(Scrollable).first);
+
 void main() {
   group('Marketplace home', () {
-    testWidgets('banners, food near you, products and B2B lots', (
+    testWidgets('draws each section as the server lays it out, in order', (
       tester,
     ) async {
       final repo = _FakeRepo()
         ..home = MarketplaceHome(
-          banners: [_card('ad', title: 'Aadi sale', kind: 'Advertisement')],
-          food: [_biryani.card],
-          products: [_card('p1')],
-          wholesale: [_lot.card],
+          sections: [
+            MarketplaceHomeSection(
+              code: 'just_in',
+              title: 'Just in',
+              layout: MarketplaceHomeLayout.grid,
+              items: [_card('p1')],
+            ),
+            MarketplaceHomeSection(
+              code: 'banners',
+              layout: MarketplaceHomeLayout.banner,
+              items: [_card('ad', title: 'Aadi sale', kind: 'Advertisement')],
+            ),
+            MarketplaceHomeSection(
+              code: 'b2b_lots',
+              title: 'B2B bulk lots',
+              layout: MarketplaceHomeLayout.strip,
+              items: [_lot.card],
+            ),
+            MarketplaceHomeSection(
+              code: 'food',
+              title: 'Food offers near you',
+              layout: MarketplaceHomeLayout.grid,
+              items: [_biryani.card],
+            ),
+            MarketplaceHomeSection(
+              code: 'off_50',
+              title: 'Min 50% off',
+              layout: MarketplaceHomeLayout.strip,
+              items: [
+                _card(
+                  'deal',
+                  title: 'Linen shirt',
+                  price: 400,
+                  originalPrice: 1000,
+                ),
+              ],
+            ),
+          ],
         );
       await _pump(tester, const CustomerMarketplaceHomeTab(), repo: repo);
 
+      expect(find.text('Just in'), findsOneWidget);
+      expect(find.byKey(const ValueKey('marketplace-card-p1')), findsOneWidget);
       expect(find.byKey(const ValueKey('marketplace-banners')), findsOneWidget);
-      expect(find.text('Aadi sale'), findsOneWidget);
+      expect(
+        find.text('Aadi sale'),
+        findsNothing,
+        reason: 'a poster carries its own words',
+      );
+      expect(find.bySemanticsLabel('Aadi sale'), findsOneWidget);
+      await _scrollTo(
+        tester,
+        find.byKey(const ValueKey('marketplace-b2b_lots')),
+      );
+      expect(find.text('B2B bulk lots'), findsOneWidget);
+      expect(find.text('B2B · smallest order 200 kg'), findsOneWidget);
+      await _scrollTo(tester, find.byKey(const ValueKey('marketplace-food')));
       expect(find.text('Food offers near you'), findsOneWidget);
       expect(
         find.textContaining('₹99 / plate', findRichText: true),
         findsOneWidget,
       );
-      expect(find.text('Products'), findsOneWidget);
-      expect(find.byKey(const ValueKey('marketplace-card-p1')), findsOneWidget);
-      await tester.scrollUntilVisible(
-        find.byKey(const ValueKey('marketplace-b2b-strip')),
-        200,
-        // The page itself, not the sideways strips and banners inside it.
-        scrollable: find.byType(Scrollable).first,
+      await _scrollTo(tester, find.byKey(const ValueKey('marketplace-off_50')));
+      expect(find.text('Min 50% off'), findsOneWidget);
+      expect(find.text('60% off'), findsOneWidget);
+    });
+
+    testWidgets('poster banners move on by themselves, round to the first', (
+      tester,
+    ) async {
+      final repo = _FakeRepo()
+        ..home = MarketplaceHome(
+          sections: [
+            MarketplaceHomeSection(
+              code: 'banners',
+              layout: MarketplaceHomeLayout.banner,
+              items: [
+                _card('ad1', kind: 'Advertisement'),
+                _card('ad2', kind: 'Advertisement'),
+              ],
+            ),
+          ],
+        );
+      await _pump(tester, const CustomerMarketplaceHomeTab(), repo: repo);
+      double page() => tester
+          .widget<PageView>(
+            find.byKey(const ValueKey('marketplace-banners-pager')),
+          )
+          .controller!
+          .page!;
+
+      expect(page(), 0);
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pumpAndSettle();
+      expect(page(), 1);
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pumpAndSettle();
+      expect(page(), 0, reason: 'after the last comes the first');
+    });
+
+    testWidgets('All products loads the next page near the foot', (
+      tester,
+    ) async {
+      final repo = _FakeRepo()
+        ..home = MarketplaceHome(
+          sections: [
+            MarketplaceHomeSection(
+              code: 'just_in',
+              title: 'Just in',
+              layout: MarketplaceHomeLayout.grid,
+              items: [_card('p0')],
+            ),
+            const MarketplaceHomeSection(
+              code: 'all',
+              title: 'All products',
+              layout: MarketplaceHomeLayout.feed,
+              pageSize: 4,
+            ),
+          ],
+        )
+        ..feed = [for (var i = 1; i <= 6; i++) _card('f$i')];
+      await _pump(tester, const CustomerMarketplaceHomeTab(), repo: repo);
+      await _scrollTo(
+        tester,
+        find.byKey(const ValueKey('marketplace-card-f4')),
       );
-      expect(find.text('B2B · smallest order 200 kg'), findsOneWidget);
+      await tester.pumpAndSettle();
+      expect(
+        repo.feedPages,
+        [1, 2],
+        reason: 'drawing the last cards of a page asks for the next',
+      );
+      await _scrollTo(
+        tester,
+        find.byKey(const ValueKey('marketplace-card-f6')),
+      );
+      expect(find.text('All products'), findsOneWidget);
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, -2000));
+      await tester.pumpAndSettle();
+      expect(repo.feedPages, [
+        1,
+        2,
+      ], reason: 'all six are shown; no third page');
+    });
+
+    testWidgets('a page that does not come waits for Try again', (
+      tester,
+    ) async {
+      final repo = _FakeRepo()
+        ..home = MarketplaceHome(
+          sections: [
+            MarketplaceHomeSection(
+              code: 'just_in',
+              layout: MarketplaceHomeLayout.grid,
+              items: [_card('p0')],
+            ),
+            const MarketplaceHomeSection(
+              code: 'all',
+              title: 'All products',
+              layout: MarketplaceHomeLayout.feed,
+              pageSize: 2,
+            ),
+          ],
+        )
+        ..feed = [for (var i = 1; i <= 4; i++) _card('f$i')]
+        ..feedFailsFromPage = 2;
+      await _pump(tester, const CustomerMarketplaceHomeTab(), repo: repo);
+
+      expect(repo.feedPages, [1, 2]);
+      await _scrollTo(
+        tester,
+        find.byKey(const ValueKey('marketplace-feed-retry')),
+      );
+      await tester.pumpAndSettle();
+      expect(repo.feedPages, [1, 2], reason: 'no retrying by itself');
+
+      repo.feedFailsFromPage = null;
+      await tester.tap(find.byKey(const ValueKey('marketplace-feed-retry')));
+      await tester.pumpAndSettle();
+      expect(repo.feedPages, [1, 2, 2]);
+      await _scrollTo(
+        tester,
+        find.byKey(const ValueKey('marketplace-card-f4')),
+      );
+      expect(
+        find.byKey(const ValueKey('marketplace-feed-retry')),
+        findsNothing,
+      );
     });
 
     testWidgets('an empty home says so', (tester) async {
@@ -403,7 +600,7 @@ void main() {
       tester,
     ) async {
       final repo = _FakeRepo()
-        ..home = MarketplaceHome(products: [_card('p1')])
+        ..home = _homeWith([_card('p1')])
         ..results = [_card('p2', title: 'Cotton kurta')];
       await _pump(tester, const CustomerMarketplaceHomeTab(), repo: repo);
 
@@ -429,7 +626,7 @@ void main() {
     tester,
   ) async {
     final repo = _FakeRepo()
-      ..home = MarketplaceHome(products: [_card('p1')])
+      ..home = _homeWith([_card('p1')])
       ..results = [_card('p1')];
     await _pump(
       tester,
@@ -478,7 +675,7 @@ void main() {
 
   group('Wishlist heart', () {
     testWidgets('saves and un-saves at once', (tester) async {
-      final repo = _FakeRepo()..home = MarketplaceHome(products: [_card('p1')]);
+      final repo = _FakeRepo()..home = _homeWith([_card('p1')]);
       await _pump(tester, const CustomerMarketplaceHomeTab(), repo: repo);
       final heart = find.byKey(const ValueKey('marketplace-heart-p1'));
 
@@ -509,7 +706,7 @@ void main() {
       tester,
     ) async {
       final repo = _FakeRepo()
-        ..home = MarketplaceHome(products: [_card('p1')])
+        ..home = _homeWith([_card('p1')])
         ..favouriteFails = true;
       await _pump(tester, const CustomerMarketplaceHomeTab(), repo: repo);
 

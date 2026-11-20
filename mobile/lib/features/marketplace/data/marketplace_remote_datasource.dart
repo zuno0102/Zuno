@@ -259,7 +259,9 @@ class MarketplaceRemoteDataSource {
     String? categoryId,
     String? keyword,
     List<String>? districtIds,
+    bool feed = false,
     int page = 1,
+    int? pageSize,
   }) => _run(() async {
     final response = await _dio.get<Map<String, dynamic>>(
       MarketplaceApi.searchPath,
@@ -269,7 +271,9 @@ class MarketplaceRemoteDataSource {
         'categoryId': ?categoryId,
         'keyword': ?keyword,
         'districtIds': ?districtIds,
+        if (feed) 'feed': true,
         'page': page,
+        'pageSize': ?pageSize,
       },
     );
     return MarketplaceCardPageModel.fromJson(response.data!);

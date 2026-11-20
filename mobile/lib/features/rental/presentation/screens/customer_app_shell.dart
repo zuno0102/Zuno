@@ -110,10 +110,11 @@ class CustomerPanelSwitch extends StatelessWidget {
   final CustomerPanel value;
   final ValueChanged<CustomerPanel> onChanged;
 
+  /// Each door with its share of the width: a longer name gets more, so all three read at one size.
   static const _panels = [
-    (CustomerPanel.service, Icons.handyman_rounded, 'Service'),
-    (CustomerPanel.rent, Icons.chair_alt_rounded, 'Rent'),
-    (CustomerPanel.marketplace, Icons.storefront_rounded, 'Marketplace'),
+    (CustomerPanel.service, Icons.handyman_rounded, 'Service', 5),
+    (CustomerPanel.rent, Icons.chair_alt_rounded, 'Rent', 4),
+    (CustomerPanel.marketplace, Icons.storefront_rounded, 'Marketplace', 6),
   ];
 
   @override
@@ -121,9 +122,10 @@ class CustomerPanelSwitch extends StatelessWidget {
     return Row(
       key: const ValueKey('customer-panel-switch'),
       children: [
-        for (final (i, (panel, icon, label)) in _panels.indexed) ...[
-          if (i > 0) const SizedBox(width: 12),
+        for (final (i, (panel, icon, label, share)) in _panels.indexed) ...[
+          if (i > 0) const SizedBox(width: 8),
           Expanded(
+            flex: share,
             child: _PanelCard(
               key: ValueKey('customer-panel-${panel.name}'),
               icon: icon,
@@ -175,37 +177,46 @@ class _PanelCard extends StatelessWidget {
           child: InkWell(
             borderRadius: radius,
             onTap: selected ? null : onTap,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircleAvatar(
-                  radius: 11,
-                  backgroundColor: selected
-                      ? scheme.onPrimary.withValues(alpha: 0.18)
-                      : scheme.primaryContainer,
-                  child: Icon(
-                    icon,
-                    size: 14,
-                    color: selected ? scheme.onPrimary : scheme.primary,
+            // Room inside the edge, so a name that just fits never touches the card's side.
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircleAvatar(
+                    radius: 11,
+                    backgroundColor: selected
+                        ? scheme.onPrimary.withValues(alpha: 0.18)
+                        : scheme.primaryContainer,
+                    child: Icon(
+                      icon,
+                      size: 14,
+                      color: selected ? scheme.onPrimary : scheme.primary,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                // Three doors share a narrow phone: a long name shrinks to fit, never wraps.
-                Flexible(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        fontStyle: FontStyle.italic,
-                        color: foreground,
+                  const SizedBox(width: 6),
+                  // Three doors share a narrow phone: a long name shrinks to fit, never wraps. The
+                  // small right pad keeps the italic's last letter from being cut.
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 2),
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                fontStyle: FontStyle.italic,
+                                color: foreground,
+                              ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

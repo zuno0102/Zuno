@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/shared/widgets/network_photo.dart';
 
 /// An item on a customer's home, search or wishlist — the photo with its price on it, the name,
@@ -13,6 +14,7 @@ class ListingCard extends StatelessWidget {
     required this.businessName,
     required this.onTap,
     this.wasPrice,
+    this.saving,
     this.rating,
     this.photoCorner,
     this.badge,
@@ -26,8 +28,11 @@ class ListingCard extends StatelessWidget {
   /// The price tag on the photo, e.g. "₹1,200/day" or "₹38 / kg"; null hides the tag.
   final String? price;
 
-  /// The usual price, struck through beside [price] — a food offer's.
+  /// The usual price, struck through beside [price] — a food offer's, a product's MRP.
   final String? wasPrice;
+
+  /// The saving in green under the name, e.g. "40% off"; null for none.
+  final String? saving;
   final String title;
 
   /// A line under the name, e.g. the stars.
@@ -128,6 +133,20 @@ class ListingCard extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
+                  if (saving case final saving?) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      saving,
+                      maxLines: 1,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.status(
+                          StatusTone.success,
+                          theme.brightness,
+                        ),
+                      ),
+                    ),
+                  ],
                   if (rating != null) ...[const SizedBox(height: 2), rating!],
                   const SizedBox(height: 2),
                   _IconLine(

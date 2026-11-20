@@ -28,6 +28,87 @@ Future<MarketplaceHome> marketplaceHome(Ref ref) {
       .getHome(districtIds: district == null ? null : [district]);
 }
 
+/// The home's last section so far: the cards loaded, how many there are in all, and whether the
+/// next page is on its way.
+class MarketplaceFeed {
+  const MarketplaceFeed({
+    this.items = const [],
+    this.hasMore = false,
+    this.isLoadingMore = false,
+    this.loadFailed = false,
+  });
+
+  final List<MarketplaceCard> items;
+
+  /// The server has more after these.
+  final bool hasMore;
+  final bool isLoadingMore;
+
+  /// The last page did not come; the customer asks again rather than the app retrying by itself.
+  final bool loadFailed;
+}
+
+/// "All products" at the foot of the home — products and B2B lots from everywhere, food in the
+/// customer's district — a page of [pageSize] at a time as they scroll.
+@riverpod
+class MarketplaceFeedNotifier extends _$MarketplaceFeedNotifier {
+  int _page = 1;
+  String? _district;
+
+  @override
+  Future<MarketplaceFeed> build(int pageSize) async {
+    _district = ref.watch(
+      customerHomeLocationProvider.select((l) => l.district?.id),
+    );
+    _page = 1;
+    final page = await _fetch(1);
+    return MarketplaceFeed(items: page.items, hasMore: _more(page, 1));
+  }
+
+  /// The next page, unless one is loading or there are no more. A failure keeps what is shown
+  /// and waits for the customer to ask again.
+  Future<void> loadMore() async {
+    final current = state.value;
+    if (current == null || !current.hasMore || current.isLoadingMore) return;
+
+    state = AsyncData(
+      MarketplaceFeed(items: current.items, hasMore: true, isLoadingMore: true),
+    );
+    try {
+      final page = await _fetch(_page + 1);
+      _page++;
+      // A post can move up a page while the customer scrolls; show it once.
+      final seen = {for (final c in current.items) c.id};
+      state = AsyncData(
+        MarketplaceFeed(
+          items: [...current.items, ...page.items.where((c) => seen.add(c.id))],
+          hasMore: _more(page, _page),
+        ),
+      );
+    } catch (_) {
+      state = AsyncData(
+        MarketplaceFeed(items: current.items, hasMore: true, loadFailed: true),
+      );
+    }
+  }
+
+  /// More after page [number]: a full page, and the count says so. A short page is the last.
+  bool _more(MarketplaceCardPage page, int number) =>
+      page.items.length >= pageSize && number * pageSize < page.totalCount;
+
+  Future<MarketplaceCardPage> _fetch(int page) {
+    final district = _district;
+    return ref
+        .read(marketplaceCustomerRepositoryProvider)
+        .search(
+          feed: true,
+          districtIds: district == null ? null : [district],
+          page: page,
+          pageSize: pageSize,
+        );
+  }
+}
+
 /// What the customer searched for on the Marketplace home.
 typedef MarketplaceSearchQuery = ({String? keyword, String? categoryId});
 

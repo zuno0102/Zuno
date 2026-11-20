@@ -63,6 +63,12 @@ public class MarketplaceReference(IMarketplaceDbContext dbContext, IMemoryCache 
             "marketplace:b2b-request-statuses",
             async () => await dbContext.B2BRequestStatuses.AsNoTracking().OrderBy(s => s.DisplayOrder).ToListAsync(cancellationToken));
 
+    /// <summary>The customer home's sections, switched-off ones too, top to bottom.</summary>
+    public Task<IReadOnlyList<MarketplaceHomeSection>> HomeSectionsAsync(CancellationToken cancellationToken) =>
+        CachedAsync<MarketplaceHomeSection>(
+            "marketplace:home-sections",
+            async () => await dbContext.HomeSections.AsNoTracking().OrderBy(s => s.DisplayOrder).ToListAsync(cancellationToken));
+
     /// <summary>Drops the cached categories, so the next read sees an admin's change at once.</summary>
     public void ForgetCategories() => cache.Remove(CategoriesKey);
 

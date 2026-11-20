@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/shared/widgets/network_photo.dart';
@@ -29,6 +31,8 @@ class BannerCarousel extends StatefulWidget {
     required this.slides,
     this.height = 168,
     this.pagerKey,
+    this.autoAdvance,
+    this.postersOnly = false,
     super.key,
   });
 
@@ -38,6 +42,13 @@ class BannerCarousel extends StatefulWidget {
   /// The key of the sideways pager, for tests.
   final Key? pagerKey;
 
+  /// Moves on to the next slide this often, round to the first after the last; null stays put.
+  /// Not when the phone asks for less motion, and a swipe restarts the wait.
+  final Duration? autoAdvance;
+
+  /// The photo alone: a poster carries its own words, so no shade and no title over it.
+  final bool postersOnly;
+
   @override
   State<BannerCarousel> createState() => _BannerCarouselState();
 }
@@ -45,9 +56,45 @@ class BannerCarousel extends StatefulWidget {
 class _BannerCarouselState extends State<BannerCarousel> {
   final _pages = PageController(viewportFraction: 0.92);
   int _page = 0;
+  Timer? _timer;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _restartTimer();
+  }
+
+  @override
+  void didUpdateWidget(BannerCarousel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.autoAdvance != widget.autoAdvance ||
+        oldWidget.slides.length != widget.slides.length) {
+      _restartTimer();
+    }
+  }
+
+  void _restartTimer() {
+    _timer?.cancel();
+    _timer = null;
+    final every = widget.autoAdvance;
+    if (every == null ||
+        widget.slides.length < 2 ||
+        MediaQuery.disableAnimationsOf(context)) {
+      return;
+    }
+    _timer = Timer.periodic(every, (_) {
+      if (!_pages.hasClients) return;
+      _pages.animateToPage(
+        (_page + 1) % widget.slides.length,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeOutCubic,
+      );
+    });
+  }
 
   @override
   void dispose() {
+    _timer?.cancel();
     _pages.dispose();
     super.dispose();
   }
@@ -68,9 +115,15 @@ class _BannerCarouselState extends State<BannerCarousel> {
               key: widget.pagerKey,
               controller: _pages,
               itemCount: slides.length,
-              onPageChanged: (i) => setState(() => _page = i),
-              itemBuilder: (context, index) =>
-                  _Slide(slide: slides[index], theme: theme),
+              onPageChanged: (i) {
+                setState(() => _page = i);
+                _restartTimer();
+              },
+              itemBuilder: (context, index) => _Slide(
+                slide: slides[index],
+                theme: theme,
+                posterOnly: widget.postersOnly,
+              ),
             ),
           ),
           if (slides.length > 1) ...[
@@ -101,10 +154,15 @@ class _BannerCarouselState extends State<BannerCarousel> {
 }
 
 class _Slide extends StatelessWidget {
-  const _Slide({required this.slide, required this.theme});
+  const _Slide({
+    required this.slide,
+    required this.theme,
+    this.posterOnly = false,
+  });
 
   final BannerSlide slide;
   final ThemeData theme;
+  final bool posterOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -119,66 +177,75 @@ class _Slide extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                NetworkPhoto(url: slide.imageUrl),
+                Semantics(
+                  label: slide.title,
+                  image: true,
+                  child: NetworkPhoto(url: slide.imageUrl),
+                ),
                 // Words on a photo need a shade under them to be read.
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.transparent, AppColors.mediaGradientFoot],
-                      stops: const [0.35, 1],
+                if (!posterOnly) ...[
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          AppColors.mediaGradientFoot,
+                        ],
+                        stops: const [0.35, 1],
+                      ),
                     ),
                   ),
-                ),
-                Positioned(
-                  left: 16,
-                  right: 16,
-                  bottom: 14,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              slide.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                color: AppColors.onMedia,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            if (slide.subtitle case final subtitle?)
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    bottom: 14,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
                               Text(
-                                subtitle,
+                                slide.title,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: AppColors.onMedia.withValues(
-                                    alpha: 0.85,
-                                  ),
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  color: AppColors.onMedia,
+                                  fontWeight: FontWeight.w800,
                                 ),
                               ),
-                          ],
-                        ),
-                      ),
-                      if (action != null) ...[
-                        const SizedBox(width: 8),
-                        FilledButton.tonal(
-                          onPressed: slide.onTap,
-                          style: FilledButton.styleFrom(
-                            visualDensity: VisualDensity.compact,
+                              if (slide.subtitle case final subtitle?)
+                                Text(
+                                  subtitle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: AppColors.onMedia.withValues(
+                                      alpha: 0.85,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
-                          child: Text(action),
                         ),
+                        if (action != null) ...[
+                          const SizedBox(width: 8),
+                          FilledButton.tonal(
+                            onPressed: slide.onTap,
+                            style: FilledButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                            ),
+                            child: Text(action),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

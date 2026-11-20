@@ -773,7 +773,7 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)5,
                             FieldType = (short)3,
-                            IsActive = false,
+                            IsActive = true,
                             IsDeleted = false,
                             IsRequired = false,
                             Key = "for",
@@ -803,7 +803,7 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             CreatedDate = new DateTimeOffset(new DateTime(2026, 11, 11, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             DisplayOrder = (short)7,
                             FieldType = (short)3,
-                            IsActive = false,
+                            IsActive = true,
                             IsDeleted = false,
                             IsRequired = false,
                             Key = "for",
@@ -1018,6 +1018,246 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_marketplace_favourites_user_id_created_date");
 
                     b.ToTable("marketplace_favourites", (string)null);
+                });
+
+            modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceHomeSection", b =>
+                {
+                    b.Property<string>("Code")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("code");
+
+                    b.Property<short>("DisplayOrder")
+                        .HasColumnType("smallint")
+                        .HasColumnName("display_order");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<short>("ItemCount")
+                        .HasColumnType("smallint")
+                        .HasColumnName("item_count");
+
+                    b.Property<short>("Layout")
+                        .HasColumnType("smallint")
+                        .HasColumnName("layout");
+
+                    b.Property<string>("Parameter")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("parameter");
+
+                    b.Property<short>("Source")
+                        .HasColumnType("smallint")
+                        .HasColumnName("source");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Code")
+                        .HasName("pk_ref_marketplace_home_sections");
+
+                    b.ToTable("ref_marketplace_home_sections", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_ref_marketplace_home_sections_item_count", "item_count BETWEEN 1 AND 50");
+
+                            t.HasCheckConstraint("ck_ref_marketplace_home_sections_layout", "layout BETWEEN 1 AND 4");
+
+                            t.HasCheckConstraint("ck_ref_marketplace_home_sections_source", "source BETWEEN 1 AND 12");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Code = "just_in",
+                            DisplayOrder = (short)10,
+                            IsActive = true,
+                            ItemCount = (short)8,
+                            Layout = (short)1,
+                            Source = (short)1,
+                            Title = "Just in"
+                        },
+                        new
+                        {
+                            Code = "banners",
+                            DisplayOrder = (short)20,
+                            IsActive = true,
+                            ItemCount = (short)5,
+                            Layout = (short)2,
+                            Source = (short)2,
+                            Title = ""
+                        },
+                        new
+                        {
+                            Code = "more_to_explore",
+                            DisplayOrder = (short)30,
+                            IsActive = true,
+                            ItemCount = (short)10,
+                            Layout = (short)1,
+                            Source = (short)1,
+                            Title = "More to explore"
+                        },
+                        new
+                        {
+                            Code = "b2b_lots",
+                            DisplayOrder = (short)40,
+                            IsActive = true,
+                            ItemCount = (short)10,
+                            Layout = (short)3,
+                            Source = (short)3,
+                            Title = "B2B bulk lots"
+                        },
+                        new
+                        {
+                            Code = "trending",
+                            DisplayOrder = (short)50,
+                            IsActive = true,
+                            ItemCount = (short)7,
+                            Layout = (short)3,
+                            Source = (short)4,
+                            Title = "Trending now"
+                        },
+                        new
+                        {
+                            Code = "food",
+                            DisplayOrder = (short)60,
+                            IsActive = true,
+                            ItemCount = (short)8,
+                            Layout = (short)1,
+                            Source = (short)5,
+                            Title = "Food offers near you"
+                        },
+                        new
+                        {
+                            Code = "recommended",
+                            DisplayOrder = (short)70,
+                            IsActive = true,
+                            ItemCount = (short)10,
+                            Layout = (short)3,
+                            Source = (short)6,
+                            Title = "Recommended for you"
+                        },
+                        new
+                        {
+                            Code = "wishlist",
+                            DisplayOrder = (short)80,
+                            IsActive = true,
+                            ItemCount = (short)10,
+                            Layout = (short)3,
+                            Source = (short)7,
+                            Title = "From your wishlist"
+                        },
+                        new
+                        {
+                            Code = "off_70",
+                            DisplayOrder = (short)90,
+                            IsActive = true,
+                            ItemCount = (short)10,
+                            Layout = (short)3,
+                            Parameter = "70",
+                            Source = (short)8,
+                            Title = "Min 70% off"
+                        },
+                        new
+                        {
+                            Code = "off_50",
+                            DisplayOrder = (short)100,
+                            IsActive = true,
+                            ItemCount = (short)10,
+                            Layout = (short)3,
+                            Parameter = "50",
+                            Source = (short)8,
+                            Title = "Min 50% off"
+                        },
+                        new
+                        {
+                            Code = "off_30",
+                            DisplayOrder = (short)110,
+                            IsActive = true,
+                            ItemCount = (short)10,
+                            Layout = (short)3,
+                            Parameter = "30",
+                            Source = (short)8,
+                            Title = "Min 30% off"
+                        },
+                        new
+                        {
+                            Code = "off_10",
+                            DisplayOrder = (short)120,
+                            IsActive = true,
+                            ItemCount = (short)10,
+                            Layout = (short)3,
+                            Parameter = "10",
+                            Source = (short)8,
+                            Title = "Min 10% off"
+                        },
+                        new
+                        {
+                            Code = "for_men",
+                            DisplayOrder = (short)130,
+                            IsActive = true,
+                            ItemCount = (short)10,
+                            Layout = (short)3,
+                            Parameter = "Men,Unisex",
+                            Source = (short)9,
+                            Title = "For men"
+                        },
+                        new
+                        {
+                            Code = "for_women",
+                            DisplayOrder = (short)140,
+                            IsActive = true,
+                            ItemCount = (short)10,
+                            Layout = (short)3,
+                            Parameter = "Women,Unisex",
+                            Source = (short)9,
+                            Title = "For women"
+                        },
+                        new
+                        {
+                            Code = "for_kids",
+                            DisplayOrder = (short)150,
+                            IsActive = true,
+                            ItemCount = (short)10,
+                            Layout = (short)3,
+                            Parameter = "Kids",
+                            Source = (short)9,
+                            Title = "For kids"
+                        },
+                        new
+                        {
+                            Code = "best_sellers",
+                            DisplayOrder = (short)160,
+                            IsActive = true,
+                            ItemCount = (short)10,
+                            Layout = (short)3,
+                            Source = (short)10,
+                            Title = "Best sellers"
+                        },
+                        new
+                        {
+                            Code = "most_reviewed",
+                            DisplayOrder = (short)170,
+                            IsActive = true,
+                            ItemCount = (short)10,
+                            Layout = (short)3,
+                            Source = (short)11,
+                            Title = "Most reviewed"
+                        },
+                        new
+                        {
+                            Code = "all",
+                            DisplayOrder = (short)180,
+                            IsActive = true,
+                            ItemCount = (short)20,
+                            Layout = (short)4,
+                            Source = (short)12,
+                            Title = "All products"
+                        });
                 });
 
             modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceItemConditionOption", b =>

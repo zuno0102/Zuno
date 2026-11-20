@@ -249,7 +249,7 @@ public class OrderApiTests(MarketplaceApiFactory factory) : IClassFixture<Market
         var customer = factory.ClientFor(Guid.NewGuid(), "Customer");
 
         var home = await Data(await customer.GetAsync($"{Customer}/home?latitude=8.18&longitude=77.41"));
-        home.GetProperty("products").EnumerateArray().Should().Contain(c => c.GetProperty("id").GetGuid() == postId);
+        HomeIds(home, "just_in").Should().Contain(postId);
 
         var found = await Data(await customer.GetAsync($"{Customer}/posts?keyword=SILK%20saree&kind=Listing&wholesale=false"));
         found.GetProperty("items").EnumerateArray().Should().Contain(c => c.GetProperty("id").GetGuid() == postId);
@@ -282,6 +282,70 @@ public class OrderApiTests(MarketplaceApiFactory factory) : IClassFixture<Market
         (await customer.DeleteAsync($"{Customer}/favourites/{postId}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
         (await Data(await customer.GetAsync($"{Customer}/favourites"))).GetProperty("totalCount").GetInt32().Should().Be(0);
     }
+
+    /// <summary>
+    /// Every home section's query runs on Postgres on every read; this one fills the ones the
+    /// in-memory tests cannot prove translate: the MRP bands, the "For" detail inside the JSON
+    /// column, the order rankings, the customer's own rows, and the feed.
+    /// </summary>
+    [Fact]
+    public async Task Home_Sections_Fill_From_Discounts_For_Orders_And_Saves_On_Postgres()
+    {
+        var seller = factory.ClientFor(Guid.NewGuid());
+        (await seller.PostAsync($"{Business}/profile/sync", null)).EnsureSuccessStatusCode();
+        var shirt = await Data(await seller.PostAsJsonAsync(Business, new
+        {
+            categoryId = MarketplaceCatalogSeedData.Products,
+            subCategoryId = MarketplaceCatalogSeedData.SubId(3, 2),
+            title = "Linen shirt",
+            price = 400,
+            originalPrice = 1000,
+            condition = "New",
+            quantity = 20,
+            districtId = Kanyakumari,
+            attributes = new Dictionary<string, string> { ["for"] = "Men" },
+        }), HttpStatusCode.Created);
+        var shirtId = shirt.GetProperty("id").GetGuid();
+        var customer = factory.ClientFor(Guid.NewGuid(), "Customer");
+
+        var home = await Data(await customer.GetAsync($"{Customer}/home"));
+        HomeIds(home, "off_50").Should().Contain(shirtId, "60% off is in the 50% band");
+        HomeIds(home, "off_70").Should().NotContain(shirtId);
+        HomeIds(home, "for_men").Should().Contain(shirtId);
+        HomeIds(home, "for_women").Should().NotContain(shirtId);
+        home.GetProperty("sections").EnumerateArray().Last().GetProperty("layout").GetString().Should().Be("Feed");
+
+        // Five buyers of three each: well up the shared database's rankings, whatever else the suite ordered.
+        var others = Enumerable.Range(0, 4).Select(_ => factory.ClientFor(Guid.NewGuid(), "Customer"));
+        foreach (var buyer in others.Prepend(customer))
+        {
+            (await buyer.PostAsJsonAsync($"{Customer}/orders", new
+            {
+                postId = shirtId,
+                quantity = 3,
+                paymentMethod = "CashOnDelivery",
+                deliveryAddress = "12, North Street, Nagercoil",
+                pincode = "629001",
+            })).StatusCode.Should().Be(HttpStatusCode.Created);
+        }
+        (await customer.PutAsync($"{Customer}/favourites/{shirtId}", null)).EnsureSuccessStatusCode();
+
+        home = await Data(await customer.GetAsync($"{Customer}/home"));
+        HomeIds(home, "best_sellers").Should().Contain(shirtId);
+        HomeIds(home, "trending").Should().Contain(shirtId);
+        HomeIds(home, "wishlist").Should().Equal(shirtId);
+        HomeIds(home, "recommended").Should().NotContain(shirtId, "already bought");
+
+        var feed = await Data(await customer.GetAsync($"{Customer}/posts?feed=true&districtIds={Kanyakumari}&pageSize=100"));
+        feed.GetProperty("items").EnumerateArray().Should().NotContain(c => c.GetProperty("kind").GetString() == "Advertisement");
+    }
+
+    private static List<Guid> HomeIds(JsonElement home, string code) =>
+        home.GetProperty("sections").EnumerateArray()
+            .Where(s => s.GetProperty("code").GetString() == code)
+            .SelectMany(s => s.GetProperty("items").EnumerateArray())
+            .Select(c => c.GetProperty("id").GetGuid())
+            .ToList();
 
     [Fact]
     public async Task Customer_Reads_Are_Guarded()

@@ -107,6 +107,114 @@ final class MarketplaceHomeProvider
 
 String _$marketplaceHomeHash() => r'063f2ce44db77d38a358b364955b99ded59d49c3';
 
+/// "All products" at the foot of the home — products and B2B lots from everywhere, food in the
+/// customer's district — a page of [pageSize] at a time as they scroll.
+
+@ProviderFor(MarketplaceFeedNotifier)
+final marketplaceFeedProvider = MarketplaceFeedNotifierFamily._();
+
+/// "All products" at the foot of the home — products and B2B lots from everywhere, food in the
+/// customer's district — a page of [pageSize] at a time as they scroll.
+final class MarketplaceFeedNotifierProvider
+    extends $AsyncNotifierProvider<MarketplaceFeedNotifier, MarketplaceFeed> {
+  /// "All products" at the foot of the home — products and B2B lots from everywhere, food in the
+  /// customer's district — a page of [pageSize] at a time as they scroll.
+  MarketplaceFeedNotifierProvider._({
+    required MarketplaceFeedNotifierFamily super.from,
+    required int super.argument,
+  }) : super(
+         retry: null,
+         name: r'marketplaceFeedProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$marketplaceFeedNotifierHash();
+
+  @override
+  String toString() {
+    return r'marketplaceFeedProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  MarketplaceFeedNotifier create() => MarketplaceFeedNotifier();
+
+  @override
+  bool operator ==(Object other) {
+    return other is MarketplaceFeedNotifierProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$marketplaceFeedNotifierHash() =>
+    r'3a73f60a6cd0a0b88223ccc2366112456e17a274';
+
+/// "All products" at the foot of the home — products and B2B lots from everywhere, food in the
+/// customer's district — a page of [pageSize] at a time as they scroll.
+
+final class MarketplaceFeedNotifierFamily extends $Family
+    with
+        $ClassFamilyOverride<
+          MarketplaceFeedNotifier,
+          AsyncValue<MarketplaceFeed>,
+          MarketplaceFeed,
+          FutureOr<MarketplaceFeed>,
+          int
+        > {
+  MarketplaceFeedNotifierFamily._()
+    : super(
+        retry: null,
+        name: r'marketplaceFeedProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// "All products" at the foot of the home — products and B2B lots from everywhere, food in the
+  /// customer's district — a page of [pageSize] at a time as they scroll.
+
+  MarketplaceFeedNotifierProvider call(int pageSize) =>
+      MarketplaceFeedNotifierProvider._(argument: pageSize, from: this);
+
+  @override
+  String toString() => r'marketplaceFeedProvider';
+}
+
+/// "All products" at the foot of the home — products and B2B lots from everywhere, food in the
+/// customer's district — a page of [pageSize] at a time as they scroll.
+
+abstract class _$MarketplaceFeedNotifier
+    extends $AsyncNotifier<MarketplaceFeed> {
+  late final _$args = ref.$arg as int;
+  int get pageSize => _$args;
+
+  FutureOr<MarketplaceFeed> build(int pageSize);
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<AsyncValue<MarketplaceFeed>, MarketplaceFeed>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<MarketplaceFeed>, MarketplaceFeed>,
+              AsyncValue<MarketplaceFeed>,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, () => build(_$args));
+  }
+}
+
 /// The first page of matching posts — products, food, adverts and B2B lots alike.
 
 @ProviderFor(marketplaceSearch)

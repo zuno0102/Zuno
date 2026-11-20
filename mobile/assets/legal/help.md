@@ -48,6 +48,12 @@ Yes, until the seller ships it. Open the order and tap Cancel order. Money paid 
 
 When it is delivered, open the order and tap Rate this order. If you do not review it, the order closes by itself after a few days.
 
+### What is on the Marketplace home?
+
+New products first, then adverts that move on by themselves, B2B lots, food offers near you, and rows such as Recommended for you, From your wishlist, discounts (Min 50% off and others), For men, For women, Best sellers and Most reviewed. A row shows only when it has something. At the bottom, All products keeps loading as you scroll.
+
+Recommended for you is picked from the kinds of things you ordered or saved. A product's discount is worked out from its MRP.
+
 ### What is the wishlist?
 
 Tap the heart on anything in Marketplace to save it. Find your saved items under Account, then Wishlist. Something no longer on sale stays there, marked Not available, until you take it off.

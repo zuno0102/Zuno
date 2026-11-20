@@ -79,16 +79,27 @@ public class MarketplaceCardPageDto
     public int TotalCount { get; set; }
 }
 
-/// <summary>The customer's Marketplace home: advert banners, food near them, products and B2B lots.</summary>
+/// <summary>One section of the home: its heading, how the app draws it, and its cards.</summary>
+public class MarketplaceHomeSectionDto
+{
+    public string Code { get; set; } = string.Empty;
+
+    /// <summary>The heading; empty for none.</summary>
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary><c>Grid</c>, <c>Banner</c>, <c>Strip</c> or <c>Feed</c>. A feed comes without cards: the app pages it with the home-feed search.</summary>
+    public string Layout { get; set; } = string.Empty;
+
+    /// <summary>A feed's page size.</summary>
+    public int PageSize { get; set; }
+
+    public List<MarketplaceCardDto> Items { get; set; } = [];
+}
+
+/// <summary>The customer's Marketplace home: the sections of <c>ref_marketplace_home_sections</c> that have something to show, in order.</summary>
 public class MarketplaceHomeDto
 {
-    public List<MarketplaceCardDto> Banners { get; set; } = [];
-
-    public List<MarketplaceCardDto> Food { get; set; } = [];
-
-    public List<MarketplaceCardDto> Products { get; set; } = [];
-
-    public List<MarketplaceCardDto> Wholesale { get; set; } = [];
+    public List<MarketplaceHomeSectionDto> Sections { get; set; } = [];
 }
 
 /// <summary>A post as a customer opens it.</summary>
@@ -151,6 +162,12 @@ public class SearchMarketplacePostsQuery : IRequest<MarketplaceCardPageDto>
 
     /// <summary>True: B2B lots only; false: no B2B lots; null: both.</summary>
     public bool? Wholesale { get; set; }
+
+    /// <summary>
+    /// The home's last section: products and B2B lots from everywhere and food offers in
+    /// <see cref="DistrictIds"/>, no adverts, newest first.
+    /// </summary>
+    public bool Feed { get; set; }
 
     public Guid? CategoryId { get; set; }
 
@@ -233,6 +250,12 @@ internal static class MarketplaceCards
 {
     public static IQueryable<MarketplacePost> InDistricts(this IQueryable<MarketplacePost> posts, List<Guid> districtIds) =>
         districtIds.Count == 0 ? posts : posts.Where(p => districtIds.Contains(p.DistrictId));
+
+    /// <summary>Food offers in <paramref name="districtIds"/> only; everything else, which ships, from everywhere.</summary>
+    public static IQueryable<MarketplacePost> FoodInDistricts(this IQueryable<MarketplacePost> posts, List<Guid> districtIds) =>
+        districtIds.Count == 0
+            ? posts
+            : posts.Where(p => p.Kind != MarketplacePostKind.FoodOffer || districtIds.Contains(p.DistrictId));
 
     /// <summary>The cards of <paramref name="posts"/>, in the query's order.</summary>
     public static async Task<List<MarketplaceCardDto>> CardsAsync(
@@ -318,7 +341,6 @@ public class MarketplaceBrowseHandlers(
     IMarketplacePaymentGateway gateway,
     TimeProvider clock,
     IOptions<MarketplaceSettings> settings) :
-    IRequestHandler<GetMarketplaceHomeQuery, MarketplaceHomeDto>,
     IRequestHandler<SearchMarketplacePostsQuery, MarketplaceCardPageDto>,
     IRequestHandler<GetMarketplacePostDetailQuery, MarketplacePostDetailDto>,
     IRequestHandler<GetMyFavouritesQuery, MarketplaceCardPageDto>,
@@ -328,52 +350,13 @@ public class MarketplaceBrowseHandlers(
     private IQueryable<MarketplacePost> Visible(DateTimeOffset now) =>
         dbContext.Posts.VisibleToCustomers(dbContext.Businesses, now);
 
-    public async Task<MarketplaceHomeDto> Handle(GetMarketplaceHomeQuery request, CancellationToken cancellationToken)
-    {
-        var userId = currentUser.OwnerId();
-        var now = clock.GetUtcNow();
-        var size = settings.Value.HomeSectionSize;
-        var visible = Visible(now);
-
-        // Adverts with their banner photo, newest first.
-        var banners = await dbContext.CardsAsync(
-            visible.Where(p => p.Kind == MarketplacePostKind.Advertisement && p.Media.Any(m => m.VariantId == null))
-                .InDistricts(request.DistrictIds)
-                .OrderByDescending(p => p.CreatedDate)
-                .Take(settings.Value.HomeBannerCount),
-            cancellationToken);
-
-        // Food ending soonest; with the customer's place, the nearest of the soonest few.
-        var foodPool = visible.Where(p => p.Kind == MarketplacePostKind.FoodOffer)
-            .InDistricts(request.DistrictIds)
-            .OrderBy(p => p.EndsAt)
-            .ThenBy(p => p.Id);
-        var food = await dbContext.CardsAsync(
-            request.Latitude is null ? foodPool.Take(size) : foodPool.Take(settings.Value.HomeNearbyPoolSize),
-            cancellationToken);
-        food.MeasureFrom(request.Latitude, request.Longitude);
-        if (request.Latitude is not null)
-        {
-            food = food.OrderBy(c => c.DistanceKm ?? double.MaxValue).Take(size).ToList();
-        }
-
-        // Products and B2B lots ship or are traded across districts: newest first, everywhere.
-        var products = await dbContext.CardsAsync(
-            visible.Where(MarketplaceQueries.IsProduct).OrderByDescending(p => p.CreatedDate).Take(size),
-            cancellationToken);
-        var wholesale = await dbContext.CardsAsync(
-            visible.Where(p => p.TradeType == MarketplaceTradeType.Wholesale).OrderByDescending(p => p.CreatedDate).Take(size),
-            cancellationToken);
-
-        await dbContext.MarkFavouritesAsync(userId, [.. banners, .. food, .. products, .. wholesale], cancellationToken);
-        return new MarketplaceHomeDto { Banners = banners, Food = food, Products = products, Wholesale = wholesale };
-    }
-
     public async Task<MarketplaceCardPageDto> Handle(SearchMarketplacePostsQuery request, CancellationToken cancellationToken)
     {
         var userId = currentUser.OwnerId();
         var (page, pageSize) = MarketplaceQueries.Paging(request.Page, request.PageSize, settings.Value);
-        var posts = Visible(clock.GetUtcNow()).InDistricts(request.DistrictIds);
+        var posts = request.Feed
+            ? Visible(clock.GetUtcNow()).Where(p => p.Kind != MarketplacePostKind.Advertisement).FoodInDistricts(request.DistrictIds)
+            : Visible(clock.GetUtcNow()).InDistricts(request.DistrictIds);
 
         var hasKind = Enum.TryParse<MarketplacePostKind>(request.Kind, true, out var kind);
         if (hasKind)

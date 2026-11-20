@@ -143,3 +143,59 @@ public enum MarketplaceB2BRequestStatus : short
 
     Declined = 3,
 }
+
+/// <summary>Where a section of the customer's Marketplace home takes its posts from. Stored, append-only.</summary>
+public enum MarketplaceHomeSource : short
+{
+    /// <summary>Products, newest first. Two of these in a row continue where the first left off.</summary>
+    Newest = 1,
+
+    /// <summary>Adverts with a banner photo, in the customer's districts.</summary>
+    Banners = 2,
+
+    /// <summary>B2B lots, newest first.</summary>
+    Wholesale = 3,
+
+    /// <summary>Products ordered most in the last few days.</summary>
+    Trending = 4,
+
+    /// <summary>Food offers in the customer's districts, nearest (or ending soonest) first.</summary>
+    Food = 5,
+
+    /// <summary>Products in the categories the customer ordered from or saved.</summary>
+    Recommended = 6,
+
+    /// <summary>The customer's saved posts that are still on show.</summary>
+    Wishlist = 7,
+
+    /// <summary>Products at least the section's percentage below their MRP, and below the next bigger band.</summary>
+    Discount = 8,
+
+    /// <summary>Products whose "For" detail is one of the section's values, e.g. "Men,Unisex".</summary>
+    Audience = 9,
+
+    /// <summary>Products with the most units sold.</summary>
+    BestSellers = 10,
+
+    /// <summary>Products with the most reviewed orders.</summary>
+    MostReviewed = 11,
+
+    /// <summary>Every product, B2B lot and food offer, a page at a time — the app loads it as the customer scrolls.</summary>
+    All = 12,
+}
+
+/// <summary>How the app draws a home section. Stored, append-only.</summary>
+public enum MarketplaceHomeLayout : short
+{
+    /// <summary>Two cards across.</summary>
+    Grid = 1,
+
+    /// <summary>Poster banners that move on by themselves.</summary>
+    Banner = 2,
+
+    /// <summary>One row, swiped sideways.</summary>
+    Strip = 3,
+
+    /// <summary>Two across, loading more as the customer scrolls. The last section.</summary>
+    Feed = 4,
+}

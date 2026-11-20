@@ -85,6 +85,9 @@ public class MarketplaceApiFactory : WebApplicationFactory<Program>, IAsyncLifet
             // otherwise throttle itself. The limiter still runs.
             ["RateLimiting:GlobalPermitLimit"] = "100000",
             ["RateLimiting:UploadPermitLimit"] = "100000",
+
+            // Tests read the home straight after changing posts: no kept rankings.
+            ["Marketplace:HomeCacheSeconds"] = "0",
         }));
 
         // The Service API is not running here: its answers about the caller come from a stand-in.

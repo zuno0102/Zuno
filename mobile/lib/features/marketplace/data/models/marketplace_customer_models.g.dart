@@ -50,27 +50,29 @@ MarketplaceCardPageModel _$MarketplaceCardPageModelFromJson(
   totalCount: (json['totalCount'] as num?)?.toInt() ?? 0,
 );
 
+MarketplaceHomeSectionModel _$MarketplaceHomeSectionModelFromJson(
+  Map<String, dynamic> json,
+) => MarketplaceHomeSectionModel(
+  code: json['code'] as String,
+  layout: json['layout'] as String,
+  title: json['title'] as String? ?? '',
+  pageSize: (json['pageSize'] as num?)?.toInt() ?? 20,
+  items:
+      (json['items'] as List<dynamic>?)
+          ?.map((e) => MarketplaceCardModel.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const [],
+);
+
 MarketplaceHomeModel _$MarketplaceHomeModelFromJson(
   Map<String, dynamic> json,
 ) => MarketplaceHomeModel(
-  banners:
-      (json['banners'] as List<dynamic>?)
-          ?.map((e) => MarketplaceCardModel.fromJson(e as Map<String, dynamic>))
-          .toList() ??
-      const [],
-  food:
-      (json['food'] as List<dynamic>?)
-          ?.map((e) => MarketplaceCardModel.fromJson(e as Map<String, dynamic>))
-          .toList() ??
-      const [],
-  products:
-      (json['products'] as List<dynamic>?)
-          ?.map((e) => MarketplaceCardModel.fromJson(e as Map<String, dynamic>))
-          .toList() ??
-      const [],
-  wholesale:
-      (json['wholesale'] as List<dynamic>?)
-          ?.map((e) => MarketplaceCardModel.fromJson(e as Map<String, dynamic>))
+  sections:
+      (json['sections'] as List<dynamic>?)
+          ?.map(
+            (e) =>
+                MarketplaceHomeSectionModel.fromJson(e as Map<String, dynamic>),
+          )
           .toList() ??
       const [],
 );

@@ -43,15 +43,16 @@ public class ProductDetailsTests
     {
         using var test = new TestMarketplace();
 
-        // As the 1.17 app sends it: Fabric and For, which a shirt is no longer asked.
+        // As the 1.17 app sends it: Fabric, which a shirt is no longer asked, and For, which it is again.
         var dto = await test.SaveHandlers.Handle(Shirt(c => c.Attributes = new() { ["fabric"] = "Cotton", ["for"] = "Men" }), default);
 
         dto.Variants.Select(v => (v.Name, v.Stock, v.Price)).Should().Equal(
             ("Red · M", 4, (decimal?)null), ("Red · L", 0, null), ("Blue · M", 6, 549m));
         dto.Quantity.Should().Be(10, "the colours and sizes added up");
         dto.IsOutOfStock.Should().BeFalse();
-        dto.Attributes.Should().BeEmpty("Fabric is no longer asked");
-        dto.CustomDetails.Select(d => (d.Name, d.Value)).Should().Contain([("Fabric", "Cotton"), ("For", "Men")],
+        dto.Attributes.Should().Equal(
+            new Dictionary<string, string> { ["for"] = "Men" }, "For is asked again, for the home's \"For men\" row");
+        dto.CustomDetails.Select(d => (d.Name, d.Value)).Should().Contain([("Fabric", "Cotton")],
             "what an older app still sends is kept as the post's own details");
     }
 

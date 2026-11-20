@@ -39,7 +39,7 @@ class MarketplaceCard {
   final String? subCategoryName;
   final double? price;
 
-  /// A food offer's usual price, shown struck through.
+  /// The usual price (a product's MRP, a food offer's price before), shown struck through.
   final double? originalPrice;
   final String? priceUnit;
 
@@ -71,6 +71,14 @@ class MarketplaceCard {
   bool get isAd => kind == 'Advertisement';
 
   bool get hasPlace => latitude != null && longitude != null;
+
+  /// Whole percent below the usual price, e.g. 40; null when there is no saving.
+  int? get percentOff {
+    final was = originalPrice;
+    final now = price;
+    if (was == null || now == null || was <= 0 || now >= was) return null;
+    return ((was - now) * 100 / was).floor();
+  }
 
   /// "Marthandam, Kanyakumari".
   String get placeName => area == null || area!.trim().isEmpty
@@ -112,22 +120,53 @@ class MarketplaceCardPage {
   final int totalCount;
 }
 
-/// The customer's Marketplace home: advert banners, food near them, products and B2B lots.
-class MarketplaceHome {
-  const MarketplaceHome({
-    this.banners = const [],
-    this.food = const [],
-    this.products = const [],
-    this.wholesale = const [],
+/// How the app draws a home section.
+enum MarketplaceHomeLayout {
+  /// Two cards across.
+  grid,
+
+  /// Poster banners that move on by themselves.
+  banner,
+
+  /// One row, swiped sideways.
+  strip,
+
+  /// Two across, loading more as the customer scrolls.
+  feed;
+
+  /// The server's name; an unknown one (from a newer server) is drawn as a strip.
+  static MarketplaceHomeLayout parse(String value) => values.firstWhere(
+    (l) => l.name == value.toLowerCase(),
+    orElse: () => strip,
+  );
+}
+
+/// One section of the home, as the server lists them: a heading, a layout and its cards. A feed
+/// comes without cards; the app pages it.
+class MarketplaceHomeSection {
+  const MarketplaceHomeSection({
+    required this.code,
+    required this.layout,
+    this.title = '',
+    this.pageSize = 20,
+    this.items = const [],
   });
 
-  final List<MarketplaceCard> banners;
-  final List<MarketplaceCard> food;
-  final List<MarketplaceCard> products;
-  final List<MarketplaceCard> wholesale;
+  final String code;
+  final String title;
+  final MarketplaceHomeLayout layout;
+  final int pageSize;
+  final List<MarketplaceCard> items;
+}
 
-  bool get isEmpty =>
-      banners.isEmpty && food.isEmpty && products.isEmpty && wholesale.isEmpty;
+/// The customer's Marketplace home: its sections top to bottom, each with something to show.
+class MarketplaceHome {
+  const MarketplaceHome({this.sections = const []});
+
+  final List<MarketplaceHomeSection> sections;
+
+  /// Nothing on show anywhere: the feed alone would be empty too.
+  bool get isEmpty => sections.every((s) => s.items.isEmpty);
 }
 
 /// A label and its value, e.g. "Fabric: Silk".

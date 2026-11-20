@@ -46,6 +46,8 @@ public interface IMarketplaceDbContext
 
     public DbSet<MarketplaceFavourite> Favourites { get; }
 
+    public DbSet<MarketplaceHomeSection> HomeSections { get; }
+
     public DbSet<MarketplaceCourier> Couriers { get; }
 
     public DbSet<MarketplacePaymentMethodOption> PaymentMethods { get; }

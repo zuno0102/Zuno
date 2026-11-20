@@ -78,6 +78,8 @@ We collect only what the app needs to do its job. We do not sell your data, we d
 
 - To create your account and sign you in.
 - To show businesses, services, rent items and jobs, and to make and manage bookings, rent orders and applications.
+- To suggest Marketplace products to you ("Recommended for you") from the kinds of things you ordered or saved to your wishlist. This is worked out on our servers from your own orders and wishlist; it is not shown to businesses and not used for advertising.
+- To show everyone the Marketplace's "Best sellers", "Trending" and "Most reviewed" products. These count orders and reviews of each product all together, with no names.
 - To let customers, businesses and workers contact each other about a booking or order.
 - To take, record and refund payments, and to pay workers.
 - To verify businesses and keep ratings and reviews honest.

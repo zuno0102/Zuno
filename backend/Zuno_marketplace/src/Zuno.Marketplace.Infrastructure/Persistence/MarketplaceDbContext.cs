@@ -50,6 +50,8 @@ public class MarketplaceDbContext(DbContextOptions<MarketplaceDbContext> options
 
     public DbSet<MarketplaceFavourite> Favourites => Set<MarketplaceFavourite>();
 
+    public DbSet<MarketplaceHomeSection> HomeSections => Set<MarketplaceHomeSection>();
+
     public DbSet<MarketplaceCourier> Couriers => Set<MarketplaceCourier>();
 
     public DbSet<MarketplacePaymentMethodOption> PaymentMethods => Set<MarketplacePaymentMethodOption>();

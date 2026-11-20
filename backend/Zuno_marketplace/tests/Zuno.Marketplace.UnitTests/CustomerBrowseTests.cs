@@ -31,6 +31,9 @@ public class CustomerBrowseTests
                 new MarketplaceBusiness { OwnerUserId = TestMarketplace.OwnerA, Name = "Joy Silks", IsVerified = true, RefreshedAt = Test.Now },
                 new MarketplaceBusiness { OwnerUserId = TestMarketplace.OwnerB, Name = "Not Yet Verified", IsVerified = false, RefreshedAt = Test.Now });
             Test.Db.SaveChanges();
+
+            // Each read worked out afresh; the one test of the kept ranking switches it back on.
+            Test.Limits.HomeCacheSeconds = 0;
         }
 
         public TestMarketplace Test { get; }
@@ -38,6 +41,8 @@ public class CustomerBrowseTests
         public FakePaymentGateway Gateway { get; } = new();
 
         public MarketplaceBrowseHandlers Browse => new(Test.User, Test.Db, Test.Reference, Gateway, Test.Clock, Test.Settings);
+
+        public MarketplaceHomeHandler Home => new(Test.User, Test.Db, Test.Reference, Test.Clock, Test.Settings, Test.Cache);
 
         public MarketplacePost Product(string title = "Silk saree", Action<MarketplacePost>? change = null) =>
             Test.Seed(p =>
@@ -98,8 +103,40 @@ public class CustomerBrowseTests
         public Task<MarketplaceHomeDto> HomeAsync(double? lat = null, double? lng = null, List<Guid>? districts = null)
         {
             Test.As(Customer);
-            return Browse.Handle(
+            return Home.Handle(
                 new GetMarketplaceHomeQuery { Latitude = lat, Longitude = lng, DistrictIds = districts ?? [] }, CancellationToken.None);
+        }
+
+        /// <summary>An order by the customer, <paramref name="daysAgo"/> days back.</summary>
+        public void Order(
+            MarketplacePost post,
+            int quantity = 1,
+            MarketplaceOrderStatus status = MarketplaceOrderStatus.Delivered,
+            short? rating = null,
+            int daysAgo = 0)
+        {
+            var now = Test.Clock.Current;
+            Test.Clock.Current = now.AddDays(-daysAgo);
+            Test.Db.Orders.Add(new MarketplaceOrder
+            {
+                PostId = post.Id,
+                OwnerUserId = post.OwnerUserId,
+                CustomerUserId = Customer,
+                CustomerName = "Priya",
+                CustomerPhone = "9876543210",
+                DeliveryAddress = "12, North Street",
+                Pincode = "629001",
+                Title = post.Title,
+                Quantity = quantity,
+                UnitPrice = 100m,
+                Amount = 100m * quantity,
+                PaymentMethod = MarketplacePaymentMethod.CashOnDelivery,
+                Status = status,
+                RatingScore = rating,
+            });
+            Test.Db.SaveChanges();
+            Test.Db.ChangeTracker.Clear();
+            Test.Clock.Current = now;
         }
 
         public Task<MarketplaceCardPageDto> SearchAsync(Action<SearchMarketplacePostsQuery>? change = null)
@@ -131,8 +168,14 @@ public class CustomerBrowseTests
         public void Dispose() => Test.Dispose();
     }
 
+    private static MarketplaceHomeSectionDto Section(MarketplaceHomeDto home, string code) =>
+        home.Sections.Single(s => s.Code == code);
+
+    private static List<Guid> Ids(MarketplaceHomeDto home, string code) =>
+        home.Sections.SingleOrDefault(s => s.Code == code)?.Items.Select(c => c.Id).ToList() ?? [];
+
     [Fact]
-    public async Task Home_Fills_Each_Section_With_What_Belongs_There()
+    public async Task Home_Is_The_Section_Rows_In_Order_Each_Filled_From_Its_Source()
     {
         using var scene = new Scene();
         var saree = scene.Product();
@@ -142,15 +185,18 @@ public class CustomerBrowseTests
 
         var home = await scene.HomeAsync();
 
-        home.Banners.Select(c => c.Id).Should().Equal(ad.Id);
-        home.Banners[0].ImageUrl.Should().Be("/uploads/marketplace/ad/image-0.jpg");
-        home.Food.Select(c => c.Id).Should().Equal(biryani.Id);
-        home.Food[0].OriginalPrice.Should().Be(180m);
-        home.Products.Select(c => c.Id).Should().Equal(saree.Id);
-        home.Products[0].BusinessName.Should().Be("Joy Silks");
-        home.Products[0].DistrictName.Should().Be("Kanyakumari");
-        home.Wholesale.Select(c => c.Id).Should().Equal(lot.Id);
-        home.Wholesale[0].TradeType.Should().Be("Wholesale");
+        home.Sections.Select(s => s.Code).Should().Equal("just_in", "banners", "b2b_lots", "food", "all");
+        home.Sections.Select(s => s.Layout).Should().Equal("Grid", "Banner", "Strip", "Grid", "Feed");
+        Ids(home, "just_in").Should().Equal(saree.Id);
+        Section(home, "just_in").Title.Should().Be("Just in");
+        Section(home, "just_in").Items[0].BusinessName.Should().Be("Joy Silks");
+        Ids(home, "banners").Should().Equal(ad.Id);
+        Section(home, "banners").Items[0].ImageUrl.Should().Be("/uploads/marketplace/ad/image-0.jpg");
+        Ids(home, "food").Should().Equal(biryani.Id);
+        Section(home, "food").Items[0].OriginalPrice.Should().Be(180m);
+        Ids(home, "b2b_lots").Should().Equal(lot.Id);
+        Section(home, "all").Items.Should().BeEmpty("the app pages the feed itself");
+        Section(home, "all").PageSize.Should().Be(20);
     }
 
     [Fact]
@@ -169,31 +215,42 @@ public class CustomerBrowseTests
 
         var home = await scene.HomeAsync();
 
-        home.Products.Should().BeEmpty();
-        home.Food.Should().BeEmpty();
-        home.Banners.Should().BeEmpty("an advert with no banner photo has nothing to slide");
-        home.Wholesale.Should().BeEmpty();
+        home.Sections.Select(s => s.Code).Should().Equal(["all"], "an empty section is left out, and an advert with no banner photo has nothing to slide");
     }
 
     [Fact]
-    public async Task Home_Sorts_Food_Nearest_First_And_Keeps_Each_Section_To_Its_Size()
+    public async Task Home_Second_Newest_Section_Carries_On_Where_The_First_Stopped()
     {
         using var scene = new Scene();
-        scene.Test.Limits.HomeSectionSize = 2;
+        var start = scene.Test.Now;
+        var products = Enumerable.Range(1, 20).Select(i =>
+        {
+            scene.Test.Clock.Current = start.AddMinutes(i);
+            return scene.Product($"Product {i}");
+        }).ToList();
+        scene.Test.Clock.Current = start.AddHours(1);
+
+        var home = await scene.HomeAsync();
+
+        var newestFirst = products.AsEnumerable().Reverse().Select(p => p.Id).ToList();
+        Ids(home, "just_in").Should().Equal(newestFirst.Take(8), "four rows of two");
+        Ids(home, "more_to_explore").Should().Equal(newestFirst.Skip(8).Take(10), "five rows of two, none repeated");
+    }
+
+    [Fact]
+    public async Task Home_Sorts_Food_Nearest_First()
+    {
+        using var scene = new Scene();
         var far = scene.Food("Far biryani", 8.3, 77.2);
         var near = scene.Food("Near biryani", 8.19, 77.41);
         var noPin = scene.Food("No pin biryani");
-        scene.Product("One");
-        scene.Product("Two");
-        scene.Product("Three");
 
-        var home = await scene.HomeAsync(HomeLat, HomeLng);
+        var food = Section(await scene.HomeAsync(HomeLat, HomeLng), "food").Items;
 
-        home.Food.Select(c => c.Id).Should().Equal(near.Id, far.Id);
-        home.Food[0].DistanceKm.Should().BeLessThan(2);
-        home.Food[1].DistanceKm.Should().BeGreaterThan(20);
-        home.Food.Should().NotContain(c => c.Id == noPin.Id, "a post without a pin sorts after every pinned one");
-        home.Products.Should().HaveCount(2);
+        food.Select(c => c.Id).Should().Equal(near.Id, far.Id, noPin.Id);
+        food[0].DistanceKm.Should().BeLessThan(2);
+        food[1].DistanceKm.Should().BeGreaterThan(20);
+        food[2].DistanceKm.Should().BeNull("a post without a pin sorts after every pinned one");
     }
 
     [Fact]
@@ -207,9 +264,157 @@ public class CustomerBrowseTests
 
         var home = await scene.HomeAsync(districts: [elsewhere]);
 
-        home.Food.Should().BeEmpty();
-        home.Banners.Should().BeEmpty();
-        home.Products.Select(c => c.Id).Should().Equal([saree.Id], "products ship, so they show wherever the customer is");
+        home.Sections.Should().NotContain(s => s.Code == "food" || s.Code == "banners");
+        Ids(home, "just_in").Should().Equal([saree.Id], "products ship, so they show wherever the customer is");
+    }
+
+    [Fact]
+    public async Task Home_Puts_Each_Product_In_One_Discount_Band_Biggest_Discount_First()
+    {
+        using var scene = new Scene();
+        static Action<MarketplacePost> Mrp(decimal price) => p =>
+        {
+            p.OriginalPrice = 1000m;
+            p.Price = price;
+        };
+        var seventyFive = scene.Product("75% off", Mrp(250m));
+        var fiftyFive = scene.Product("55% off", Mrp(450m));
+        var fifty = scene.Product("50% off exactly", Mrp(500m));
+        var thirtyFive = scene.Product("35% off", Mrp(650m));
+        scene.Product("5% off", Mrp(950m));
+        scene.Product("No MRP");
+
+        var home = await scene.HomeAsync();
+
+        Ids(home, "off_70").Should().Equal(seventyFive.Id);
+        Ids(home, "off_50").Should().Equal(fiftyFive.Id, fifty.Id);
+        Ids(home, "off_30").Should().Equal(thirtyFive.Id);
+        home.Sections.Should().NotContain(s => s.Code == "off_10", "5% is under every band");
+    }
+
+    [Fact]
+    public async Task Home_For_Men_Shows_Mens_And_Unisex_Products()
+    {
+        using var scene = new Scene();
+        static Action<MarketplacePost> For(string value) =>
+            p => p.Attributes = [new() { Key = MarketplaceHomeHandler.AudienceKey, Value = value }];
+        var shirt = scene.Product("Shirt", For("Men"));
+        var cap = scene.Product("Cap", For("Unisex"));
+        var kurti = scene.Product("Kurti", For("Women"));
+
+        var home = await scene.HomeAsync();
+
+        Ids(home, "for_men").Should().BeEquivalentTo([shirt.Id, cap.Id]);
+        Ids(home, "for_women").Should().BeEquivalentTo([kurti.Id, cap.Id]);
+        home.Sections.Should().NotContain(s => s.Code == "for_kids");
+    }
+
+    [Fact]
+    public async Task Home_Ranks_Best_Sellers_By_Units_Most_Reviewed_By_Reviews_And_Trending_By_Recent_Orders()
+    {
+        using var scene = new Scene();
+        var popular = scene.Product("Ordered often");
+        var bulk = scene.Product("One big order");
+        var reviewed = scene.Product("Reviewed");
+        var cancelledOnly = scene.Product("Only cancelled");
+
+        scene.Order(bulk, quantity: 10, daysAgo: 30);
+        scene.Order(popular);
+        scene.Order(popular);
+        scene.Order(popular);
+        scene.Order(reviewed, rating: 5);
+        scene.Order(reviewed, rating: 4, daysAgo: 30);
+        scene.Order(cancelledOnly, quantity: 50, status: MarketplaceOrderStatus.Cancelled);
+
+        var home = await scene.HomeAsync();
+
+        Ids(home, "best_sellers").Should().Equal(bulk.Id, popular.Id, reviewed.Id);
+        Ids(home, "most_reviewed").Should().Equal(reviewed.Id);
+        Ids(home, "trending").Should().Equal(popular.Id, reviewed.Id);
+    }
+
+    [Fact]
+    public async Task Home_Recommends_From_What_The_Customer_Ordered_And_Saved_And_Shows_Their_Wishlist()
+    {
+        using var scene = new Scene();
+        var ordered = scene.Product("Ordered saree");
+        var anotherSaree = scene.Product("Another saree");
+        var toy = scene.Product("Toy car", p => p.SubCategoryId = MarketplaceCatalogSeedData.SubId(3, 4));
+        var savedShoe = scene.Product("Saved shoe", p => p.SubCategoryId = MarketplaceCatalogSeedData.SubId(3, 3));
+        var otherShoe = scene.Product("Other shoe", p => p.SubCategoryId = MarketplaceCatalogSeedData.SubId(3, 3));
+        scene.Order(ordered);
+        await scene.SaveAsync(savedShoe.Id);
+
+        var home = await scene.HomeAsync();
+
+        Ids(home, "recommended").Should().BeEquivalentTo(
+            [anotherSaree.Id, savedShoe.Id, otherShoe.Id], "the same kinds of thing, but not what they already bought");
+        Ids(home, "recommended").Should().NotContain(toy.Id);
+        Ids(home, "wishlist").Should().Equal(savedShoe.Id);
+        Section(home, "wishlist").Items.Single().IsFavourite.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Home_A_New_Customer_Has_No_Recommended_Or_Wishlist_Row()
+    {
+        using var scene = new Scene();
+        scene.Product();
+
+        var home = await scene.HomeAsync();
+
+        home.Sections.Should().NotContain(s => s.Code == "recommended" || s.Code == "wishlist");
+    }
+
+    [Fact]
+    public async Task Home_Keeps_A_Ranking_Briefly_But_Never_Shows_A_Post_That_Went_Off_Sale()
+    {
+        using var scene = new Scene();
+        scene.Test.Limits.HomeCacheSeconds = 120;
+        var first = scene.Product("First");
+        var second = scene.Product("Second");
+
+        Ids(await scene.HomeAsync(), "just_in").Should().BeEquivalentTo([first.Id, second.Id]);
+
+        var post = scene.Test.Db.Posts.Single(p => p.Id == first.Id);
+        post.Status = MarketplacePostStatus.Paused;
+        scene.Test.Db.SaveChanges();
+        scene.Product("Third, after the ranking was kept");
+
+        Ids(await scene.HomeAsync(), "just_in").Should().Equal(
+            [second.Id], "the kept ranking is checked against what is on show; new posts join when it is next worked out");
+    }
+
+    [Fact]
+    public async Task Home_Leaves_Out_A_Switched_Off_Row()
+    {
+        using var scene = new Scene();
+        scene.Product();
+        scene.Test.Db.HomeSections.Single(s => s.Code == "just_in").IsActive = false;
+        scene.Test.Db.SaveChanges();
+
+        var home = await scene.HomeAsync();
+
+        home.Sections.Select(s => s.Code).Should().Equal("more_to_explore", "all");
+    }
+
+    [Fact]
+    public async Task Feed_Has_Products_Lots_And_Local_Food_But_No_Adverts()
+    {
+        using var scene = new Scene();
+        var saree = scene.Product();
+        var lot = scene.Lot();
+        var biryani = scene.Food("Veg biryani");
+        scene.Ad();
+        var elsewhere = LocationSeedData.DistrictId("Tamil Nadu", "Tirunelveli");
+
+        (await scene.SearchAsync(q => q.Feed = true)).Items.Select(c => c.Id)
+            .Should().BeEquivalentTo([saree.Id, lot.Id, biryani.Id]);
+        (await scene.SearchAsync(q =>
+            {
+                q.Feed = true;
+                q.DistrictIds = [elsewhere];
+            })).Items.Select(c => c.Id)
+            .Should().BeEquivalentTo([saree.Id, lot.Id], "food is local; products and lots ship");
     }
 
     [Fact]
@@ -336,7 +541,7 @@ public class CustomerBrowseTests
         var list = await scene.WishlistAsync();
         list.TotalCount.Should().Be(1);
         list.Items.Single().IsFavourite.Should().BeTrue();
-        (await scene.HomeAsync()).Products.Single().IsFavourite.Should().BeTrue();
+        Section(await scene.HomeAsync(), "just_in").Items.Single().IsFavourite.Should().BeTrue();
         (await scene.DetailAsync(saree.Id)).Card.IsFavourite.Should().BeTrue();
 
         scene.Test.As(Customer);
@@ -344,7 +549,7 @@ public class CustomerBrowseTests
         await scene.Browse.Handle(new RemoveFavouriteCommand { PostId = saree.Id }, CancellationToken.None);
 
         (await scene.WishlistAsync()).Items.Should().BeEmpty();
-        (await scene.HomeAsync()).Products.Single().IsFavourite.Should().BeFalse();
+        Section(await scene.HomeAsync(), "just_in").Items.Single().IsFavourite.Should().BeFalse();
     }
 
     [Fact]
@@ -357,7 +562,7 @@ public class CustomerBrowseTests
 
         (await scene.WishlistAsync(OtherCustomer)).Items.Should().BeEmpty();
         scene.Test.As(OtherCustomer);
-        (await scene.Browse.Handle(new GetMarketplaceHomeQuery(), CancellationToken.None)).Products.Single().IsFavourite.Should().BeFalse();
+        Section(await scene.Home.Handle(new GetMarketplaceHomeQuery(), CancellationToken.None), "just_in").Items.Single().IsFavourite.Should().BeFalse();
     }
 
     [Fact]

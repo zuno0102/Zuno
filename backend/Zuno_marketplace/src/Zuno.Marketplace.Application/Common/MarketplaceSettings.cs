@@ -59,13 +59,16 @@ public class MarketplaceSettings
     [Range(1, 90)]
     public int AutoCloseDays { get; set; } = 10;
 
-    /// <summary>How many cards each section of the customer's Marketplace home shows.</summary>
-    [Range(1, 50)]
-    public int HomeSectionSize { get; set; } = 10;
+    /// <summary>
+    /// How long the home's shared rankings (newest, best sellers, discounts…) are kept before being
+    /// worked out again; 0 works them out every time. Each card is still checked to be on show.
+    /// </summary>
+    [Range(0, 3600)]
+    public int HomeCacheSeconds { get; set; } = 120;
 
-    /// <summary>How many advert banners slide at the top of the customer's home.</summary>
-    [Range(1, 20)]
-    public int HomeBannerCount { get; set; } = 5;
+    /// <summary>How many days back the home's "Trending" section counts orders.</summary>
+    [Range(1, 90)]
+    public int TrendingDays { get; set; } = 7;
 
     /// <summary>How many recent posts the home's "near you" sections are sorted from by distance.</summary>
     [Range(10, 1000)]

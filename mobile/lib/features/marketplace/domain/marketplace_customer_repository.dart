@@ -42,13 +42,17 @@ abstract interface class MarketplaceCustomerRepository {
   /// Food and adverts are local: [districtIds] keeps them to the customer's districts.
   Future<MarketplaceHome> getHome({List<String>? districtIds});
 
+  /// Matching posts a page at a time. [feed] is the home's last section: products and B2B lots
+  /// from everywhere, food in [districtIds], no adverts.
   Future<MarketplaceCardPage> search({
     String? kind,
     bool? wholesale,
     String? categoryId,
     String? keyword,
     List<String>? districtIds,
+    bool feed = false,
     int page = 1,
+    int? pageSize,
   });
 
   Future<MarketplacePostDetail> getPost(String id);
@@ -103,14 +107,18 @@ class MarketplaceCustomerRepositoryImpl
     String? categoryId,
     String? keyword,
     List<String>? districtIds,
+    bool feed = false,
     int page = 1,
+    int? pageSize,
   }) async => (await _remote.searchPosts(
     kind: kind,
     wholesale: wholesale,
     categoryId: categoryId,
     keyword: keyword,
     districtIds: districtIds,
+    feed: feed,
     page: page,
+    pageSize: pageSize,
   )).toEntity();
 
   @override

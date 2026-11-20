@@ -108,28 +108,44 @@ class MarketplaceCardPageModel {
 }
 
 @JsonSerializable(createToJson: false)
-class MarketplaceHomeModel {
-  const MarketplaceHomeModel({
-    this.banners = const [],
-    this.food = const [],
-    this.products = const [],
-    this.wholesale = const [],
+class MarketplaceHomeSectionModel {
+  const MarketplaceHomeSectionModel({
+    required this.code,
+    required this.layout,
+    this.title = '',
+    this.pageSize = 20,
+    this.items = const [],
   });
+
+  factory MarketplaceHomeSectionModel.fromJson(Map<String, dynamic> json) =>
+      _$MarketplaceHomeSectionModelFromJson(json);
+
+  final String code;
+  final String title;
+  final String layout;
+  final int pageSize;
+  final List<MarketplaceCardModel> items;
+
+  MarketplaceHomeSection toEntity() => MarketplaceHomeSection(
+    code: code,
+    title: title,
+    layout: MarketplaceHomeLayout.parse(layout),
+    pageSize: pageSize,
+    items: _cards(items),
+  );
+}
+
+@JsonSerializable(createToJson: false)
+class MarketplaceHomeModel {
+  const MarketplaceHomeModel({this.sections = const []});
 
   factory MarketplaceHomeModel.fromJson(Map<String, dynamic> json) =>
       _$MarketplaceHomeModelFromJson(json);
 
-  final List<MarketplaceCardModel> banners;
-  final List<MarketplaceCardModel> food;
-  final List<MarketplaceCardModel> products;
-  final List<MarketplaceCardModel> wholesale;
+  final List<MarketplaceHomeSectionModel> sections;
 
-  MarketplaceHome toEntity() => MarketplaceHome(
-    banners: _cards(banners),
-    food: _cards(food),
-    products: _cards(products),
-    wholesale: _cards(wholesale),
-  );
+  MarketplaceHome toEntity() =>
+      MarketplaceHome(sections: [for (final s in sections) s.toEntity()]);
 }
 
 @JsonSerializable(createToJson: false)

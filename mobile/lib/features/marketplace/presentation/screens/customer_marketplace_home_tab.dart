@@ -17,8 +17,10 @@ import 'package:zuno/shared/widgets/error_banner.dart';
 import 'package:zuno/shared/widgets/category_grid.dart';
 import 'package:zuno/shared/widgets/section_header.dart';
 
-/// The customer's Marketplace home, built like the Rent home: who and where, search, advert
-/// banners, categories, then food offers near them, products and B2B lots. Food and adverts are
+/// The customer's Marketplace home, built like the Rent home: who and where, search and
+/// categories, then the sections the server lists in order — product grids, poster banners that
+/// move by themselves, B2B lots, food near them, headed rows (recommended, wishlist, discounts,
+/// best sellers…) — and last every product, loaded as the customer scrolls. Food and adverts are
 /// kept to the customer's district; products ship, so they show from everywhere.
 class CustomerMarketplaceHomeTab extends ConsumerStatefulWidget {
   const CustomerMarketplaceHomeTab({this.notificationBell, super.key});
@@ -58,7 +60,8 @@ class _CustomerMarketplaceHomeTabState
   Future<void> _refresh() async {
     ref
       ..invalidate(marketplaceHomeProvider)
-      ..invalidate(marketplaceSearchProvider);
+      ..invalidate(marketplaceSearchProvider)
+      ..invalidate(marketplaceFeedProvider);
     await ref.read(marketplaceHomeProvider.future);
   }
 
@@ -194,34 +197,65 @@ class _CustomerMarketplaceHomeTabState
                   ),
                 ),
               ]
-            : [
-                SliverToBoxAdapter(child: _Banners(cards: home.banners)),
-                if (home.food.isNotEmpty) ...[
-                  const SliverToBoxAdapter(
-                    child: SectionHeader(title: 'Food offers near you'),
-                  ),
-                  _strip(home.food, const ValueKey('marketplace-food-strip')),
-                ],
-                if (home.products.isNotEmpty) ...[
-                  const SliverToBoxAdapter(
-                    child: SectionHeader(title: 'Products'),
-                  ),
-                  _grid(
-                    home.products,
-                    key: const ValueKey('marketplace-products-grid'),
-                  ),
-                ],
-                if (home.wholesale.isNotEmpty) ...[
-                  const SliverToBoxAdapter(
-                    child: SectionHeader(title: 'B2B lots'),
-                  ),
-                  _strip(
-                    home.wholesale,
-                    const ValueKey('marketplace-b2b-strip'),
-                  ),
-                ],
-              ],
+            : [for (final section in home.sections) ..._section(section)],
       );
+
+  /// A section as its layout says; keys are `marketplace-<code>` for tests.
+  List<Widget> _section(MarketplaceHomeSection section) {
+    final key = ValueKey('marketplace-${section.code}');
+    final header = section.title.isEmpty
+        ? null
+        : SliverToBoxAdapter(child: SectionHeader(title: section.title));
+    return switch (section.layout) {
+      MarketplaceHomeLayout.banner => [
+        SliverToBoxAdapter(
+          child: _Banners(key: key, cards: section.items),
+        ),
+        const SliverToBoxAdapter(child: SizedBox(height: 6)),
+      ],
+      MarketplaceHomeLayout.grid => [?header, _grid(section.items, key: key)],
+      MarketplaceHomeLayout.strip => [?header, _strip(section.items, key)],
+      MarketplaceHomeLayout.feed => _feed(section, header, key),
+    };
+  }
+
+  /// Everything, a page at a time: the next loads as the customer nears the foot.
+  List<Widget> _feed(MarketplaceHomeSection section, Widget? header, Key key) {
+    final feed = ref.watch(marketplaceFeedProvider(section.pageSize));
+    final page = feed.value;
+    if (page == null || page.items.isEmpty) {
+      return [if (feed.isLoading) _loading()];
+    }
+    final notifier = ref.read(
+      marketplaceFeedProvider(section.pageSize).notifier,
+    );
+    return [
+      ?header,
+      _grid(
+        page.items,
+        key: key,
+        // Drawing the last few cards asks for the next page — whether the customer scrolled
+        // there or the page was short enough to show them at once.
+        onNearEnd: page.hasMore && !page.loadFailed
+            ? () => WidgetsBinding.instance.addPostFrameCallback(
+                (_) => notifier.loadMore(),
+              )
+            : null,
+      ),
+      if (page.isLoadingMore) _loading(),
+      if (page.loadFailed)
+        SliverToBoxAdapter(
+          child: Center(
+            child: TextButton.icon(
+              key: const ValueKey('marketplace-feed-retry'),
+              onPressed: notifier.loadMore,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Try again'),
+            ),
+          ),
+        ),
+    ];
+  }
 
   Widget _loading() => const SliverToBoxAdapter(
     child: Padding(
@@ -255,8 +289,13 @@ class _CustomerMarketplaceHomeTabState
     ),
   );
 
-  /// Two across, always — as on the Rent and Service homes.
-  Widget _grid(List<MarketplaceCard> cards, {Key? key}) => SliverPadding(
+  /// Two across, always — as on the Rent and Service homes. [onNearEnd] is called as one of the
+  /// last row or two is drawn.
+  Widget _grid(
+    List<MarketplaceCard> cards, {
+    Key? key,
+    VoidCallback? onNearEnd,
+  }) => SliverPadding(
     key: key,
     padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
     sliver: SliverGrid.builder(
@@ -267,14 +306,20 @@ class _CustomerMarketplaceHomeTabState
         childAspectRatio: 0.72,
       ),
       itemCount: cards.length,
-      itemBuilder: (context, index) => MarketplacePostCard(card: cards[index]),
+      itemBuilder: (context, index) {
+        if (index >= cards.length - 4) onNearEnd?.call();
+        return MarketplacePostCard(card: cards[index]);
+      },
     ),
   );
 }
 
-/// The advert banners, framed 3 : 1 as businesses crop them.
+/// The advert posters, framed 3 : 1 as businesses crop them, moving on every few seconds.
 class _Banners extends StatelessWidget {
-  const _Banners({required this.cards});
+  const _Banners({required this.cards, super.key});
+
+  /// How long each poster stays before the next slides in.
+  static const autoAdvance = Duration(seconds: 4);
 
   final List<MarketplaceCard> cards;
 
@@ -283,8 +328,10 @@ class _Banners extends StatelessWidget {
     // The pager shows 92% of the width; the banner keeps its 3 : 1 inside it.
     final height = MediaQuery.sizeOf(context).width * 0.92 / 3;
     return BannerCarousel(
-      pagerKey: const ValueKey('marketplace-banners'),
+      pagerKey: const ValueKey('marketplace-banners-pager'),
       height: height,
+      autoAdvance: autoAdvance,
+      postersOnly: true,
       slides: [
         for (final card in cards)
           BannerSlide(
