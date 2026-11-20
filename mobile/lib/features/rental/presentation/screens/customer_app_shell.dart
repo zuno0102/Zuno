@@ -9,6 +9,7 @@ import 'package:zuno/features/customer/presentation/providers/customer_location_
 import 'package:zuno/features/customer/presentation/screens/customer_dashboard_shell.dart';
 import 'package:zuno/features/customer/presentation/widgets/customer_location_picker.dart';
 import 'package:zuno/features/customer/presentation/screens/customer_profile_tab.dart';
+import 'package:zuno/features/marketplace/presentation/screens/customer_marketplace_shell.dart';
 import 'package:zuno/features/notifications/presentation/widgets/notification_bell.dart';
 import 'package:zuno/features/rental/domain/entities/rental_customer.dart';
 import 'package:zuno/features/rental/presentation/providers/rental_customer_providers.dart';
@@ -17,10 +18,11 @@ import 'package:zuno/features/rental/presentation/screens/business_rent_orders_t
 import 'package:zuno/features/rental/presentation/screens/rental_home_tab.dart';
 import 'package:zuno/shared/widgets/role_theme.dart';
 
-/// The customer app: a **Service | Rent** switch on top, then the side chosen.
+/// The customer app: a **Service | Rent | Marketplace** switch on top, then the side chosen.
 ///
-/// Service is the customer app exactly as it was ([CustomerDashboardShell]). Rent is its own panel
-/// — Home, My rents, Profile — sharing the login, the location, the bell and the profile.
+/// Service is the customer app exactly as it was ([CustomerDashboardShell]). Rent and Marketplace
+/// are panels of their own — Home, their orders, Profile — sharing the login, the location, the bell
+/// and the profile.
 class CustomerAppShell extends ConsumerWidget {
   const CustomerAppShell({super.key});
 
@@ -72,6 +74,8 @@ class CustomerAppShell extends ConsumerWidget {
                   child: switch (panel) {
                     CustomerPanel.service => const CustomerDashboardShell(),
                     CustomerPanel.rent => const CustomerRentShell(),
+                    CustomerPanel.marketplace =>
+                      const CustomerMarketplaceShell(),
                   },
                 ),
               ),
@@ -109,6 +113,7 @@ class CustomerPanelSwitch extends StatelessWidget {
   static const _panels = [
     (CustomerPanel.service, Icons.handyman_rounded, 'Service'),
     (CustomerPanel.rent, Icons.chair_alt_rounded, 'Rent'),
+    (CustomerPanel.marketplace, Icons.storefront_rounded, 'Marketplace'),
   ];
 
   @override
@@ -185,12 +190,19 @@ class _PanelCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    fontStyle: FontStyle.italic,
-                    color: foreground,
+                // Three doors share a narrow phone: a long name shrinks to fit, never wraps.
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        fontStyle: FontStyle.italic,
+                        color: foreground,
+                      ),
+                    ),
                   ),
                 ),
               ],

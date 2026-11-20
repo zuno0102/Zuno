@@ -46,6 +46,10 @@ public class MarketplaceDbContext(DbContextOptions<MarketplaceDbContext> options
 
     public DbSet<MarketplaceOrderTransition> OrderTransitions => Set<MarketplaceOrderTransition>();
 
+    public DbSet<MarketplaceOrderTrackStep> OrderTrackSteps => Set<MarketplaceOrderTrackStep>();
+
+    public DbSet<MarketplaceFavourite> Favourites => Set<MarketplaceFavourite>();
+
     public DbSet<MarketplaceCourier> Couriers => Set<MarketplaceCourier>();
 
     public DbSet<MarketplacePaymentMethodOption> PaymentMethods => Set<MarketplacePaymentMethodOption>();

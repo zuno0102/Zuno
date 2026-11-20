@@ -69,6 +69,23 @@ public class GetMyMarketplaceOrdersQuery : IRequest<MarketplaceOrderPageDto>
     public int Page { get; set; } = 1;
 
     public int? PageSize { get; set; }
+
+    /// <summary>One status, e.g. <c>Shipped</c>; null for all.</summary>
+    public string? Status { get; set; }
+}
+
+/// <summary>One of the customer's own orders, with its history and progress bar.</summary>
+public class GetMyMarketplaceOrderQuery : IRequest<MarketplaceOrderDto>
+{
+    public Guid Id { get; set; }
+}
+
+public class GetMyMarketplaceOrdersQueryValidator : AbstractValidator<GetMyMarketplaceOrdersQuery>
+{
+    public GetMyMarketplaceOrdersQueryValidator() =>
+        RuleFor(x => x.Status)
+            .Must(s => s is null || Enum.TryParse<MarketplaceOrderStatus>(s, true, out var v) && Enum.IsDefined(v))
+            .WithMessage("Unknown order status.");
 }
 
 public class PlaceMarketplaceOrderCommandValidator : AbstractValidator<PlaceMarketplaceOrderCommand>
@@ -126,7 +143,8 @@ public class CustomerMarketplaceOrderHandlers(
     IRequestHandler<CompleteMarketplaceOrderPaymentCommand, MarketplaceOrderDto>,
     IRequestHandler<CancelMarketplaceOrderCommand, MarketplaceOrderDto>,
     IRequestHandler<ReviewMarketplaceOrderCommand, MarketplaceOrderDto>,
-    IRequestHandler<GetMyMarketplaceOrdersQuery, MarketplaceOrderPageDto>
+    IRequestHandler<GetMyMarketplaceOrdersQuery, MarketplaceOrderPageDto>,
+    IRequestHandler<GetMyMarketplaceOrderQuery, MarketplaceOrderDto>
 {
     private const MarketplaceOrderActor Customer = MarketplaceOrderActor.Customer;
 
@@ -333,18 +351,43 @@ public class CustomerMarketplaceOrderHandlers(
         var customerId = currentUser.OwnerId();
         var (page, pageSize) = MarketplaceQueries.Paging(request.Page, request.PageSize, settings.Value);
         var lookups = await MarketplaceOrderLookups.LoadAsync(reference, cancellationToken);
-        var mine = dbContext.Orders.AsNoTracking().Where(o => o.CustomerUserId == customerId);
-        var total = await mine.CountAsync(cancellationToken);
-        var orders = await mine.OrderByDescending(o => o.CreatedDate).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(cancellationToken);
+        var all = dbContext.Orders.AsNoTracking().Where(o => o.CustomerUserId == customerId);
+
+        // The chips count every order of the customer's, whichever one is chosen; one grouped read.
+        var counts = await all
+            .GroupBy(o => o.Status)
+            .Select(g => new { g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count, cancellationToken);
+
+        var mine = Enum.TryParse<MarketplaceOrderStatus>(request.Status, true, out var status) ? all.Where(o => o.Status == status) : all;
+        var total = request.Status is null ? counts.Values.Sum() : counts.GetValueOrDefault(status);
+        var orders = total == 0
+            ? []
+            : await mine.OrderByDescending(o => o.CreatedDate).ThenBy(o => o.Id).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(cancellationToken);
         var images = await dbContext.ImagesAsync(orders, cancellationToken);
+        var sellers = await dbContext.SellerNamesAsync(orders, cancellationToken);
 
         return new MarketplaceOrderPageDto
         {
-            Items = orders.Select(o => o.ToDto(Customer, lookups, images.GetValueOrDefault(o.Id), withHistory: false)).ToList(),
+            Items = orders
+                .Select(o =>
+                {
+                    var dto = o.ToDto(Customer, lookups, images.GetValueOrDefault(o.Id), withHistory: false);
+                    dto.SellerName = sellers.GetValueOrDefault(o.OwnerUserId);
+                    return dto;
+                })
+                .ToList(),
             Page = page,
             PageSize = pageSize,
             TotalCount = total,
+            Counts = MarketplaceOrderCore.CustomerCounts(lookups, counts),
         };
+    }
+
+    public async Task<MarketplaceOrderDto> Handle(GetMyMarketplaceOrderQuery request, CancellationToken cancellationToken)
+    {
+        var order = await dbContext.AccessibleOrderAsync(request.Id, currentUser.OwnerId(), Customer, cancellationToken);
+        return await ReadAsync(order, cancellationToken);
     }
 
     /// <summary>
@@ -388,7 +431,10 @@ public class CustomerMarketplaceOrderHandlers(
     {
         var lookups = await MarketplaceOrderLookups.LoadAsync(reference, cancellationToken);
         var images = await dbContext.ImagesAsync([order], cancellationToken);
-        return order.ToDto(Customer, lookups, images.GetValueOrDefault(order.Id), withHistory: true);
+        var sellers = await dbContext.SellerNamesAsync([order], cancellationToken);
+        var dto = order.ToDto(Customer, lookups, images.GetValueOrDefault(order.Id), withHistory: true);
+        dto.SellerName = sellers.GetValueOrDefault(order.OwnerUserId);
+        return dto;
     }
 }
 

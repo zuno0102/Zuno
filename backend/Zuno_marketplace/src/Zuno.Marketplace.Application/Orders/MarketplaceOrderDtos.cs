@@ -74,6 +74,9 @@ public class MarketplaceOrderDto
 
     public string CustomerPhone { get; set; } = string.Empty;
 
+    /// <summary>The business it was ordered from — on the customer's own orders only.</summary>
+    public string? SellerName { get; set; }
+
     public string DeliveryAddress { get; set; } = string.Empty;
 
     public string Pincode { get; set; } = string.Empty;
@@ -117,6 +120,19 @@ public class MarketplaceOrderDto
 
     /// <summary>The history, oldest first.</summary>
     public List<MarketplaceOrderEventDto> Events { get; set; } = [];
+
+    /// <summary>The customer's progress bar, on the customer's own order only.</summary>
+    public List<MarketplaceOrderTrackStepDto> Track { get; set; } = [];
+}
+
+/// <summary>One step of the progress bar and when the order got there; null not yet (or skipped).</summary>
+public class MarketplaceOrderTrackStepDto
+{
+    public short Code { get; set; }
+
+    public string Name { get; set; } = string.Empty;
+
+    public DateTimeOffset? ReachedAt { get; set; }
 }
 
 public class MarketplaceOrderActionDto
@@ -150,6 +166,11 @@ public class MarketplaceStatusCountDto
     public string Status { get; set; } = string.Empty;
 
     public int Count { get; set; }
+
+    /// <summary>The customer's own lists only: the status as the customer sees it, and its colour.</summary>
+    public string? Name { get; set; }
+
+    public string? Tone { get; set; }
 }
 
 public class MarketplaceOrderPageDto

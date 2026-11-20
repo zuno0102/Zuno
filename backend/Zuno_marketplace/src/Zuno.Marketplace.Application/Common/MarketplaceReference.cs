@@ -37,6 +37,11 @@ public class MarketplaceReference(IMarketplaceDbContext dbContext, IMemoryCache 
             "marketplace:order-statuses",
             async () => await dbContext.OrderStatuses.AsNoTracking().OrderBy(s => s.DisplayOrder).ToListAsync(cancellationToken));
 
+    public Task<IReadOnlyList<MarketplaceOrderTrackStep>> OrderTrackStepsAsync(CancellationToken cancellationToken) =>
+        CachedAsync<MarketplaceOrderTrackStep>(
+            "marketplace:order-track-steps",
+            async () => await dbContext.OrderTrackSteps.AsNoTracking().OrderBy(s => s.DisplayOrder).ToListAsync(cancellationToken));
+
     public Task<IReadOnlyList<MarketplaceOrderTransition>> OrderTransitionsAsync(CancellationToken cancellationToken) =>
         CachedAsync<MarketplaceOrderTransition>(
             "marketplace:order-transitions",

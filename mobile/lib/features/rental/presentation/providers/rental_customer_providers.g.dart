@@ -8,17 +8,17 @@ part of 'rental_customer_providers.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// The panel the customer has open. Every login opens on Service; Rent is one tap away and holds
+/// The panel the customer has open. Every login opens on Service; the others are one tap away and hold
 /// only until the next login, so a customer never lands on Rent without choosing it.
 
 @ProviderFor(CustomerPanelChoice)
 final customerPanelChoiceProvider = CustomerPanelChoiceProvider._();
 
-/// The panel the customer has open. Every login opens on Service; Rent is one tap away and holds
+/// The panel the customer has open. Every login opens on Service; the others are one tap away and hold
 /// only until the next login, so a customer never lands on Rent without choosing it.
 final class CustomerPanelChoiceProvider
     extends $NotifierProvider<CustomerPanelChoice, CustomerPanel> {
-  /// The panel the customer has open. Every login opens on Service; Rent is one tap away and holds
+  /// The panel the customer has open. Every login opens on Service; the others are one tap away and hold
   /// only until the next login, so a customer never lands on Rent without choosing it.
   CustomerPanelChoiceProvider._()
     : super(
@@ -50,7 +50,7 @@ final class CustomerPanelChoiceProvider
 String _$customerPanelChoiceHash() =>
     r'f3392a5b21412d7e8757990fa9494831ddbb5e54';
 
-/// The panel the customer has open. Every login opens on Service; Rent is one tap away and holds
+/// The panel the customer has open. Every login opens on Service; the others are one tap away and hold
 /// only until the next login, so a customer never lands on Rent without choosing it.
 
 abstract class _$CustomerPanelChoice extends $Notifier<CustomerPanel> {

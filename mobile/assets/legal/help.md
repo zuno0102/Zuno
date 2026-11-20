@@ -30,6 +30,36 @@ An item may ask for an advance, either fixed for the whole order or an amount fo
 
 Open the booking or rent order and choose Cancel. Any cancellation charge is shown before you confirm.
 
+## Marketplace
+
+### How do I buy something?
+
+Open Marketplace at the top, then the product. Choose a colour or size, tap Buy now, and give how many, the delivery address, the pincode and a mobile number the courier can call. Pay by cash on delivery or online, whichever the seller takes. An online order is confirmed once the payment goes through.
+
+### Where is my order?
+
+Open Orders in Marketplace. Each order shows a bar from Ordered to Delivered, with the day each step was reached. Once it ships you see the courier and tracking number; tap Track when the courier has a tracking page.
+
+### Can I cancel?
+
+Yes, until the seller ships it. Open the order and tap Cancel order. Money paid online goes back to your account, usually within 5 to 7 days. Once it has shipped it can no longer be cancelled.
+
+### How do I review an order?
+
+When it is delivered, open the order and tap Rate this order. If you do not review it, the order closes by itself after a few days.
+
+### What is the wishlist?
+
+Tap the heart on anything in Marketplace to save it. Find your saved items under Account, then Wishlist. Something no longer on sale stays there, marked Not available, until you take it off.
+
+### How do B2B lots work?
+
+Open the lot and tap Request this lot. Ask for at least the smallest order, and add a note if you like. When the seller accepts, they get your number and can call you. You see their number while you have a B2B buyer plan.
+
+### Food offers and adverts
+
+These are not ordered in the app. Open one to see where the shop is, then tap Directions to go there.
+
 ## Payments
 
 ### Which payments are made in the app?

@@ -47,6 +47,16 @@ class Validators {
         : null;
   }
 
+  /// A 6-digit Indian pincode, as the servers check it.
+  static String? pincode(String? value) {
+    if (value == null || value.trim().isEmpty) return 'Enter the pincode.';
+    return _pincodePattern.hasMatch(value.trim())
+        ? null
+        : 'Enter the 6-digit pincode, like 629001.';
+  }
+
+  static final RegExp _pincodePattern = RegExp(r'^[1-9]\d{5}$');
+
   static String? name(String? value, {required String fieldLabel}) {
     if (value == null || value.trim().isEmpty) {
       return '$fieldLabel is required.';

@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:zuno/core/network/dio_error_mapper.dart';
 import 'package:zuno/features/marketplace/data/marketplace_api.dart';
+import 'package:zuno/features/marketplace/data/models/marketplace_customer_models.dart';
 import 'package:zuno/features/marketplace/data/models/marketplace_models.dart';
 import 'package:zuno/features/marketplace/data/models/marketplace_order_models.dart';
 
@@ -239,6 +240,130 @@ class MarketplaceRemoteDataSource {
   }) => _run(() async {
     final response = await _dio.post<Map<String, dynamic>>(
       MarketplaceApi.b2bRequestAnswerPath(id, accept: accept),
+    );
+    return MarketplaceB2BRequestModel.fromJson(response.data!);
+  });
+
+  Future<MarketplaceHomeModel> getHome({List<String>? districtIds}) =>
+      _run(() async {
+        final response = await _dio.get<Map<String, dynamic>>(
+          MarketplaceApi.homePath,
+          queryParameters: {'districtIds': ?districtIds},
+        );
+        return MarketplaceHomeModel.fromJson(response.data!);
+      });
+
+  Future<MarketplaceCardPageModel> searchPosts({
+    String? kind,
+    bool? wholesale,
+    String? categoryId,
+    String? keyword,
+    List<String>? districtIds,
+    int page = 1,
+  }) => _run(() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      MarketplaceApi.searchPath,
+      queryParameters: {
+        'kind': ?kind,
+        'wholesale': ?wholesale,
+        'categoryId': ?categoryId,
+        'keyword': ?keyword,
+        'districtIds': ?districtIds,
+        'page': page,
+      },
+    );
+    return MarketplaceCardPageModel.fromJson(response.data!);
+  });
+
+  Future<MarketplacePostDetailModel> getPostDetail(String id) => _run(() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      MarketplaceApi.customerPostPath(id),
+    );
+    return MarketplacePostDetailModel.fromJson(response.data!);
+  });
+
+  Future<MarketplaceCardPageModel> getFavourites({int page = 1}) =>
+      _run(() async {
+        final response = await _dio.get<Map<String, dynamic>>(
+          MarketplaceApi.favouritesPath,
+          queryParameters: {'page': page},
+        );
+        return MarketplaceCardPageModel.fromJson(response.data!);
+      });
+
+  Future<void> setFavourite(String postId, {required bool saved}) =>
+      _run(() async {
+        final path = MarketplaceApi.favouritePath(postId);
+        await (saved ? _dio.put<void>(path) : _dio.delete<void>(path));
+      });
+
+  Future<MarketplaceOrderPageModel> getMyOrders({String? status}) =>
+      _run(() async {
+        final response = await _dio.get<Map<String, dynamic>>(
+          MarketplaceApi.myOrdersPath,
+          queryParameters: {'status': ?status},
+        );
+        return MarketplaceOrderPageModel.fromJson(response.data!);
+      });
+
+  Future<MarketplaceOrderModel> getMyOrder(String id) =>
+      _order(() => _dio.get(MarketplaceApi.myOrderPath(id)));
+
+  Future<MarketplaceOrderModel> placeOrder(Map<String, dynamic> body) =>
+      _order(() => _dio.post(MarketplaceApi.myOrdersPath, data: body));
+
+  Future<MarketplaceCheckoutModel> startPayment(String id) => _run(() async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      MarketplaceApi.myOrderPaymentPath(id),
+    );
+    return MarketplaceCheckoutModel.fromJson(response.data!);
+  });
+
+  Future<MarketplaceOrderModel> confirmPayment(
+    String id, {
+    required String providerOrderId,
+    required String paymentId,
+    required String signature,
+  }) => _order(
+    () => _dio.post(
+      MarketplaceApi.myOrderPaymentConfirmPath(id),
+      data: {
+        'providerOrderId': providerOrderId,
+        'paymentId': paymentId,
+        'signature': signature,
+      },
+    ),
+  );
+
+  Future<MarketplaceOrderModel> cancelMyOrder(String id) =>
+      _order(() => _dio.post(MarketplaceApi.myOrderCancelPath(id)));
+
+  Future<MarketplaceOrderModel> reviewMyOrder(
+    String id, {
+    required int score,
+    String? comment,
+  }) => _order(
+    () => _dio.post(
+      MarketplaceApi.myOrderReviewPath(id),
+      data: {'score': score, 'comment': ?comment},
+    ),
+  );
+
+  Future<MarketplaceB2BRequestPageModel> getMyB2BRequests() => _run(() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      MarketplaceApi.myB2BRequestsPath,
+    );
+    return MarketplaceB2BRequestPageModel.fromJson(response.data!);
+  });
+
+  Future<MarketplaceB2BRequestModel> askForLot({
+    required String postId,
+    required int quantity,
+    String? message,
+  }) => _run(() async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      MarketplaceApi.myB2BRequestsPath,
+      data: {'postId': postId, 'quantity': quantity, 'message': ?message},
     );
     return MarketplaceB2BRequestModel.fromJson(response.data!);
   });

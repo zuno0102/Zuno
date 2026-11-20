@@ -147,6 +147,31 @@ public class MarketplaceOrderStatusOption
     public string Tone { get; set; } = "waiting";
 
     public short DisplayOrder { get; set; }
+
+    /// <summary>The name the customer sees when it differs from the business's — "Ordered" for New. Null uses <see cref="Name"/>.</summary>
+    public string? CustomerName { get; set; }
+
+    /// <summary>The colour the customer sees when it differs — calm where the business's is a call to act. Null uses <see cref="Tone"/>.</summary>
+    public string? CustomerTone { get; set; }
+
+    /// <summary>The step of the customer's progress bar this status is at; null for one off the bar (Cancelled).</summary>
+    public short? TrackStep { get; set; }
+
+    public string NameFor(MarketplaceOrderActor viewer) =>
+        viewer == MarketplaceOrderActor.Customer && !string.IsNullOrWhiteSpace(CustomerName) ? CustomerName : Name;
+
+    public string ToneFor(MarketplaceOrderActor viewer) =>
+        viewer == MarketplaceOrderActor.Customer && !string.IsNullOrWhiteSpace(CustomerTone) ? CustomerTone : Tone;
+}
+
+/// <summary>One step of the customer's order progress bar — Ordered, Confirmed, Shipped … — in order.</summary>
+public class MarketplaceOrderTrackStep
+{
+    public short Code { get; set; }
+
+    public string Name { get; set; } = string.Empty;
+
+    public short DisplayOrder { get; set; }
 }
 
 /// <summary>

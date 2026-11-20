@@ -54,6 +54,8 @@ We collect only what the app needs to do its job. We do not sell your data, we d
 - Payment records: the amount, the method (online, UPI QR, cash or cash on delivery), the payment
   reference, the status, and any refund.
 - A B2B buyer plan you take, and until when it runs.
+- The Marketplace posts you save to your wishlist, and when you saved each. Only you see your
+  wishlist; the business is not told.
 - Card, net-banking and UPI app payments made online go through our payment partner, Razorpay. We never see or store your card number, CVV or bank login.
 
 ### Job applications
@@ -98,6 +100,7 @@ We do not sell or rent your personal information to anyone.
 ## 4. How long we keep it
 
 - We keep your account information while your account is open.
+- A post stays on your wishlist until you take it off, or until the business deletes the post.
 - When a business rejects a job application, the files sent with it are deleted at once. When a business deletes a job post, every applicant's files and answers for it are deleted too.
 - We keep payment and booking records for as long as the law requires, even after an account is closed.
 - When you ask us to delete your account, we delete or anonymise your personal information, except what we must keep by law.

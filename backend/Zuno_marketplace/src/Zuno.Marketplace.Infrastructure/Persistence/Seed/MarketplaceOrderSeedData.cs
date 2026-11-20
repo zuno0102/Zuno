@@ -9,16 +9,30 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Seed;
 /// </summary>
 public static class MarketplaceOrderSeedData
 {
+    /// <summary>
+    /// Names and colours, and where each status sits on the customer's progress bar. The customer sees
+    /// "Ordered" where the business sees "New"; Cancelled is off the bar.
+    /// </summary>
     public static MarketplaceOrderStatusOption[] Statuses =>
     [
-        new() { Code = MarketplaceOrderStatus.Placed, Name = "New", Tone = "danger", DisplayOrder = 1 },
-        new() { Code = MarketplaceOrderStatus.AwaitingPayment, Name = "Awaiting payment", Tone = "waiting", DisplayOrder = 2 },
-        new() { Code = MarketplaceOrderStatus.Confirmed, Name = "Confirmed", Tone = "progress", DisplayOrder = 3 },
-        new() { Code = MarketplaceOrderStatus.Shipped, Name = "Shipped", Tone = "progress", DisplayOrder = 4 },
-        new() { Code = MarketplaceOrderStatus.OutForDelivery, Name = "Out for delivery", Tone = "progress", DisplayOrder = 5 },
-        new() { Code = MarketplaceOrderStatus.Delivered, Name = "Delivered", Tone = "success", DisplayOrder = 6 },
-        new() { Code = MarketplaceOrderStatus.Closed, Name = "Closed", Tone = "success", DisplayOrder = 7 },
+        new() { Code = MarketplaceOrderStatus.Placed, Name = "New", Tone = "danger", DisplayOrder = 1, CustomerName = "Ordered", CustomerTone = "progress", TrackStep = 1 },
+        new() { Code = MarketplaceOrderStatus.AwaitingPayment, Name = "Awaiting payment", Tone = "waiting", DisplayOrder = 2, TrackStep = 1 },
+        new() { Code = MarketplaceOrderStatus.Confirmed, Name = "Confirmed", Tone = "progress", DisplayOrder = 3, TrackStep = 2 },
+        new() { Code = MarketplaceOrderStatus.Shipped, Name = "Shipped", Tone = "progress", DisplayOrder = 4, TrackStep = 3 },
+        new() { Code = MarketplaceOrderStatus.OutForDelivery, Name = "Out for delivery", Tone = "progress", DisplayOrder = 5, TrackStep = 4 },
+        new() { Code = MarketplaceOrderStatus.Delivered, Name = "Delivered", Tone = "success", DisplayOrder = 6, TrackStep = 5 },
+        new() { Code = MarketplaceOrderStatus.Closed, Name = "Closed", Tone = "success", DisplayOrder = 7, CustomerName = "Completed", TrackStep = 5 },
         new() { Code = MarketplaceOrderStatus.Cancelled, Name = "Cancelled", Tone = "waiting", DisplayOrder = 8 },
+    ];
+
+    /// <summary>The customer's progress bar, left to right.</summary>
+    public static MarketplaceOrderTrackStep[] TrackSteps =>
+    [
+        new() { Code = 1, Name = "Ordered", DisplayOrder = 1 },
+        new() { Code = 2, Name = "Confirmed", DisplayOrder = 2 },
+        new() { Code = 3, Name = "Shipped", DisplayOrder = 3 },
+        new() { Code = 4, Name = "Out for delivery", DisplayOrder = 4 },
+        new() { Code = 5, Name = "Delivered", DisplayOrder = 5 },
     ];
 
     /// <summary>
@@ -58,7 +72,8 @@ public static class MarketplaceOrderSeedData
         {
             Code = MarketplacePaymentMethod.CashOnDelivery,
             Name = "Cash on delivery",
-            Detail = "The customer pays the courier or you when it arrives.",
+            // Read by the business (payment settings) and the customer (Buy now) alike.
+            Detail = "Paid in cash to the courier or the seller when it arrives.",
             DisplayOrder = 1,
         },
         new()

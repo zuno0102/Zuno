@@ -84,6 +84,7 @@ The test cannot see new database fields or new sharing rules. Those depend on th
 | Financial info: UPI ID, bank account | Yes | No | Paying businesses and workers | Yes |
 | Payment card details | No: Razorpay handles them | Razorpay (as processor) | Online payment | — |
 | Other user content: reviews | Yes | No | Ratings | Yes |
+| App activity: Marketplace wishlist | Yes | No | Saved posts, shown only to the customer | Yes |
 
 - Data is **encrypted in transit** (HTTPS): yes.
 - Users can **request deletion**: yes, by email now; in the app once section 5 is built.

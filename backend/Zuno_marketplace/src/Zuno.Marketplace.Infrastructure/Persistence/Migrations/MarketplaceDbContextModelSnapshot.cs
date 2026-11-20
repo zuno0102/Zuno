@@ -994,6 +994,32 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceFavourite", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("PostId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("post_id");
+
+                    b.Property<DateTimeOffset>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
+
+                    b.HasKey("UserId", "PostId")
+                        .HasName("pk_marketplace_favourites");
+
+                    b.HasIndex("PostId")
+                        .HasDatabaseName("ix_marketplace_favourites_post_id");
+
+                    b.HasIndex("UserId", "CreatedDate")
+                        .HasDatabaseName("ix_marketplace_favourites_user_id_created_date");
+
+                    b.ToTable("marketplace_favourites", (string)null);
+                });
+
             modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceItemConditionOption", b =>
                 {
                     b.Property<short>("Code")
@@ -1337,6 +1363,16 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .HasColumnType("smallint")
                         .HasColumnName("code");
 
+                    b.Property<string>("CustomerName")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("customer_name");
+
+                    b.Property<string>("CustomerTone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("customer_tone");
+
                     b.Property<short>("DisplayOrder")
                         .HasColumnType("smallint")
                         .HasColumnName("display_order");
@@ -1353,8 +1389,15 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("tone");
 
+                    b.Property<short?>("TrackStep")
+                        .HasColumnType("smallint")
+                        .HasColumnName("track_step");
+
                     b.HasKey("Code")
                         .HasName("pk_ref_marketplace_order_statuses");
+
+                    b.HasIndex("TrackStep")
+                        .HasDatabaseName("ix_ref_marketplace_order_statuses_track_step");
 
                     b.ToTable("ref_marketplace_order_statuses", (string)null);
 
@@ -1362,51 +1405,61 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         new
                         {
                             Code = (short)2,
+                            CustomerName = "Ordered",
+                            CustomerTone = "progress",
                             DisplayOrder = (short)1,
                             Name = "New",
-                            Tone = "danger"
+                            Tone = "danger",
+                            TrackStep = (short)1
                         },
                         new
                         {
                             Code = (short)1,
                             DisplayOrder = (short)2,
                             Name = "Awaiting payment",
-                            Tone = "waiting"
+                            Tone = "waiting",
+                            TrackStep = (short)1
                         },
                         new
                         {
                             Code = (short)3,
                             DisplayOrder = (short)3,
                             Name = "Confirmed",
-                            Tone = "progress"
+                            Tone = "progress",
+                            TrackStep = (short)2
                         },
                         new
                         {
                             Code = (short)4,
                             DisplayOrder = (short)4,
                             Name = "Shipped",
-                            Tone = "progress"
+                            Tone = "progress",
+                            TrackStep = (short)3
                         },
                         new
                         {
                             Code = (short)5,
                             DisplayOrder = (short)5,
                             Name = "Out for delivery",
-                            Tone = "progress"
+                            Tone = "progress",
+                            TrackStep = (short)4
                         },
                         new
                         {
                             Code = (short)6,
                             DisplayOrder = (short)6,
                             Name = "Delivered",
-                            Tone = "success"
+                            Tone = "success",
+                            TrackStep = (short)5
                         },
                         new
                         {
                             Code = (short)7,
+                            CustomerName = "Completed",
                             DisplayOrder = (short)7,
                             Name = "Closed",
-                            Tone = "success"
+                            Tone = "success",
+                            TrackStep = (short)5
                         },
                         new
                         {
@@ -1414,6 +1467,60 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                             DisplayOrder = (short)8,
                             Name = "Cancelled",
                             Tone = "waiting"
+                        });
+                });
+
+            modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceOrderTrackStep", b =>
+                {
+                    b.Property<short>("Code")
+                        .HasColumnType("smallint")
+                        .HasColumnName("code");
+
+                    b.Property<short>("DisplayOrder")
+                        .HasColumnType("smallint")
+                        .HasColumnName("display_order");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Code")
+                        .HasName("pk_ref_marketplace_order_track_steps");
+
+                    b.ToTable("ref_marketplace_order_track_steps", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Code = (short)1,
+                            DisplayOrder = (short)1,
+                            Name = "Ordered"
+                        },
+                        new
+                        {
+                            Code = (short)2,
+                            DisplayOrder = (short)2,
+                            Name = "Confirmed"
+                        },
+                        new
+                        {
+                            Code = (short)3,
+                            DisplayOrder = (short)3,
+                            Name = "Shipped"
+                        },
+                        new
+                        {
+                            Code = (short)4,
+                            DisplayOrder = (short)4,
+                            Name = "Out for delivery"
+                        },
+                        new
+                        {
+                            Code = (short)5,
+                            DisplayOrder = (short)5,
+                            Name = "Delivered"
                         });
                 });
 
@@ -1580,7 +1687,7 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         new
                         {
                             Code = (short)1,
-                            Detail = "The customer pays the courier or you when it arrives.",
+                            Detail = "Paid in cash to the courier or the seller when it arrives.",
                             DisplayOrder = (short)1,
                             Name = "Cash on delivery"
                         },
@@ -7668,6 +7775,18 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                     b.Navigation("SubCategory");
                 });
 
+            modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceFavourite", b =>
+                {
+                    b.HasOne("Zuno.Marketplace.Domain.Entities.MarketplacePost", "Post")
+                        .WithMany()
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_marketplace_favourites_posts_post_id");
+
+                    b.Navigation("Post");
+                });
+
             modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceOrder", b =>
                 {
                     b.HasOne("Zuno.Marketplace.Domain.Entities.MarketplacePost", "Post")
@@ -7688,6 +7807,15 @@ namespace Zuno.Marketplace.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_marketplace_order_events_marketplace_orders_order_id");
+                });
+
+            modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplaceOrderStatusOption", b =>
+                {
+                    b.HasOne("Zuno.Marketplace.Domain.Entities.MarketplaceOrderTrackStep", null)
+                        .WithMany()
+                        .HasForeignKey("TrackStep")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ref_marketplace_order_statuses_ref_marketplace_order_track_");
                 });
 
             modelBuilder.Entity("Zuno.Marketplace.Domain.Entities.MarketplacePost", b =>

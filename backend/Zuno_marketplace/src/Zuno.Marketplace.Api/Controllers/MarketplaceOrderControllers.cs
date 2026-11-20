@@ -107,15 +107,21 @@ public class BusinessMarketplaceOrdersController(ISender mediator, IOptions<Mark
 
 /// <summary>
 /// A customer's own orders and B2B requests: order, pay, cancel before it ships, review. Any signed-in
-/// user — the customer screens come later; these let the business side be tried end to end.
+/// user; each order is read and changed only by the customer who placed it.
 /// </summary>
 [ApiController]
 [Route("api/v1/marketplace")]
 public class CustomerMarketplaceOrdersController(ISender mediator) : ControllerBase
 {
     [HttpGet("orders")]
-    public async Task<IActionResult> GetMine([FromQuery] int page = 1, [FromQuery] int? pageSize = null, CancellationToken cancellationToken = default) =>
-        Ok(await mediator.Send(new GetMyMarketplaceOrdersQuery { Page = page, PageSize = pageSize }, cancellationToken));
+    public async Task<IActionResult> GetMine(
+        [FromQuery] string? status, [FromQuery] int page = 1, [FromQuery] int? pageSize = null, CancellationToken cancellationToken = default) =>
+        Ok(await mediator.Send(new GetMyMarketplaceOrdersQuery { Status = status, Page = page, PageSize = pageSize }, cancellationToken));
+
+    /// <summary>One of the caller's orders, with its history and progress bar.</summary>
+    [HttpGet("orders/{id:guid}")]
+    public async Task<IActionResult> GetOne(Guid id, CancellationToken cancellationToken) =>
+        Ok(await mediator.Send(new GetMyMarketplaceOrderQuery { Id = id }, cancellationToken));
 
     [HttpPost("orders")]
     public async Task<IActionResult> Place([FromBody] PlaceMarketplaceOrderCommand command, CancellationToken cancellationToken) =>

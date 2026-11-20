@@ -114,11 +114,12 @@ public class OrderApiTests(MarketplaceApiFactory factory) : IClassFixture<Market
 
         var paid = await Data(await customer.PostAsJsonAsync($"{Customer}/orders/{id}/payment/confirm", new { providerOrderId, paymentId = $"pay_{id:N}", signature = "good" }));
         paid.GetProperty("status").GetString().Should().Be("Confirmed");
-        paid.GetProperty("dueToBusiness").GetDecimal().Should().Be(2600m);
+        paid.GetProperty("dueToBusiness").GetDecimal().Should().Be(0m, "what Zuno owes the seller is the seller's to see");
 
-        // The business sees it confirmed and paid.
+        // The business sees it confirmed and paid, and what it is owed.
         var seen = await Data(await seller.GetAsync($"{Business}/orders/{id}"));
         seen.GetProperty("isPaid").GetBoolean().Should().BeTrue();
+        seen.GetProperty("dueToBusiness").GetDecimal().Should().Be(2600m);
 
         var cancelled = await Data(await customer.PostAsync($"{Customer}/orders/{id}/cancel", null));
         cancelled.GetProperty("status").GetString().Should().Be("Cancelled");
@@ -239,6 +240,65 @@ public class OrderApiTests(MarketplaceApiFactory factory) : IClassFixture<Market
         options.GetProperty("paymentMethods").GetArrayLength().Should().Be(2);
         options.GetProperty("b2bRequestStatuses").GetArrayLength().Should().Be(3);
         options.GetProperty("autoCloseDays").GetInt32().Should().Be(10);
+    }
+
+    [Fact]
+    public async Task Customer_Browses_Saves_Orders_And_Tracks_Through_The_Api()
+    {
+        var (_, postId, red, _) = await SareeSellerAsync();
+        var customer = factory.ClientFor(Guid.NewGuid(), "Customer");
+
+        var home = await Data(await customer.GetAsync($"{Customer}/home?latitude=8.18&longitude=77.41"));
+        home.GetProperty("products").EnumerateArray().Should().Contain(c => c.GetProperty("id").GetGuid() == postId);
+
+        var found = await Data(await customer.GetAsync($"{Customer}/posts?keyword=SILK%20saree&kind=Listing&wholesale=false"));
+        found.GetProperty("items").EnumerateArray().Should().Contain(c => c.GetProperty("id").GetGuid() == postId);
+
+        var detail = await Data(await customer.GetAsync($"{Customer}/posts/{postId}"));
+        detail.GetProperty("variants").GetArrayLength().Should().Be(2);
+        detail.GetProperty("canOrder").GetBoolean().Should().BeTrue();
+        detail.GetProperty("card").GetProperty("isFavourite").GetBoolean().Should().BeFalse();
+
+        (await customer.PutAsync($"{Customer}/favourites/{postId}", null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await customer.PutAsync($"{Customer}/favourites/{postId}", null)).StatusCode.Should().Be(HttpStatusCode.NoContent, "saving twice is fine");
+        var saved = await Data(await customer.GetAsync($"{Customer}/favourites"));
+        saved.GetProperty("totalCount").GetInt32().Should().Be(1);
+        saved.GetProperty("items")[0].GetProperty("isFavourite").GetBoolean().Should().BeTrue();
+
+        var placed = await Data(await customer.PostAsJsonAsync($"{Customer}/orders", Order(postId, red)), HttpStatusCode.Created);
+        var id = placed.GetProperty("id").GetGuid();
+        placed.GetProperty("statusName").GetString().Should().Be("Ordered");
+
+        var mine = await Data(await customer.GetAsync($"{Customer}/orders/{id}"));
+        var track = mine.GetProperty("track").EnumerateArray().ToList();
+        track.Select(s => s.GetProperty("name").GetString()).Should().Equal("Ordered", "Confirmed", "Shipped", "Out for delivery", "Delivered");
+        track[0].GetProperty("reachedAt").ValueKind.Should().Be(JsonValueKind.String);
+        track[1].GetProperty("reachedAt").ValueKind.Should().Be(JsonValueKind.Null);
+
+        var list = await Data(await customer.GetAsync($"{Customer}/orders?status=Placed"));
+        list.GetProperty("totalCount").GetInt32().Should().Be(1);
+        list.GetProperty("counts")[0].GetProperty("name").GetString().Should().Be("Ordered");
+
+        (await customer.DeleteAsync($"{Customer}/favourites/{postId}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await Data(await customer.GetAsync($"{Customer}/favourites"))).GetProperty("totalCount").GetInt32().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Customer_Reads_Are_Guarded()
+    {
+        var (_, postId, red, _) = await SareeSellerAsync();
+        var customer = factory.ClientFor(Guid.NewGuid(), "Customer");
+        var stranger = factory.ClientFor(Guid.NewGuid(), "Customer");
+        var placed = await Data(await customer.PostAsJsonAsync($"{Customer}/orders", Order(postId, red, quantity: 1)), HttpStatusCode.Created);
+
+        (await stranger.GetAsync($"{Customer}/orders/{placed.GetProperty("id").GetGuid()}")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await customer.GetAsync($"{Customer}/posts/{Guid.NewGuid()}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await customer.PutAsync($"{Customer}/favourites/{Guid.NewGuid()}", null)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await customer.GetAsync($"{Customer}/home?latitude=8.18")).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await customer.GetAsync($"{Customer}/posts?kind=Lottery")).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await customer.GetAsync($"{Customer}/orders?status=Lost")).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await factory.CreateClient().GetAsync($"{Customer}/home")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await factory.CreateClient().GetAsync($"{Customer}/favourites")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     private static MultipartFormDataContent Photo()

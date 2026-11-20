@@ -53,6 +53,32 @@ class MarketplaceApi {
   static String b2bRequestAnswerPath(String id, {required bool accept}) =>
       '$b2bRequestsPath/$id/${accept ? 'accept' : 'decline'}';
 
+  /// What customers browse, save, order and ask for.
+  static const String customerPath = '/api/v1/marketplace';
+  static const String homePath = '$customerPath/home';
+  static const String searchPath = '$customerPath/posts';
+
+  static String customerPostPath(String id) => '$searchPath/$id';
+
+  static const String favouritesPath = '$customerPath/favourites';
+
+  static String favouritePath(String postId) => '$favouritesPath/$postId';
+
+  static const String myOrdersPath = '$customerPath/orders';
+
+  static String myOrderPath(String id) => '$myOrdersPath/$id';
+
+  static String myOrderPaymentPath(String id) => '$myOrdersPath/$id/payment';
+
+  static String myOrderPaymentConfirmPath(String id) =>
+      '$myOrdersPath/$id/payment/confirm';
+
+  static String myOrderCancelPath(String id) => '$myOrdersPath/$id/cancel';
+
+  static String myOrderReviewPath(String id) => '$myOrdersPath/$id/review';
+
+  static const String myB2BRequestsPath = '$customerPath/b2b-requests';
+
   static const String adminCategoriesPath =
       '/api/v1/admin/marketplace/categories';
 

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:zuno/core/constants/api_constants.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/rental/domain/entities/rental_customer.dart';
 import 'package:zuno/features/rental/presentation/providers/rental_customer_providers.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_booking_sheet.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_item_card.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
+import 'package:zuno/shared/widgets/fact_row.dart';
+import 'package:zuno/shared/widgets/photo_gallery.dart';
 import 'package:zuno/shared/widgets/rating_line.dart';
 
 /// A rent item as a customer opens it: the photos, the rate, what it is, where it is offered, who
@@ -80,24 +81,17 @@ class RentalItemScreen extends ConsumerWidget {
   }
 }
 
-class _Body extends StatefulWidget {
+class _Body extends StatelessWidget {
   const _Body({required this.card, this.detail});
 
   final RentalCard card;
   final RentalItemDetail? detail;
 
   @override
-  State<_Body> createState() => _BodyState();
-}
-
-class _BodyState extends State<_Body> {
-  int _photo = 0;
-
-  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final detail = widget.detail;
-    final photos = detail?.imageUrls ?? [?widget.card.imageUrl];
+    final detail = this.detail;
+    final photos = detail?.imageUrls ?? [?card.imageUrl];
     final muted = theme.textTheme.bodyMedium?.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
     );
@@ -106,66 +100,27 @@ class _BodyState extends State<_Body> {
       padding: EdgeInsets.zero,
       children: [
         // The photos, swiped, with how many there are.
-        AspectRatio(
-          aspectRatio: 4 / 3,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (photos.isEmpty)
-                const RentalPhoto(path: null)
-              else
-                PageView.builder(
-                  itemCount: photos.length,
-                  onPageChanged: (i) => setState(() => _photo = i),
-                  itemBuilder: (_, i) => RentalPhoto(path: photos[i]),
-                ),
-              if (photos.length > 1)
-                Positioned(
-                  right: 12,
-                  bottom: 12,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface.withValues(alpha: 0.9),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      child: Text(
-                        '${_photo + 1} / ${photos.length}',
-                        style: theme.textTheme.labelMedium,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
+        PhotoGallery(urls: [for (final p in photos) ?rentalPhotoUrl(p)]),
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                widget.card.name,
+                card.name,
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
               ),
               const SizedBox(height: 4),
               RatingLine.of(
-                widget.card.rating,
+                card.rating,
                 style: theme.textTheme.bodyMedium,
                 key: const ValueKey('rental-item-rating'),
               ),
               const SizedBox(height: 4),
               Text(
-                [
-                  widget.card.categoryName,
-                  ?detail?.subCategoryName,
-                ].join(' › '),
+                [card.categoryName, ?detail?.subCategoryName].join(' › '),
                 style: muted,
               ),
               if (detail?.description case final text?
@@ -175,32 +130,32 @@ class _BodyState extends State<_Body> {
               ],
               if (detail != null) ...[
                 const SizedBox(height: 18),
-                _Fact(
+                FactRow(
                   icon: Icons.sell_outlined,
                   label: 'Rate',
                   value:
                       '${rupees(detail.card.price)}${detail.card.unitSuffix} · '
                       '${detail.priceTypeName}',
                 ),
-                _Fact(
+                FactRow(
                   icon: Icons.inventory_2_outlined,
                   label: 'Pieces it has',
                   value: '${detail.quantityOwned}',
                 ),
-                _Fact(
+                FactRow(
                   icon: Icons.place_outlined,
                   label: 'Delivers to',
                   value: detail.districts.map((d) => d.name).join(', '),
                 ),
                 if (detail.video != null)
-                  const _Fact(
+                  const FactRow(
                     icon: Icons.videocam_outlined,
                     label: 'Video',
                     value: 'This item has a video from the business',
                   ),
                 const SizedBox(height: 18),
-                _BusinessCard(
-                  name: widget.card.businessName,
+                VerifiedBusinessCard(
+                  name: card.businessName,
                   logoPath: detail.businessLogoUrl,
                 ),
               ],
@@ -208,87 +163,6 @@ class _BodyState extends State<_Body> {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _Fact extends StatelessWidget {
-  const _Fact({required this.icon, required this.label, required this.value});
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 20, color: theme.colorScheme.primary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                Text(value, style: theme.textTheme.bodyMedium),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Who rents it out — a verified business, as only verified businesses' items are shown.
-class _BusinessCard extends StatelessWidget {
-  const _BusinessCard({required this.name, this.logoPath});
-
-  final String name;
-
-  /// A path on the Service server, where business profiles live.
-  final String? logoPath;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final logo = logoPath;
-    return Card(
-      margin: EdgeInsets.zero,
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: theme.colorScheme.primaryContainer,
-          backgroundImage: logo == null || logo.isEmpty
-              ? null
-              : NetworkImage('${ApiConstants.baseUrl}$logo'),
-          child: logo == null || logo.isEmpty
-              ? Icon(
-                  Icons.storefront_outlined,
-                  color: theme.colorScheme.onPrimaryContainer,
-                )
-              : null,
-        ),
-        title: Text(
-          name.isEmpty ? 'Business' : name,
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-        subtitle: Row(
-          children: [
-            Icon(Icons.verified, size: 15, color: theme.colorScheme.primary),
-            const SizedBox(width: 4),
-            const Text('Verified business'),
-          ],
-        ),
-      ),
     );
   }
 }

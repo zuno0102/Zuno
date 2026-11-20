@@ -13,11 +13,17 @@ import 'package:zuno/shared/widgets/status_with_actions.dart';
 
 /// One B2B request on the business's lot: who asks, how much, their note — and Accept or Decline.
 /// Once accepted the buyer's contact shows here; the buyer sees the business's while their B2B plan
-/// runs. Nothing more happens in the app: the two talk directly.
+/// runs. Nothing more happens in the app: the two talk directly. [forBuyer]: the buyer's own
+/// request — the seller instead of the buyer, and no answer buttons.
 class MarketplaceB2BRequestCard extends ConsumerWidget {
-  const MarketplaceB2BRequestCard({required this.request, super.key});
+  const MarketplaceB2BRequestCard({
+    required this.request,
+    this.forBuyer = false,
+    super.key,
+  });
 
   final MarketplaceB2BRequest request;
+  final bool forBuyer;
 
   Future<void> _answer(
     BuildContext context,
@@ -52,13 +58,44 @@ class MarketplaceB2BRequestCard extends ConsumerWidget {
     }
   }
 
+  /// What the buyer reads: waiting, the seller's number once accepted (with a plan), or declined.
+  List<Widget> _buyerLines(TextStyle? muted, String? phone) {
+    if (request.isNew) {
+      return [Text("Waiting for the seller's answer.", style: muted)];
+    }
+    if (!request.isAccepted) {
+      return [Text('The seller cannot take this one.', style: muted)];
+    }
+    if (phone != null) {
+      return [
+        _ContactBox(
+          label: 'Seller',
+          name: request.sellerName ?? 'Seller',
+          phone: phone,
+        ),
+      ];
+    }
+    return [
+      Text(
+        request.contactNeedsPlan
+            ? 'Accepted. The seller has your number and may call you. Their number shows here with a B2B buyer plan, coming soon.'
+            : 'Accepted. The seller has your number and may call you.',
+        key: ValueKey('marketplace-b2b-plan-note-${request.id}'),
+        style: muted,
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final muted = theme.textTheme.bodySmall?.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
     );
-    final phone = request.buyerPhone;
+    final phone = forBuyer ? request.sellerPhone : request.buyerPhone;
+    final other = forBuyer
+        ? request.sellerName ?? 'The seller'
+        : request.buyerName;
 
     return Card(
       key: ValueKey('marketplace-b2b-request-${request.id}'),
@@ -82,10 +119,8 @@ class MarketplaceB2BRequestCard extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        request.buyerName,
-                        style: theme.textTheme.bodyMedium,
-                      ),
+                      if (!forBuyer || request.sellerName != null)
+                        Text(other, style: theme.textTheme.bodyMedium),
                       const SizedBox(height: 4),
                       Text(
                         '#${request.number} · ${formatDayMonth(request.createdDate)}',
@@ -105,7 +140,7 @@ class MarketplaceB2BRequestCard extends ConsumerWidget {
                     if (phone != null)
                       CallIconButton(
                         phoneNumber: phone,
-                        tooltip: 'Call ${request.buyerName}',
+                        tooltip: 'Call $other',
                         iconSize: 22,
                       ),
                   ],
@@ -129,20 +164,22 @@ class MarketplaceB2BRequestCard extends ConsumerWidget {
               Text('"$message"', style: muted),
             ],
             const SizedBox(height: 8),
-            if (request.isAccepted && phone != null)
-              _ContactBox(name: request.buyerName, phone: phone)
+            if (forBuyer)
+              ..._buyerLines(muted, phone)
+            else if (request.isAccepted && phone != null)
+              _ContactBox(label: 'Buyer', name: other, phone: phone)
             else if (request.isNew)
               Text('Contact details show once you accept.', style: muted)
             else if (request.isAccepted)
               Text('Accepted. The buyer gave no phone number.', style: muted),
-            if (request.isAccepted) ...[
+            if (!forBuyer && request.isAccepted) ...[
               const SizedBox(height: 6),
               Text(
                 'The buyer sees your contact while their B2B plan is active.',
                 style: muted,
               ),
             ],
-            if (request.isNew) ...[
+            if (!forBuyer && request.isNew) ...[
               const SizedBox(height: 10),
               Row(
                 children: [
@@ -172,8 +209,13 @@ class MarketplaceB2BRequestCard extends ConsumerWidget {
 }
 
 class _ContactBox extends StatelessWidget {
-  const _ContactBox({required this.name, required this.phone});
+  const _ContactBox({
+    required this.label,
+    required this.name,
+    required this.phone,
+  });
 
+  final String label;
   final String name;
   final String phone;
 
@@ -191,7 +233,7 @@ class _ContactBox extends StatelessWidget {
         children: [
           Expanded(
             child: SelectableText(
-              'Buyer: $name\n$phone',
+              '$label: $name\n$phone',
               style: theme.textTheme.bodyMedium,
             ),
           ),

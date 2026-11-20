@@ -99,6 +99,8 @@ class MarketplaceOrderModel {
     this.ratingComment,
     this.actions = const [],
     this.events = const [],
+    this.sellerName,
+    this.track = const [],
   });
 
   factory MarketplaceOrderModel.fromJson(Map<String, dynamic> json) =>
@@ -144,6 +146,10 @@ class MarketplaceOrderModel {
   final DateTime createdDate;
   final List<MarketplaceOrderActionModel> actions;
   final List<MarketplaceOrderEventModel> events;
+  final String? sellerName;
+
+  /// The customer's own order only; empty otherwise.
+  final List<MarketplaceTrackStepModel> track;
 
   MarketplaceOrder toEntity() => MarketplaceOrder(
     id: id,
@@ -186,7 +192,23 @@ class MarketplaceOrderModel {
     createdDate: createdDate.toLocal(),
     actions: [for (final a in actions) a.toEntity()],
     events: [for (final e in events) e.toEntity()],
+    sellerName: sellerName,
+    track: [for (final t in track) t.toEntity()],
   );
+}
+
+@JsonSerializable(createToJson: false)
+class MarketplaceTrackStepModel {
+  const MarketplaceTrackStepModel({required this.name, this.reachedAt});
+
+  factory MarketplaceTrackStepModel.fromJson(Map<String, dynamic> json) =>
+      _$MarketplaceTrackStepModelFromJson(json);
+
+  final String name;
+  final DateTime? reachedAt;
+
+  MarketplaceTrackStep toEntity() =>
+      MarketplaceTrackStep(name: name, reachedAt: reachedAt?.toLocal());
 }
 
 @JsonSerializable(createToJson: false)
@@ -194,6 +216,8 @@ class MarketplaceStatusCountModel {
   const MarketplaceStatusCountModel({
     required this.status,
     required this.count,
+    this.name,
+    this.tone,
   });
 
   factory MarketplaceStatusCountModel.fromJson(Map<String, dynamic> json) =>
@@ -201,9 +225,15 @@ class MarketplaceStatusCountModel {
 
   final String status;
   final int count;
+  final String? name;
+  final String? tone;
 
-  MarketplaceStatusCount toEntity() =>
-      MarketplaceStatusCount(status: status, count: count);
+  MarketplaceStatusCount toEntity() => MarketplaceStatusCount(
+    status: status,
+    count: count,
+    name: name,
+    tone: tone,
+  );
 }
 
 @JsonSerializable(createToJson: false)
@@ -248,6 +278,8 @@ class MarketplaceB2BRequestModel {
     this.message,
     this.buyerPhone,
     this.sellerName,
+    this.sellerPhone,
+    this.contactNeedsPlan = false,
     this.respondedAt,
   });
 
@@ -270,6 +302,8 @@ class MarketplaceB2BRequestModel {
   final String buyerName;
   final String? buyerPhone;
   final String? sellerName;
+  final String? sellerPhone;
+  final bool contactNeedsPlan;
   final DateTime createdDate;
   final DateTime? respondedAt;
 
@@ -290,6 +324,8 @@ class MarketplaceB2BRequestModel {
     buyerName: buyerName,
     buyerPhone: buyerPhone,
     sellerName: sellerName,
+    sellerPhone: sellerPhone,
+    contactNeedsPlan: contactNeedsPlan,
     createdDate: createdDate.toLocal(),
     respondedAt: respondedAt?.toLocal(),
   );
@@ -361,5 +397,33 @@ class MarketplaceCourierModel {
     name: name,
     takesCustomName: takesCustomName,
     hasTrackingLink: hasTrackingLink,
+  );
+}
+
+@JsonSerializable(createToJson: false)
+class MarketplaceCheckoutModel {
+  const MarketplaceCheckoutModel({
+    required this.providerOrderId,
+    required this.keyId,
+    required this.amount,
+    required this.description,
+    this.nothingToCollect = false,
+  });
+
+  factory MarketplaceCheckoutModel.fromJson(Map<String, dynamic> json) =>
+      _$MarketplaceCheckoutModelFromJson(json);
+
+  final String providerOrderId;
+  final String keyId;
+  final double amount;
+  final String description;
+  final bool nothingToCollect;
+
+  MarketplaceCheckout toEntity() => MarketplaceCheckout(
+    providerOrderId: providerOrderId,
+    keyId: keyId,
+    amount: amount,
+    description: description,
+    nothingToCollect: nothingToCollect,
   );
 }

@@ -10,6 +10,7 @@ import 'package:zuno/features/marketplace/data/marketplace_api.dart';
 import 'package:zuno/features/marketplace/domain/entities/marketplace_order.dart';
 import 'package:zuno/features/marketplace/presentation/providers/marketplace_order_providers.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_order_card.dart';
+import 'package:zuno/features/marketplace/presentation/widgets/marketplace_order_history.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
 import 'package:zuno/shared/widgets/call_icon_button.dart';
 import 'package:zuno/shared/widgets/detail_row.dart';
@@ -227,29 +228,8 @@ class _Body extends ConsumerWidget {
             ),
         ],
         const SizedBox(height: 20),
-        Text('History', style: theme.textTheme.titleSmall),
-        const SizedBox(height: 8),
-        for (final step in order.events)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: DetailRow.iconText(
-              icon: Icons.circle,
-              iconSize: 10,
-              text: [
-                step.statusName,
-                _who(step.actor),
-                '${formatDayMonth(step.at)}, ${formatTime(step.at)}',
-                ?step.note,
-              ].join(' · '),
-            ),
-          ),
+        MarketplaceOrderHistory(events: order.events),
       ],
     );
   }
-
-  static String _who(String actor) => switch (actor) {
-    'Business' => 'by you',
-    'Customer' => 'by the customer',
-    _ => 'automatically',
-  };
 }

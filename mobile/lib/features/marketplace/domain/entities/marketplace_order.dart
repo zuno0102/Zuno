@@ -41,6 +41,8 @@ class MarketplaceOrder {
     this.ratingComment,
     this.actions = const [],
     this.events = const [],
+    this.sellerName,
+    this.track = const [],
   });
 
   final String id;
@@ -102,6 +104,14 @@ class MarketplaceOrder {
   /// The history, oldest first — on the order's own page only.
   final List<MarketplaceOrderEvent> events;
 
+  /// The business it was ordered from — on the customer's own orders only.
+  final String? sellerName;
+
+  /// The customer's progress bar, on their own order's page only.
+  final List<MarketplaceTrackStep> track;
+
+  bool get isCancelled => status == 'Cancelled';
+
   bool get isOnline => paymentMethod == 'Online';
 
   /// "Silk saree · Red".
@@ -131,6 +141,14 @@ class MarketplaceOrderAction {
   final bool needsTracking;
 }
 
+/// One step of the customer's progress bar and when the order got there; null not yet, or skipped.
+class MarketplaceTrackStep {
+  const MarketplaceTrackStep({required this.name, this.reachedAt});
+
+  final String name;
+  final DateTime? reachedAt;
+}
+
 /// One step in an order's history.
 class MarketplaceOrderEvent {
   const MarketplaceOrderEvent({
@@ -152,10 +170,19 @@ class MarketplaceOrderEvent {
 
 /// A count per status, for the chips over a list. Every status comes, zeros too.
 class MarketplaceStatusCount {
-  const MarketplaceStatusCount({required this.status, required this.count});
+  const MarketplaceStatusCount({
+    required this.status,
+    required this.count,
+    this.name,
+    this.tone,
+  });
 
   final String status;
   final int count;
+
+  /// The customer's own lists: the status as they see it, and its colour.
+  final String? name;
+  final String? tone;
 }
 
 class MarketplaceOrderPage {
@@ -193,6 +220,8 @@ class MarketplaceB2BRequest {
     this.message,
     this.buyerPhone,
     this.sellerName,
+    this.sellerPhone,
+    this.contactNeedsPlan = false,
     this.respondedAt,
   });
 
@@ -218,6 +247,12 @@ class MarketplaceB2BRequest {
   /// Shown once the business accepts.
   final String? buyerPhone;
   final String? sellerName;
+
+  /// The buyer sees it once accepted, and only while their B2B plan runs.
+  final String? sellerPhone;
+
+  /// Accepted, but the buyer has no B2B plan running: the seller's number is held back.
+  final bool contactNeedsPlan;
   final DateTime createdDate;
   final DateTime? respondedAt;
 
@@ -273,4 +308,23 @@ class MarketplaceCourier {
   /// "Other": the business types the courier's name.
   final bool takesCustomName;
   final bool hasTrackingLink;
+}
+
+/// What the payment window opens with, for an order paid online.
+class MarketplaceCheckout {
+  const MarketplaceCheckout({
+    required this.providerOrderId,
+    required this.keyId,
+    required this.amount,
+    required this.description,
+    this.nothingToCollect = false,
+  });
+
+  final String providerOrderId;
+  final String keyId;
+  final double amount;
+  final String description;
+
+  /// Test mode on the server: no money moves, so no window opens.
+  final bool nothingToCollect;
 }

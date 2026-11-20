@@ -78,7 +78,36 @@ public class MarketplaceOrderStatusOptionConfiguration : IEntityTypeConfiguratio
         builder.Property(s => s.Code).ValueGeneratedNever();
         builder.Property(s => s.Name).HasMaxLength(50).IsRequired();
         builder.Property(s => s.Tone).HasMaxLength(20).IsRequired();
+        builder.Property(s => s.CustomerName).HasMaxLength(50);
+        builder.Property(s => s.CustomerTone).HasMaxLength(20);
+        builder.HasOne<MarketplaceOrderTrackStep>().WithMany().HasForeignKey(s => s.TrackStep).OnDelete(DeleteBehavior.Restrict);
         builder.HasData(MarketplaceOrderSeedData.Statuses);
+    }
+}
+
+public class MarketplaceOrderTrackStepConfiguration : IEntityTypeConfiguration<MarketplaceOrderTrackStep>
+{
+    public void Configure(EntityTypeBuilder<MarketplaceOrderTrackStep> builder)
+    {
+        builder.ToTable("ref_marketplace_order_track_steps");
+        builder.HasKey(s => s.Code);
+        builder.Property(s => s.Code).ValueGeneratedNever();
+        builder.Property(s => s.Name).HasMaxLength(50).IsRequired();
+        builder.HasData(MarketplaceOrderSeedData.TrackSteps);
+    }
+}
+
+public class MarketplaceFavouriteConfiguration : IEntityTypeConfiguration<MarketplaceFavourite>
+{
+    public void Configure(EntityTypeBuilder<MarketplaceFavourite> builder)
+    {
+        builder.ToTable("marketplace_favourites");
+
+        // One row per customer and post; the key also serves "my wishlist" and "is this saved?".
+        builder.HasKey(f => new { f.UserId, f.PostId });
+        builder.HasIndex(f => new { f.UserId, f.CreatedDate });
+        builder.HasIndex(f => f.PostId);
+        builder.HasOne(f => f.Post).WithMany().HasForeignKey(f => f.PostId).OnDelete(DeleteBehavior.Cascade);
     }
 }
 

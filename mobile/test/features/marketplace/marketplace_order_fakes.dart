@@ -107,7 +107,12 @@ MarketplaceOrder testOrder({
   int? ratingScore,
   String? ratingComment,
   DateTime? closesAt,
+  DateTime? cancelledAt,
   List<MarketplaceOrderEvent> events = const [],
+  List<MarketplaceOrderAction>? actions,
+  String? sellerName,
+  List<MarketplaceTrackStep> track = const [],
+  String? statusName,
 }) {
   final option = testOrderStatuses.firstWhere((s) => s.code == status);
   return MarketplaceOrder(
@@ -126,7 +131,7 @@ MarketplaceOrder testOrder({
     isPaid: isPaid,
     dueToBusiness: dueToBusiness,
     status: status,
-    statusName: option.name,
+    statusName: statusName ?? option.name,
     statusTone: option.tone!,
     customerName: customerName,
     customerPhone: '9876543210',
@@ -139,9 +144,12 @@ MarketplaceOrder testOrder({
     ratingScore: ratingScore,
     ratingComment: ratingComment,
     closesAt: closesAt,
+    cancelledAt: cancelledAt,
     createdDate: DateTime(2026, 11, 18, 10, 40),
-    actions: testOrderActions(status),
+    actions: actions ?? testOrderActions(status),
     events: events,
+    sellerName: sellerName,
+    track: track,
   );
 }
 

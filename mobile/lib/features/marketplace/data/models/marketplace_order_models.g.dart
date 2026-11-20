@@ -94,6 +94,24 @@ MarketplaceOrderModel _$MarketplaceOrderModelFromJson(
           )
           .toList() ??
       const [],
+  sellerName: json['sellerName'] as String?,
+  track:
+      (json['track'] as List<dynamic>?)
+          ?.map(
+            (e) =>
+                MarketplaceTrackStepModel.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const [],
+);
+
+MarketplaceTrackStepModel _$MarketplaceTrackStepModelFromJson(
+  Map<String, dynamic> json,
+) => MarketplaceTrackStepModel(
+  name: json['name'] as String,
+  reachedAt: json['reachedAt'] == null
+      ? null
+      : DateTime.parse(json['reachedAt'] as String),
 );
 
 MarketplaceStatusCountModel _$MarketplaceStatusCountModelFromJson(
@@ -101,6 +119,8 @@ MarketplaceStatusCountModel _$MarketplaceStatusCountModelFromJson(
 ) => MarketplaceStatusCountModel(
   status: json['status'] as String,
   count: (json['count'] as num).toInt(),
+  name: json['name'] as String?,
+  tone: json['tone'] as String?,
 );
 
 MarketplaceOrderPageModel _$MarketplaceOrderPageModelFromJson(
@@ -140,6 +160,8 @@ MarketplaceB2BRequestModel _$MarketplaceB2BRequestModelFromJson(
   message: json['message'] as String?,
   buyerPhone: json['buyerPhone'] as String?,
   sellerName: json['sellerName'] as String?,
+  sellerPhone: json['sellerPhone'] as String?,
+  contactNeedsPlan: json['contactNeedsPlan'] as bool? ?? false,
   respondedAt: json['respondedAt'] == null
       ? null
       : DateTime.parse(json['respondedAt'] as String),
@@ -179,4 +201,14 @@ MarketplaceCourierModel _$MarketplaceCourierModelFromJson(
   name: json['name'] as String,
   takesCustomName: json['takesCustomName'] as bool? ?? false,
   hasTrackingLink: json['hasTrackingLink'] as bool? ?? false,
+);
+
+MarketplaceCheckoutModel _$MarketplaceCheckoutModelFromJson(
+  Map<String, dynamic> json,
+) => MarketplaceCheckoutModel(
+  providerOrderId: json['providerOrderId'] as String,
+  keyId: json['keyId'] as String,
+  amount: (json['amount'] as num).toDouble(),
+  description: json['description'] as String,
+  nothingToCollect: json['nothingToCollect'] as bool? ?? false,
 );

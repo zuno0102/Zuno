@@ -22,7 +22,11 @@ import 'package:zuno/shared/widgets/confirm_dialog.dart';
 /// Only lists what the app can actually do. A settings row that opens nothing is worse than no row at
 /// all — it teaches people the app is unfinished, and they stop trying the ones that work.
 class CustomerProfileTab extends ConsumerWidget {
-  const CustomerProfileTab({super.key});
+  const CustomerProfileTab({this.shortcuts, super.key});
+
+  /// A band under the header for one side's own shortcuts, e.g. Marketplace's Orders · Wishlist ·
+  /// Coupons · Help Center tiles. Null shows none.
+  final Widget? shortcuts;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -57,6 +61,9 @@ class CustomerProfileTab extends ConsumerWidget {
             const SizedBox(height: 16),
           ],
         ),
+
+        if (shortcuts case final band?)
+          _Section(key: const ValueKey('profile-shortcuts'), children: [band]),
 
         _Section(
           title: 'Account settings',

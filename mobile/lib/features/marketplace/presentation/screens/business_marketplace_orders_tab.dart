@@ -8,6 +8,7 @@ import 'package:zuno/features/marketplace/presentation/screens/business_marketpl
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_b2b_request_card.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_dashboard_tiles.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_order_card.dart';
+import 'package:zuno/features/marketplace/presentation/widgets/marketplace_status_list.dart';
 import 'package:zuno/shared/widgets/counted_tab_label.dart';
 import 'package:zuno/shared/widgets/empty_state.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
@@ -104,7 +105,7 @@ class _ProductOrdersState extends ConsumerState<_ProductOrders>
     final page = businessMarketplaceOrdersProvider(status: _status);
     final statuses = options?.orderStatuses ?? const <MarketplaceOption>[];
 
-    return _StatusList<MarketplaceOrder>(
+    return MarketplaceStatusList<MarketplaceOrder>(
       chips: [
         for (final status in [null, ...statuses])
           CountChip(
@@ -159,7 +160,7 @@ class _B2BRequestsState extends ConsumerState<_B2BRequests>
     final page = businessB2BRequestsProvider(status: _status);
     final statuses = options?.b2bRequestStatuses ?? const <MarketplaceOption>[];
 
-    return _StatusList<MarketplaceB2BRequest>(
+    return MarketplaceStatusList<MarketplaceB2BRequest>(
       chips: [
         for (final status in [null, ...statuses])
           CountChip(
@@ -192,69 +193,6 @@ class _B2BRequestsState extends ConsumerState<_B2BRequests>
 int? _count(List<MarketplaceStatusCount>? counts, String status) =>
     counts?.where((c) => c.status == status).firstOrNull?.count ??
     (counts == null ? null : 0);
-
-/// Status chips over a list of cards, with pull to refresh, loading, error and empty states.
-class _StatusList<T> extends StatelessWidget {
-  const _StatusList({
-    required this.chips,
-    required this.items,
-    required this.onRefresh,
-    required this.onRetry,
-    required this.empty,
-    required this.itemBuilder,
-  });
-
-  final List<Widget> chips;
-  final AsyncValue<List<T>> items;
-  final Future<void> Function() onRefresh;
-  final VoidCallback onRetry;
-  final Widget empty;
-  final Widget Function(T item) itemBuilder;
-
-  @override
-  Widget build(BuildContext context) => RefreshIndicator(
-    onRefresh: onRefresh,
-    child: ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.only(bottom: 32),
-      children: [
-        FilterChipBar(chips: chips),
-        ...items.when(
-          loading: () => const [
-            Padding(
-              padding: EdgeInsets.all(32),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-          ],
-          error: (error, _) => [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  ErrorBanner(message: error.toString()),
-                  TextButton.icon(
-                    onPressed: onRetry,
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Try again'),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          data: (list) => list.isEmpty
-              ? [empty]
-              : [
-                  for (final item in list)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                      child: itemBuilder(item),
-                    ),
-                ],
-        ),
-      ],
-    ),
-  );
-}
 
 /// One category tab: its posts, narrowed by a status chip.
 class _CategoryPosts extends ConsumerStatefulWidget {

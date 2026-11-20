@@ -11,10 +11,10 @@ import 'package:zuno/features/rental/presentation/providers/rental_order_provide
 
 part 'rental_customer_providers.g.dart';
 
-/// Which business line the customer is browsing: Service (the app as it was) or Rent.
-enum CustomerPanel { service, rent }
+/// Which business line the customer is browsing: Service (the app as it was), Rent or Marketplace.
+enum CustomerPanel { service, rent, marketplace }
 
-/// The panel the customer has open. Every login opens on Service; Rent is one tap away and holds
+/// The panel the customer has open. Every login opens on Service; the others are one tap away and hold
 /// only until the next login, so a customer never lands on Rent without choosing it.
 @Riverpod(keepAlive: true)
 class CustomerPanelChoice extends _$CustomerPanelChoice {

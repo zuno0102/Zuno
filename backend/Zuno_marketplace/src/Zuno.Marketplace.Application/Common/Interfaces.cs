@@ -42,6 +42,10 @@ public interface IMarketplaceDbContext
 
     public DbSet<MarketplaceOrderTransition> OrderTransitions { get; }
 
+    public DbSet<MarketplaceOrderTrackStep> OrderTrackSteps { get; }
+
+    public DbSet<MarketplaceFavourite> Favourites { get; }
+
     public DbSet<MarketplaceCourier> Couriers { get; }
 
     public DbSet<MarketplacePaymentMethodOption> PaymentMethods { get; }

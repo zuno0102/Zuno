@@ -5,6 +5,7 @@ import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/marketplace/domain/entities/marketplace_order.dart';
 import 'package:zuno/features/marketplace/presentation/providers/marketplace_order_providers.dart';
+import 'package:zuno/features/marketplace/presentation/screens/customer_marketplace_order_screen.dart';
 import 'package:zuno/features/marketplace/presentation/screens/marketplace_order_detail_screen.dart';
 import 'package:zuno/features/marketplace/presentation/widgets/marketplace_ship_sheet.dart';
 import 'package:zuno/shared/widgets/app_messages.dart';
@@ -62,17 +63,48 @@ String? marketplaceOrderNote(MarketplaceOrder order) {
   return null;
 }
 
-/// One product order: what and how many, the customer, money, and the next step as a button.
-/// Tapping it opens the order.
+/// What the customer reads under their own order — null when the status says it all.
+String? marketplaceCustomerOrderNote(MarketplaceOrder order) {
+  final seller = order.sellerName ?? 'The seller';
+  switch (order.status) {
+    case 'AwaitingPayment':
+      final payBy = order.payBy;
+      return payBy == null
+          ? 'Pay online to confirm it.'
+          : 'Pay online by ${formatTime(payBy)} to confirm it, or it is let go.';
+    case 'Placed':
+      return 'Waiting for $seller to confirm.';
+    case 'Confirmed':
+      return '$seller is packing it.';
+    case 'Delivered':
+      final closes = order.closesAt;
+      return closes == null
+          ? 'How was it? Rate it.'
+          : 'How was it? Rate it before ${formatDayMonth(closes)}.';
+    case 'Cancelled':
+      return switch (order.cancelledBy) {
+        'Customer' => 'You cancelled it before it shipped.',
+        'System' => 'Not paid in time, so it was let go.',
+        _ => 'Cancelled.',
+      };
+  }
+  return null;
+}
+
+/// One product order: what and how many, who it is with, money, and the next step as a button.
+/// Tapping it opens the order. [forCustomer]: the customer's own order — the seller instead of the
+/// customer, no call button, and its steps taken on the order's page.
 class MarketplaceOrderCard extends ConsumerWidget {
   const MarketplaceOrderCard({
     required this.order,
     this.showActions = true,
+    this.forCustomer = false,
     super.key,
   });
 
   final MarketplaceOrder order;
   final bool showActions;
+  final bool forCustomer;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -80,7 +112,9 @@ class MarketplaceOrderCard extends ConsumerWidget {
     final muted = theme.textTheme.bodySmall?.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
     );
-    final note = marketplaceOrderNote(order);
+    final note = forCustomer
+        ? marketplaceCustomerOrderNote(order)
+        : marketplaceOrderNote(order);
 
     return Card(
       key: ValueKey('marketplace-order-${order.id}'),
@@ -89,7 +123,9 @@ class MarketplaceOrderCard extends ConsumerWidget {
       child: InkWell(
         onTap: () => pushScreen(
           context,
-          MarketplaceOrderDetailScreen(orderId: order.id),
+          forCustomer
+              ? CustomerMarketplaceOrderScreen(orderId: order.id)
+              : MarketplaceOrderDetailScreen(orderId: order.id),
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
@@ -113,7 +149,9 @@ class MarketplaceOrderCard extends ConsumerWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          order.customerName,
+                          forCustomer
+                              ? order.sellerName ?? ''
+                              : order.customerName,
                           style: theme.textTheme.bodyMedium,
                         ),
                         const SizedBox(height: 4),
@@ -132,7 +170,7 @@ class MarketplaceOrderCard extends ConsumerWidget {
                       compact: true,
                     ),
                     actions: [
-                      if (order.customerPhone.isNotEmpty)
+                      if (!forCustomer && order.customerPhone.isNotEmpty)
                         CallIconButton(
                           phoneNumber: order.customerPhone,
                           tooltip: 'Call customer',
@@ -169,7 +207,7 @@ class MarketplaceOrderCard extends ConsumerWidget {
                     style: muted,
                   ),
                 ),
-              if (showActions && order.actions.isNotEmpty) ...[
+              if (showActions && !forCustomer && order.actions.isNotEmpty) ...[
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 8,

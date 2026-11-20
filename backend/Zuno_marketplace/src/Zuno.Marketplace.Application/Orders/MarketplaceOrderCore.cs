@@ -11,14 +11,16 @@ internal sealed record MarketplaceOrderLookups(
     IReadOnlyList<MarketplaceOrderStatusOption> Statuses,
     IReadOnlyList<MarketplaceOrderTransition> Transitions,
     IReadOnlyList<MarketplaceCourier> Couriers,
-    IReadOnlyList<MarketplacePaymentMethodOption> PaymentMethods)
+    IReadOnlyList<MarketplacePaymentMethodOption> PaymentMethods,
+    IReadOnlyList<MarketplaceOrderTrackStep> TrackSteps)
 {
     public static async Task<MarketplaceOrderLookups> LoadAsync(MarketplaceReference reference, CancellationToken cancellationToken) =>
         new(
             await reference.OrderStatusesAsync(cancellationToken),
             await reference.OrderTransitionsAsync(cancellationToken),
             await reference.CouriersAsync(cancellationToken),
-            await reference.PaymentMethodsAsync(cancellationToken));
+            await reference.PaymentMethodsAsync(cancellationToken),
+            await reference.OrderTrackStepsAsync(cancellationToken));
 
     /// <summary>The row for a step from <paramref name="from"/> to <paramref name="to"/> that <paramref name="actor"/> may take.</summary>
     public MarketplaceOrderTransition? Step(MarketplaceOrderStatus from, MarketplaceOrderStatus to, MarketplaceOrderActor actor) =>
@@ -163,6 +165,18 @@ internal static class MarketplaceOrderCore
         return images;
     }
 
+    /// <summary>The selling business's name per owner, for the customer's cards — one read for the page.</summary>
+    public static async Task<Dictionary<Guid, string>> SellerNamesAsync(
+        this IMarketplaceDbContext dbContext, IReadOnlyCollection<MarketplaceOrder> orders, CancellationToken cancellationToken)
+    {
+        var owners = orders.Select(o => o.OwnerUserId).Distinct().ToList();
+        return owners.Count == 0
+            ? []
+            : await dbContext.Businesses.AsNoTracking()
+                .Where(b => owners.Contains(b.OwnerUserId))
+                .ToDictionaryAsync(b => b.OwnerUserId, b => b.Name, cancellationToken);
+    }
+
     public static MarketplaceOrderDto ToDto(
         this MarketplaceOrder order, MarketplaceOrderActor viewer, MarketplaceOrderLookups lookups, string? imageUrl, bool withHistory)
     {
@@ -185,12 +199,13 @@ internal static class MarketplaceOrderCore
             PaymentMethodName = method?.Name ?? order.PaymentMethod.ToString(),
             IsPaid = order.PaidAt is not null,
             PaidAt = order.PaidAt,
-            DueToBusiness = order.DueToBusiness,
+            // What Zuno owes the seller is the seller's to see, not the customer's.
+            DueToBusiness = viewer == MarketplaceOrderActor.Business ? order.DueToBusiness : 0m,
             RefundDue = order.RefundDue,
             Refunded = order.RefundId is not null,
             Status = order.Status.ToString(),
-            StatusName = status?.Name ?? order.Status.ToString(),
-            StatusTone = status?.Tone ?? "waiting",
+            StatusName = status?.NameFor(viewer) ?? order.Status.ToString(),
+            StatusTone = status?.ToneFor(viewer) ?? "waiting",
             CustomerName = order.CustomerName,
             CustomerPhone = order.CustomerPhone,
             DeliveryAddress = order.DeliveryAddress,
@@ -228,15 +243,54 @@ internal static class MarketplaceOrderCore
                     .Select(e => new MarketplaceOrderEventDto
                     {
                         Status = e.Status.ToString(),
-                        StatusName = lookups.Statuses.FirstOrDefault(s => s.Code == e.Status)?.Name ?? e.Status.ToString(),
+                        StatusName = lookups.Statuses.FirstOrDefault(s => s.Code == e.Status)?.NameFor(viewer) ?? e.Status.ToString(),
                         Actor = e.Actor.ToString(),
                         Note = e.Note,
                         At = e.At,
                     })
                     .ToList()
                 : [],
+            Track = withHistory && viewer == MarketplaceOrderActor.Customer ? Track(order, lookups) : [],
         };
     }
+
+    /// <summary>
+    /// The customer's progress bar: every step in order, with when the order first reached it. A step
+    /// skipped (shipped straight to delivered) has no time; the app fills it once a later step is reached.
+    /// </summary>
+    private static List<MarketplaceOrderTrackStepDto> Track(MarketplaceOrder order, MarketplaceOrderLookups lookups)
+    {
+        var stepOf = lookups.Statuses
+            .Where(s => s.TrackStep is not null)
+            .ToDictionary(s => s.Code, s => s.TrackStep!.Value);
+        var reached = order.Events
+            .Where(e => stepOf.ContainsKey(e.Status))
+            .GroupBy(e => stepOf[e.Status])
+            .ToDictionary(g => g.Key, g => g.Min(e => e.At));
+
+        return lookups.TrackSteps
+            .Select(s => new MarketplaceOrderTrackStepDto
+            {
+                Code = s.Code,
+                Name = s.Name,
+                ReachedAt = reached.TryGetValue(s.Code, out var at) ? at : null,
+            })
+            .ToList();
+    }
+
+    /// <summary>The customer's chips: each status they have orders in, named and coloured as they see it.</summary>
+    public static List<MarketplaceStatusCountDto> CustomerCounts(
+        MarketplaceOrderLookups lookups, IReadOnlyDictionary<MarketplaceOrderStatus, int> counts) =>
+        lookups.Statuses
+            .Where(s => counts.GetValueOrDefault(s.Code) > 0)
+            .Select(s => new MarketplaceStatusCountDto
+            {
+                Status = s.Code.ToString(),
+                Count = counts[s.Code],
+                Name = s.NameFor(MarketplaceOrderActor.Customer),
+                Tone = s.ToneFor(MarketplaceOrderActor.Customer),
+            })
+            .ToList();
 
     /// <summary>Every status with its count, in display order — zeros too, so the chips never jump.</summary>
     public static List<MarketplaceStatusCountDto> Counts<TStatus>(

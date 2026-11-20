@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zuno/core/router/push_screen.dart';
-import 'package:zuno/core/theme/app_colors.dart';
 import 'package:zuno/core/utils/formatting.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:zuno/features/auth/presentation/providers/auth_state.dart';
@@ -15,6 +14,7 @@ import 'package:zuno/features/rental/presentation/providers/rental_customer_prov
 import 'package:zuno/features/rental/presentation/providers/rental_providers.dart';
 import 'package:zuno/features/rental/presentation/screens/rental_item_screen.dart';
 import 'package:zuno/features/rental/presentation/widgets/rental_item_card.dart';
+import 'package:zuno/shared/widgets/banner_carousel.dart';
 import 'package:zuno/shared/widgets/category_grid.dart';
 import 'package:zuno/shared/widgets/empty_state.dart';
 import 'package:zuno/shared/widgets/error_banner.dart';
@@ -170,7 +170,7 @@ class _RentalHomeTabState extends ConsumerState<RentalHomeTab> {
                 ),
 
                 // 3. Featured: a few items with photos, the same all day.
-                const SliverToBoxAdapter(child: _BannerCarousel()),
+                const SliverToBoxAdapter(child: _RentBanners()),
 
                 // 4. Categories, from the Rent server's table.
                 SliverToBoxAdapter(
@@ -410,156 +410,30 @@ class _RentalHomeTabState extends ConsumerState<RentalHomeTab> {
   );
 }
 
-/// A few featured rent items with photos, swiped sideways, with dots for where you are.
-class _BannerCarousel extends ConsumerStatefulWidget {
-  const _BannerCarousel();
+/// A few featured rent items with photos — the shared [BannerCarousel], with Book on each.
+class _RentBanners extends ConsumerWidget {
+  const _RentBanners();
 
   @override
-  ConsumerState<_BannerCarousel> createState() => _BannerCarouselState();
-}
-
-class _BannerCarouselState extends ConsumerState<_BannerCarousel> {
-  final _pages = PageController(viewportFraction: 0.92);
-  int _page = 0;
-
-  @override
-  void dispose() {
-    _pages.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final cards =
         ref.watch(rentalBannersProvider).value ?? const <RentalCard>[];
-    if (cards.isEmpty) return const SizedBox(height: 8);
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 14),
-      child: Column(
-        children: [
-          SizedBox(
-            height: 168,
-            child: PageView.builder(
-              key: const ValueKey('rent-banners'),
-              controller: _pages,
-              itemCount: cards.length,
-              onPageChanged: (i) => setState(() => _page = i),
-              itemBuilder: (context, index) {
-                final card = cards[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(18),
-                    child: Material(
-                      child: InkWell(
-                        onTap: () => pushScreen(
-                          context,
-                          RentalItemScreen(itemId: card.id, preview: card),
-                        ),
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            RentalPhoto(path: card.imageUrl),
-                            // Words on a photo need a shade under them to be read.
-                            DecoratedBox(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Colors.transparent,
-                                    AppColors.mediaGradientFoot,
-                                  ],
-                                  stops: [0.35, 1],
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              left: 16,
-                              right: 16,
-                              bottom: 14,
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          card.name,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: theme.textTheme.titleMedium
-                                              ?.copyWith(
-                                                color: AppColors.onMedia,
-                                                fontWeight: FontWeight.w800,
-                                              ),
-                                        ),
-                                        Text(
-                                          '${rupees(card.price)}${card.unitSuffix}'
-                                          '${card.districtName == null ? '' : ' · ${card.districtName}'}',
-                                          style: theme.textTheme.bodySmall
-                                              ?.copyWith(
-                                                color: AppColors.onMedia
-                                                    .withValues(alpha: 0.85),
-                                              ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  FilledButton.tonal(
-                                    onPressed: () => pushScreen(
-                                      context,
-                                      RentalItemScreen(
-                                        itemId: card.id,
-                                        preview: card,
-                                      ),
-                                    ),
-                                    style: FilledButton.styleFrom(
-                                      visualDensity: VisualDensity.compact,
-                                    ),
-                                    child: const Text('Book'),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
+    void open(RentalCard card) =>
+        pushScreen(context, RentalItemScreen(itemId: card.id, preview: card));
+    return BannerCarousel(
+      pagerKey: const ValueKey('rent-banners'),
+      slides: [
+        for (final card in cards)
+          BannerSlide(
+            imageUrl: rentalPhotoUrl(card.imageUrl),
+            title: card.name,
+            subtitle:
+                '${rupees(card.price)}${card.unitSuffix}'
+                '${card.districtName == null ? '' : ' · ${card.districtName}'}',
+            actionLabel: 'Book',
+            onTap: () => open(card),
           ),
-          if (cards.length > 1) ...[
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (var i = 0; i < cards.length; i++)
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    width: i == _page ? 18 : 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: i == _page
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.outlineVariant,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        ],
-      ),
+      ],
     );
   }
 }

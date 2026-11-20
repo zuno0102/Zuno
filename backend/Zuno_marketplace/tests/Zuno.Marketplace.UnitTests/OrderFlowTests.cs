@@ -130,7 +130,8 @@ public class OrderFlowTests
 
         var order = await scene.PlaceAsync();
         order.Status.Should().Be("Placed");
-        order.StatusName.Should().Be("New");
+        order.StatusName.Should().Be("Ordered", "the customer sees their own word for what the business sees as New");
+        order.StatusTone.Should().Be("progress", "calm for the customer, where the business's New is a call to act");
         order.Amount.Should().Be(4800m);
         order.VariantName.Should().Be("Red");
         order.CustomerName.Should().Be("Priya S");
@@ -175,7 +176,11 @@ public class OrderFlowTests
         var paid = await scene.PayAsync(order.Id);
         paid.Status.Should().Be("Confirmed");
         paid.IsPaid.Should().BeTrue();
-        paid.DueToBusiness.Should().Be(2600m);
+        paid.DueToBusiness.Should().Be(0m, "what Zuno owes the seller is not the customer's to see");
+        scene.Test.As(TestMarketplace.OwnerA);
+        (await scene.Business.Handle(new GetBusinessMarketplaceOrderQuery { Id = order.Id }, CancellationToken.None))
+            .DueToBusiness.Should().Be(2600m, "the seller sees it");
+        scene.Test.As(Customer);
         paid.PaymentMethodName.Should().Be("Online pay");
 
         // Reported again (the window reporting twice): counted once.
@@ -550,5 +555,146 @@ public class OrderFlowTests
             "only a proven payment confirms an online order");
         MarketplaceOrderSeedData.Statuses.Select(s => s.Code).Should().BeEquivalentTo(Enum.GetValues<MarketplaceOrderStatus>());
         MarketplaceOrderSeedData.Couriers.Should().ContainSingle(c => c.TakesCustomName);
+    }
+
+    private static Task<MarketplaceOrderDto> MineAsync(Scene scene, Guid orderId, Guid? customer = null)
+    {
+        scene.Test.As(customer ?? Customer);
+        return scene.Customers.Handle(new GetMyMarketplaceOrderQuery { Id = orderId }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task Progress_Bar_Fills_Step_By_Step_With_When_Each_Was_Reached()
+    {
+        using var scene = new Scene();
+        var placedAt = scene.Test.Now;
+        var order = await scene.PlaceAsync();
+
+        var fresh = await MineAsync(scene, order.Id);
+        fresh.Track.Select(s => s.Name).Should().Equal("Ordered", "Confirmed", "Shipped", "Out for delivery", "Delivered");
+        fresh.Track.Select(s => s.ReachedAt).Should().Equal(placedAt, null, null, null, null);
+
+        scene.Test.Clock.Current = placedAt.AddHours(1);
+        await scene.StepAsync(order.Id, "Confirmed");
+        scene.Test.Clock.Current = placedAt.AddDays(1);
+        await scene.ShipAsync(order.Id);
+        scene.Test.Clock.Current = placedAt.AddDays(3);
+        await scene.StepAsync(order.Id, "Delivered");
+
+        var delivered = await MineAsync(scene, order.Id);
+        delivered.StatusName.Should().Be("Delivered");
+        delivered.Track.Select(s => s.ReachedAt).Should().Equal(
+            [placedAt, placedAt.AddHours(1), placedAt.AddDays(1), null, placedAt.AddDays(3)],
+            "a step the courier skipped has no time; the app fills it in from the later step");
+        delivered.Events.Should().HaveCount(4);
+    }
+
+    [Fact]
+    public async Task Progress_Bar_Of_A_Paid_Online_Order_Starts_At_Ordered_And_A_Review_Keeps_It_Full()
+    {
+        using var scene = new Scene();
+        var order = await scene.PlaceAsync("Online", 1, scene.Blue);
+        await scene.PayAsync(order.Id);
+
+        var paid = await MineAsync(scene, order.Id);
+        paid.Track.Take(2).Should().OnlyContain(s => s.ReachedAt != null, "awaiting payment is the Ordered step");
+
+        await scene.ShipAsync(order.Id);
+        await scene.StepAsync(order.Id, "Delivered");
+        scene.Test.As(Customer);
+        await scene.Customers.Handle(new ReviewMarketplaceOrderCommand { Id = order.Id, Score = 4 }, CancellationToken.None);
+
+        var closed = await MineAsync(scene, order.Id);
+        closed.StatusName.Should().Be("Completed", "the customer's word for a closed order");
+        closed.Track.Last().ReachedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Progress_Bar_Of_A_Cancelled_Order_Stops_Where_It_Was_Cancelled()
+    {
+        using var scene = new Scene();
+        var order = await scene.PlaceAsync();
+        await scene.StepAsync(order.Id, "Confirmed");
+        await scene.CancelAsync(order.Id);
+
+        var cancelled = await MineAsync(scene, order.Id);
+
+        cancelled.Status.Should().Be("Cancelled");
+        cancelled.Track.Where(s => s.ReachedAt != null).Select(s => s.Name).Should().Equal("Ordered", "Confirmed");
+        cancelled.CancelledBy.Should().Be("Customer");
+        cancelled.Actions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Progress_Bar_Is_The_Customers_Only()
+    {
+        using var scene = new Scene();
+        var order = await scene.PlaceAsync();
+        scene.Test.As(TestMarketplace.OwnerA);
+
+        var seller = await scene.Business.Handle(new GetBusinessMarketplaceOrderQuery { Id = order.Id }, CancellationToken.None);
+
+        seller.Track.Should().BeEmpty();
+        seller.SellerName.Should().BeNull("the business knows who it is");
+        (await MineAsync(scene, order.Id)).SellerName.Should().Be("Joy Silks");
+        seller.StatusName.Should().Be("New", "the business keeps its own word");
+        seller.StatusTone.Should().Be("danger");
+        seller.Events.Single().StatusName.Should().Be("New");
+    }
+
+    [Fact]
+    public async Task A_Customer_Opens_Only_Their_Own_Order()
+    {
+        using var scene = new Scene();
+        var order = await scene.PlaceAsync();
+
+        await scene.Invoking(s => MineAsync(s, order.Id, OtherCustomer)).Should().ThrowAsync<ForbiddenException>();
+        await scene.Invoking(s => MineAsync(s, Guid.NewGuid())).Should().ThrowAsync<EntityNotFoundException>();
+        (await MineAsync(scene, order.Id)).Events.Single().StatusName.Should().Be("Ordered");
+    }
+
+    [Fact]
+    public async Task My_Orders_Filter_By_Status_With_Chips_Counting_Every_Order()
+    {
+        using var scene = new Scene();
+        var kept = await scene.PlaceAsync(quantity: 1);
+        var dropped = await scene.PlaceAsync(quantity: 1);
+        await scene.CancelAsync(dropped.Id);
+        await scene.PlaceAsync(quantity: 1, customer: OtherCustomer);
+
+        scene.Test.As(Customer);
+        var all = await scene.Customers.Handle(new GetMyMarketplaceOrdersQuery(), CancellationToken.None);
+        all.TotalCount.Should().Be(2, "another customer's order is not counted");
+        all.Counts.Select(c => (c.Status, c.Name, c.Count)).Should().Equal(("Placed", "Ordered", 1), ("Cancelled", "Cancelled", 1));
+        all.Counts.Select(c => c.Tone).Should().Equal("progress", "waiting");
+
+        var cancelled = await scene.Customers.Handle(new GetMyMarketplaceOrdersQuery { Status = "cancelled" }, CancellationToken.None);
+        cancelled.Items.Select(o => o.Id).Should().Equal(dropped.Id);
+        cancelled.Items.Single().SellerName.Should().Be("Joy Silks");
+        cancelled.TotalCount.Should().Be(1);
+        cancelled.Counts.Should().HaveCount(2, "the chips do not change with the one chosen");
+
+        var none = await scene.Customers.Handle(new GetMyMarketplaceOrdersQuery { Status = "Shipped" }, CancellationToken.None);
+        none.Items.Should().BeEmpty();
+        kept.Id.Should().NotBe(dropped.Id);
+    }
+
+    [Fact]
+    public void My_Orders_Refuse_An_Unknown_Status()
+    {
+        var validator = new GetMyMarketplaceOrdersQueryValidator();
+        validator.TestValidate(new GetMyMarketplaceOrdersQuery { Status = "Lost" }).ShouldHaveValidationErrorFor(x => x.Status);
+        validator.TestValidate(new GetMyMarketplaceOrdersQuery { Status = "Delivered" }).IsValid.Should().BeTrue();
+        validator.TestValidate(new GetMyMarketplaceOrdersQuery()).IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Every_Status_But_Cancelled_Sits_On_A_Progress_Step()
+    {
+        var steps = MarketplaceOrderSeedData.TrackSteps.Select(s => s.Code).ToHashSet();
+        MarketplaceOrderSeedData.Statuses
+            .Where(s => s.Code != MarketplaceOrderStatus.Cancelled)
+            .Should().OnlyContain(s => s.TrackStep != null && steps.Contains(s.TrackStep.Value));
+        MarketplaceOrderSeedData.Statuses.Single(s => s.Code == MarketplaceOrderStatus.Cancelled).TrackStep.Should().BeNull();
     }
 }
