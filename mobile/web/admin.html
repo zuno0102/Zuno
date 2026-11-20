@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>Zuno Super Admin</title>
+  <link rel="stylesheet" href="legal.css">
+  <style>
+    main { max-width: 1100px; }
+    .card { background: var(--card); border-radius: 14px; padding: 16px 18px; margin: 14px 0; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    h2 { font-size: 17px; margin: 0 0 10px; }
+    .muted { color: var(--muted); font-size: 14px; }
+    label { display: block; font-size: 13px; color: var(--muted); margin-top: 8px; }
+    input, select { font: inherit; padding: 8px 10px; border-radius: 10px; border: 1px solid #c9c7d3; background: var(--card); color: var(--fg); width: 100%; box-sizing: border-box; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+    .row > * { flex: 1 1 180px; }
+    button { font: inherit; font-weight: 700; border: 0; border-radius: 10px; padding: 9px 14px; cursor: pointer; background: var(--accent); color: #fff; }
+    button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+    button.danger { background: #b3261e; }
+    button:disabled { opacity: .5; cursor: default; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; flex: 0 0 auto; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid rgba(128,128,128,.25); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; white-space: nowrap; }
+    .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .Pending { background: #fff1c2; color: #7a5800; }
+    .Verified { background: #d7f5dd; color: #1b6b2c; }
+    .Rejected { background: #fde0dd; color: #8c1d18; }
+    #msg { min-height: 22px; font-weight: 600; }
+    .ok { color: #1b6b2c; } .err { color: #b3261e; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Zuno Super Admin</h1>
+    <p class="muted">Approve businesses so customers can see their services, rent items and Marketplace posts. Record paid banners.</p>
+
+    <section id="login" class="card">
+      <h2>Sign in</h2>
+      <form id="login-form">
+        <label for="email">Super Admin email</label>
+        <input id="email" type="email" autocomplete="username" required>
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required>
+        <p><button type="submit">Sign in</button></p>
+      </form>
+    </section>
+
+    <div id="app" hidden>
+      <section class="card">
+        <div class="row">
+          <div><strong id="who"></strong></div>
+          <div class="actions"><button class="ghost" id="logout">Sign out</button></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Businesses</h2>
+        <div class="row">
+          <div><label for="status">Show</label>
+            <select id="status">
+              <option value="Pending">Waiting for approval</option>
+              <option value="Verified">Approved</option>
+              <option value="Rejected">Rejected</option>
+              <option value="">All</option>
+            </select></div>
+          <div><label for="search">Search name, email or phone</label><input id="search" placeholder="e.g. (Test) or shajil.0102+"></div>
+          <div class="actions">
+            <button id="approve" disabled>Approve selected</button>
+            <button id="reject" class="danger" disabled>Reject selected</button>
+          </div>
+        </div>
+        <p id="msg"></p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th><input type="checkbox" id="all" aria-label="Select all shown"></th>
+              <th>Business</th><th>Owner</th><th>Email / phone</th><th>City</th><th>Services</th><th>Registered</th><th>Status</th>
+            </tr></thead>
+            <tbody id="rows"><tr><td colspan="8" class="muted">Loading…</td></tr></tbody>
+          </table>
+        </div>
+        <p class="muted">Rent and Marketplace pick up an approval the next time the business opens the app.</p>
+      </section>
+
+      <section class="card">
+        <h2>Paid banner</h2>
+        <p class="muted">Puts a listing in the customers' top banner until the date; leave the date empty to end it. Marketplace: adverts only.</p>
+        <form id="banner-form" class="row">
+          <div><label for="b-kind">Listing</label>
+            <select id="b-kind">
+              <option value="service">Service</option>
+              <option value="rent">Rent item</option>
+              <option value="market">Marketplace advert</option>
+            </select></div>
+          <div><label for="b-id">Listing ID</label><input id="b-id" required placeholder="00000000-0000-0000-0000-000000000000"></div>
+          <div><label for="b-until">Paid until</label><input id="b-until" type="date"></div>
+          <div class="actions"><button type="submit">Save banner</button></div>
+        </form>
+        <p id="b-msg"></p>
+      </section>
+    </div>
+  </main>
+  <script src="admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,198 @@
+// Zuno Super Admin (web only): sign in, approve or reject businesses, record paid banners.
+// Talks to the live APIs; on localhost, to the local ones. The sign-in lives in this tab only.
+(() => {
+  'use strict';
+
+  const local = ['localhost', '127.0.0.1'].includes(location.hostname);
+  const API = local
+    ? { service: 'http://localhost:5156', rent: 'http://localhost:5157', market: 'http://localhost:5158' }
+    : { service: 'https://zuno-api-qon8.onrender.com', rent: 'https://zuno-rent-api.onrender.com', market: 'https://zuno-marketplace-api.onrender.com' };
+  const BANNER_PATH = {
+    service: (id) => `${API.service}/api/v1/admin/banners/services/${id}`,
+    rent: (id) => `${API.rent}/api/v1/admin/banners/rentals/${id}`,
+    market: (id) => `${API.market}/api/v1/admin/marketplace/banners/${id}`,
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const store = {
+    get token() { try { return sessionStorage.getItem('zuno-admin-token'); } catch { return null; } },
+    set token(v) { try { v ? sessionStorage.setItem('zuno-admin-token', v) : sessionStorage.removeItem('zuno-admin-token'); } catch { /* private mode */ } },
+    get name() { try { return sessionStorage.getItem('zuno-admin-name') ?? ''; } catch { return ''; } },
+    set name(v) { try { sessionStorage.setItem('zuno-admin-name', v); } catch { /* private mode */ } },
+  };
+  let businesses = [];
+  const selected = new Set();
+
+  const say = (el, text, ok) => { el.textContent = text; el.className = ok ? 'ok' : 'err'; };
+  const errorText = (body, status) =>
+    body?.message ?? (body?.errors ? Object.values(body.errors).flat().join(' ') : `Request failed (${status}).`);
+
+  async function call(url, method = 'GET', body) {
+    const r = await fetch(url, {
+      method,
+      headers: { ...(store.token ? { Authorization: `Bearer ${store.token}` } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const json = await r.json().catch(() => null);
+    if (r.status === 401) { signOut(); throw new Error('Your sign-in ended. Sign in again.'); }
+    if (r.status === 403) throw new Error('This account is not a Super Admin.');
+    if (!r.ok) throw new Error(errorText(json, r.status));
+    return json?.data ?? json;
+  }
+
+  // ---- Sign in ----
+  $('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const button = e.submitter;
+    button.disabled = true;
+    try {
+      const auth = await call(`${API.service}/api/v1/auth/login`, 'POST', { emailOrPhone: $('email').value.trim(), password: $('password').value });
+      if (auth.user?.role !== 'SuperAdmin') throw new Error('This account is not a Super Admin.');
+      store.token = auth.accessToken;
+      store.name = `${auth.user.firstName} ${auth.user.lastName} · ${auth.user.email ?? ''}`;
+      $('password').value = '';
+      show();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  function signOut() {
+    store.token = null;
+    $('app').hidden = true;
+    $('login').hidden = false;
+  }
+  $('logout').addEventListener('click', signOut);
+
+  function show() {
+    $('login').hidden = true;
+    $('app').hidden = false;
+    $('who').textContent = `Signed in: ${store.name}`;
+    load();
+  }
+
+  // ---- Businesses ----
+  async function load() {
+    selected.clear();
+    $('rows').innerHTML = '<tr><td colspan="8" class="muted">Loading… (the server may take ~30 s to wake)</td></tr>';
+    try {
+      const status = $('status').value;
+      businesses = await call(`${API.service}/api/v1/admin/businesses${status ? `?status=${status}` : ''}`);
+      render();
+    } catch (err) {
+      $('rows').innerHTML = '';
+      say($('msg'), err.message, false);
+    }
+  }
+
+  function shown() {
+    const q = $('search').value.trim().toLowerCase();
+    return q
+      ? businesses.filter((b) => [b.businessName, b.ownerName, b.ownerEmail, b.ownerPhone].some((v) => (v ?? '').toLowerCase().includes(q)))
+      : businesses;
+  }
+
+  function cell(text) {
+    const td = document.createElement('td');
+    td.textContent = text ?? '';
+    return td;
+  }
+
+  function render() {
+    const list = shown();
+    const body = $('rows');
+    body.replaceChildren();
+    if (!list.length) {
+      const tr = document.createElement('tr');
+      const td = cell('No businesses here.');
+      td.colSpan = 8;
+      td.className = 'muted';
+      tr.append(td);
+      body.append(tr);
+    }
+    for (const b of list) {
+      const tr = document.createElement('tr');
+      const tick = document.createElement('input');
+      tick.type = 'checkbox';
+      tick.checked = selected.has(b.id);
+      tick.setAttribute('aria-label', `Select ${b.businessName}`);
+      tick.addEventListener('change', () => { tick.checked ? selected.add(b.id) : selected.delete(b.id); update(); });
+      const first = document.createElement('td');
+      first.append(tick);
+      const status = document.createElement('td');
+      const pill = document.createElement('span');
+      pill.className = `pill ${b.verificationStatus}`;
+      pill.textContent = { Pending: 'Waiting', Verified: 'Approved', Rejected: 'Rejected' }[b.verificationStatus] ?? b.verificationStatus;
+      status.append(pill);
+      tr.append(
+        first,
+        cell(b.businessName),
+        cell(b.ownerName),
+        cell([b.ownerEmail, b.ownerPhone].filter(Boolean).join(' · ')),
+        cell([b.city, b.state].filter(Boolean).join(', ')),
+        cell(String(b.activeServiceCount ?? 0)),
+        cell(b.registeredAt ? new Date(b.registeredAt).toLocaleDateString() : ''),
+        status,
+      );
+      body.append(tr);
+    }
+    update();
+  }
+
+  function update() {
+    const list = shown();
+    $('all').checked = list.length > 0 && list.every((b) => selected.has(b.id));
+    $('approve').disabled = $('reject').disabled = selected.size === 0;
+    $('approve').textContent = `Approve selected (${selected.size})`;
+    $('reject').textContent = `Reject selected (${selected.size})`;
+  }
+
+  $('all').addEventListener('change', () => {
+    for (const b of shown()) $('all').checked ? selected.add(b.id) : selected.delete(b.id);
+    render();
+  });
+  $('status').addEventListener('change', load);
+  $('search').addEventListener('input', render);
+
+  async function decide(approve) {
+    const ids = [...selected];
+    const verb = approve ? 'Approve' : 'Reject';
+    const pastTense = approve ? 'Approved' : 'Rejected';
+    if (!confirm(`${verb} ${ids.length} business${ids.length === 1 ? '' : 'es'}?`)) return;
+    $('approve').disabled = $('reject').disabled = true;
+    let done = 0;
+    const failed = [];
+    for (const id of ids) {
+      try {
+        await call(`${API.service}/api/v1/admin/businesses/${id}/${approve ? 'approve' : 'reject'}`, 'POST');
+        done++;
+        say($('msg'), `${pastTense} ${done} of ${ids.length}…`, true);
+      } catch (err) {
+        failed.push(`${businesses.find((b) => b.id === id)?.businessName ?? id}: ${err.message}`);
+      }
+    }
+    say($('msg'), failed.length ? `${pastTense} ${done}. Not done: ${failed.join('; ')}` : `${pastTense} ${done}.`, !failed.length);
+    load();
+  }
+  $('approve').addEventListener('click', () => decide(true));
+  $('reject').addEventListener('click', () => decide(false));
+
+  // ---- Paid banner ----
+  $('banner-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = $('b-id').value.trim();
+    const date = $('b-until').value;
+    // The end of the chosen day, in India.
+    const paidUntil = date ? `${date}T23:59:59+05:30` : null;
+    try {
+      const result = await call(BANNER_PATH[$('b-kind').value](id), 'PUT', { paidUntil });
+      say($('b-msg'), result.bannerPaidUntil ? `Banner on until ${new Date(result.bannerPaidUntil).toLocaleString()}.` : 'Banner ended.', true);
+    } catch (err) {
+      say($('b-msg'), err.message, false);
+    }
+  });
+
+  if (store.token) show();
+})();
