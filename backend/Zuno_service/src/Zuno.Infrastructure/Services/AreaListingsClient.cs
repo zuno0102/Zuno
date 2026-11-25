@@ -49,35 +49,69 @@ public class AreaListingsClient(
         }
 
         var client = httpClientFactory.CreateClient(area == ListingArea.Rent ? RentClient : MarketplaceClient);
-        using var request = new HttpRequestMessage(method, path);
-        request.Headers.Add(InternalApiSettings.HeaderName, internalApi.Value.Key);
-        if (body is not null)
-        {
-            request.Content = JsonContent.Create(body);
-        }
 
-        try
+        // A server on a free plan sleeps when idle and answers 502/503 (or not at all) for the few
+        // seconds it takes to wake. Every call here is safe to repeat (a read, or setting listings to a
+        // state), so it is asked again until it answers or the wait is up; only then is the area
+        // unavailable and a plan check refused.
+        var giveUpAt = DateTimeOffset.UtcNow + WakeUpWait;
+        for (var attempt = 1; ; attempt++)
         {
-            using var response = await client.SendAsync(request, cancellationToken);
-            if (!response.IsSuccessStatusCode)
+            using var request = new HttpRequestMessage(method, path);
+            request.Headers.Add(InternalApiSettings.HeaderName, internalApi.Value.Key);
+            if (body is not null)
             {
-                throw new AreaUnavailableException(area);
+                request.Content = JsonContent.Create(body);
             }
 
-            if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
+            try
             {
-                return default;
-            }
+                using var response = await client.SendAsync(request, cancellationToken);
+                if (IsWakingUp(response.StatusCode) && DateTimeOffset.UtcNow + RetryDelay(attempt) < giveUpAt)
+                {
+                    await Task.Delay(RetryDelay(attempt), cancellationToken);
+                    continue;
+                }
 
-            // Answers come wrapped as { data: … } like every Zuno API response.
-            var envelope = await response.Content.ReadFromJsonAsync<Envelope<T>>(cancellationToken);
-            return envelope is null ? default : envelope.Data;
-        }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
-        {
-            throw new AreaUnavailableException(area, ex);
+                if (!response.IsSuccessStatusCode)
+                {
+                    throw new AreaUnavailableException(area);
+                }
+
+                if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
+                {
+                    return default;
+                }
+
+                // Answers come wrapped as { data: … } like every Zuno API response.
+                var envelope = await response.Content.ReadFromJsonAsync<Envelope<T>>(cancellationToken);
+                return envelope is null ? default : envelope.Data;
+            }
+            catch (Exception ex) when (
+                ex is HttpRequestException or TaskCanceledException
+                && !cancellationToken.IsCancellationRequested
+                && DateTimeOffset.UtcNow + RetryDelay(attempt) < giveUpAt)
+            {
+                await Task.Delay(RetryDelay(attempt), cancellationToken);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+            {
+                throw new AreaUnavailableException(area, ex);
+            }
         }
     }
+
+    /// <summary>How long a sleeping Rent or Marketplace API is given to wake before the area counts as unavailable.</summary>
+    public static readonly TimeSpan WakeUpWait = TimeSpan.FromSeconds(45);
+
+    private static bool IsWakingUp(System.Net.HttpStatusCode status) =>
+        status is System.Net.HttpStatusCode.BadGateway
+            or System.Net.HttpStatusCode.ServiceUnavailable
+            or System.Net.HttpStatusCode.GatewayTimeout
+            or System.Net.HttpStatusCode.TooManyRequests;
+
+    /// <summary>2 s, 4 s, then every 6 s.</summary>
+    private static TimeSpan RetryDelay(int attempt) => TimeSpan.FromSeconds(Math.Min(6, attempt * 2));
 
     private sealed record Envelope<T>(T? Data);
 }
